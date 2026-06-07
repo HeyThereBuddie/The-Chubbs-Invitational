@@ -37,35 +37,76 @@ body {
 }
 @keyframes spinAnim { to { transform: rotate(360deg); } }
 
+@keyframes pulseGlow {
+  0%,100% { box-shadow: 0 0 16px rgba(252,181,20,0.45), 0 0 32px rgba(252,181,20,0.15); }
+  50%      { box-shadow: 0 0 28px rgba(252,181,20,0.75), 0 0 56px rgba(252,181,20,0.25); }
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+@keyframes scanline {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+
 .animate-fadeUp    { animation: fadeUp 0.4s ease both; }
 .animate-slideDown { animation: slideDown 0.3s ease both; }
 .animate-wiggle    { animation: wiggle 2s ease-in-out infinite; }
 .animate-pulseDot  { animation: pulseDot 1.5s ease-in-out infinite; }
 .animate-spin      { animation: spinAnim 0.8s linear infinite; }
+.animate-float     { animation: float 4s ease-in-out infinite; }
+.animate-glow-pulse { animation: pulseGlow 3s ease-in-out infinite; }
+
 .delay-100 { animation-delay: 0.1s; }
 .delay-200 { animation-delay: 0.2s; }
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
 
 /* ── Glass card ── */
 .glass {
-  background: rgba(18,14,6,0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(252,181,20,0.15);
+  background: rgba(18,14,6,0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(252,181,20,0.16);
+  border-radius: 18px;
+}
+
+.glass-strong {
+  background: rgba(22,16,4,0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(252,181,20,0.28);
   border-radius: 18px;
 }
 
 /* ── Gold glow text ── */
 .gold-text {
   color: #FCB514;
-  text-shadow: 0 0 20px rgba(252,181,20,0.5);
+  text-shadow: 0 0 24px rgba(252,181,20,0.55);
+}
+
+/* ── Shimmer gradient text ── */
+.text-shimmer {
+  background: linear-gradient(90deg, #e0a010 0%, #FCB514 30%, #ffe066 50%, #FCB514 70%, #e0a010 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 5s linear infinite;
 }
 
 /* ── Background mesh ── */
 .bg-mesh {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(252,181,20,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(252,181,20,0.11) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 5%  95%, rgba(252,181,20,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 35% at 95% 95%, rgba(252,181,20,0.04) 0%, transparent 60%),
     #080808;
 }
 
@@ -135,7 +176,7 @@ body {
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
-  box-shadow: 0 0 24px rgba(252,181,20,0.3);
+  box-shadow: 0 0 32px rgba(252,181,20,0.25);
 }
 
 /* ── Input ── */
@@ -143,6 +184,7 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
+input[type="time"],
 select,
 textarea {
   background: rgba(255,255,255,0.04);
@@ -192,37 +234,31 @@ select option { background: #1a1200; }
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
-/* Eagle (-2 or better): solid gold fill — most prominent good score */
 .score-eagle  {
   background: #FCB514;
   color: #080808;
   box-shadow: 0 0 14px rgba(252,181,20,0.55);
 }
-/* Birdie (-1): gold ring */
 .score-birdie {
   background: rgba(252,181,20,0.12);
   color: #FCB514;
   border: 2px solid #FCB514;
 }
-/* Par: neutral white ring */
 .score-par {
   background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.9);
   border: 2px solid rgba(255,255,255,0.3);
 }
-/* Bogey (+1): warm orange */
 .score-bogey {
   background: rgba(251,146,60,0.12);
   color: #fb923c;
   border: 2px solid rgba(251,146,60,0.45);
 }
-/* Double bogey+ (+2): red */
 .score-double {
   background: rgba(239,68,68,0.12);
   color: #f87171;
   border: 2px solid rgba(239,68,68,0.4);
 }
-/* No score yet */
 .score-empty {
   background: transparent;
   color: rgba(255,255,255,0.2);
@@ -231,3 +267,11 @@ select option { background: #1a1200; }
 
 /* ── Safe area ── */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+
+/* ── Divider ── */
+.divider-gold {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(252,181,20,0.35), transparent);
+  border: none;
+  margin: 0;
+}

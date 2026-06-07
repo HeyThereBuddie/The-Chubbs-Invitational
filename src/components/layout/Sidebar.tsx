@@ -51,24 +51,35 @@ export default function Sidebar() {
       zIndex: 100,
     }}>
       {/* Logo */}
-      <div style={{ padding: '24px 20px 16px', borderBottom: '1px solid rgba(252,181,20,0.1)' }}>
+      <div style={{
+        padding: '20px',
+        borderBottom: '1px solid rgba(252,181,20,0.1)',
+        background: 'linear-gradient(180deg, rgba(252,181,20,0.06) 0%, transparent 100%)',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: '50%',
+          <div className="animate-glow-pulse" style={{
+            width: 52, height: 52, borderRadius: '50%',
             border: '2px solid #FCB514',
-            boxShadow: '0 0 12px rgba(252,181,20,0.5)',
             overflow: 'hidden', flexShrink: 0,
           }}>
             <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 18, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 19, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
               The Chubbs
             </div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 14, color: 'rgba(252,181,20,0.6)', letterSpacing: 2 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: 'rgba(252,181,20,0.55)', letterSpacing: 2 }}>
               Invitational
             </div>
           </div>
+        </div>
+        <div style={{
+          marginTop: 12,
+          fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: 3,
+          textTransform: 'uppercase', textAlign: 'center',
+          paddingTop: 10, borderTop: '1px solid rgba(252,181,20,0.08)',
+        }}>
+          Annual Golf Tournament
         </div>
       </div>
 
@@ -105,14 +116,16 @@ export default function Sidebar() {
       <div style={{
         padding: '12px 16px',
         margin: '0 12px 8px',
-        background: 'rgba(252,181,20,0.04)',
-        borderRadius: 10,
-        borderLeft: '2px solid rgba(252,181,20,0.3)',
+        background: 'linear-gradient(135deg, rgba(252,181,20,0.05) 0%, rgba(252,181,20,0.02) 100%)',
+        borderRadius: 12,
+        border: '1px solid rgba(252,181,20,0.12)',
+        borderLeft: '3px solid rgba(252,181,20,0.4)',
       }}>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic', lineHeight: 1.4 }}>
+        <div style={{ fontSize: 14, color: 'rgba(252,181,20,0.3)', marginBottom: 4 }}>💬</div>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontStyle: 'italic', lineHeight: 1.5 }}>
           "{quote}"
         </p>
-        <p style={{ fontSize: 10, color: 'rgba(252,181,20,0.5)', marginTop: 4 }}>— Chubbs Peterson</p>
+        <p style={{ fontSize: 10, color: 'rgba(252,181,20,0.5)', marginTop: 6, fontWeight: 600 }}>— Chubbs Peterson</p>
       </div>
 
       {/* User + Sign out */}
