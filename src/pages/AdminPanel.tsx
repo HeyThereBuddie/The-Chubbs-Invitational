@@ -209,11 +209,15 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
       showToast('Select at least one player', 'error'); return
     }
     setEmailSending(true)
+    const { data: { session } } = await supabase.auth.getSession()
     const body: Record<string, unknown> = { type: emailType }
     if (emailType === 'blast')   { body.groups = Array.from(emailGroups); body.subject = emailSubject; body.message = emailMessage }
     if (emailType === 'update')  { body.groups = Array.from(emailGroups); body.updateId = emailUpdateId }
     if (emailType === 'welcome') { body.playerIds = Array.from(emailPlayers) }
-    const { data, error } = await supabase.functions.invoke('send-email', { body })
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body,
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+    })
     setEmailSending(false)
     if (error) showToast(error.message ?? 'Failed to send', 'error')
     else       showToast(`${(data as { sent: number }).sent} email${(data as { sent: number }).sent !== 1 ? 's' : ''} sent! 📧`)
