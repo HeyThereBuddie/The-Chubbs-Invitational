@@ -27,15 +27,18 @@ serve(async (req) => {
   try {
     // ── 1. Verify caller is an admin ────────────────────────
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return json({ error: 'Unauthorized' }, 401)
+    console.log('[auth] header present:', !!authHeader)
+    if (!authHeader) return json({ error: 'Unauthorized - no header' }, 401)
 
     const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     })
-    const { data: { user } } = await anonClient.auth.getUser()
-    if (!user) return json({ error: 'Unauthorized' }, 401)
+    const { data: { user }, error: userErr } = await anonClient.auth.getUser()
+    console.log('[auth] user:', user?.id ?? null, 'err:', userErr?.message ?? null)
+    if (!user) return json({ error: 'Unauthorized - no user', detail: userErr?.message }, 401)
 
     const { data: caller } = await anonClient.from('profiles').select('role').eq('id', user.id).single()
+    console.log('[auth] caller role:', caller?.role)
     if (caller?.role !== 'admin') return json({ error: 'Forbidden' }, 403)
 
     // ── 2. Use service role for data access ─────────────────
