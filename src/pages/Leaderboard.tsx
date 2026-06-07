@@ -68,7 +68,9 @@ export default function Leaderboard() {
     leaderRows.sort((a, b) => {
       if (b.thru !== a.thru && a.thru === 0) return 1
       if (b.thru !== a.thru && b.thru === 0) return -1
-      return a.toPar - b.toPar || b.thru - a.thru
+      // Putts tiebreaker: only applies when both teams have putts recorded
+      const puttsBreaker = (a.putts > 0 && b.putts > 0) ? a.putts - b.putts : 0
+      return a.toPar - b.toPar || b.thru - a.thru || puttsBreaker
     })
 
     setRows(leaderRows)
