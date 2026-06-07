@@ -12,7 +12,7 @@ export default function Contests() {
   const [tab, setTab] = useState<ContestType>('ctp')
   const [entries, setEntries] = useState<(ContestEntry & { player?: Player })[]>([])
   const [players, setPlayers] = useState<Player[]>([])
-  const [form, setForm] = useState({ player_id: '', hole: '1', distance: '' })
+  const [form, setForm] = useState({ player_id: '', hole: '1' })
   const [photo, setPhoto] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -36,7 +36,7 @@ export default function Contests() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.player_id || !form.distance) { showToast('Fill all required fields', 'error'); return }
+    if (!form.player_id) { showToast('Select a player', 'error'); return }
 
     setSubmitting(true)
     let photo_url: string | null = null
@@ -54,7 +54,7 @@ export default function Contests() {
       type: tab,
       player_id: form.player_id,
       hole: +form.hole,
-      distance: form.distance,
+      distance: '',
       photo_url,
     })
 
@@ -62,7 +62,7 @@ export default function Contests() {
     if (error) showToast(error.message, 'error')
     else {
       showToast('Entry submitted! 🎯')
-      setForm({ player_id: '', hole: '1', distance: '' })
+      setForm({ player_id: '', hole: '1' })
       setPhoto(null)
       fetchData()
     }
@@ -89,7 +89,7 @@ export default function Contests() {
           <div>
             <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
             <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player?.name}</div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{leader.distance} • Hole {leader.hole}</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Hole {leader.hole}</div>
           </div>
         </div>
       )}
@@ -112,10 +112,6 @@ export default function Contests() {
             <div>
               <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Hole *</label>
               <input type="number" min={1} max={18} value={form.hole} onChange={e => setForm(f => ({ ...f, hole: e.target.value }))} />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Distance *</label>
-              <input type="text" placeholder="e.g. 12 ft" value={form.distance} onChange={e => setForm(f => ({ ...f, distance: e.target.value }))} />
             </div>
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -150,7 +146,7 @@ export default function Contests() {
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{entry.player?.name}</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-                {entry.distance} • Hole {entry.hole} • {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
+                Hole {entry.hole} • {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
               </div>
             </div>
             {entry.photo_url && (
