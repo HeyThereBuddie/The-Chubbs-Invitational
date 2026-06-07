@@ -28,7 +28,7 @@ export default function Contests() {
   const fetchData = async () => {
     const [entriesRes, playersRes] = await Promise.all([
       supabase.from('contest_entries').select('*, player:profiles(*)').eq('type', tab).order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*').eq('status', 'active').eq('role', 'player').order('name'),
+      supabase.from('profiles').select('*').eq('status', 'active').order('name'),
     ])
     setEntries(entriesRes.data ?? [])
     setPlayers(playersRes.data ?? [])

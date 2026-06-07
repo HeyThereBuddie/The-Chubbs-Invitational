@@ -26,7 +26,6 @@ export default function RSVP() {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('role', 'player')
       .order('name')
     setPlayers(data ?? [])
   }

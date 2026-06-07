@@ -38,7 +38,7 @@ export default function Dashboard() {
     const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
       supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
       supabase.from('scores').select('*'),
-      supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active').eq('role', 'player'),
+      supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
       supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
     ])
 
