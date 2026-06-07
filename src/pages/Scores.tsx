@@ -171,7 +171,7 @@ export default function Scores() {
               <div style={{ flex: 1 }} />
 
               {/* Score bubble */}
-              <div className={`score-bubble ${cls}`} style={{ width: 44, height: 44, fontSize: 16 }}>
+              <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
                 {hasScore ? score : '—'}
               </div>
 

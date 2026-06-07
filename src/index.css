@@ -183,12 +183,51 @@ select option { background: #1a1200; }
 .pill-tab:hover:not(.active) { color: rgba(255,255,255,0.8); }
 
 /* ── Score bubble ── */
-.score-eagle  { background: rgba(252,181,20,0.25); color: #FCB514; box-shadow: 0 0 10px rgba(252,181,20,0.5); }
-.score-birdie { background: rgba(239,68,68,0.25); color: #ef4444; border: 1px solid rgba(239,68,68,0.5); }
-.score-par    { background: transparent; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.25); }
-.score-bogey  { background: rgba(59,130,246,0.2); color: #60a5fa; }
-.score-double { background: rgba(127,29,29,0.4); color: #fca5a5; }
-.score-empty  { background: transparent; color: rgba(255,255,255,0.2); border: 1px dashed rgba(255,255,255,0.1); }
+.score-bubble {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+/* Eagle (-2 or better): solid gold fill — most prominent good score */
+.score-eagle  {
+  background: #FCB514;
+  color: #080808;
+  box-shadow: 0 0 14px rgba(252,181,20,0.55);
+}
+/* Birdie (-1): gold ring */
+.score-birdie {
+  background: rgba(252,181,20,0.12);
+  color: #FCB514;
+  border: 2px solid #FCB514;
+}
+/* Par: neutral white ring */
+.score-par {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+  border: 2px solid rgba(255,255,255,0.3);
+}
+/* Bogey (+1): warm orange */
+.score-bogey {
+  background: rgba(251,146,60,0.12);
+  color: #fb923c;
+  border: 2px solid rgba(251,146,60,0.45);
+}
+/* Double bogey+ (+2): red */
+.score-double {
+  background: rgba(239,68,68,0.12);
+  color: #f87171;
+  border: 2px solid rgba(239,68,68,0.4);
+}
+/* No score yet */
+.score-empty {
+  background: transparent;
+  color: rgba(255,255,255,0.2);
+  border: 2px dashed rgba(255,255,255,0.12);
+}
 
 /* ── Safe area ── */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
