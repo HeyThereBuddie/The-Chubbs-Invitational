@@ -17,7 +17,7 @@ function pushNotification(title: string, body: string) {
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 type TeamFull = Team & { player1?: Player; player2?: Player }
-type ScoreRow = { id: string; hole: number; score: number }
+type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null }
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
@@ -148,10 +148,11 @@ export default function Scores() {
       if (pt) setPartnerTeam(pt)
     }
 
+    const SCORE_SELECT = 'id, hole, score, drive_used_id'
     const [myRes, partnerRes] = await Promise.all([
-      supabase.from('scores').select('id, hole, score').eq('team_id', teamId),
+      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
       partnerId
-        ? supabase.from('scores').select('id, hole, score').eq('team_id', partnerId)
+        ? supabase.from('scores').select(SCORE_SELECT).eq('team_id', partnerId)
         : Promise.resolve({ data: [] as ScoreRow[] }),
     ])
 
@@ -178,7 +179,7 @@ export default function Scores() {
   }
 
   const loadAdminScores = async (teamId: string) => {
-    const { data } = await supabase.from('scores').select('id, hole, score').eq('team_id', teamId)
+    const { data } = await supabase.from('scores').select('id, hole, score, drive_used_id').eq('team_id', teamId)
     const map: Record<number, ScoreRow> = {}
     for (const s of data ?? []) map[s.hole] = s
     setAdminScores(map)
@@ -202,8 +203,8 @@ export default function Scores() {
       setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
     } else {
       const { data } = await supabase.from('scores')
-        .insert({ team_id: myTeamId, hole, score: next }).select('id').single()
-      if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next } }))
+        .insert({ team_id: myTeamId, hole, score: next }).select('id, drive_used_id').single()
+      if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id } }))
     }
     setSaving(null)
   }
@@ -219,8 +220,8 @@ export default function Scores() {
       setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
     } else {
       const { data } = await supabase.from('scores')
-        .insert({ team_id: adminTeamId, hole, score: next }).select('id').single()
-      if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next } }))
+        .insert({ team_id: adminTeamId, hole, score: next }).select('id, drive_used_id').single()
+      if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id } }))
     }
     setSaving(null)
   }
@@ -244,6 +245,31 @@ export default function Scores() {
     window.location.reload()
   }
 
+  const setMyDrive = async (hole: number, playerId: string) => {
+    const existing = myScores[hole]
+    if (!existing?.id) return
+    const newId = existing.drive_used_id === playerId ? null : playerId
+    await supabase.from('scores').update({ drive_used_id: newId }).eq('id', existing.id)
+    setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
+  }
+
+  const setAdminDrive = async (hole: number, playerId: string) => {
+    const existing = adminScores[hole]
+    if (!existing?.id) return
+    const newId = existing.drive_used_id === playerId ? null : playerId
+    await supabase.from('scores').update({ drive_used_id: newId }).eq('id', existing.id)
+    setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
+  }
+
+  const countDrives = (pid: string | null, from: number, to: number, scoreMap: Record<number, ScoreRow>) => {
+    if (!pid) return 0
+    let n = 0
+    for (let h = from; h <= to; h++) {
+      if (scoreMap[h]?.drive_used_id === pid) n++
+    }
+    return n
+  }
+
   // ── Helpers ──────────────────────────────────────────────────
 
   const holes = half === 'front'
@@ -259,6 +285,7 @@ export default function Scores() {
 
   const HoleCard = ({
     hole, scoreRow, approved, isSaving, onMinus, onPlus, right,
+    player1, player2, onSetDrive,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -267,75 +294,165 @@ export default function Scores() {
     onMinus?: () => void
     onPlus?: () => void
     right?: React.ReactNode
+    player1?: Player
+    player2?: Player
+    onSetDrive?: (playerId: string) => void
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
     const hasScore = score !== undefined
     const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
     const locked   = approved
+    const driveId  = scoreRow?.drive_used_id ?? null
 
     return (
       <div className="glass animate-fadeUp" style={{
-        padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16,
-        opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
+        padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
       }}>
-        <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{hole}</div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
+        {/* Main row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{hole}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
+          </div>
+
+          {onMinus !== undefined ? (
+            <div style={{ flex: 1 }}>
+              {hasScore && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                  {approved
+                    ? <><CheckCircle size={11} style={{ color: '#4ade80' }} /><span style={{ color: '#4ade80' }}>Approved</span></>
+                    : <><Clock size={11} style={{ color: 'rgba(255,255,255,0.3)' }} /><span style={{ color: 'rgba(255,255,255,0.3)' }}>Awaiting approval</span></>
+                  }
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ flex: 1 }} />
+          )}
+
+          <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
+            {hasScore ? score : '—'}
+          </div>
+
+          {onMinus !== undefined ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={onMinus}
+                disabled={isSaving || locked || (hasScore && score <= 1)}
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  color: locked ? 'rgba(255,255,255,0.2)' : '#fff',
+                  cursor: locked ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              ><Minus size={14} /></button>
+              <button
+                onClick={onPlus}
+                disabled={isSaving || locked}
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: locked ? 'rgba(255,255,255,0.04)' : 'rgba(252,181,20,0.15)',
+                  border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : 'rgba(252,181,20,0.3)'}`,
+                  color: locked ? 'rgba(255,255,255,0.2)' : '#FCB514',
+                  cursor: locked ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              ><Plus size={14} /></button>
+            </div>
+          ) : (
+            <div style={{ minWidth: 110, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+              {right}
+            </div>
+          )}
         </div>
 
-        {/* status badge */}
-        {onMinus !== undefined ? (
-          <div style={{ flex: 1 }}>
-            {hasScore && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-                {approved
-                  ? <><CheckCircle size={11} style={{ color: '#4ade80' }} /><span style={{ color: '#4ade80' }}>Approved</span></>
-                  : <><Clock size={11} style={{ color: 'rgba(255,255,255,0.3)' }} /><span style={{ color: 'rgba(255,255,255,0.3)' }}>Awaiting approval</span></>
-                }
+        {/* Drive selector — edit mode, score entered, not locked */}
+        {onMinus !== undefined && hasScore && !locked && player1 && player2 && onSetDrive && (
+          <div style={{
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Drive:</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[player1, player2].map(p => {
+                const first = p.name.split(' ')[0]
+                const active = driveId === p.id
+                return (
+                  <button key={p.id} onClick={() => onSetDrive(p.id)} style={{
+                    padding: '4px 12px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 600,
+                    border: '1px solid',
+                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.12)',
+                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                    {first}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Drive info — read-only (approval tab or locked) */}
+        {(onMinus === undefined || locked) && hasScore && driveId && player1 && player2 && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+            Drive: {[player1, player2].find(p => p.id === driveId)?.name.split(' ')[0] ?? '—'}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const DriveCounter = ({
+    scoreMap, p1, p2,
+  }: {
+    scoreMap: Record<number, ScoreRow>
+    p1: Player | undefined
+    p2: Player | undefined
+  }) => {
+    if (!p1 || !p2) return null
+    const halves = [
+      { label: 'Front 9', from: 1,  to: 9  },
+      { label: 'Back 9',  from: 10, to: 18 },
+    ]
+    return (
+      <div className="glass" style={{ padding: '12px 16px', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+          Drive usage — min 4 each per half
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {halves.map(({ label, from, to }) => {
+            const p1c = countDrives(p1.id, from, to, scoreMap)
+            const p2c = countDrives(p2.id, from, to, scoreMap)
+            return (
+              <div key={label}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>{label}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[{ name: p1.name.split(' ')[0], count: p1c }, { name: p2.name.split(' ')[0], count: p2c }].map(({ name, count }) => {
+                    const ok = count >= 4
+                    return (
+                      <div key={name} style={{
+                        flex: 1, textAlign: 'center', padding: '6px 4px', borderRadius: 8,
+                        background: ok ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${ok ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                      }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#22c55e' : 'rgba(255,255,255,0.7)' }}>
+                          {count}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>{name}</div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ flex: 1 }} />
-        )}
-
-        <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
-          {hasScore ? score : '—'}
+            )
+          })}
         </div>
-
-        {/* stepper buttons OR custom right element */}
-        {onMinus !== undefined ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={onMinus}
-              disabled={isSaving || locked || (hasScore && score <= 1)}
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: locked ? 'rgba(255,255,255,0.2)' : '#fff',
-                cursor: locked ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            ><Minus size={14} /></button>
-            <button
-              onClick={onPlus}
-              disabled={isSaving || locked}
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: locked ? 'rgba(255,255,255,0.04)' : 'rgba(252,181,20,0.15)',
-                border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : 'rgba(252,181,20,0.3)'}`,
-                color: locked ? 'rgba(255,255,255,0.2)' : '#FCB514',
-                cursor: locked ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            ><Plus size={14} /></button>
-          </div>
-        ) : (
-          <div style={{ minWidth: 110, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
-            {right}
-          </div>
-        )}
       </div>
     )
   }
@@ -425,6 +542,10 @@ export default function Scores() {
           ))}
         </div>
 
+        {adminTeam?.player1 && adminTeam?.player2 && (
+          <DriveCounter scoreMap={adminScores} p1={adminTeam.player1} p2={adminTeam.player2} />
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {holes.map(hole => (
             <HoleCard
@@ -435,6 +556,9 @@ export default function Scores() {
               isSaving={saving === hole}
               onMinus={() => adjustAdminScore(hole, -1)}
               onPlus={() => adjustAdminScore(hole, 1)}
+              player1={adminTeam?.player1}
+              player2={adminTeam?.player2}
+              onSetDrive={(pid) => setAdminDrive(hole, pid)}
             />
           ))}
         </div>
@@ -500,23 +624,29 @@ export default function Scores() {
 
       {/* MY SCORES */}
       {tab === 'mine' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {holes.map(hole => {
-            const row = myScores[hole]
-            const approved = row ? approvedIds.has(row.id) : false
-            return (
-              <HoleCard
-                key={hole}
-                hole={hole}
-                scoreRow={row}
-                approved={approved}
-                isSaving={saving === hole}
-                onMinus={() => adjustMyScore(hole, -1)}
-                onPlus={() => adjustMyScore(hole, 1)}
-              />
-            )
-          })}
-        </div>
+        <>
+          <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {holes.map(hole => {
+              const row = myScores[hole]
+              const approved = row ? approvedIds.has(row.id) : false
+              return (
+                <HoleCard
+                  key={hole}
+                  hole={hole}
+                  scoreRow={row}
+                  approved={approved}
+                  isSaving={saving === hole}
+                  onMinus={() => adjustMyScore(hole, -1)}
+                  onPlus={() => adjustMyScore(hole, 1)}
+                  player1={myTeam?.player1}
+                  player2={myTeam?.player2}
+                  onSetDrive={(pid) => setMyDrive(hole, pid)}
+                />
+              )
+            })}
+          </div>
+        </>
       )}
 
       {/* APPROVE PARTNER */}
@@ -543,6 +673,8 @@ export default function Scores() {
                   scoreRow={row}
                   approved={approved}
                   isSaving={false}
+                  player1={partnerTeam.player1}
+                  player2={partnerTeam.player2}
                   right={
                     !hasScore ? (
                       <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>Not entered</span>
