@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile, Team } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw } from 'lucide-react'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -124,6 +124,14 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
 
   const [resetting, setResetting] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
+  const [laheyVotingOpen, setLaheyVotingOpen] = useState(false)
+  const [laheyResetting, setLaheyResetting] = useState(false)
+  const [laheyTogglingOpen, setLaheyTogglingOpen] = useState(false)
+
+  useEffect(() => {
+    supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
+      .then(({ data }) => { if (data) setLaheyVotingOpen(data.lahey_voting_open) })
+  }, [])
 
   const resetTournament = async () => {
     setResetting(true)
@@ -132,6 +140,27 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
     setResetConfirm(false)
     if (error) showToast(error.message, 'error')
     else showToast('All scores cleared — tournament reset!')
+  }
+
+  const toggleLaheyVoting = async () => {
+    setLaheyTogglingOpen(true)
+    const next = !laheyVotingOpen
+    const { error } = await supabase.from('tournament_settings').update({ lahey_voting_open: next }).eq('id', 1)
+    setLaheyTogglingOpen(false)
+    if (error) showToast(error.message, 'error')
+    else {
+      setLaheyVotingOpen(next)
+      showToast(next ? '🍺 Lahey voting is now open!' : 'Lahey voting closed.')
+    }
+  }
+
+  const resetLaheyVotes = async () => {
+    if (!confirm('Clear all Lahey votes? This cannot be undone.')) return
+    setLaheyResetting(true)
+    const { error } = await supabase.from('leahey_votes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    setLaheyResetting(false)
+    if (error) showToast(error.message, 'error')
+    else showToast('All Lahey votes cleared.')
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -349,7 +378,60 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
 
       {/* ── Reset tab ───────────────────────────────────────────── */}
       {tab === 'reset' && (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Lahey voting controls */}
+          <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.25)', background: 'rgba(252,181,20,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <Beer size={20} color="#FCB514" />
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Mr. Jim Lahey Award</div>
+              <div style={{
+                marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                color: laheyVotingOpen ? '#22c55e' : 'rgba(255,255,255,0.4)',
+                textTransform: 'uppercase', letterSpacing: 1,
+              }}>
+                {laheyVotingOpen ? '● Open' : '● Closed'}
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 18, lineHeight: 1.6 }}>
+              Control when players can vote. Reset clears all votes so you can start fresh.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                onClick={toggleLaheyVoting}
+                disabled={laheyTogglingOpen}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                  background: laheyVotingOpen ? 'rgba(255,255,255,0.06)' : 'rgba(34,197,94,0.15)',
+                  border: `1px solid ${laheyVotingOpen ? 'rgba(255,255,255,0.12)' : 'rgba(34,197,94,0.4)'}`,
+                  color: laheyVotingOpen ? 'rgba(255,255,255,0.6)' : '#22c55e',
+                  cursor: laheyTogglingOpen ? 'not-allowed' : 'pointer',
+                  opacity: laheyTogglingOpen ? 0.6 : 1,
+                }}
+              >
+                <PlayCircle size={15} />
+                {laheyTogglingOpen ? 'Updating…' : laheyVotingOpen ? 'Close Voting' : 'Open Voting'}
+              </button>
+              <button
+                onClick={resetLaheyVotes}
+                disabled={laheyResetting}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                  color: '#ef4444', cursor: laheyResetting ? 'not-allowed' : 'pointer',
+                  opacity: laheyResetting ? 0.6 : 1,
+                }}
+              >
+                <RotateCcw size={15} />
+                {laheyResetting ? 'Clearing…' : 'Reset All Votes'}
+              </button>
+            </div>
+          </div>
+
+          {/* Score reset */}
           <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <RotateCcw size={20} color="#ef4444" />

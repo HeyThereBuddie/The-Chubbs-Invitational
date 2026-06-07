@@ -26,6 +26,7 @@ export default function Contests() {
   const [myVote, setMyVote] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [casting, setCasting] = useState(false)
+  const [votingOpen, setVotingOpen] = useState(false)
 
   useEffect(() => {
     if (tab === 'lahey') {
@@ -63,12 +64,14 @@ export default function Contests() {
   }
 
   const fetchLaheyData = async () => {
-    const [playersRes, votesRes] = await Promise.all([
+    const [playersRes, votesRes, settingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('status', 'active').order('name'),
       supabase.from('leahey_votes').select('*'),
+      supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single(),
     ])
     setPlayers(playersRes.data ?? [])
     setVotes(votesRes.data ?? [])
+    setVotingOpen(settingsRes.data?.lahey_voting_open ?? false)
   }
 
   const submitContest = async (e: React.FormEvent) => {
@@ -260,45 +263,55 @@ export default function Contests() {
             </div>
           )}
 
-          {myVote && (
-            <div style={{ background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(252,181,20,0.8)' }}>
-              ✅ Your vote is in. The shitwinds are blowing in their direction.
+          {!votingOpen ? (
+            <div className="glass animate-fadeUp" style={{ padding: '32px', textAlign: 'center', marginBottom: 20, color: 'rgba(255,255,255,0.4)' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>Voting hasn't started yet</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6 }}>The shitwinds aren't blowing quite yet. Check back once the round is underway.</div>
             </div>
-          )}
+          ) : (
+            <>
+              {myVote && (
+                <div style={{ background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(252,181,20,0.8)' }}>
+                  ✅ Your vote is in. The shitwinds are blowing in their direction.
+                </div>
+              )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 20 }}>
-            {players.map(player => {
-              const isSelected = selected === player.id
-              const isMyVote   = myVote === player.id
-              return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 20 }}>
+                {players.map(player => {
+                  const isSelected = selected === player.id
+                  const isMyVote   = myVote === player.id
+                  return (
+                    <button
+                      key={player.id}
+                      onClick={() => { if (!myVote) setSelected(player.id) }}
+                      disabled={!!myVote}
+                      style={{
+                        padding: '12px', borderRadius: 12, border: '1px solid',
+                        borderColor: isSelected ? '#FCB514' : 'rgba(255,255,255,0.1)',
+                        background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
+                        color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'rgba(255,255,255,0.8)',
+                        cursor: myVote ? 'default' : 'pointer',
+                        fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
+                      }}
+                    >
+                      {isMyVote && '✅ '}{player.name}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {!myVote && (
                 <button
-                  key={player.id}
-                  onClick={() => { if (!myVote) setSelected(player.id) }}
-                  disabled={!!myVote}
-                  style={{
-                    padding: '12px', borderRadius: 12, border: '1px solid',
-                    borderColor: isSelected ? '#FCB514' : 'rgba(255,255,255,0.1)',
-                    background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
-                    color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'rgba(255,255,255,0.8)',
-                    cursor: myVote ? 'default' : 'pointer',
-                    fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
-                  }}
+                  className="btn-gold"
+                  onClick={castVote}
+                  disabled={!selected || casting}
+                  style={{ width: '100%', justifyContent: 'center', marginBottom: 28, fontSize: 16, padding: '14px' }}
                 >
-                  {isMyVote && '✅ '}{player.name}
+                  {casting ? 'Casting Vote…' : '🍺 Cast My Vote'}
                 </button>
-              )
-            })}
-          </div>
-
-          {!myVote && (
-            <button
-              className="btn-gold"
-              onClick={castVote}
-              disabled={!selected || casting}
-              style={{ width: '100%', justifyContent: 'center', marginBottom: 28, fontSize: 16, padding: '14px' }}
-            >
-              {casting ? 'Casting Vote…' : '🍺 Cast My Vote'}
-            </button>
+              )}
+            </>
           )}
 
           <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
