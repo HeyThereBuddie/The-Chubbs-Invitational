@@ -177,7 +177,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -187,6 +187,7 @@ export default function Scores() {
     player1?: Player
     player2?: Player
     onSetDrive?: (playerId: string) => void
+    driveDisabled?: Record<string, boolean>
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
@@ -244,16 +245,22 @@ export default function Scores() {
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Drive:</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {[player1, player2].map(p => {
-                const active = driveId === p.id
+                const active   = driveId === p.id
+                const disabled = driveDisabled?.[p.id] ?? false
                 return (
-                  <button key={p.id} onClick={() => onSetDrive(p.id)} style={{
-                    padding: '4px 12px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, border: '1px solid',
-                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
-                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.12)',
-                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}>
+                  <button key={p.id} onClick={() => !disabled && onSetDrive(p.id)}
+                    disabled={disabled}
+                    title={disabled ? 'Max 5 drives per half reached' : undefined}
+                    style={{
+                      padding: '4px 12px', borderRadius: 999,
+                      fontSize: 12, fontWeight: 600, border: '1px solid',
+                      background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                      borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
+                      color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                      opacity: disabled ? 0.3 : 1,
+                      transition: 'all 0.15s',
+                    }}>
                     {p.name.split(' ')[0]}
                   </button>
                 )
@@ -386,19 +393,35 @@ export default function Scores() {
         <DriveCounter scoreMap={adminScores} p1={adminTeam?.player1} p2={adminTeam?.player2} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {holes.map(hole => (
-            <HoleCard
-              key={hole}
-              hole={hole}
-              scoreRow={adminScores[hole]}
-              isSaving={saving === hole}
-              onMinus={() => adjustAdminScore(hole, -1)}
-              onPlus={() => adjustAdminScore(hole, 1)}
-              player1={adminTeam?.player1}
-              player2={adminTeam?.player2}
-              onSetDrive={(pid) => setAdminDrive(hole, pid)}
-            />
-          ))}
+          {(() => {
+            const hFrom = half === 'front' ? 1 : 10
+            const hTo   = half === 'front' ? 9 : 18
+            const ap1   = adminTeam?.player1
+            const ap2   = adminTeam?.player2
+            const p1n   = countDrives(ap1?.id ?? null, hFrom, hTo, adminScores)
+            const p2n   = countDrives(ap2?.id ?? null, hFrom, hTo, adminScores)
+            return holes.map(hole => {
+              const driveId = adminScores[hole]?.drive_used_id ?? null
+              const driveDisabled: Record<string, boolean> = {
+                ...(ap1 ? { [ap1.id]: p1n >= 5 && driveId !== ap1.id } : {}),
+                ...(ap2 ? { [ap2.id]: p2n >= 5 && driveId !== ap2.id } : {}),
+              }
+              return (
+                <HoleCard
+                  key={hole}
+                  hole={hole}
+                  scoreRow={adminScores[hole]}
+                  isSaving={saving === hole}
+                  onMinus={() => adjustAdminScore(hole, -1)}
+                  onPlus={() => adjustAdminScore(hole, 1)}
+                  player1={ap1}
+                  player2={ap2}
+                  onSetDrive={(pid) => setAdminDrive(hole, pid)}
+                  driveDisabled={driveDisabled}
+                />
+              )
+            })
+          })()}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
@@ -445,19 +468,35 @@ export default function Scores() {
       <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {holes.map(hole => (
-          <HoleCard
-            key={hole}
-            hole={hole}
-            scoreRow={myScores[hole]}
-            isSaving={saving === hole}
-            onMinus={() => adjustMyScore(hole, -1)}
-            onPlus={() => adjustMyScore(hole, 1)}
-            player1={myTeam?.player1}
-            player2={myTeam?.player2}
-            onSetDrive={(pid) => setMyDrive(hole, pid)}
-          />
-        ))}
+        {(() => {
+          const hFrom = half === 'front' ? 1 : 10
+          const hTo   = half === 'front' ? 9 : 18
+          const mp1   = myTeam?.player1
+          const mp2   = myTeam?.player2
+          const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
+          const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
+          return holes.map(hole => {
+            const driveId = myScores[hole]?.drive_used_id ?? null
+            const driveDisabled: Record<string, boolean> = {
+              ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
+              ...(mp2 ? { [mp2.id]: p2n >= 5 && driveId !== mp2.id } : {}),
+            }
+            return (
+              <HoleCard
+                key={hole}
+                hole={hole}
+                scoreRow={myScores[hole]}
+                isSaving={saving === hole}
+                onMinus={() => adjustMyScore(hole, -1)}
+                onPlus={() => adjustMyScore(hole, 1)}
+                player1={mp1}
+                player2={mp2}
+                onSetDrive={(pid) => setMyDrive(hole, pid)}
+                driveDisabled={driveDisabled}
+              />
+            )
+          })
+        })()}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
