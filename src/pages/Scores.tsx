@@ -1,23 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
 import type { Team, Player } from '../lib/types'
-import { Minus, Plus, CheckCircle, Clock, Users, Bell } from 'lucide-react'
-
-function pushNotification(title: string, body: string) {
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-  if (!document.hidden) return  // in-app toast handles foreground
-  try {
-    const n = new Notification(title, { body, icon: '/favicon.ico' })
-    n.onclick = () => { window.focus(); n.close() }
-  } catch (_) {}
-}
+import { Minus, Plus, Users } from 'lucide-react'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 type TeamFull = Team & { player1?: Player; player2?: Player }
 type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null }
+
+const SCORE_SELECT = 'id, hole, score, drive_used_id'
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
@@ -38,35 +30,21 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
 
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
-  const { showToast } = useToast()
   const myTeamId = profile?.team_id ?? undefined
 
-  const [allTeams,     setAllTeams]     = useState<TeamFull[]>([])
-  const [myTeam,       setMyTeam]       = useState<TeamFull | null>(null)
-  const [partnerTeam,  setPartnerTeam]  = useState<TeamFull | null>(null)
-  const [myScores,     setMyScores]     = useState<Record<number, ScoreRow>>({})
-  const [partnerScores,setPartnerScores]= useState<Record<number, ScoreRow>>({})
-  const [adminScores,  setAdminScores]  = useState<Record<number, ScoreRow>>({})
-  const [approvedIds,  setApprovedIds]  = useState<Set<string>>(new Set())
+  const [allTeams,    setAllTeams]    = useState<TeamFull[]>([])
+  const [myTeam,      setMyTeam]      = useState<TeamFull | null>(null)
+  const [myScores,    setMyScores]    = useState<Record<number, ScoreRow>>({})
+  const [adminScores, setAdminScores] = useState<Record<number, ScoreRow>>({})
 
-  const [adminTeamId,  setAdminTeamId]  = useState<string | null>(null)
-  const [tab,          setTab]          = useState<'mine' | 'approve'>('mine')
-  const [half,         setHalf]         = useState<'front' | 'back'>('front')
-  const [saving,       setSaving]       = useState<number | null>(null)
-  const [approving,    setApproving]    = useState<number | null>(null)
-  const [teamPick,     setTeamPick]     = useState('')
-  const [settingTeam,  setSettingTeam]  = useState(false)
-  const [notifPerm,    setNotifPerm]    = useState<NotificationPermission>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-  )
+  const [adminTeamId, setAdminTeamId] = useState<string | null>(null)
+  const [half,        setHalf]        = useState<'front' | 'back'>('front')
+  const [saving,      setSaving]      = useState<number | null>(null)
+  const [teamPick,    setTeamPick]    = useState('')
+  const [settingTeam, setSettingTeam] = useState(false)
 
-  // Refs so realtime handlers always see the latest values without re-subscribing
-  const partnerTeamRef  = useRef<TeamFull | null>(null)
-  const myTeamIdRef     = useRef<string | undefined>(undefined)
-  const myScoresRef     = useRef<Record<number, ScoreRow>>({})
-  useEffect(() => { partnerTeamRef.current  = partnerTeam }, [partnerTeam])
-  useEffect(() => { myTeamIdRef.current     = myTeamId    }, [myTeamId])
-  useEffect(() => { myScoresRef.current     = myScores    }, [myScores])
+  const myTeamIdRef = useRef<string | undefined>(undefined)
+  useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
 
   // ── Load ────────────────────────────────────────────────────
 
@@ -76,42 +54,13 @@ export default function Scores() {
 
   useEffect(() => {
     const sub = supabase.channel('scores-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => {
         if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
         if (adminTeamId) loadAdminScores(adminTeamId)
-
-        // Notify when the partner team enters a new score
-        if (payload.eventType === 'INSERT') {
-          const row = payload.new as { team_id: string; hole: number; score: number }
-          const partner = partnerTeamRef.current
-          if (partner && row.team_id === partner.id) {
-            const par  = HOLE_PARS[row.hole - 1]
-            const diff = row.score - par
-            const rel  = diff === 0 ? 'Par' : diff < 0 ? `${Math.abs(diff)} under` : `${diff} over`
-            const msg  = `⛳ Hole ${row.hole} — ${partner.name} entered a ${row.score} (${rel}). Tap to approve.`
-            showToast(msg)
-            pushNotification(`Hole ${row.hole} needs approval`, `${partner.name} scored ${row.score} (${rel} par)`)
-          }
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'score_approvals' }, (payload: any) => {
-        if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
-
-        // Notify when partner approves one of our scores
-        const approval = payload.new as { score_id: string }
-        const myScores = myScoresRef.current
-        const entry = Object.entries(myScores).find(([, s]) => s.id === approval.score_id)
-        if (entry) {
-          const hole = Number(entry[0])
-          const partner = partnerTeamRef.current
-          const who = partner ? partner.name : 'Your partner'
-          showToast(`✓ Hole ${hole} approved by ${who}`)
-          pushNotification(`Hole ${hole} approved`, `${who} signed off on your score`)
-        }
       })
       .subscribe()
     return () => { supabase.removeChannel(sub) }
-  }, [myTeamId, adminTeamId])
+  }, [adminTeamId])
 
   const loadAllTeams = async () => {
     const { data } = await supabase
@@ -130,64 +79,17 @@ export default function Scores() {
       .eq('id', teamId).single()
     if (t) setMyTeam(t)
 
-    const { data: fs } = await supabase
-      .from('foursomes')
-      .select('team_a_id, team_b_id')
-      .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
-      .maybeSingle()
-
-    const partnerId = fs
-      ? (fs.team_a_id === teamId ? fs.team_b_id : fs.team_a_id)
-      : null
-
-    if (partnerId) {
-      const { data: pt } = await supabase
-        .from('teams')
-        .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-        .eq('id', partnerId).single()
-      if (pt) setPartnerTeam(pt)
-    }
-
-    const SCORE_SELECT = 'id, hole, score, drive_used_id'
-    const [myRes, partnerRes] = await Promise.all([
-      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-      partnerId
-        ? supabase.from('scores').select(SCORE_SELECT).eq('team_id', partnerId)
-        : Promise.resolve({ data: [] as ScoreRow[] }),
-    ])
-
-    const myMap: Record<number, ScoreRow> = {}
-    for (const s of myRes.data ?? []) myMap[s.hole] = s
-    setMyScores(myMap)
-
-    const partnerMap: Record<number, ScoreRow> = {}
-    for (const s of (partnerRes as any).data ?? []) partnerMap[s.hole] = s
-    setPartnerScores(partnerMap)
-
-    const allIds = [
-      ...Object.values(myMap).map(s => s.id),
-      ...Object.values(partnerMap).map(s => s.id),
-    ].filter(Boolean)
-
-    if (allIds.length) {
-      const { data: approvals } = await supabase
-        .from('score_approvals').select('score_id').in('score_id', allIds)
-      setApprovedIds(new Set((approvals ?? []).map((a: any) => a.score_id)))
-    } else {
-      setApprovedIds(new Set())
-    }
+    const { data } = await supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId)
+    const map: Record<number, ScoreRow> = {}
+    for (const s of data ?? []) map[s.hole] = s
+    setMyScores(map)
   }
 
   const loadAdminScores = async (teamId: string) => {
-    const { data } = await supabase.from('scores').select('id, hole, score, drive_used_id').eq('team_id', teamId)
+    const { data } = await supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId)
     const map: Record<number, ScoreRow> = {}
     for (const s of data ?? []) map[s.hole] = s
     setAdminScores(map)
-    if (data?.length) {
-      const { data: approvals } = await supabase
-        .from('score_approvals').select('score_id').in('score_id', data.map(s => s.id))
-      setApprovedIds(prev => new Set([...prev, ...(approvals ?? []).map((a: any) => a.score_id)]))
-    }
   }
 
   // ── Actions ─────────────────────────────────────────────────
@@ -226,25 +128,6 @@ export default function Scores() {
     setSaving(null)
   }
 
-  const approveScore = async (scoreRow: ScoreRow, hole: number) => {
-    if (!myTeamId) return
-    setApproving(hole)
-    const { error } = await supabase.from('score_approvals').insert({
-      score_id: scoreRow.id,
-      approving_team_id: myTeamId,
-    })
-    if (!error) setApprovedIds(prev => new Set([...prev, scoreRow.id]))
-    setApproving(null)
-  }
-
-  const claimTeam = async () => {
-    if (!teamPick || !profile) return
-    setSettingTeam(true)
-    await supabase.from('profiles').update({ team_id: teamPick }).eq('id', profile.id)
-    setSettingTeam(false)
-    window.location.reload()
-  }
-
   const setMyDrive = async (hole: number, playerId: string) => {
     const existing = myScores[hole]
     if (!existing?.id) return
@@ -270,6 +153,14 @@ export default function Scores() {
     return n
   }
 
+  const claimTeam = async () => {
+    if (!teamPick || !profile) return
+    setSettingTeam(true)
+    await supabase.from('profiles').update({ team_id: teamPick }).eq('id', profile.id)
+    setSettingTeam(false)
+    window.location.reload()
+  }
+
   // ── Helpers ──────────────────────────────────────────────────
 
   const holes = half === 'front'
@@ -283,17 +174,16 @@ export default function Scores() {
     </div>
   )
 
+  // ── HoleCard ─────────────────────────────────────────────────
+
   const HoleCard = ({
-    hole, scoreRow, approved, isSaving, onMinus, onPlus, right,
-    player1, player2, onSetDrive,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
-    approved: boolean
     isSaving: boolean
-    onMinus?: () => void
-    onPlus?: () => void
-    right?: React.ReactNode
+    onMinus: () => void
+    onPlus: () => void
     player1?: Player
     player2?: Player
     onSetDrive?: (playerId: string) => void
@@ -302,74 +192,50 @@ export default function Scores() {
     const score    = scoreRow?.score
     const hasScore = score !== undefined
     const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
-    const locked   = approved
     const driveId  = scoreRow?.drive_used_id ?? null
 
     return (
       <div className="glass animate-fadeUp" style={{
         padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
       }}>
-        {/* Main row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{hole}</div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
           </div>
 
-          {onMinus !== undefined ? (
-            <div style={{ flex: 1 }}>
-              {hasScore && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-                  {approved
-                    ? <><CheckCircle size={11} style={{ color: '#4ade80' }} /><span style={{ color: '#4ade80' }}>Approved</span></>
-                    : <><Clock size={11} style={{ color: 'rgba(255,255,255,0.3)' }} /><span style={{ color: 'rgba(255,255,255,0.3)' }}>Awaiting approval</span></>
-                  }
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ flex: 1 }} />
-          )}
+          <div style={{ flex: 1 }} />
 
           <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
             {hasScore ? score : '—'}
           </div>
 
-          {onMinus !== undefined ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={onMinus}
-                disabled={isSaving || locked || (hasScore && score <= 1)}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                  color: locked ? 'rgba(255,255,255,0.2)' : '#fff',
-                  cursor: locked ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              ><Minus size={14} /></button>
-              <button
-                onClick={onPlus}
-                disabled={isSaving || locked}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: locked ? 'rgba(255,255,255,0.04)' : 'rgba(252,181,20,0.15)',
-                  border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : 'rgba(252,181,20,0.3)'}`,
-                  color: locked ? 'rgba(255,255,255,0.2)' : '#FCB514',
-                  cursor: locked ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              ><Plus size={14} /></button>
-            </div>
-          ) : (
-            <div style={{ minWidth: 110, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
-              {right}
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={onMinus}
+              disabled={isSaving || (hasScore && score <= 1)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            ><Minus size={14} /></button>
+            <button
+              onClick={onPlus}
+              disabled={isSaving}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)',
+                color: '#FCB514', cursor: isSaving ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            ><Plus size={14} /></button>
+          </div>
         </div>
 
-        {/* Drive selector — edit mode, score entered, not locked */}
-        {onMinus !== undefined && hasScore && !locked && player1 && player2 && onSetDrive && (
+        {/* Drive selector — shown whenever a score exists */}
+        {hasScore && player1 && player2 && onSetDrive && (
           <div style={{
             marginTop: 10, paddingTop: 10,
             borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -378,39 +244,30 @@ export default function Scores() {
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Drive:</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {[player1, player2].map(p => {
-                const first = p.name.split(' ')[0]
                 const active = driveId === p.id
                 return (
                   <button key={p.id} onClick={() => onSetDrive(p.id)} style={{
                     padding: '4px 12px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600,
-                    border: '1px solid',
+                    fontSize: 12, fontWeight: 600, border: '1px solid',
                     background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
                     borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.12)',
                     color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}>
-                    {first}
+                    {p.name.split(' ')[0]}
                   </button>
                 )
               })}
             </div>
           </div>
         )}
-
-        {/* Drive info — read-only (approval tab or locked) */}
-        {(onMinus === undefined || locked) && hasScore && driveId && player1 && player2 && (
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-            Drive: {[player1, player2].find(p => p.id === driveId)?.name.split(' ')[0] ?? '—'}
-          </div>
-        )}
       </div>
     )
   }
 
-  const DriveCounter = ({
-    scoreMap, p1, p2,
-  }: {
+  // ── DriveCounter ─────────────────────────────────────────────
+
+  const DriveCounter = ({ scoreMap, p1, p2 }: {
     scoreMap: Record<number, ScoreRow>
     p1: Player | undefined
     p2: Player | undefined
@@ -457,25 +314,8 @@ export default function Scores() {
     )
   }
 
-  const enableNotifications = async () => {
-    const result = await Notification.requestPermission()
-    setNotifPerm(result)
-    if (result === 'granted') showToast('Notifications enabled')
-  }
-
-  const notifBanner = !isAdmin && notifPerm === 'default' && typeof Notification !== 'undefined' ? (
-    <div className="glass" style={{ padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, border: '1px solid rgba(252,181,20,0.2)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Bell size={14} style={{ color: '#FCB514', flexShrink: 0 }} />
-        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Get notified when your partner enters a score</span>
-      </div>
-      <button className="btn-outline" onClick={enableNotifications} style={{ padding: '5px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>
-        Enable
-      </button>
-    </div>
-  ) : null
-
   // ── No team ──────────────────────────────────────────────────
+
   if (!isAdmin && !myTeamId) {
     return (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -503,6 +343,7 @@ export default function Scores() {
   }
 
   // ── Admin view ───────────────────────────────────────────────
+
   if (isAdmin) {
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
     const stats = adminTeam ? calcStats(adminScores) : null
@@ -542,9 +383,7 @@ export default function Scores() {
           ))}
         </div>
 
-        {adminTeam?.player1 && adminTeam?.player2 && (
-          <DriveCounter scoreMap={adminScores} p1={adminTeam.player1} p2={adminTeam.player2} />
-        )}
+        <DriveCounter scoreMap={adminScores} p1={adminTeam?.player1} p2={adminTeam?.player2} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {holes.map(hole => (
@@ -552,7 +391,6 @@ export default function Scores() {
               key={hole}
               hole={hole}
               scoreRow={adminScores[hole]}
-              approved={adminScores[hole] ? approvedIds.has(adminScores[hole].id) : false}
               isSaving={saving === hole}
               onMinus={() => adjustAdminScore(hole, -1)}
               onPlus={() => adjustAdminScore(hole, 1)}
@@ -572,14 +410,13 @@ export default function Scores() {
   }
 
   // ── Player view ───────────────────────────────────────────────
+
   const myStats = calcStats(myScores)
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {pageHeader}
-      {notifBanner}
 
-      {/* My team summary */}
       {myTeam && (
         <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -597,23 +434,6 @@ export default function Scores() {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button onClick={() => setTab('mine')} className={`pill-tab ${tab === 'mine' ? 'active' : ''}`}>
-          My Scores
-        </button>
-        {partnerTeam ? (
-          <button onClick={() => setTab('approve')} className={`pill-tab ${tab === 'approve' ? 'active' : ''}`}>
-            Approve · {partnerTeam.name}
-          </button>
-        ) : (
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', padding: '0 8px' }}>
-            No foursome assigned yet
-          </span>
-        )}
-      </div>
-
-      {/* Front / Back */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {(['front', 'back'] as const).map(h => (
           <button key={h} onClick={() => setHalf(h)} className={`pill-tab ${half === h ? 'active' : ''}`}>
@@ -622,83 +442,23 @@ export default function Scores() {
         ))}
       </div>
 
-      {/* MY SCORES */}
-      {tab === 'mine' && (
-        <>
-          <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {holes.map(hole => {
-              const row = myScores[hole]
-              const approved = row ? approvedIds.has(row.id) : false
-              return (
-                <HoleCard
-                  key={hole}
-                  hole={hole}
-                  scoreRow={row}
-                  approved={approved}
-                  isSaving={saving === hole}
-                  onMinus={() => adjustMyScore(hole, -1)}
-                  onPlus={() => adjustMyScore(hole, 1)}
-                  player1={myTeam?.player1}
-                  player2={myTeam?.player2}
-                  onSetDrive={(pid) => setMyDrive(hole, pid)}
-                />
-              )
-            })}
-          </div>
-        </>
-      )}
+      <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />
 
-      {/* APPROVE PARTNER */}
-      {tab === 'approve' && partnerTeam && (
-        <>
-          <div className="glass" style={{ padding: '12px 16px', marginBottom: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Playing With</div>
-            <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{partnerTeam.name}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-              {[partnerTeam.player1?.name, partnerTeam.player2?.name].filter(Boolean).join(' & ')}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {holes.map(hole => {
-              const row      = partnerScores[hole]
-              const hasScore = row?.score !== undefined
-              const approved = row ? approvedIds.has(row.id) : false
-
-              return (
-                <HoleCard
-                  key={hole}
-                  hole={hole}
-                  scoreRow={row}
-                  approved={approved}
-                  isSaving={false}
-                  player1={partnerTeam.player1}
-                  player2={partnerTeam.player2}
-                  right={
-                    !hasScore ? (
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>Not entered</span>
-                    ) : approved ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4ade80', fontSize: 13 }}>
-                        <CheckCircle size={14} /><span>Approved</span>
-                      </div>
-                    ) : (
-                      <button
-                        className="btn-outline"
-                        onClick={() => approveScore(row, hole)}
-                        disabled={approving === hole}
-                        style={{ padding: '6px 16px', fontSize: 12 }}
-                      >
-                        {approving === hole ? '…' : 'Approve'}
-                      </button>
-                    )
-                  }
-                />
-              )
-            })}
-          </div>
-        </>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {holes.map(hole => (
+          <HoleCard
+            key={hole}
+            hole={hole}
+            scoreRow={myScores[hole]}
+            isSaving={saving === hole}
+            onMinus={() => adjustMyScore(hole, -1)}
+            onPlus={() => adjustMyScore(hole, 1)}
+            player1={myTeam?.player1}
+            player2={myTeam?.player2}
+            onSetDrive={(pid) => setMyDrive(hole, pid)}
+          />
+        ))}
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
         <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
