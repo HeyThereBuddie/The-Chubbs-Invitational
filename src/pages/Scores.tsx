@@ -1,8 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import type { Team, Player } from '../lib/types'
-import { Minus, Plus, CheckCircle, Clock, Users } from 'lucide-react'
+import { Minus, Plus, CheckCircle, Clock, Users, Bell } from 'lucide-react'
+
+function pushNotification(title: string, body: string) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  if (!document.hidden) return  // in-app toast handles foreground
+  try {
+    const n = new Notification(title, { body, icon: '/favicon.ico' })
+    n.onclick = () => { window.focus(); n.close() }
+  } catch (_) {}
+}
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
@@ -28,6 +38,7 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
 
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
+  const { showToast } = useToast()
   const myTeamId = profile?.team_id ?? undefined
 
   const [allTeams,     setAllTeams]     = useState<TeamFull[]>([])
@@ -45,6 +56,17 @@ export default function Scores() {
   const [approving,    setApproving]    = useState<number | null>(null)
   const [teamPick,     setTeamPick]     = useState('')
   const [settingTeam,  setSettingTeam]  = useState(false)
+  const [notifPerm,    setNotifPerm]    = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  )
+
+  // Refs so realtime handlers always see the latest values without re-subscribing
+  const partnerTeamRef  = useRef<TeamFull | null>(null)
+  const myTeamIdRef     = useRef<string | undefined>(undefined)
+  const myScoresRef     = useRef<Record<number, ScoreRow>>({})
+  useEffect(() => { partnerTeamRef.current  = partnerTeam }, [partnerTeam])
+  useEffect(() => { myTeamIdRef.current     = myTeamId    }, [myTeamId])
+  useEffect(() => { myScoresRef.current     = myScores    }, [myScores])
 
   // ── Load ────────────────────────────────────────────────────
 
@@ -54,12 +76,38 @@ export default function Scores() {
 
   useEffect(() => {
     const sub = supabase.channel('scores-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => {
-        if (myTeamId) loadPlayerData(myTeamId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, (payload: any) => {
+        if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
         if (adminTeamId) loadAdminScores(adminTeamId)
+
+        // Notify when the partner team enters a new score
+        if (payload.eventType === 'INSERT') {
+          const row = payload.new as { team_id: string; hole: number; score: number }
+          const partner = partnerTeamRef.current
+          if (partner && row.team_id === partner.id) {
+            const par  = HOLE_PARS[row.hole - 1]
+            const diff = row.score - par
+            const rel  = diff === 0 ? 'Par' : diff < 0 ? `${Math.abs(diff)} under` : `${diff} over`
+            const msg  = `⛳ Hole ${row.hole} — ${partner.name} entered a ${row.score} (${rel}). Tap to approve.`
+            showToast(msg)
+            pushNotification(`Hole ${row.hole} needs approval`, `${partner.name} scored ${row.score} (${rel} par)`)
+          }
+        }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, () => {
-        if (myTeamId) loadPlayerData(myTeamId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'score_approvals' }, (payload: any) => {
+        if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
+
+        // Notify when partner approves one of our scores
+        const approval = payload.new as { score_id: string }
+        const myScores = myScoresRef.current
+        const entry = Object.entries(myScores).find(([, s]) => s.id === approval.score_id)
+        if (entry) {
+          const hole = Number(entry[0])
+          const partner = partnerTeamRef.current
+          const who = partner ? partner.name : 'Your partner'
+          showToast(`✓ Hole ${hole} approved by ${who}`)
+          pushNotification(`Hole ${hole} approved`, `${who} signed off on your score`)
+        }
       })
       .subscribe()
     return () => { supabase.removeChannel(sub) }
@@ -292,6 +340,24 @@ export default function Scores() {
     )
   }
 
+  const enableNotifications = async () => {
+    const result = await Notification.requestPermission()
+    setNotifPerm(result)
+    if (result === 'granted') showToast('Notifications enabled')
+  }
+
+  const notifBanner = !isAdmin && notifPerm === 'default' && typeof Notification !== 'undefined' ? (
+    <div className="glass" style={{ padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, border: '1px solid rgba(252,181,20,0.2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Bell size={14} style={{ color: '#FCB514', flexShrink: 0 }} />
+        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Get notified when your partner enters a score</span>
+      </div>
+      <button className="btn-outline" onClick={enableNotifications} style={{ padding: '5px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>
+        Enable
+      </button>
+    </div>
+  ) : null
+
   // ── No team ──────────────────────────────────────────────────
   if (!isAdmin && !myTeamId) {
     return (
@@ -387,6 +453,7 @@ export default function Scores() {
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {pageHeader}
+      {notifBanner}
 
       {/* My team summary */}
       {myTeam && (
