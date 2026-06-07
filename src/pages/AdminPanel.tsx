@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile, Team } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users } from 'lucide-react'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -122,6 +122,18 @@ Questions? Reply to this message.
 
 You'll have full control over RSVP, tee times, pairings, and announcements.`
 
+  const [resetting, setResetting] = useState(false)
+  const [resetConfirm, setResetConfirm] = useState(false)
+
+  const resetTournament = async () => {
+    setResetting(true)
+    const { error } = await supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    setResetting(false)
+    setResetConfirm(false)
+    if (error) showToast(error.message, 'error')
+    else showToast('All scores cleared — tournament reset!')
+  }
+
   const activePlayers = profiles.filter(p => p.status === 'active')
 
   return (
@@ -166,6 +178,61 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
               No teams yet. Create one above.
             </div>
           )}
+
+          {/* Danger zone */}
+          <div style={{ marginBottom: 20, padding: '16px 20px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+              ⚠️ Danger Zone
+            </div>
+            {!resetConfirm ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>Reset Tournament</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Deletes all scores and drive selections. Teams and players are kept.</div>
+                </div>
+                <button
+                  onClick={() => setResetConfirm(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+                    color: '#ef4444', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  <RotateCcw size={13} /> Reset Scores
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: 8 }}>
+                  Are you sure? This will permanently delete every score.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={resetTournament}
+                    disabled={resetting}
+                    style={{
+                      padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700,
+                      background: '#ef4444', border: 'none', color: '#fff',
+                      cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.7 : 1,
+                    }}
+                  >
+                    {resetting ? 'Resetting…' : 'Yes, delete all scores'}
+                  </button>
+                  <button
+                    onClick={() => setResetConfirm(false)}
+                    style={{
+                      padding: '8px 20px', borderRadius: 999, fontSize: 13,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {teams.map(team => (
