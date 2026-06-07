@@ -25,7 +25,8 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
   const gross = entries.reduce((a, s) => a + s.score, 0)
   const thru  = entries.length
   const toPar = gross - HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
-  return { gross, thru, toPar, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
+  const putts = entries.reduce((a, s) => a + (s.putts ?? 0), 0)
+  return { gross, thru, toPar, putts, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
 }
 
 export default function Scores() {
@@ -424,6 +425,7 @@ export default function Scores() {
               <div><div style={{ fontSize: 22, fontWeight: 700, color: stats.toPar <= 0 ? '#FCB514' : '#fff' }}>{stats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
               <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
               <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.putts || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Putts</div></div>
             </div>
           </div>
         )}
@@ -500,6 +502,7 @@ export default function Scores() {
             <div><div style={{ fontSize: 22, fontWeight: 700, color: myStats.toPar <= 0 ? '#FCB514' : '#fff' }}>{myStats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
             <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
             <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Putts</div></div>
           </div>
         </div>
       )}

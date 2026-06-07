@@ -19,6 +19,7 @@ interface LeaderRow {
   toPar: number
   gross: number
   thru: number
+  putts: number
   holeScores: (number | null)[]
 }
 
@@ -50,14 +51,18 @@ export default function Leaderboard() {
       const scoreMap: Record<number, number> = {}
       for (const s of teamScores) scoreMap[s.hole] = s.score
 
+      const puttsMap: Record<number, number> = {}
+      for (const s of teamScores) if (s.putts != null) puttsMap[s.hole] = s.putts
+
       const holeScores = Array.from({ length: 18 }, (_, i) => scoreMap[i + 1] ?? null)
       const played = holeScores.filter(s => s !== null) as number[]
       const gross = played.reduce((a, b) => a + b, 0)
       const thru = played.length
       const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
       const toPar = gross - parSoFar
+      const putts = Object.values(puttsMap).reduce((a, b) => a + b, 0)
 
-      return { team, toPar, gross, thru, holeScores }
+      return { team, toPar, gross, thru, putts, holeScores }
     })
 
     leaderRows.sort((a, b) => {
@@ -130,6 +135,10 @@ export default function Leaderboard() {
                     <div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{row.thru}</div>
                       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>THRU</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{row.putts || '—'}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>PUTTS</div>
                     </div>
                   </div>
                 </div>

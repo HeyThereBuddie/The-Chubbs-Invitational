@@ -46,6 +46,8 @@ export interface Score {
   team_id: string
   hole: number
   score: number
+  putts: number | null
+  drive_used_id: string | null
   updated_at: string
 }
 
