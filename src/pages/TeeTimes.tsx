@@ -127,17 +127,18 @@ export default function TeeTimes() {
         </div>
         {isAdmin && (
           <div style={{ display: 'flex', gap: 6 }}>
-            {([
-              { id: 'view',    icon: <Clock size={13} />,         label: 'View' },
-              { id: 'arrange', icon: <GripVertical size={13} />,  label: 'Arrange' },
-              { id: 'auto',    icon: <Zap size={13} />,           label: 'Auto' },
-            ] as const).map(({ id, icon, label }) => (
-              <button key={id} onClick={() => setTab(id)}
-                className={`pill-tab ${tab === id ? 'active' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {icon}{label}
-              </button>
-            ))}
+            <button onClick={() => setTab('view')} className={`pill-tab ${tab === 'view' ? 'active' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Clock size={13} /> View
+            </button>
+            <button onClick={() => setTab('arrange')} className={`pill-tab ${tab === 'arrange' ? 'active' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <GripVertical size={13} /> Arrange
+            </button>
+            <button onClick={() => setTab('auto')} className={`pill-tab ${tab === 'auto' ? 'active' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Zap size={13} /> Auto
+            </button>
           </div>
         )}
       </div>
