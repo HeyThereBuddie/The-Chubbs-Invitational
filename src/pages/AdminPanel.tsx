@@ -1,22 +1,85 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import type { Profile } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check } from 'lucide-react'
+import type { Profile, Team } from '../lib/types'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users } from 'lucide-react'
+
+type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'users' | 'codes' | 'invite'>('users')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [teams, setTeams] = useState<TeamWithPlayers[]>([])
+  const [newTeamName, setNewTeamName] = useState('')
+  const [creating, setCreating] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
 
-  useEffect(() => { fetchProfiles() }, [])
+  useEffect(() => { fetchProfiles(); fetchTeams() }, [])
 
   const fetchProfiles = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('joined_at')
+    const { data } = await supabase.from('profiles').select('*').order('name')
     setProfiles(data ?? [])
   }
+
+  const fetchTeams = async () => {
+    const { data } = await supabase
+      .from('teams')
+      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+      .order('created_at')
+    setTeams(data ?? [])
+  }
+
+  // ── Team management ──────────────────────────────────────────
+
+  const createTeam = async () => {
+    if (!newTeamName.trim()) return
+    setCreating(true)
+    const { error } = await supabase.from('teams').insert({ name: newTeamName.trim() })
+    setCreating(false)
+    if (error) showToast(error.message, 'error')
+    else { showToast('Team created!'); setNewTeamName(''); fetchTeams() }
+  }
+
+  const assignPlayer = async (
+    team: TeamWithPlayers,
+    slot: 'p1_id' | 'p2_id',
+    profileId: string
+  ) => {
+    const oldId = slot === 'p1_id' ? team.p1_id : team.p2_id
+    const otherId = slot === 'p1_id' ? team.p2_id : team.p1_id
+    const newId = profileId || null
+
+    // Update team slot
+    await supabase.from('teams').update({ [slot]: newId }).eq('id', team.id)
+
+    // Clear old player's team_id if they're no longer in either slot
+    if (oldId && oldId !== otherId) {
+      await supabase.from('profiles').update({ team_id: null }).eq('id', oldId)
+    }
+
+    // Set new player's team_id
+    if (newId) {
+      await supabase.from('profiles').update({ team_id: team.id }).eq('id', newId)
+    }
+
+    fetchTeams()
+    fetchProfiles()
+  }
+
+  const deleteTeam = async (team: TeamWithPlayers) => {
+    if (!confirm(`Delete "${team.name}"? This removes all their scores.`)) return
+    // Clear team_id for assigned players
+    if (team.p1_id) await supabase.from('profiles').update({ team_id: null }).eq('id', team.p1_id)
+    if (team.p2_id && team.p2_id !== team.p1_id) await supabase.from('profiles').update({ team_id: null }).eq('id', team.p2_id)
+    await supabase.from('teams').delete().eq('id', team.id)
+    showToast('Team deleted')
+    fetchTeams()
+    fetchProfiles()
+  }
+
+  // ── User management ──────────────────────────────────────────
 
   const promoteUser = async (id: string) => {
     await supabase.from('profiles').update({ role: 'admin' }).eq('id', id)
@@ -43,8 +106,8 @@ export default function AdminPanel() {
     setTimeout(() => setCopiedKey(null), 2000)
   }
 
-  const PLAYER_CODE = import.meta.env.VITE_PLAYER_CODE ?? 'CHUBS2025'
-  const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE ?? 'CHUBS_ADMIN'
+  const PLAYER_CODE   = import.meta.env.VITE_PLAYER_CODE   ?? 'CHUBS2025'
+  const ADMIN_CODE    = import.meta.env.VITE_ADMIN_CODE    ?? 'CHUBS_ADMIN'
   const WAITLIST_CODE = import.meta.env.VITE_WAITLIST_CODE ?? 'CHUBS_WAITLIST'
 
   const playerInvite = `Hey! You're invited to The Chubbs Invitational golf tournament. Sign up at ${window.location.origin} using invite code: ${PLAYER_CODE}
@@ -59,24 +122,98 @@ Questions? Reply to this message.
 
 You'll have full control over RSVP, tee times, pairings, and announcements.`
 
+  const activePlayers = profiles.filter(p => p.status === 'active')
+
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Admin Panel</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Manage users, access codes, and invites</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Manage teams, users, access codes, and invites</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
-          { id: 'users', label: '👥 Users' },
-          { id: 'codes', label: '🔑 Codes' },
+          { id: 'teams',  label: '⛳ Teams' },
+          { id: 'users',  label: '👥 Users' },
+          { id: 'codes',  label: '🔑 Codes' },
           { id: 'invite', label: '✉️ Invite' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
       </div>
 
-      {/* Users tab */}
+      {/* ── Teams tab ───────────────────────────────────────────── */}
+      {tab === 'teams' && (
+        <div>
+          {/* Create team */}
+          <div className="glass" style={{ padding: '18px 20px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="New team name..."
+              value={newTeamName}
+              onChange={e => setNewTeamName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && createTeam()}
+              style={{ flex: 1 }}
+            />
+            <button className="btn-gold" onClick={createTeam} disabled={creating || !newTeamName.trim()}>
+              <Plus size={14} /> Create Team
+            </button>
+          </div>
+
+          {teams.length === 0 && (
+            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+              <Users size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.2 }} />
+              No teams yet. Create one above.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {teams.map(team => (
+              <div key={team.id} className="glass" style={{ padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 15, flex: 1 }}>{team.name}</div>
+                  <button
+                    onClick={() => deleteTeam(team)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: '4px' }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {(['p1_id', 'p2_id'] as const).map((slot, i) => {
+                    const current = slot === 'p1_id' ? team.p1_id : team.p2_id
+                    const otherSlot = slot === 'p1_id' ? team.p2_id : team.p1_id
+                    return (
+                      <div key={slot}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>
+                          Player {i + 1}
+                        </label>
+                        <select
+                          value={current ?? ''}
+                          onChange={e => assignPlayer(team, slot, e.target.value)}
+                        >
+                          <option value="">— Unassigned —</option>
+                          {activePlayers.map(p => (
+                            <option
+                              key={p.id}
+                              value={p.id}
+                              disabled={p.id === otherSlot}
+                            >
+                              {p.name}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Users tab ───────────────────────────────────────────── */}
       {tab === 'users' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {profiles.map(p => (
@@ -85,13 +222,23 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
                 <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{p.name}</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{p.email}</div>
               </div>
-              <div style={{
-                fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                background: p.role === 'admin' ? 'rgba(252,181,20,0.15)' : 'rgba(255,255,255,0.06)',
-                color: p.role === 'admin' ? '#FCB514' : 'rgba(255,255,255,0.5)',
-                textTransform: 'uppercase', letterSpacing: 1,
-              }}>
-                {p.role}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                  background: p.role === 'admin' ? 'rgba(252,181,20,0.15)' : 'rgba(255,255,255,0.06)',
+                  color: p.role === 'admin' ? '#FCB514' : 'rgba(255,255,255,0.5)',
+                  textTransform: 'uppercase', letterSpacing: 1,
+                }}>
+                  {p.role}
+                </div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                  background: p.status === 'active' ? 'rgba(34,197,94,0.12)' : p.status === 'waitlist' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.1)',
+                  color: p.status === 'active' ? '#22c55e' : p.status === 'waitlist' ? '#f59e0b' : '#ef4444',
+                  textTransform: 'uppercase', letterSpacing: 1,
+                }}>
+                  {p.status ?? 'active'}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {p.role === 'player' ? (
@@ -112,7 +259,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
         </div>
       )}
 
-      {/* Codes tab */}
+      {/* ── Codes tab ───────────────────────────────────────────── */}
       {tab === 'codes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="glass" style={{ padding: '20px 22px' }}>
@@ -134,13 +281,14 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
                 {copiedKey === 'waitlist' ? <Check size={13} /> : <Copy size={13} />} Copy
               </button>
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(245,158,11,0.6)', marginTop: 8 }}>Share with players on standby — they can register but won't be active until you promote them</div>
+            <div style={{ fontSize: 12, color: 'rgba(245,158,11,0.6)', marginTop: 8 }}>Share with players on standby — promote them to active when a spot opens</div>
           </div>
 
           <div className="glass" style={{ padding: '20px 22px', borderColor: 'rgba(239,68,68,0.2)' }}>
             <div style={{ fontSize: 11, color: '#ef4444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>⚠️ Admin Code — Keep Private</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: '#ef4444', letterSpacing: 3, filter: adminBlurred ? 'blur(6px)' : 'none', transition: 'filter 0.2s', cursor: 'pointer' }}
+              <div
+                style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: '#ef4444', letterSpacing: 3, filter: adminBlurred ? 'blur(6px)' : 'none', transition: 'filter 0.2s', cursor: 'pointer' }}
                 onClick={() => setAdminBlurred(false)}>
                 {ADMIN_CODE}
               </div>
@@ -155,7 +303,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
         </div>
       )}
 
-      {/* Invite tab */}
+      {/* ── Invite tab ──────────────────────────────────────────── */}
       {tab === 'invite' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {[
@@ -181,7 +329,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
             </div>
           ))}
           <div className="glass" style={{ padding: '14px 18px', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-            💡 <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Tip:</strong> Paste the player invite message in a group text, iMessage, or email. You can also use Gmail's "Schedule Send" to send RSVP reminders.
+            💡 <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Tip:</strong> Paste the player invite message in a group text, iMessage, or email.
           </div>
         </div>
       )}
