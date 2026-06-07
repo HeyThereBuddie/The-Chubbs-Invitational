@@ -18,8 +18,8 @@ export default function Groups() {
 
   const fetchData = async () => {
     const [playersRes, pairingsRes] = await Promise.all([
-      supabase.from('players').select('*').eq('rsvp', 'in').order('handicap'),
-      supabase.from('pairings').select('*, player_a:players!pairings_player_a_id_fkey(*), player_b:players!pairings_player_b_id_fkey(*)').order('generated_at', { ascending: false }),
+      supabase.from('profiles').select('*').eq('status', 'active').eq('role', 'player').order('handicap'),
+      supabase.from('pairings').select('*, player_a:profiles!pairings_player_a_id_fkey(*), player_b:profiles!pairings_player_b_id_fkey(*)').order('generated_at', { ascending: false }),
     ])
     setPlayers(playersRes.data ?? [])
     const saved = pairingsRes.data ?? []

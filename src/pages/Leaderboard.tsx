@@ -38,7 +38,7 @@ export default function Leaderboard() {
 
   const fetchData = async () => {
     const [teamsRes, scoresRes] = await Promise.all([
-      supabase.from('teams').select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)'),
+      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
       supabase.from('scores').select('*'),
     ])
 

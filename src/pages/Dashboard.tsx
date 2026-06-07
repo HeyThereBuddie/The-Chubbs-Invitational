@@ -36,9 +36,9 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
-      supabase.from('teams').select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)'),
+      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
       supabase.from('scores').select('*'),
-      supabase.from('players').select('id', { count: 'exact' }).eq('rsvp', 'in'),
+      supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active').eq('role', 'player'),
       supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
     ])
 
@@ -64,6 +64,23 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      {/* Waitlist banner */}
+      {profile?.status === 'waitlist' && (
+        <div style={{
+          background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)',
+          borderRadius: 12, padding: '14px 20px', marginBottom: 20,
+          display: 'flex', gap: 12, alignItems: 'center',
+        }}>
+          <span style={{ fontSize: 20 }}>⏳</span>
+          <div>
+            <div style={{ fontWeight: 700, color: '#f59e0b', fontSize: 14 }}>You're on the Waitlist</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+              We'll reach out when a spot opens up. Hang tight!
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
       <div className="glass animate-fadeUp" style={{
         padding: '32px',

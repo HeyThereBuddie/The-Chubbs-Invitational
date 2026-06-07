@@ -8,7 +8,7 @@ export default function AuthPage() {
   const { showToast } = useToast()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', code: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', code: '', handicap: '' })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -25,25 +25,37 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    const playerCode = import.meta.env.VITE_PLAYER_CODE
-    const adminCode = import.meta.env.VITE_ADMIN_CODE
+    const playerCode   = import.meta.env.VITE_PLAYER_CODE
+    const adminCode    = import.meta.env.VITE_ADMIN_CODE
+    const waitlistCode = import.meta.env.VITE_WAITLIST_CODE
     const code = form.code.trim().toUpperCase()
 
-    let role = ''
-    if (code === playerCode) role = 'player'
-    else if (code === adminCode) role = 'admin'
+    let role   = ''
+    let status = 'active'
+    if      (code === adminCode)    { role = 'admin';  status = 'active' }
+    else if (code === playerCode)   { role = 'player'; status = 'active' }
+    else if (code === waitlistCode) { role = 'player'; status = 'waitlist' }
     else { showToast('Invalid invite code', 'error'); return }
 
     setLoading(true)
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
-        data: { name: form.name.trim(), role },
+        data: { name: form.name.trim(), role, status },
       },
     })
+
+    // Update handicap on the profile right after creation if provided
+    if (!error && data.user && form.handicap) {
+      await supabase.from('profiles')
+        .update({ handicap: +form.handicap })
+        .eq('id', data.user.id)
+    }
+
     setLoading(false)
     if (error) showToast(error.message, 'error')
+    else if (status === 'waitlist') showToast("You're on the waitlist! We'll reach out when a spot opens.")
     else showToast('Account created! Welcome to The Chubbs Invitational 🏌️')
   }
 
@@ -123,6 +135,13 @@ export default function AuthPage() {
                 type="text" placeholder="Invite Code"
                 value={form.code} onChange={e => set('code', e.target.value)}
                 required
+              />
+            )}
+            {mode === 'register' && (
+              <input
+                type="number" placeholder="Handicap (optional)"
+                value={form.handicap} onChange={e => set('handicap', e.target.value)}
+                min={0} max={54} step={0.1}
               />
             )}
             <button type="submit" className="btn-gold" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>

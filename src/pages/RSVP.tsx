@@ -1,111 +1,72 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import type { Player } from '../lib/types'
-import { Plus, ChevronDown, ChevronUp, Trash2, Mail, ExternalLink } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import type { Profile } from '../lib/types'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
-type FilterType = 'all' | 'in' | 'pending' | 'out'
+type StatusTab = 'active' | 'waitlist' | 'dropped'
 
-const FILTER_OPTIONS: { id: FilterType; label: string; emoji: string }[] = [
-  { id: 'all', label: 'All', emoji: '' },
-  { id: 'in', label: 'In', emoji: '✅' },
-  { id: 'pending', label: 'Pending', emoji: '⏳' },
-  { id: 'out', label: 'Out', emoji: '❌' },
+const STATUS_TABS: { id: StatusTab; label: string; emoji: string }[] = [
+  { id: 'active', label: 'Active', emoji: '✅' },
+  { id: 'waitlist', label: 'Waitlist', emoji: '⏳' },
+  { id: 'dropped', label: 'Dropped', emoji: '❌' },
 ]
+
+const statusColor = { active: '#22c55e', waitlist: '#f59e0b', dropped: '#ef4444' }
 
 export default function RSVP() {
   const { showToast } = useToast()
-  const [players, setPlayers] = useState<Player[]>([])
-  const [filter, setFilter] = useState<FilterType>('all')
+  const [players, setPlayers] = useState<Profile[]>([])
+  const [tab, setTab] = useState<StatusTab>('active')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-  const [addForm, setAddForm] = useState({ name: '', email: '', handicap: '' })
-  const [saving, setSaving] = useState(false)
 
   useEffect(() => { fetchPlayers() }, [])
 
   const fetchPlayers = async () => {
-    const { data } = await supabase.from('players').select('*').order('name')
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'player')
+      .order('name')
     setPlayers(data ?? [])
   }
 
-  const updatePlayer = async (id: string, updates: Partial<Player>) => {
-    const { error } = await supabase.from('players').update(updates).eq('id', id)
+  const updatePlayer = async (id: string, updates: Partial<Profile>) => {
+    const { error } = await supabase.from('profiles').update(updates).eq('id', id)
     if (error) showToast(error.message, 'error')
-    else { fetchPlayers() }
+    else fetchPlayers()
   }
 
-  const removePlayer = async (id: string) => {
-    if (!confirm('Remove this player?')) return
-    await supabase.from('players').delete().eq('id', id)
-    fetchPlayers()
+  const setStatus = async (id: string, status: 'active' | 'waitlist' | 'dropped') => {
+    await updatePlayer(id, { status })
+    showToast(
+      status === 'active' ? 'Player activated!' :
+      status === 'waitlist' ? 'Moved to waitlist' :
+      'Player dropped'
+    )
   }
-
-  const addPlayer = async () => {
-    if (!addForm.name.trim()) return
-    setSaving(true)
-    const { error } = await supabase.from('players').insert({
-      name: addForm.name.trim(),
-      email: addForm.email || null,
-      handicap: addForm.handicap ? +addForm.handicap : null,
-      rsvp: 'pending',
-    })
-    setSaving(false)
-    if (error) showToast(error.message, 'error')
-    else {
-      showToast('Player added!')
-      setAddForm({ name: '', email: '', handicap: '' })
-      setShowAdd(false)
-      fetchPlayers()
-    }
-  }
-
-  const filtered = filter === 'all' ? players : players.filter(p => p.rsvp === filter)
-
-  const rsvpColor = { in: '#22c55e', pending: '#f59e0b', out: '#ef4444' }
-  const rsvpLabel = { in: '✅ In', pending: '⏳ Pending', out: '❌ Out' }
 
   const counts = {
-    all: players.length,
-    in: players.filter(p => p.rsvp === 'in').length,
-    pending: players.filter(p => p.rsvp === 'pending').length,
-    out: players.filter(p => p.rsvp === 'out').length,
+    active: players.filter(p => p.status === 'active').length,
+    waitlist: players.filter(p => p.status === 'waitlist').length,
+    dropped: players.filter(p => p.status === 'dropped').length,
   }
+
+  const filtered = players.filter(p => p.status === tab)
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>RSVP Manager</h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{counts.in} confirmed • {counts.pending} pending • {counts.out} out</p>
-        </div>
-        <button className="btn-gold" onClick={() => setShowAdd(!showAdd)}>
-          <Plus size={14} /> Add Player
-        </button>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Player Roster</h1>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+          {counts.active} active • {counts.waitlist} waitlisted • {counts.dropped} dropped
+        </p>
       </div>
 
-      {/* Add player form */}
-      {showAdd && (
-        <div className="glass animate-fadeUp" style={{ padding: 20, marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <input type="text" placeholder="Name *" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
-            <input type="email" placeholder="Email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} />
-            <input type="number" placeholder="Handicap" value={addForm.handicap} onChange={e => setAddForm(f => ({ ...f, handicap: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-gold" onClick={addPlayer} disabled={saving || !addForm.name.trim()}>
-              {saving ? 'Adding…' : 'Add Player'}
-            </button>
-            <button className="btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
-        {FILTER_OPTIONS.map(({ id, label, emoji }) => (
-          <button key={id} onClick={() => setFilter(id)} className={`pill-tab ${filter === id ? 'active' : ''}`}>
+      {/* Status tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        {STATUS_TABS.map(({ id, label, emoji }) => (
+          <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>
             {emoji} {label} ({counts[id]})
           </button>
         ))}
@@ -113,9 +74,13 @@ export default function RSVP() {
 
       {/* Player list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {filtered.length === 0 && (
+          <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+            No {tab} players
+          </div>
+        )}
         {filtered.map(player => {
           const isExpanded = expanded === player.id
-
           return (
             <div key={player.id} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
               <button
@@ -132,74 +97,87 @@ export default function RSVP() {
                   </div>
                 </div>
                 <div style={{
-                  fontSize: 12, fontWeight: 600,
-                  color: rsvpColor[player.rsvp as keyof typeof rsvpColor] ?? '#fff',
-                  background: `${rsvpColor[player.rsvp as keyof typeof rsvpColor]}20`,
-                  padding: '4px 10px', borderRadius: 999,
+                  fontSize: 11, fontWeight: 700,
+                  color: statusColor[player.status as keyof typeof statusColor],
+                  background: `${statusColor[player.status as keyof typeof statusColor]}20`,
+                  padding: '4px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1,
                 }}>
-                  {rsvpLabel[player.rsvp as keyof typeof rsvpLabel] ?? player.rsvp}
+                  {player.status}
                 </div>
-                {isExpanded ? <ChevronUp size={14} color="rgba(255,255,255,0.4)" /> : <ChevronDown size={14} color="rgba(255,255,255,0.4)" />}
+                {isExpanded
+                  ? <ChevronUp size={14} color="rgba(255,255,255,0.4)" />
+                  : <ChevronDown size={14} color="rgba(255,255,255,0.4)" />}
               </button>
 
               {isExpanded && (
                 <div style={{ padding: '0 18px 18px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                  {/* RSVP toggle */}
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 16, paddingTop: 14 }}>
-                    {(['in', 'pending', 'out'] as const).map(status => (
-                      <button key={status}
-                        onClick={() => updatePlayer(player.id, { rsvp: status })}
+                  {/* Status actions */}
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 16, paddingTop: 14, flexWrap: 'wrap' }}>
+                    {player.status !== 'active' && (
+                      <button
+                        onClick={() => setStatus(player.id, 'active')}
                         style={{
-                          flex: 1, padding: '8px', borderRadius: 8, border: '1px solid',
-                          background: player.rsvp === status ? `${rsvpColor[status]}20` : 'transparent',
-                          borderColor: player.rsvp === status ? rsvpColor[status] : 'rgba(255,255,255,0.1)',
-                          color: player.rsvp === status ? rsvpColor[status] : 'rgba(255,255,255,0.5)',
-                          cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                          padding: '8px 16px', borderRadius: 8,
+                          background: 'rgba(34,197,94,0.15)',
+                          border: '1px solid rgba(34,197,94,0.4)',
+                          color: '#22c55e', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                         }}>
-                        {rsvpLabel[status]}
+                        ✅ Activate Player
                       </button>
-                    ))}
+                    )}
+                    {player.status !== 'waitlist' && (
+                      <button
+                        onClick={() => setStatus(player.id, 'waitlist')}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8,
+                          background: 'rgba(245,158,11,0.15)',
+                          border: '1px solid rgba(245,158,11,0.4)',
+                          color: '#f59e0b', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                        }}>
+                        ⏳ Move to Waitlist
+                      </button>
+                    )}
+                    {player.status !== 'dropped' && (
+                      <button
+                        onClick={() => setStatus(player.id, 'dropped')}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8,
+                          background: 'rgba(239,68,68,0.1)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          color: '#ef4444', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                        }}>
+                        ❌ Drop Player
+                      </button>
+                    )}
                   </div>
 
                   {/* Editable fields */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                     <div>
                       <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Name</label>
                       <input type="text" defaultValue={player.name}
                         onBlur={e => { if (e.target.value !== player.name) updatePlayer(player.id, { name: e.target.value }) }} />
                     </div>
                     <div>
-                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Email</label>
-                      <input type="email" defaultValue={player.email ?? ''}
-                        onBlur={e => { if (e.target.value !== (player.email ?? '')) updatePlayer(player.id, { email: e.target.value || null }) }} />
-                    </div>
-                    <div>
                       <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Handicap</label>
                       <input type="number" defaultValue={player.handicap ?? ''}
-                        onBlur={e => { if (+e.target.value !== player.handicap) updatePlayer(player.id, { handicap: +e.target.value || null }) }} />
+                        onBlur={e => { const v = +e.target.value; if (v !== player.handicap) updatePlayer(player.id, { handicap: v || null }) }} />
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Link to={`/rsvp-landing?player=${player.id}`} target="_blank">
-                      <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <ExternalLink size={12} /> Preview RSVP Page
-                      </button>
-                    </Link>
-                    <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Mail size={12} /> Send Invite
-                    </button>
-                    <button
-                      onClick={() => removePlayer(player.id)}
-                      style={{
-                        background: 'rgba(239,68,68,0.1)', color: '#ef4444',
-                        border: '1px solid rgba(239,68,68,0.3)', borderRadius: 999,
-                        padding: '6px 14px', fontSize: 12, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                      }}>
-                      <Trash2 size={12} /> Remove
-                    </button>
+                    <div>
+                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Phone</label>
+                      <input type="tel" defaultValue={player.phone ?? ''}
+                        onBlur={e => { if (e.target.value !== (player.phone ?? '')) updatePlayer(player.id, { phone: e.target.value || null }) }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Shirt Size</label>
+                      <input type="text" placeholder="e.g. M, L, XL" defaultValue={player.shirt_size ?? ''}
+                        onBlur={e => { if (e.target.value !== (player.shirt_size ?? '')) updatePlayer(player.id, { shirt_size: e.target.value || null }) }} />
+                    </div>
+                    <div style={{ gridColumn: '1/-1' }}>
+                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Notes</label>
+                      <input type="text" placeholder="Any notes..." defaultValue={player.notes ?? ''}
+                        onBlur={e => { if (e.target.value !== (player.notes ?? '')) updatePlayer(player.id, { notes: e.target.value || null }) }} />
+                    </div>
                   </div>
                 </div>
               )}

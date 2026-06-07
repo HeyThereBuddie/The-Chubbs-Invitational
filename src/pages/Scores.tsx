@@ -116,7 +116,7 @@ export default function Scores() {
   const loadAllTeams = async () => {
     const { data } = await supabase
       .from('teams')
-      .select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)')
+      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
     if (data) {
       setAllTeams(data)
       if (isAdmin && data.length) setAdminTeamId(data[0].id)
@@ -126,7 +126,7 @@ export default function Scores() {
   const loadPlayerData = async (teamId: string) => {
     const { data: t } = await supabase
       .from('teams')
-      .select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)')
+      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
       .eq('id', teamId).single()
     if (t) setMyTeam(t)
 
@@ -143,7 +143,7 @@ export default function Scores() {
     if (partnerId) {
       const { data: pt } = await supabase
         .from('teams')
-        .select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)')
+        .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
         .eq('id', partnerId).single()
       if (pt) setPartnerTeam(pt)
     }

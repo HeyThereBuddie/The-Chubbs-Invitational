@@ -25,8 +25,8 @@ export default function TeeTimes() {
 
   const fetchAll = async () => {
     const [ttRes, teamsRes] = await Promise.all([
-      supabase.from('tee_times').select('*, team:teams(*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*))').order('tee_time'),
-      supabase.from('teams').select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)'),
+      supabase.from('tee_times').select('*, team:teams(*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*))').order('tee_time'),
+      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
     ])
     setTeeTimes(ttRes.data ?? [])
     setTeams(teamsRes.data ?? [])

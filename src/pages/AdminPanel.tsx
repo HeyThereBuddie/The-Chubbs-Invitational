@@ -45,6 +45,7 @@ export default function AdminPanel() {
 
   const PLAYER_CODE = import.meta.env.VITE_PLAYER_CODE ?? 'CHUBS2025'
   const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE ?? 'CHUBS_ADMIN'
+  const WAITLIST_CODE = import.meta.env.VITE_WAITLIST_CODE ?? 'CHUBS_WAITLIST'
 
   const playerInvite = `Hey! You're invited to The Chubbs Invitational golf tournament. Sign up at ${window.location.origin} using invite code: ${PLAYER_CODE}
 
@@ -123,6 +124,17 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
               </button>
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 8 }}>Share this code freely with all players</div>
+          </div>
+
+          <div className="glass" style={{ padding: '20px 22px', borderColor: 'rgba(245,158,11,0.2)' }}>
+            <div style={{ fontSize: 11, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>⏳ Waitlist Code</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: '#f59e0b', letterSpacing: 3 }}>{WAITLIST_CODE}</div>
+              <button onClick={() => copy(WAITLIST_CODE, 'waitlist')} className="btn-ghost" style={{ padding: '6px 12px', display: 'flex', gap: 4, alignItems: 'center' }}>
+                {copiedKey === 'waitlist' ? <Check size={13} /> : <Copy size={13} />} Copy
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(245,158,11,0.6)', marginTop: 8 }}>Share with players on standby — they can register but won't be active until you promote them</div>
           </div>
 
           <div className="glass" style={{ padding: '20px 22px', borderColor: 'rgba(239,68,68,0.2)' }}>

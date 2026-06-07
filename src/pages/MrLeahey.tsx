@@ -31,7 +31,7 @@ export default function MrLeahey() {
 
   const fetchData = async () => {
     const [playersRes, votesRes] = await Promise.all([
-      supabase.from('players').select('*').eq('rsvp', 'in').order('name'),
+      supabase.from('profiles').select('*').eq('status', 'active').eq('role', 'player').order('name'),
       supabase.from('leahey_votes').select('*'),
     ])
     setPlayers(playersRes.data ?? [])

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { Player } from '../lib/types'
+import type { Profile } from '../lib/types'
 import { COURSE_NAME, TOURNAMENT_DATE } from '../lib/types'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
@@ -9,38 +9,30 @@ const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/C
 export default function RSVPLanding() {
   const [params] = useSearchParams()
   const playerId = params.get('player')
-  const [player, setPlayer] = useState<Player | null>(null)
+  const [player, setPlayer] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [handicap, setHandicap] = useState('')
   const [note, setNote] = useState('')
-  const [likeMen, setLikeMen] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const [choice, setChoice] = useState<'in' | 'out' | null>(null)
 
   useEffect(() => {
     if (!playerId) { setNotFound(true); setLoading(false); return }
-    supabase.from('players').select('*').eq('id', playerId).single()
+    supabase.from('profiles').select('*').eq('id', playerId).single()
       .then(({ data }) => {
         if (!data) setNotFound(true)
-        else { setPlayer(data); setHandicap(String(data.handicap ?? '')) }
+        else {
+          setPlayer(data)
+          setHandicap(String(data.handicap ?? ''))
+          setNote(data.notes ?? '')
+        }
         setLoading(false)
       })
   }, [playerId])
 
-  const handleLikeMen = (val: string) => {
-    if (val === 'No') {
-      setTimeout(() => setLikeMen('Yes'), 200)
-    } else {
-      setLikeMen(val)
-    }
-  }
-
-  const submit = async (rsvp: 'in' | 'out') => {
+  const submit = async () => {
     if (!player) return
-    setChoice(rsvp)
-    await supabase.from('players').update({
-      rsvp,
+    await supabase.from('profiles').update({
       handicap: handicap ? +handicap : null,
       notes: note || null,
     }).eq('id', player.id)
@@ -91,14 +83,12 @@ export default function RSVPLanding() {
 
         {submitted ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>{choice === 'in' ? '⛳' : '😔'}</div>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>⛳</div>
             <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 3 }}>
-              {choice === 'in' ? "You're In!" : "See You Next Time"}
+              Profile Updated!
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8, fontSize: 14 }}>
-              {choice === 'in'
-                ? "We've got you on the list. Get those hips warmed up, Shooter! 🏌️"
-                : "Sorry to miss you. The alligators will be disappointed."}
+              We've got your details locked in. Get those hips warmed up! 🏌️
             </p>
           </div>
         ) : (
@@ -107,7 +97,7 @@ export default function RSVPLanding() {
               Hey, {player?.name}!
             </div>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
-              Can you make it to this year's tournament?
+              Confirm your details for the tournament
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -119,32 +109,17 @@ export default function RSVPLanding() {
                 <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>Note (optional)</label>
                 <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Dietary restrictions, cart preference..." />
               </div>
-              <div>
-                <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>Do You Like Men?</label>
-                <select value={likeMen} onChange={e => handleLikeMen(e.target.value)}
-                  style={{ appearance: 'none', WebkitAppearance: 'none' }}>
-                  <option value="">Select an answer...</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-                {likeMen === 'Yes' && (
-                  <p style={{ fontSize: 12, color: '#FCB514', marginTop: 6 }}>
-                    Buddy, we both know the answer is yes. Updated for you. 😂
-                  </p>
-                )}
-              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-              <button className="btn-gold" onClick={() => submit('in')} style={{ flex: 1, justifyContent: 'center' }}>
-                ⛳ Count Me In!
-              </button>
-              <button className="btn-ghost" onClick={() => submit('out')} style={{ flex: 1, justifyContent: 'center' }}>
-                😔 Can't Make It
-              </button>
-            </div>
+            <button className="btn-gold" onClick={submit} style={{ width: '100%', justifyContent: 'center', marginTop: 24 }}>
+              ⛳ Save My Details
+            </button>
           </>
         )}
+
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 24 }}>
+          "It's all in the hips." — Chubbs Peterson
+        </p>
       </div>
     </div>
   )

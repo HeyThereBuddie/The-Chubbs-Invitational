@@ -8,7 +8,14 @@ export interface Profile {
   handicap: number | null
   joined_at: string
   team_id: string | null
+  status: 'active' | 'waitlist' | 'dropped'
+  shirt_size: string | null
+  notes: string | null
+  phone: string | null
 }
+
+// Profile IS the player — one unified record per person
+export type Player = Profile
 
 export interface Foursome {
   id: string
@@ -22,17 +29,6 @@ export interface ScoreApproval {
   score_id: string
   approving_team_id: string
   approved_at: string
-}
-
-export interface Player {
-  id: string
-  name: string
-  email: string | null
-  handicap: number | null
-  rsvp: 'in' | 'pending' | 'out'
-  shirt_size: string | null
-  notes: string | null
-  created_at: string
 }
 
 export interface Team {
