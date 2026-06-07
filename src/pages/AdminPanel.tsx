@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import type { Profile, Team } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle } from 'lucide-react'
+import type { Profile, Team, Update } from '../lib/types'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle, Send } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
+type RecipientGroup  = 'active' | 'waitlist' | 'admins'
+type EmailType       = 'blast' | 'tee-time' | 'update' | 'welcome'
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite' | 'reset'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite' | 'reset' | 'email'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
+  const [updates, setUpdates] = useState<Update[]>([])
   const [newTeamName, setNewTeamName] = useState('')
   const [creating, setCreating] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
 
-  useEffect(() => { fetchProfiles(); fetchTeams() }, [])
+  // ── Email state ───────────────────────────────────────────
+  const [emailType,    setEmailType]    = useState<EmailType>('blast')
+  const [emailGroups,  setEmailGroups]  = useState<Set<RecipientGroup>>(new Set(['active']))
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+  const [emailUpdateId, setEmailUpdateId] = useState('')
+  const [emailPlayers, setEmailPlayers] = useState<Set<string>>(new Set())
+  const [emailSending, setEmailSending] = useState(false)
+
+  useEffect(() => { fetchProfiles(); fetchTeams(); fetchUpdates() }, [])
 
   const fetchProfiles = async () => {
     const { data } = await supabase.from('profiles').select('*').order('name')
@@ -29,6 +41,11 @@ export default function AdminPanel() {
       .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
       .order('created_at')
     setTeams(data ?? [])
+  }
+
+  const fetchUpdates = async () => {
+    const { data } = await supabase.from('updates').select('*').order('created_at', { ascending: false })
+    setUpdates(data ?? [])
   }
 
   // ── Team management ──────────────────────────────────────────
@@ -163,6 +180,45 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
     else showToast('All Lahey votes cleared.')
   }
 
+  // ── Email sender ──────────────────────────────────────────
+  const toggleGroup = (g: RecipientGroup) =>
+    setEmailGroups(prev => { const next = new Set(prev); next.has(g) ? next.delete(g) : next.add(g); return next })
+
+  const togglePlayer = (id: string) =>
+    setEmailPlayers(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
+
+  const recipientCount = (() => {
+    const emails = new Set<string>()
+    profiles.forEach(p => {
+      if (!p.email) return
+      if (emailGroups.has('active')   && p.status === 'active')   emails.add(p.email)
+      if (emailGroups.has('waitlist') && p.status === 'waitlist') emails.add(p.email)
+      if (emailGroups.has('admins')   && p.role   === 'admin')    emails.add(p.email)
+    })
+    return emails.size
+  })()
+
+  const sendEmail = async () => {
+    if (emailType === 'blast' && (!emailSubject.trim() || !emailMessage.trim())) {
+      showToast('Subject and message are required', 'error'); return
+    }
+    if (emailType === 'update' && !emailUpdateId) {
+      showToast('Select an update to send', 'error'); return
+    }
+    if (emailType === 'welcome' && emailPlayers.size === 0) {
+      showToast('Select at least one player', 'error'); return
+    }
+    setEmailSending(true)
+    const body: Record<string, unknown> = { type: emailType }
+    if (emailType === 'blast')   { body.groups = Array.from(emailGroups); body.subject = emailSubject; body.message = emailMessage }
+    if (emailType === 'update')  { body.groups = Array.from(emailGroups); body.updateId = emailUpdateId }
+    if (emailType === 'welcome') { body.playerIds = Array.from(emailPlayers) }
+    const { data, error } = await supabase.functions.invoke('send-email', { body })
+    setEmailSending(false)
+    if (error) showToast(error.message ?? 'Failed to send', 'error')
+    else       showToast(`${(data as { sent: number }).sent} email${(data as { sent: number }).sent !== 1 ? 's' : ''} sent! 📧`)
+  }
+
   const activePlayers = profiles.filter(p => p.status === 'active')
 
   return (
@@ -179,6 +235,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           { id: 'codes',  label: '🔑 Codes' },
           { id: 'invite', label: '✉️ Invite' },
           { id: 'reset',  label: '⚠️ Reset' },
+          { id: 'email',  label: '📧 Email' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -492,6 +549,217 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           </div>
         </div>
       )}
+
+      {/* ── Email tab ───────────────────────────────────────────── */}
+      {tab === 'email' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Type selector */}
+          <div className="glass" style={{ padding: '18px 20px' }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Email Type
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {([
+                { id: 'blast',    label: '📢 Blast',             desc: 'Custom message to a group' },
+                { id: 'tee-time', label: '⛳ Tee Times',          desc: 'Personalized confirmations' },
+                { id: 'update',   label: '📋 Tournament Update',  desc: 'Push a posted update' },
+                { id: 'welcome',  label: '👋 Welcome',            desc: 'Registration email' },
+              ] as const).map(({ id, label, desc }) => (
+                <button
+                  key={id}
+                  onClick={() => setEmailType(id)}
+                  style={{
+                    padding: '10px 16px', borderRadius: 12, border: '1px solid',
+                    borderColor: emailType === id ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.1)',
+                    background:  emailType === id ? 'rgba(252,181,20,0.12)' : 'transparent',
+                    color: emailType === id ? '#FCB514' : 'rgba(255,255,255,0.55)',
+                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{label}</div>
+                  <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Blast ── */}
+          {emailType === 'blast' && (
+            <div className="glass" style={{ padding: '20px 22px' }}>
+              <RecipientPicker
+                profiles={profiles}
+                groups={emailGroups}
+                onToggle={toggleGroup}
+                count={recipientCount}
+              />
+              <div style={{ marginTop: 16 }}>
+                <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Subject</label>
+                <input type="text" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="e.g. Tournament day logistics" />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Message</label>
+                <textarea
+                  value={emailMessage}
+                  onChange={e => setEmailMessage(e.target.value)}
+                  placeholder="Write your message here..."
+                  rows={6}
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── Tee Times ── */}
+          {emailType === 'tee-time' && (
+            <div className="glass" style={{ padding: '20px 22px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                <div style={{ fontSize: 28 }}>⛳</div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 15, marginBottom: 6 }}>Tee Time Confirmations</div>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.65, margin: 0 }}>
+                    Sends each player a personalized email with their team name, tee time, starting hole, and foursome partners. Recipients are pulled automatically from tee time assignments.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Update ── */}
+          {emailType === 'update' && (
+            <div className="glass" style={{ padding: '20px 22px' }}>
+              <RecipientPicker
+                profiles={profiles}
+                groups={emailGroups}
+                onToggle={toggleGroup}
+                count={recipientCount}
+              />
+              <div style={{ marginTop: 16 }}>
+                <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Select Update</label>
+                <select value={emailUpdateId} onChange={e => setEmailUpdateId(e.target.value)}>
+                  <option value="">— Choose a tournament update —</option>
+                  {updates.map(u => (
+                    <option key={u.id} value={u.id}>{u.pinned ? '📌 ' : ''}{u.title}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* ── Welcome ── */}
+          {emailType === 'welcome' && (
+            <div className="glass" style={{ padding: '20px 22px' }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Select Players — {emailPlayers.size} selected
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+                {profiles.map(p => (
+                  <label key={p.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                    borderRadius: 10, cursor: 'pointer',
+                    background: emailPlayers.has(p.id) ? 'rgba(252,181,20,0.08)' : 'rgba(255,255,255,0.02)',
+                    border: '1px solid',
+                    borderColor: emailPlayers.has(p.id) ? 'rgba(252,181,20,0.3)' : 'rgba(255,255,255,0.06)',
+                    transition: 'all 0.15s',
+                  }}>
+                    <input type="checkbox" checked={emailPlayers.has(p.id)} onChange={() => togglePlayer(p.id)}
+                      style={{ width: 'auto', accentColor: '#FCB514' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#fff' }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{p.email}</div>
+                    </div>
+                    <div style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                      background: p.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)',
+                      color: p.status === 'active' ? '#22c55e' : '#f59e0b',
+                      textTransform: 'uppercase', letterSpacing: 1,
+                    }}>{p.status}</div>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button className="btn-ghost" style={{ fontSize: 12, padding: '5px 12px' }}
+                  onClick={() => setEmailPlayers(new Set(profiles.map(p => p.id)))}>
+                  Select All
+                </button>
+                <button className="btn-ghost" style={{ fontSize: 12, padding: '5px 12px' }}
+                  onClick={() => setEmailPlayers(new Set())}>
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Send button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button
+              className="btn-gold"
+              onClick={sendEmail}
+              disabled={emailSending}
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <Send size={14} />
+              {emailSending ? 'Sending…' : (
+                emailType === 'blast'    ? `Send to ${recipientCount} player${recipientCount !== 1 ? 's' : ''}` :
+                emailType === 'tee-time'? 'Send Tee Time Confirmations' :
+                emailType === 'update'  ? `Send Update to ${recipientCount} player${recipientCount !== 1 ? 's' : ''}` :
+                                          `Send Welcome to ${emailPlayers.size} player${emailPlayers.size !== 1 ? 's' : ''}`
+              )}
+            </button>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
+              Powered by Resend
+            </div>
+          </div>
+
+          {/* Setup note */}
+          <div style={{ padding: '14px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7 }}>
+            <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Setup required:</strong> Set <code style={{ color: '#FCB514', fontSize: 11 }}>RESEND_API_KEY</code> and <code style={{ color: '#FCB514', fontSize: 11 }}>RESEND_FROM_EMAIL</code> as Supabase Edge Function secrets, then deploy with <code style={{ color: '#FCB514', fontSize: 11 }}>supabase functions deploy send-email</code>.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RecipientPicker({
+  profiles, groups, onToggle, count,
+}: {
+  profiles: import('../lib/types').Profile[]
+  groups: Set<string>
+  onToggle: (g: 'active' | 'waitlist' | 'admins') => void
+  count: number
+}) {
+  const activeN   = profiles.filter(p => p.status === 'active').length
+  const waitlistN = profiles.filter(p => p.status === 'waitlist').length
+  const adminsN   = profiles.filter(p => p.role   === 'admin').length
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+        Recipients — {count} total
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {([
+          { id: 'active',   label: `Active Players (${activeN})` },
+          { id: 'admins',   label: `Admins (${adminsN})` },
+          { id: 'waitlist', label: `Waitlist (${waitlistN})` },
+        ] as const).map(({ id, label }) => (
+          <label key={id} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
+            border: '1px solid',
+            borderColor: groups.has(id) ? 'rgba(252,181,20,0.4)' : 'rgba(255,255,255,0.1)',
+            background: groups.has(id) ? 'rgba(252,181,20,0.1)' : 'transparent',
+            fontSize: 13, fontWeight: 600,
+            color: groups.has(id) ? '#FCB514' : 'rgba(255,255,255,0.45)',
+            transition: 'all 0.15s', userSelect: 'none',
+          }}>
+            <input type="checkbox" checked={groups.has(id)} onChange={() => onToggle(id)}
+              style={{ display: 'none' }} />
+            {groups.has(id) ? '✓ ' : ''}{label}
+          </label>
+        ))}
+      </div>
     </div>
   )
 }
