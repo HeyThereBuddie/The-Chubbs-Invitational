@@ -8,7 +8,7 @@ type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite' | 'reset'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamName, setNewTeamName] = useState('')
@@ -149,6 +149,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           { id: 'users',  label: '👥 Users' },
           { id: 'codes',  label: '🔑 Codes' },
           { id: 'invite', label: '✉️ Invite' },
+          { id: 'reset',  label: '⚠️ Reset' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -178,61 +179,6 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
               No teams yet. Create one above.
             </div>
           )}
-
-          {/* Danger zone */}
-          <div style={{ marginBottom: 20, padding: '16px 20px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-              ⚠️ Danger Zone
-            </div>
-            {!resetConfirm ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>Reset Tournament</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Deletes all scores and drive selections. Teams and players are kept.</div>
-                </div>
-                <button
-                  onClick={() => setResetConfirm(true)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 600,
-                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-                    color: '#ef4444', cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}
-                >
-                  <RotateCcw size={13} /> Reset Scores
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: 8 }}>
-                  Are you sure? This will permanently delete every score.
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={resetTournament}
-                    disabled={resetting}
-                    style={{
-                      padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                      background: '#ef4444', border: 'none', color: '#fff',
-                      cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.7 : 1,
-                    }}
-                  >
-                    {resetting ? 'Resetting…' : 'Yes, delete all scores'}
-                  </button>
-                  <button
-                    onClick={() => setResetConfirm(false)}
-                    style={{
-                      padding: '8px 20px', borderRadius: 999, fontSize: 13,
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {teams.map(team => (
@@ -397,6 +343,70 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           ))}
           <div className="glass" style={{ padding: '14px 18px', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
             💡 <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Tip:</strong> Paste the player invite message in a group text, iMessage, or email.
+          </div>
+        </div>
+      )}
+
+      {/* ── Reset tab ───────────────────────────────────────────── */}
+      {tab === 'reset' && (
+        <div>
+          <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <RotateCcw size={20} color="#ef4444" />
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#ef4444' }}>Reset Tournament</div>
+            </div>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
+              This will permanently delete <strong style={{ color: '#fff' }}>all scores and drive selections</strong> for every team.
+            </p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
+              Teams, player assignments, tee times, and all other data will remain untouched. Only the scorecard is cleared.
+            </p>
+
+            {!resetConfirm ? (
+              <button
+                onClick={() => setResetConfirm(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
+                  background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+                  color: '#ef4444', cursor: 'pointer',
+                }}
+              >
+                <RotateCcw size={15} /> Reset All Scores
+              </button>
+            ) : (
+              <div style={{ padding: '16px 20px', borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)' }}>
+                <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15, marginBottom: 6 }}>
+                  Are you absolutely sure?
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
+                  Every score will be gone. This cannot be undone.
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={resetTournament}
+                    disabled={resetting}
+                    style={{
+                      padding: '10px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                      background: '#ef4444', border: 'none', color: '#fff',
+                      cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.6 : 1,
+                    }}
+                  >
+                    {resetting ? 'Resetting…' : 'Yes, delete all scores'}
+                  </button>
+                  <button
+                    onClick={() => setResetConfirm(false)}
+                    style={{
+                      padding: '10px 24px', borderRadius: 999, fontSize: 14,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
