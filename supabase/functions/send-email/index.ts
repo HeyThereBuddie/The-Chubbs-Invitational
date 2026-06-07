@@ -30,10 +30,11 @@ serve(async (req) => {
     console.log('[auth] header present:', !!authHeader)
     if (!authHeader) return json({ error: 'Unauthorized - no header' }, 401)
 
+    const token = authHeader.replace('Bearer ', '')
     const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     })
-    const { data: { user }, error: userErr } = await anonClient.auth.getUser()
+    const { data: { user }, error: userErr } = await anonClient.auth.getUser(token)
     console.log('[auth] user:', user?.id ?? null, 'err:', userErr?.message ?? null)
     if (!user) return json({ error: 'Unauthorized - no user', detail: userErr?.message }, 401)
 
