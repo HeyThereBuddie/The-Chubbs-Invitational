@@ -297,7 +297,7 @@ export default function Scores() {
           }}>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
             <div style={{ display: 'flex', gap: 5 }}>
-              {[1, 2, 3, 4, 5].map(n => {
+              {[0, 1, 2, 3, 4, 5].map(n => {
                 const active = putts === n
                 return (
                   <button key={n} onClick={() => onSetPutts(n)} style={{
