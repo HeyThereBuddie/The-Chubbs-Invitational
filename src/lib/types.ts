@@ -7,6 +7,21 @@ export interface Profile {
   role: Role
   handicap: number | null
   joined_at: string
+  team_id: string | null
+}
+
+export interface Foursome {
+  id: string
+  team_a_id: string
+  team_b_id: string
+  created_at: string
+}
+
+export interface ScoreApproval {
+  id: string
+  score_id: string
+  approving_team_id: string
+  approved_at: string
 }
 
 export interface Player {

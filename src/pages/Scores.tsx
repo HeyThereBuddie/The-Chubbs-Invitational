@@ -1,215 +1,506 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import type { Team, Player } from '../lib/types'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, CheckCircle, Clock, Users } from 'lucide-react'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
+
+type TeamFull = Team & { player1?: Player; player2?: Player }
+type ScoreRow = { id: string; hole: number; score: number }
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
   if (diff <= -2) return 'score-eagle'
   if (diff === -1) return 'score-birdie'
-  if (diff === 0) return 'score-par'
-  if (diff === 1) return 'score-bogey'
+  if (diff === 0)  return 'score-par'
+  if (diff === 1)  return 'score-bogey'
   return 'score-double'
 }
 
+function calcStats(scoreMap: Record<number, ScoreRow>) {
+  const entries = Object.values(scoreMap)
+  const gross = entries.reduce((a, s) => a + s.score, 0)
+  const thru  = entries.length
+  const toPar = gross - HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
+  return { gross, thru, toPar, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
+}
+
 export default function Scores() {
-  const [teams, setTeams] = useState<(Team & { player1?: Player; player2?: Player })[]>([])
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
-  const [scores, setScores] = useState<Record<number, number>>({})
-  const [half, setHalf] = useState<'front' | 'back'>('front')
-  const [saving, setSaving] = useState<number | null>(null)
+  const { profile, isAdmin } = useAuth()
+  const myTeamId = profile?.team_id ?? undefined
+
+  const [allTeams,     setAllTeams]     = useState<TeamFull[]>([])
+  const [myTeam,       setMyTeam]       = useState<TeamFull | null>(null)
+  const [partnerTeam,  setPartnerTeam]  = useState<TeamFull | null>(null)
+  const [myScores,     setMyScores]     = useState<Record<number, ScoreRow>>({})
+  const [partnerScores,setPartnerScores]= useState<Record<number, ScoreRow>>({})
+  const [adminScores,  setAdminScores]  = useState<Record<number, ScoreRow>>({})
+  const [approvedIds,  setApprovedIds]  = useState<Set<string>>(new Set())
+
+  const [adminTeamId,  setAdminTeamId]  = useState<string | null>(null)
+  const [tab,          setTab]          = useState<'mine' | 'approve'>('mine')
+  const [half,         setHalf]         = useState<'front' | 'back'>('front')
+  const [saving,       setSaving]       = useState<number | null>(null)
+  const [approving,    setApproving]    = useState<number | null>(null)
+  const [teamPick,     setTeamPick]     = useState('')
+  const [settingTeam,  setSettingTeam]  = useState(false)
+
+  // ── Load ────────────────────────────────────────────────────
+
+  useEffect(() => { loadAllTeams() }, [])
+  useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId])
+  useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
 
   useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  useEffect(() => {
-    if (!selectedTeam) return
-    fetchScores(selectedTeam)
-
-    const sub = supabase.channel('scores-realtime')
+    const sub = supabase.channel('scores-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => {
-        fetchScores(selectedTeam)
+        if (myTeamId) loadPlayerData(myTeamId)
+        if (adminTeamId) loadAdminScores(adminTeamId)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, () => {
+        if (myTeamId) loadPlayerData(myTeamId)
       })
       .subscribe()
-
     return () => { supabase.removeChannel(sub) }
-  }, [selectedTeam])
+  }, [myTeamId, adminTeamId])
 
-  const fetchTeams = async () => {
+  const loadAllTeams = async () => {
     const { data } = await supabase
       .from('teams')
       .select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)')
-    if (data?.length) {
-      setTeams(data)
-      setSelectedTeam(data[0].id)
+    if (data) {
+      setAllTeams(data)
+      if (isAdmin && data.length) setAdminTeamId(data[0].id)
     }
   }
 
-  const fetchScores = async (teamId: string) => {
-    const { data } = await supabase.from('scores').select('*').eq('team_id', teamId)
-    const map: Record<number, number> = {}
-    for (const s of data ?? []) map[s.hole] = s.score
-    setScores(map)
-  }
+  const loadPlayerData = async (teamId: string) => {
+    const { data: t } = await supabase
+      .from('teams')
+      .select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)')
+      .eq('id', teamId).single()
+    if (t) setMyTeam(t)
 
-  const saveScore = useCallback(async (hole: number, score: number) => {
-    if (!selectedTeam || score < 1) return
-    setSaving(hole)
-    const existing = scores[hole]
+    const { data: fs } = await supabase
+      .from('foursomes')
+      .select('team_a_id, team_b_id')
+      .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+      .maybeSingle()
 
-    if (existing !== undefined) {
-      const { data: rows } = await supabase.from('scores').select('id').eq('team_id', selectedTeam).eq('hole', hole).single()
-      if (rows) {
-        await supabase.from('scores').update({ score }).eq('id', rows.id)
-      }
+    const partnerId = fs
+      ? (fs.team_a_id === teamId ? fs.team_b_id : fs.team_a_id)
+      : null
+
+    if (partnerId) {
+      const { data: pt } = await supabase
+        .from('teams')
+        .select('*, player1:players!teams_p1_id_fkey(*), player2:players!teams_p2_id_fkey(*)')
+        .eq('id', partnerId).single()
+      if (pt) setPartnerTeam(pt)
+    }
+
+    const [myRes, partnerRes] = await Promise.all([
+      supabase.from('scores').select('id, hole, score').eq('team_id', teamId),
+      partnerId
+        ? supabase.from('scores').select('id, hole, score').eq('team_id', partnerId)
+        : Promise.resolve({ data: [] as ScoreRow[] }),
+    ])
+
+    const myMap: Record<number, ScoreRow> = {}
+    for (const s of myRes.data ?? []) myMap[s.hole] = s
+    setMyScores(myMap)
+
+    const partnerMap: Record<number, ScoreRow> = {}
+    for (const s of (partnerRes as any).data ?? []) partnerMap[s.hole] = s
+    setPartnerScores(partnerMap)
+
+    const allIds = [
+      ...Object.values(myMap).map(s => s.id),
+      ...Object.values(partnerMap).map(s => s.id),
+    ].filter(Boolean)
+
+    if (allIds.length) {
+      const { data: approvals } = await supabase
+        .from('score_approvals').select('score_id').in('score_id', allIds)
+      setApprovedIds(new Set((approvals ?? []).map((a: any) => a.score_id)))
     } else {
-      await supabase.from('scores').insert({ team_id: selectedTeam, hole, score })
+      setApprovedIds(new Set())
     }
-
-    setScores(prev => ({ ...prev, [hole]: score }))
-    setSaving(null)
-  }, [selectedTeam, scores])
-
-  const adjust = (hole: number, delta: number) => {
-    const cur = scores[hole] ?? HOLE_PARS[hole - 1]
-    const next = Math.max(1, cur + delta)
-    setScores(prev => ({ ...prev, [hole]: next }))
-    saveScore(hole, next)
   }
 
-  const holes = half === 'front' ? Array.from({ length: 9 }, (_, i) => i + 1) : Array.from({ length: 9 }, (_, i) => i + 10)
-  const allScores = Object.values(scores)
-  const gross = allScores.reduce((a, b) => a + b, 0)
-  const thru = allScores.length
-  const toPar = gross - HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
-  const toParStr = toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}`
+  const loadAdminScores = async (teamId: string) => {
+    const { data } = await supabase.from('scores').select('id, hole, score').eq('team_id', teamId)
+    const map: Record<number, ScoreRow> = {}
+    for (const s of data ?? []) map[s.hole] = s
+    setAdminScores(map)
+    if (data?.length) {
+      const { data: approvals } = await supabase
+        .from('score_approvals').select('score_id').in('score_id', data.map(s => s.id))
+      setApprovedIds(prev => new Set([...prev, ...(approvals ?? []).map((a: any) => a.score_id)]))
+    }
+  }
 
-  const selectedTeamObj = teams.find(t => t.id === selectedTeam)
+  // ── Actions ─────────────────────────────────────────────────
+
+  const adjustMyScore = async (hole: number, delta: number) => {
+    if (!myTeamId) return
+    const cur  = myScores[hole]?.score ?? HOLE_PARS[hole - 1]
+    const next = Math.max(1, cur + delta)
+    setSaving(hole)
+    const existing = myScores[hole]
+    if (existing?.id) {
+      await supabase.from('scores').update({ score: next }).eq('id', existing.id)
+      setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
+    } else {
+      const { data } = await supabase.from('scores')
+        .insert({ team_id: myTeamId, hole, score: next }).select('id').single()
+      if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next } }))
+    }
+    setSaving(null)
+  }
+
+  const adjustAdminScore = async (hole: number, delta: number) => {
+    if (!adminTeamId) return
+    const cur  = adminScores[hole]?.score ?? HOLE_PARS[hole - 1]
+    const next = Math.max(1, cur + delta)
+    setSaving(hole)
+    const existing = adminScores[hole]
+    if (existing?.id) {
+      await supabase.from('scores').update({ score: next }).eq('id', existing.id)
+      setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
+    } else {
+      const { data } = await supabase.from('scores')
+        .insert({ team_id: adminTeamId, hole, score: next }).select('id').single()
+      if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next } }))
+    }
+    setSaving(null)
+  }
+
+  const approveScore = async (scoreRow: ScoreRow, hole: number) => {
+    if (!myTeamId) return
+    setApproving(hole)
+    const { error } = await supabase.from('score_approvals').insert({
+      score_id: scoreRow.id,
+      approving_team_id: myTeamId,
+    })
+    if (!error) setApprovedIds(prev => new Set([...prev, scoreRow.id]))
+    setApproving(null)
+  }
+
+  const claimTeam = async () => {
+    if (!teamPick || !profile) return
+    setSettingTeam(true)
+    await supabase.from('profiles').update({ team_id: teamPick }).eq('id', profile.id)
+    setSettingTeam(false)
+    window.location.reload()
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────
+
+  const holes = half === 'front'
+    ? Array.from({ length: 9 }, (_, i) => i + 1)
+    : Array.from({ length: 9 }, (_, i) => i + 10)
+
+  const pageHeader = (
+    <div style={{ marginBottom: 20 }}>
+      <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
+      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Best ball — one score per hole per team</p>
+    </div>
+  )
+
+  const HoleCard = ({
+    hole, scoreRow, approved, isSaving, onMinus, onPlus, right,
+  }: {
+    hole: number
+    scoreRow: ScoreRow | undefined
+    approved: boolean
+    isSaving: boolean
+    onMinus?: () => void
+    onPlus?: () => void
+    right?: React.ReactNode
+  }) => {
+    const par      = HOLE_PARS[hole - 1]
+    const score    = scoreRow?.score
+    const hasScore = score !== undefined
+    const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
+    const locked   = approved
+
+    return (
+      <div className="glass animate-fadeUp" style={{
+        padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 16,
+        opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
+      }}>
+        <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{hole}</div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
+        </div>
+
+        {/* status badge */}
+        {onMinus !== undefined ? (
+          <div style={{ flex: 1 }}>
+            {hasScore && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                {approved
+                  ? <><CheckCircle size={11} style={{ color: '#4ade80' }} /><span style={{ color: '#4ade80' }}>Approved</span></>
+                  : <><Clock size={11} style={{ color: 'rgba(255,255,255,0.3)' }} /><span style={{ color: 'rgba(255,255,255,0.3)' }}>Awaiting approval</span></>
+                }
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ flex: 1 }} />
+        )}
+
+        <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
+          {hasScore ? score : '—'}
+        </div>
+
+        {/* stepper buttons OR custom right element */}
+        {onMinus !== undefined ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={onMinus}
+              disabled={isSaving || locked || (hasScore && score <= 1)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                color: locked ? 'rgba(255,255,255,0.2)' : '#fff',
+                cursor: locked ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            ><Minus size={14} /></button>
+            <button
+              onClick={onPlus}
+              disabled={isSaving || locked}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: locked ? 'rgba(255,255,255,0.04)' : 'rgba(252,181,20,0.15)',
+                border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : 'rgba(252,181,20,0.3)'}`,
+                color: locked ? 'rgba(255,255,255,0.2)' : '#FCB514',
+                cursor: locked ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            ><Plus size={14} /></button>
+          </div>
+        ) : (
+          <div style={{ minWidth: 110, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+            {right}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── No team ──────────────────────────────────────────────────
+  if (!isAdmin && !myTeamId) {
+    return (
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+        {pageHeader}
+        <div className="glass animate-fadeUp" style={{ padding: 32, textAlign: 'center' }}>
+          <div style={{ margin: '0 auto 16px', width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.06)', borderRadius: '50%' }}>
+            <Users size={24} style={{ color: 'rgba(255,255,255,0.3)' }} />
+          </div>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600, marginBottom: 6 }}>You're not assigned to a team yet</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>Pick your team to start entering scores</p>
+          <select value={teamPick} onChange={e => setTeamPick(e.target.value)} style={{ marginBottom: 16 }}>
+            <option value="">— Select your team —</option>
+            {allTeams.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name}{(t.player1 || t.player2) ? ` — ${[t.player1?.name, t.player2?.name].filter(Boolean).join(' & ')}` : ''}
+              </option>
+            ))}
+          </select>
+          <button className="btn-gold" onClick={claimTeam} disabled={!teamPick || settingTeam}>
+            {settingTeam ? 'Saving…' : 'This is my team'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Admin view ───────────────────────────────────────────────
+  if (isAdmin) {
+    const adminTeam = allTeams.find(t => t.id === adminTeamId)
+    const stats = adminTeam ? calcStats(adminScores) : null
+
+    return (
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+        {pageHeader}
+
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
+          {allTeams.map(t => (
+            <button key={t.id} onClick={() => { setAdminTeamId(t.id); setAdminScores({}) }}
+              className={`pill-tab ${adminTeamId === t.id ? 'active' : ''}`}>{t.name}</button>
+          ))}
+        </div>
+
+        {adminTeam && stats && (
+          <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{adminTeam.name}</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                {[adminTeam.player1?.name, adminTeam.player2?.name].filter(Boolean).join(' & ')}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: stats.toPar <= 0 ? '#FCB514' : '#fff' }}>{stats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {(['front', 'back'] as const).map(h => (
+            <button key={h} onClick={() => setHalf(h)} className={`pill-tab ${half === h ? 'active' : ''}`}>
+              {h === 'front' ? 'Front 9 (1–9)' : 'Back 9 (10–18)'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {holes.map(hole => (
+            <HoleCard
+              key={hole}
+              hole={hole}
+              scoreRow={adminScores[hole]}
+              approved={adminScores[hole] ? approvedIds.has(adminScores[hole].id) : false}
+              isSaving={saving === hole}
+              onMinus={() => adjustAdminScore(hole, -1)}
+              onPlus={() => adjustAdminScore(hole, 1)}
+            />
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
+          <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
+          Scores sync in real-time to all connected devices
+        </div>
+      </div>
+    )
+  }
+
+  // ── Player view ───────────────────────────────────────────────
+  const myStats = calcStats(myScores)
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Best ball — one score per hole per team</p>
-      </div>
+      {pageHeader}
 
-      {/* Team selector */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
-        {teams.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setSelectedTeam(t.id)}
-            className={`pill-tab ${selectedTeam === t.id ? 'active' : ''}`}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Selected team info + totals */}
-      {selectedTeamObj && (
-        <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      {/* My team summary */}
+      {myTeam && (
+        <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{selectedTeamObj.name}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Your Team</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{myTeam.name}</div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-              {[selectedTeamObj.player1?.name, selectedTeamObj.player2?.name].filter(Boolean).join(' & ')}
+              {[myTeam.player1?.name, myTeam.player2?.name].filter(Boolean).join(' & ')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: toPar <= 0 ? '#FCB514' : '#fff' }}>{toParStr}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{gross || '—'}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{thru}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div>
-            </div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: myStats.toPar <= 0 ? '#FCB514' : '#fff' }}>{myStats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
           </div>
         </div>
       )}
 
-      {/* Front / Back toggle */}
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setTab('mine')} className={`pill-tab ${tab === 'mine' ? 'active' : ''}`}>
+          My Scores
+        </button>
+        {partnerTeam ? (
+          <button onClick={() => setTab('approve')} className={`pill-tab ${tab === 'approve' ? 'active' : ''}`}>
+            Approve · {partnerTeam.name}
+          </button>
+        ) : (
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', padding: '0 8px' }}>
+            No foursome assigned yet
+          </span>
+        )}
+      </div>
+
+      {/* Front / Back */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {(['front', 'back'] as const).map(h => (
-          <button
-            key={h}
-            onClick={() => setHalf(h)}
-            className={`pill-tab ${half === h ? 'active' : ''}`}
-          >
+          <button key={h} onClick={() => setHalf(h)} className={`pill-tab ${half === h ? 'active' : ''}`}>
             {h === 'front' ? 'Front 9 (1–9)' : 'Back 9 (10–18)'}
           </button>
         ))}
       </div>
 
-      {/* Hole cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {holes.map(hole => {
-          const par = HOLE_PARS[hole - 1]
-          const score = scores[hole]
-          const hasScore = score !== undefined
-          const cls = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
+      {/* MY SCORES */}
+      {tab === 'mine' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {holes.map(hole => {
+            const row = myScores[hole]
+            const approved = row ? approvedIds.has(row.id) : false
+            return (
+              <HoleCard
+                key={hole}
+                hole={hole}
+                scoreRow={row}
+                approved={approved}
+                isSaving={saving === hole}
+                onMinus={() => adjustMyScore(hole, -1)}
+                onPlus={() => adjustMyScore(hole, 1)}
+              />
+            )
+          })}
+        </div>
+      )}
 
-          return (
-            <div key={hole} className="glass animate-fadeUp" style={{
-              padding: '14px 20px',
-              display: 'flex', alignItems: 'center', gap: 16,
-              opacity: saving === hole ? 0.7 : 1,
-              transition: 'opacity 0.2s',
-            }}>
-              <div style={{ width: 36, textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{hole}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
-              </div>
-
-              <div style={{ flex: 1 }} />
-
-              {/* Score bubble */}
-              <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
-                {hasScore ? score : '—'}
-              </div>
-
-              {/* +/- buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  onClick={() => adjust(hole, -1)}
-                  disabled={saving === hole || (hasScore && score <= 1)}
-                  style={{
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Minus size={14} />
-                </button>
-                <button
-                  onClick={() => adjust(hole, 1)}
-                  disabled={saving === hole}
-                  style={{
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: 'rgba(252,181,20,0.15)',
-                    border: '1px solid rgba(252,181,20,0.3)',
-                    color: '#FCB514', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
+      {/* APPROVE PARTNER */}
+      {tab === 'approve' && partnerTeam && (
+        <>
+          <div className="glass" style={{ padding: '12px 16px', marginBottom: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Playing With</div>
+            <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{partnerTeam.name}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              {[partnerTeam.player1?.name, partnerTeam.player2?.name].filter(Boolean).join(' & ')}
             </div>
-          )
-        })}
-      </div>
+          </div>
 
-      {/* Live indicator */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {holes.map(hole => {
+              const row      = partnerScores[hole]
+              const hasScore = row?.score !== undefined
+              const approved = row ? approvedIds.has(row.id) : false
+
+              return (
+                <HoleCard
+                  key={hole}
+                  hole={hole}
+                  scoreRow={row}
+                  approved={approved}
+                  isSaving={false}
+                  right={
+                    !hasScore ? (
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>Not entered</span>
+                    ) : approved ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4ade80', fontSize: 13 }}>
+                        <CheckCircle size={14} /><span>Approved</span>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn-outline"
+                        onClick={() => approveScore(row, hole)}
+                        disabled={approving === hole}
+                        style={{ padding: '6px 16px', fontSize: 12 }}
+                      >
+                        {approving === hole ? '…' : 'Approve'}
+                      </button>
+                    )
+                  }
+                />
+              )
+            })}
+          </div>
+        </>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
         <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
         Scores sync in real-time to all connected devices
