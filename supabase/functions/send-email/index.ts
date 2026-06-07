@@ -31,14 +31,12 @@ serve(async (req) => {
     if (!authHeader) return json({ error: 'Unauthorized - no header' }, 401)
 
     const token = authHeader.replace('Bearer ', '')
-    const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    })
-    const { data: { user }, error: userErr } = await anonClient.auth.getUser(token)
+    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    const { data: { user }, error: userErr } = await adminClient.auth.getUser(token)
     console.log('[auth] user:', user?.id ?? null, 'err:', userErr?.message ?? null)
     if (!user) return json({ error: 'Unauthorized - no user', detail: userErr?.message }, 401)
 
-    const { data: caller } = await anonClient.from('profiles').select('role').eq('id', user.id).single()
+    const { data: caller } = await adminClient.from('profiles').select('role').eq('id', user.id).single()
     console.log('[auth] caller role:', caller?.role)
     if (caller?.role !== 'admin') return json({ error: 'Forbidden' }, 403)
 
