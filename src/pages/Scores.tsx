@@ -7,9 +7,9 @@ import { Minus, Plus, Users } from 'lucide-react'
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 type TeamFull = Team & { player1?: Player; player2?: Player }
-type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null }
+type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
 
-const SCORE_SELECT = 'id, hole, score, drive_used_id'
+const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
@@ -105,8 +105,8 @@ export default function Scores() {
       setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
     } else {
       const { data } = await supabase.from('scores')
-        .insert({ team_id: myTeamId, hole, score: next }).select('id, drive_used_id').single()
-      if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id } }))
+        .insert({ team_id: myTeamId, hole, score: next }).select('id, drive_used_id, putts').single()
+      if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
     setSaving(null)
   }
@@ -122,8 +122,8 @@ export default function Scores() {
       setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
     } else {
       const { data } = await supabase.from('scores')
-        .insert({ team_id: adminTeamId, hole, score: next }).select('id, drive_used_id').single()
-      if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id } }))
+        .insert({ team_id: adminTeamId, hole, score: next }).select('id, drive_used_id, putts').single()
+      if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
     setSaving(null)
   }
@@ -142,6 +142,22 @@ export default function Scores() {
     const newId = existing.drive_used_id === playerId ? null : playerId
     await supabase.from('scores').update({ drive_used_id: newId }).eq('id', existing.id)
     setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
+  }
+
+  const setMyPutts = async (hole: number, putts: number) => {
+    const existing = myScores[hole]
+    if (!existing?.id) return
+    const newPutts = existing.putts === putts ? null : putts
+    await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
+    setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
+  }
+
+  const setAdminPutts = async (hole: number, putts: number) => {
+    const existing = adminScores[hole]
+    if (!existing?.id) return
+    const newPutts = existing.putts === putts ? null : putts
+    await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
+    setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
   }
 
   const countDrives = (pid: string | null, from: number, to: number, scoreMap: Record<number, ScoreRow>) => {
@@ -177,7 +193,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -188,12 +204,14 @@ export default function Scores() {
     player2?: Player
     onSetDrive?: (playerId: string) => void
     driveDisabled?: Record<string, boolean>
+    onSetPutts?: (putts: number) => void
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
     const hasScore = score !== undefined
     const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
     const driveId  = scoreRow?.drive_used_id ?? null
+    const putts    = scoreRow?.putts ?? null
 
     return (
       <div className="glass animate-fadeUp" style={{
@@ -262,6 +280,34 @@ export default function Scores() {
                       transition: 'all 0.15s',
                     }}>
                     {p.name.split(' ')[0]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Putts selector — shown whenever a score exists */}
+        {hasScore && onSetPutts && (
+          <div style={{
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {[1, 2, 3, 4, 5].map(n => {
+                const active = putts === n
+                return (
+                  <button key={n} onClick={() => onSetPutts(n)} style={{
+                    width: 32, height: 28, borderRadius: 6,
+                    fontSize: 13, fontWeight: 700, border: '1px solid',
+                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
+                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                    {n}
                   </button>
                 )
               })}
@@ -418,6 +464,7 @@ export default function Scores() {
                   player2={ap2}
                   onSetDrive={(pid) => setAdminDrive(hole, pid)}
                   driveDisabled={driveDisabled}
+                  onSetPutts={(n) => setAdminPutts(hole, n)}
                 />
               )
             })
@@ -493,6 +540,7 @@ export default function Scores() {
                 player2={mp2}
                 onSetDrive={(pid) => setMyDrive(hole, pid)}
                 driveDisabled={driveDisabled}
+                onSetPutts={(n) => setMyPutts(hole, n)}
               />
             )
           })
