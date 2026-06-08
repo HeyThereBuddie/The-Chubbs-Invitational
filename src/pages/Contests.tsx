@@ -107,6 +107,12 @@ export default function Contests() {
       photo_url = urlData.publicUrl
     }
 
+    // Replace any existing entry for this player + contest type
+    await supabase.from('contest_entries')
+      .delete()
+      .eq('type', tab)
+      .eq('player_id', form.player_id)
+
     const { error } = await supabase.from('contest_entries').insert({
       type: tab,
       player_id: form.player_id,
@@ -184,52 +190,6 @@ export default function Contests() {
       {/* ── CTP / LD ─────────────────────────────────────────────── */}
       {(tab === 'ctp' || tab === 'ld') && (
         <>
-          {leader && (
-            <div className="glass animate-fadeUp" style={{ marginBottom: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
-              {leader.photo_url && !photoErr ? (
-                <div style={{ position: 'relative', height: 300, overflow: 'hidden' }}>
-                  <img
-                    src={leader.photo_url}
-                    alt=""
-                    onError={() => setPhotoErr(true)}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                  {/* gradient overlay */}
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
-                  }} />
-                  {/* top badge */}
-                  <div style={{
-                    position: 'absolute', top: 12, left: 14,
-                    background: 'rgba(252,181,20,0.18)', backdropFilter: 'blur(6px)',
-                    border: '1px solid rgba(252,181,20,0.4)', borderRadius: 999,
-                    padding: '4px 12px', fontSize: 11, fontWeight: 700,
-                    color: '#FCB514', letterSpacing: 1, textTransform: 'uppercase',
-                  }}>
-                    {tab === 'ctp' ? '🎯' : '💥'} Current Leader
-                  </div>
-                  {/* bottom name */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 18px' }}>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: 20, textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>
-                      {leader.player && displayName(leader.player)}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'rgba(252,181,20,0.8)', marginTop: 2 }}>
-                      {formatDistanceToNow(new Date(leader.created_at), { addSuffix: true })}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ fontSize: 28 }}>{tab === 'ctp' ? '🎯' : '💥'}</span>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
-                    <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
             <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 14, fontSize: 14 }}>
@@ -245,10 +205,18 @@ export default function Contests() {
                 </select>
               </div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6 }}>Photo (optional)</label>
+                <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6 }}>
+                  Photo (optional){!form.player_id && <span style={{ marginLeft: 6, color: 'rgba(255,255,255,0.2)' }}>— select a player first</span>}
+                </label>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
                   onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
-                <button type="button" className="btn-ghost" onClick={() => fileRef.current?.click()}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={!form.player_id}
+                  onClick={() => fileRef.current?.click()}
+                  style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed' }}
+                >
                   <Upload size={13} /> {photo ? photo.name : 'Upload Photo'}
                 </button>
               </div>
@@ -287,6 +255,51 @@ export default function Contests() {
               </div>
             ))}
           </div>
+
+          {/* Leader photo — shown at bottom */}
+          {leader && (
+            <div className="glass animate-fadeUp" style={{ marginTop: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
+              {leader.photo_url && !photoErr ? (
+                <div style={{ position: 'relative', height: 460, overflow: 'hidden' }}>
+                  <img
+                    src={leader.photo_url}
+                    alt=""
+                    onError={() => setPhotoErr(true)}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)',
+                  }} />
+                  <div style={{
+                    position: 'absolute', top: 12, left: 14,
+                    background: 'rgba(252,181,20,0.18)', backdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(252,181,20,0.4)', borderRadius: 999,
+                    padding: '4px 12px', fontSize: 11, fontWeight: 700,
+                    color: '#FCB514', letterSpacing: 1, textTransform: 'uppercase',
+                  }}>
+                    {tab === 'ctp' ? '🎯' : '💥'} Current Leader's Shot
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 18px' }}>
+                    <div style={{ fontWeight: 800, color: '#fff', fontSize: 20, textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>
+                      {leader.player && displayName(leader.player)}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(252,181,20,0.8)', marginTop: 2 }}>
+                      {formatDistanceToNow(new Date(leader.created_at), { addSuffix: true })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 28 }}>{tab === 'ctp' ? '🎯' : '💥'}</span>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
+                    <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
