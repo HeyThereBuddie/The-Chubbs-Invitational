@@ -1,10 +1,10 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { CHUBBS_QUOTES } from '../../lib/types'
+import { CHUBBS_QUOTES, displayName } from '../../lib/types'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users,
-  Mail, Target, Megaphone, Shield, LogOut
+  Mail, Target, Megaphone, Shield, LogOut, UserCircle
 } from 'lucide-react'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
@@ -17,6 +17,7 @@ const playerNav = [
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/updates', icon: Megaphone, label: 'Updates' },
+  { to: '/account', icon: UserCircle, label: 'My Account' },
 ]
 
 const adminExtra = [
@@ -134,13 +135,15 @@ export default function Sidebar() {
         borderTop: '1px solid rgba(252,181,20,0.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{profile?.name ?? 'Player'}</div>
+        <Link to="/account" style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {profile ? displayName(profile) : 'Player'}
+          </div>
           <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', textTransform: 'uppercase', letterSpacing: 1 }}>
             {profile?.role ?? 'player'}
           </div>
-        </div>
-        <button onClick={signOut} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }} title="Sign out">
+        </Link>
+        <button onClick={signOut} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4, flexShrink: 0 }} title="Sign out">
           <LogOut size={16} />
         </button>
       </div>

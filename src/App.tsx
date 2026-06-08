@@ -13,6 +13,7 @@ import RSVPLanding from './pages/RSVPLanding'
 import Contests from './pages/Contests'
 import Updates from './pages/Updates'
 import AdminPanel from './pages/AdminPanel'
+import AccountPage from './pages/AccountPage'
 
 function Spinner() {
   return (
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/updates" element={<ProtectedRoute><Layout><Updates /></Layout></ProtectedRoute>} />
 <Route path="/rsvp" element={<ProtectedRoute adminOnly><Layout><RSVP /></Layout></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
+      <Route path="/account" element={<ProtectedRoute><Layout><AccountPage /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

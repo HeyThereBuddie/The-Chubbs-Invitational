@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
+import { UserCircle } from 'lucide-react'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
@@ -46,7 +48,9 @@ export default function Layout({ children }: { children: ReactNode }) {
                 Annual Golf Tournament
               </div>
             </div>
-            <div style={{ fontSize: 18, opacity: 0.4 }}>⛳</div>
+            <Link to="/account" style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center' }}>
+              <UserCircle size={22} />
+            </Link>
           </header>
           <main style={{ flex: 1, padding: '20px 16px', paddingBottom: 80 }}>
             {children}
