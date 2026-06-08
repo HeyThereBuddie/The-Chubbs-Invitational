@@ -14,6 +14,7 @@ import Contests from './pages/Contests'
 import Updates from './pages/Updates'
 import AdminPanel from './pages/AdminPanel'
 import AccountPage from './pages/AccountPage'
+import MyTeamPage from './pages/MyTeamPage'
 
 function Spinner() {
   return (
@@ -41,6 +42,7 @@ function AppRoutes() {
       <Route path="/rsvp-landing" element={<RSVPLanding />} />
 
       <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+      <Route path="/my-team" element={<ProtectedRoute><Layout><MyTeamPage /></Layout></ProtectedRoute>} />
       <Route path="/scores" element={<ProtectedRoute><Layout><Scores /></Layout></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
       <Route path="/tee-times" element={<ProtectedRoute><Layout><TeeTimes /></Layout></ProtectedRoute>} />

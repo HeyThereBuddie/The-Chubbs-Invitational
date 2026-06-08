@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
-  LayoutDashboard, ClipboardList, Trophy, Clock, Users,
+  LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
   Mail, Target, Megaphone, Shield
 } from 'lucide-react'
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
+  { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/tee-times', icon: Clock, label: 'Tees' },

@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { CHUBBS_QUOTES, displayName } from '../../lib/types'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, ClipboardList, Trophy, Clock, Users,
+  LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
   Mail, Target, Megaphone, Shield, LogOut, UserCircle
 } from 'lucide-react'
 
@@ -11,6 +11,7 @@ const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/C
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { to: '/tee-times', icon: Clock, label: 'Tee Times' },
