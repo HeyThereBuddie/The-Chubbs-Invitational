@@ -21,6 +21,7 @@ export default function Contests() {
   const [photo,          setPhoto]          = useState<File | null>(null)
   const [submitting,     setSubmitting]     = useState(false)
   const [photoErr,       setPhotoErr]       = useState(false)
+  const [lightbox,       setLightbox]       = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Lahey state — separate player list so it's always all active players
@@ -170,12 +171,55 @@ export default function Contests() {
   const leaderId = entries[0]?.id
   useEffect(() => { setPhotoErr(false) }, [leaderId])
 
+  // close lightbox on Escape
+  useEffect(() => {
+    if (!lightbox) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [lightbox])
+
   // ── Render ───────────────────────────────────────────────────
 
   const leader = entries[0]
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      {/* ── Lightbox ── */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out',
+            padding: 16,
+          }}
+        >
+          <img
+            src={lightbox}
+            alt=""
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '100%', maxHeight: '100%',
+              objectFit: 'contain',
+              borderRadius: 12,
+              boxShadow: '0 8px 60px rgba(0,0,0,0.8)',
+            }}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', fontSize: 20, lineHeight: 1,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >×</button>
+        </div>
+      )}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Contests</h1>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Closest to Pin, Longest Drive & The Lahey</p>
@@ -247,10 +291,10 @@ export default function Contests() {
                   </div>
                 </div>
                 {entry.photo_url && (
-                  <a href={entry.photo_url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-                    <img src={entry.photo_url} alt="Entry photo"
+                  <div onClick={() => setLightbox(entry.photo_url!)} style={{ flexShrink: 0, cursor: 'zoom-in' }}>
+                    <img src={entry.photo_url} alt=""
                       style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: `1px solid ${i === 0 ? 'rgba(252,181,20,0.4)' : 'rgba(255,255,255,0.1)'}`, display: 'block' }} />
-                  </a>
+                  </div>
                 )}
               </div>
             ))}
@@ -260,7 +304,10 @@ export default function Contests() {
           {leader && (
             <div className="glass animate-fadeUp" style={{ marginTop: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
               {leader.photo_url && !photoErr ? (
-                <div style={{ position: 'relative', height: 460, overflow: 'hidden' }}>
+                <div
+                  style={{ position: 'relative', height: 460, overflow: 'hidden', cursor: 'zoom-in' }}
+                  onClick={() => setLightbox(leader.photo_url!)}
+                >
                   <img
                     src={leader.photo_url}
                     alt=""
