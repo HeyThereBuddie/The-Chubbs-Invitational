@@ -68,7 +68,7 @@ export default function RSVP() {
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = 'chubbs-invitational-brevo.csv'
+    a.download = 'chubbs-memorial-brevo.csv'
     a.click()
     URL.revokeObjectURL(url)
     showToast(`Exported ${exportable.length} players for Brevo`)

@@ -90,7 +90,7 @@ export default function AuthPage() {
             <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, color: '#FCB514', textShadow: '0 0 20px rgba(252,181,20,0.5)', margin: 0 }}>
-            The Chubbs Invitational
+            The Chubbs Memorial
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 4 }}>
             It's all in the hips

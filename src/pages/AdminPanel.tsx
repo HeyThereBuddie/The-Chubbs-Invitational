@@ -160,7 +160,7 @@ export default function AdminPanel() {
   const ADMIN_CODE    = import.meta.env.VITE_ADMIN_CODE    ?? 'CHUBS_ADMIN'
   const WAITLIST_CODE = import.meta.env.VITE_WAITLIST_CODE ?? 'CHUBS_WAITLIST'
 
-  const playerInvite = `Hey! You're invited to The Chubbs Invitational golf tournament. Sign up at ${window.location.origin} using invite code: ${PLAYER_CODE}
+  const playerInvite = `Hey! You're invited to The Chubbs Memorial golf tournament. Sign up at ${window.location.origin} using invite code: ${PLAYER_CODE}
 
 Format: Best Ball
 Dress code: Business casual on the course
@@ -168,7 +168,7 @@ Questions? Reply to this message.
 
 "It's all in the hips." — Chubbs Peterson`
 
-  const adminInvite = `Hey! You've been given admin access to The Chubbs Invitational app. Sign up at ${window.location.origin} using the admin invite code (ask me separately for security).
+  const adminInvite = `Hey! You've been given admin access to The Chubbs Memorial app. Sign up at ${window.location.origin} using the admin invite code (ask me separately for security).
 
 You'll have full control over RSVP, tee times, pairings, and announcements.`
 

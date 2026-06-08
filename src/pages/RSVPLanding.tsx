@@ -74,7 +74,7 @@ export default function RSVPLanding() {
             <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#FCB514', letterSpacing: 3, margin: 0 }}>
-            The Chubbs Invitational
+            The Chubbs Memorial
           </h1>
           <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 4 }}>
             {COURSE_NAME} • {TOURNAMENT_DATE}

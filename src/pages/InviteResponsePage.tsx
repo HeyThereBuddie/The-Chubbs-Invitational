@@ -74,7 +74,7 @@ export default function InviteResponsePage() {
             </div>
             <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
               Your spot is confirmed. Get your hips loose and your swing ready —
-              The Chubbs Invitational is coming in mid-to-late August 2025.
+              The Chubbs Memorial is coming in mid-to-late August 2025.
             </p>
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontStyle: 'italic' }}>
               "You're gonna be a golf legend." — Chubbs Peterson
@@ -119,7 +119,7 @@ export default function InviteResponsePage() {
 
         <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid rgba(252,181,20,0.1)' }}>
           <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 14, letterSpacing: 3, color: 'rgba(252,181,20,0.4)' }}>
-            THE CHUBBS INVITATIONAL
+            THE CHUBBS MEMORIAL
           </div>
         </div>
       </div>

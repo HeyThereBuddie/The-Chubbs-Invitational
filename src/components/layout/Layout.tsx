@@ -42,7 +42,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
-                The Chubbs Invitational
+                The Chubbs Memorial
               </div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>
                 Annual Golf Tournament
