@@ -38,6 +38,9 @@ export default function Scores() {
   const [myTeam,      setMyTeam]      = useState<TeamFull | null>(null)
   const [myScores,    setMyScores]    = useState<Record<number, ScoreRow>>({})
   const [adminScores, setAdminScores] = useState<Record<number, ScoreRow>>({})
+  const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
+  const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
+  const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
   const [adminTeamId, setAdminTeamId] = useState<string | null>(null)
   const [half,        setHalf]        = useState<'front' | 'back'>('front')
@@ -45,20 +48,32 @@ export default function Scores() {
   const [teamPick,    setTeamPick]    = useState('')
   const [settingTeam, setSettingTeam] = useState(false)
 
-  const myTeamIdRef = useRef<string | undefined>(undefined)
+  const myTeamIdRef      = useRef<string | undefined>(undefined)
+  const viewingTeamIdRef = useRef<string | null>(null)
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
+  useEffect(() => { viewingTeamIdRef.current = viewingTeamId }, [viewingTeamId])
 
   // ── Load ────────────────────────────────────────────────────
 
   useEffect(() => { loadAllTeams() }, [])
   useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
+  // Default view to own team on first load; switch to other teams for read-only browse
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (myTeamId && !viewingTeamId) setViewingTeamId(myTeamId) }, [myTeamId])
+  useEffect(() => {
+    if (!viewingTeamId || viewingTeamId === myTeamId) return
+    loadViewTeam(viewingTeamId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewingTeamId, myTeamId])
 
   useEffect(() => {
     const sub = supabase.channel('scores-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => {
         if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
         if (adminTeamId) loadAdminScores(adminTeamId)
+        const vId = viewingTeamIdRef.current
+        if (vId && vId !== myTeamIdRef.current) loadViewTeam(vId)
       })
       .subscribe()
     return () => { supabase.removeChannel(sub) }
@@ -92,6 +107,17 @@ export default function Scores() {
     const map: Record<number, ScoreRow> = {}
     for (const s of data ?? []) map[s.hole] = s
     setAdminScores(map)
+  }
+
+  const loadViewTeam = async (teamId: string) => {
+    const [{ data: t }, { data: s }] = await Promise.all([
+      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('id', teamId).single(),
+      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+    ])
+    if (t) setViewTeam(t as unknown as TeamFull)
+    const map: Record<number, ScoreRow> = {}
+    for (const row of s ?? []) map[row.hole] = row
+    setViewScores(map)
   }
 
   // ── Actions ─────────────────────────────────────────────────
@@ -195,18 +221,19 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, readOnly,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
     isSaving: boolean
-    onMinus: () => void
-    onPlus: () => void
+    onMinus?: () => void
+    onPlus?: () => void
     player1?: Player
     player2?: Player
     onSetDrive?: (playerId: string) => void
     driveDisabled?: Record<string, boolean>
     onSetPutts?: (putts: number) => void
+    readOnly?: boolean
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
@@ -231,32 +258,49 @@ export default function Scores() {
             {hasScore ? score : '—'}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={onMinus}
-              disabled={isSaving || (hasScore && score <= 1)}
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            ><Minus size={14} /></button>
-            <button
-              onClick={onPlus}
-              disabled={isSaving}
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)',
-                color: '#FCB514', cursor: isSaving ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            ><Plus size={14} /></button>
-          </div>
+          {!readOnly && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={onMinus}
+                disabled={isSaving || (hasScore && score <= 1)}
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              ><Minus size={14} /></button>
+              <button
+                onClick={onPlus}
+                disabled={isSaving}
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)',
+                  color: '#FCB514', cursor: isSaving ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              ><Plus size={14} /></button>
+            </div>
+          )}
         </div>
 
-        {/* Drive selector — shown whenever a score exists */}
-        {hasScore && player1 && player2 && onSetDrive && (
+        {/* Read-only drive/putts summary */}
+        {readOnly && hasScore && (scoreRow?.drive_used_id || scoreRow?.putts != null) && (
+          <div style={{ marginTop: 8, display: 'flex', gap: 14 }}>
+            {scoreRow?.drive_used_id && (player1 || player2) && (() => {
+              const driver = [player1, player2].find(p => p?.id === scoreRow.drive_used_id)
+              return driver ? (
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Drive: {displayName(driver)}</span>
+              ) : null
+            })()}
+            {scoreRow?.putts != null && (
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Putts: {scoreRow.putts}</span>
+            )}
+          </div>
+        )}
+
+        {/* Drive selector — shown whenever a score exists and editable */}
+        {!readOnly && hasScore && player1 && player2 && onSetDrive && (
           <div style={{
             marginTop: 10, paddingTop: 10,
             borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -289,8 +333,8 @@ export default function Scores() {
           </div>
         )}
 
-        {/* Putts selector — shown whenever a score exists */}
-        {hasScore && onSetPutts && (
+        {/* Putts selector — shown whenever a score exists and editable */}
+        {!readOnly && hasScore && onSetPutts && (
           <div style={{
             marginTop: 10, paddingTop: 10,
             borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -492,27 +536,58 @@ export default function Scores() {
 
   // ── Player view ───────────────────────────────────────────────
 
-  const myStats = calcStats(myScores)
+  const isViewingMyTeam = viewingTeamId === myTeamId
+  const displayTeam   = isViewingMyTeam ? myTeam   : viewTeam
+  const displayScores = isViewingMyTeam ? myScores : viewScores
+  const displayStats  = calcStats(displayScores)
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {pageHeader}
 
-      {myTeam && (
+      {/* Team tabs — browse all scorecards; own team is editable, others are read-only */}
+      {allTeams.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
+          {allTeams.map(t => (
+            <button key={t.id} onClick={() => setViewingTeamId(t.id)}
+              className={`pill-tab ${viewingTeamId === t.id ? 'active' : ''}`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <span>{t.name}{t.id === myTeamId ? ' ⭐' : ''}</span>
+              {(t.player1 || t.player2) && (
+                <span style={{ fontSize: 9, opacity: 0.55, whiteSpace: 'nowrap' }}>
+                  {[t.player1 && displayName(t.player1), t.player2 && displayName(t.player2)].filter(Boolean).join(' & ')}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Team header */}
+      {displayTeam && (
         <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Your Team</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{myTeam.name}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>
+              {isViewingMyTeam ? 'Your Team' : 'Viewing'}
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{displayTeam.name}</div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-              {[myTeam.player1 && displayName(myTeam.player1), myTeam.player2 && displayName(myTeam.player2)].filter(Boolean).join(' & ')}
+              {[displayTeam.player1 && displayName(displayTeam.player1), displayTeam.player2 && displayName(displayTeam.player2)].filter(Boolean).join(' & ')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: myStats.toPar <= 0 ? '#FCB514' : '#fff' }}>{myStats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{myStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Putts</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: displayStats.toPar <= 0 ? '#FCB514' : '#fff' }}>{displayStats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{displayStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{displayStats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{displayStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Putts</div></div>
           </div>
+        </div>
+      )}
+
+      {!isViewingMyTeam && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <span style={{ fontSize: 13 }}>👁</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Read-only — you can only edit your own scorecard</span>
         </div>
       )}
 
@@ -524,38 +599,53 @@ export default function Scores() {
         ))}
       </div>
 
-      <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />
+      {/* Drive counter only for own team */}
+      {isViewingMyTeam && <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {(() => {
-          const hFrom = half === 'front' ? 1 : 10
-          const hTo   = half === 'front' ? 9 : 18
-          const mp1   = myTeam?.player1
-          const mp2   = myTeam?.player2
-          const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
-          const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
-          return holes.map(hole => {
-            const driveId = myScores[hole]?.drive_used_id ?? null
-            const driveDisabled: Record<string, boolean> = {
-              ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
-              ...(mp2 ? { [mp2.id]: p2n >= 5 && driveId !== mp2.id } : {}),
-            }
-            return (
-              <HoleCard
-                key={hole}
-                hole={hole}
-                scoreRow={myScores[hole]}
-                isSaving={saving === hole}
-                onMinus={() => adjustMyScore(hole, -1)}
-                onPlus={() => adjustMyScore(hole, 1)}
-                player1={mp1}
-                player2={mp2}
-                onSetDrive={(pid) => setMyDrive(hole, pid)}
-                driveDisabled={driveDisabled}
-                onSetPutts={(n) => setMyPutts(hole, n)}
-              />
-            )
-          })
+          if (isViewingMyTeam) {
+            const hFrom = half === 'front' ? 1 : 10
+            const hTo   = half === 'front' ? 9 : 18
+            const mp1   = myTeam?.player1
+            const mp2   = myTeam?.player2
+            const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
+            const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
+            return holes.map(hole => {
+              const driveId = myScores[hole]?.drive_used_id ?? null
+              const driveDisabled: Record<string, boolean> = {
+                ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
+                ...(mp2 ? { [mp2.id]: p2n >= 5 && driveId !== mp2.id } : {}),
+              }
+              return (
+                <HoleCard
+                  key={hole}
+                  hole={hole}
+                  scoreRow={myScores[hole]}
+                  isSaving={saving === hole}
+                  onMinus={() => adjustMyScore(hole, -1)}
+                  onPlus={() => adjustMyScore(hole, 1)}
+                  player1={mp1}
+                  player2={mp2}
+                  onSetDrive={(pid) => setMyDrive(hole, pid)}
+                  driveDisabled={driveDisabled}
+                  onSetPutts={(n) => setMyPutts(hole, n)}
+                />
+              )
+            })
+          }
+          // Read-only view for another team
+          return holes.map(hole => (
+            <HoleCard
+              key={hole}
+              hole={hole}
+              scoreRow={viewScores[hole]}
+              isSaving={false}
+              player1={viewTeam?.player1}
+              player2={viewTeam?.player2}
+              readOnly
+            />
+          ))
         })()}
       </div>
 
