@@ -22,7 +22,7 @@
     @media only screen and (max-width: 620px) {
       .email-wrapper  { width: 100% !important; }
       .inner-td       { padding: 28px 20px !important; }
-      .hero-img       { height: 220px !important; }
+      .hero-img       { height: 260px !important; }
       .btn-yes, .btn-no { display: block !important; width: 100% !important; text-align: center !important; margin: 0 0 12px 0 !important; }
       .btn-row td     { display: block !important; width: 100% !important; }
       .format-col     { display: block !important; width: 100% !important; padding-bottom: 16px !important; }
@@ -65,23 +65,32 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
   <tr>
     <td style="padding:20px 24px 0;">
-      <div style="position:relative;border-radius:16px;overflow:hidden;height:320px;background:#111;">
-        <!-- Background: golf course / green atmosphere -->
+      <!--
+      ╔══════════════════════════════════════════════════════════════╗
+      ║  IMAGE: To use your own higher-quality photo:               ║
+      ║  1. In Brevo → click the template → HTML Editor            ║
+      ║  2. Click the image icon → Upload to Brevo media library   ║
+      ║  3. Replace the src URL below with the Brevo-hosted URL     ║
+      ║  Recommended: 1200×700px JPG, ideally a Happy Gilmore       ║
+      ║  movie still of Chubbs teaching Happy on the course.        ║
+      ╚══════════════════════════════════════════════════════════════╝
+      -->
+      <div style="position:relative;border-radius:16px;overflow:hidden;height:420px;background:#111;">
         <img
           class="hero-img"
-          src="https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp"
+          src="https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp/revision/latest/scale-to-width-down/1200"
           alt="Chubbs Peterson — Happy Gilmore"
           width="552"
-          style="width:100%;height:320px;object-fit:cover;object-position:top center;display:block;border-radius:16px;"
+          style="width:100%;height:420px;object-fit:cover;object-position:center 20%;display:block;border-radius:16px;"
         />
         <!-- Dark gradient overlay -->
-        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,8,8,0) 20%,rgba(8,8,8,0.85) 100%);border-radius:16px;"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,8,8,0) 30%,rgba(8,8,8,0.88) 100%);border-radius:16px;"></div>
         <!-- Headline over image -->
-        <div style="position:absolute;bottom:24px;left:28px;right:28px;">
-          <p style="font-family:'Bebas Neue',Impact,'Arial Black',sans-serif;font-size:44px;letter-spacing:5px;color:#FCB514;line-height:1;margin:0;text-shadow:0 2px 12px rgba(0,0,0,0.8);">
+        <div style="position:absolute;bottom:28px;left:28px;right:28px;">
+          <p style="font-family:'Bebas Neue',Impact,'Arial Black',sans-serif;font-size:48px;letter-spacing:5px;color:#FCB514;line-height:1;margin:0;text-shadow:0 2px 16px rgba(0,0,0,0.9);">
             THE CHUBBS<br/>INVITATIONAL
           </p>
-          <p style="font-family:'Bebas Neue',Impact,sans-serif;font-size:16px;letter-spacing:4px;color:rgba(255,255,255,0.7);margin:6px 0 0;text-shadow:0 1px 6px rgba(0,0,0,0.9);">
+          <p style="font-family:'Bebas Neue',Impact,sans-serif;font-size:16px;letter-spacing:4px;color:rgba(255,255,255,0.75);margin:8px 0 0;text-shadow:0 1px 8px rgba(0,0,0,0.9);">
             MID – LATE AUGUST 2025
           </p>
         </div>
