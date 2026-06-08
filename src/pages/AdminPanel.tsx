@@ -11,7 +11,7 @@ type EmailType       = 'blast' | 'tee-time' | 'update' | 'welcome'
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite' | 'reset' | 'email'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite' | 'reset' | 'email' | 'brevo'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
@@ -260,6 +260,40 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
 
   const activePlayers = profiles.filter(p => p.status === 'active')
 
+  // ── Brevo sync ────────────────────────────────────────────
+  const BREVO_API_KEY = import.meta.env.VITE_BREVO_API_KEY ?? ''
+  const [brevoSyncing, setBrevoSyncing] = useState(false)
+  const [brevoLastSync, setBrevoLastSync] = useState<{ count: number; at: string } | null>(null)
+
+  const syncToBrevo = async () => {
+    if (!BREVO_API_KEY) { showToast('Add VITE_BREVO_API_KEY to your environment', 'error'); return }
+    setBrevoSyncing(true)
+    const contacts = activePlayers.map(p => ({
+      email: p.email,
+      attributes: {
+        FIRSTNAME: p.nickname?.trim() || p.name,
+        LASTNAME: '',
+        ...(p.phone ? { SMS: p.phone } : {}),
+      },
+    }))
+    try {
+      const res = await fetch('https://api.brevo.com/v3/contacts/import', {
+        method: 'POST',
+        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updateEnabled: true, jsonBody: contacts }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { message?: string }).message ?? `HTTP ${res.status}`)
+      }
+      setBrevoLastSync({ count: contacts.length, at: new Date().toLocaleTimeString() })
+      showToast(`${contacts.length} contacts synced to Brevo ✓`)
+    } catch (e) {
+      showToast((e as Error).message ?? 'Sync failed', 'error')
+    }
+    setBrevoSyncing(false)
+  }
+
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
@@ -275,6 +309,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           { id: 'invite', label: '✉️ Invite' },
           { id: 'reset',  label: '⚠️ Reset' },
           { id: 'email',  label: '📧 Email' },
+          { id: 'brevo',  label: '📣 Brevo' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -818,6 +853,93 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           <div style={{ padding: '14px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7 }}>
             <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Setup required:</strong> Set <code style={{ color: '#FCB514', fontSize: 11 }}>RESEND_API_KEY</code> and <code style={{ color: '#FCB514', fontSize: 11 }}>RESEND_FROM_EMAIL</code> as Supabase Edge Function secrets, then deploy with <code style={{ color: '#FCB514', fontSize: 11 }}>supabase functions deploy send-email</code>.
           </div>
+        </div>
+      )}
+
+      {/* ── Brevo tab ───────────────────────────────────────────── */}
+      {tab === 'brevo' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Status card */}
+          <div className="glass" style={{ padding: '22px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ fontSize: 28 }}>📣</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>Brevo Contact Sync</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                  Push all active players to your Brevo audience for email campaigns
+                </div>
+              </div>
+              <div style={{
+                marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                background: BREVO_API_KEY ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
+                color: BREVO_API_KEY ? '#22c55e' : 'rgba(255,255,255,0.4)',
+                textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0,
+              }}>
+                {BREVO_API_KEY ? '● Connected' : '● Not configured'}
+              </div>
+            </div>
+
+            {/* What gets synced */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {[
+                { label: 'Active players', value: activePlayers.length },
+                { label: 'With email', value: activePlayers.filter(p => p.email).length },
+                { label: 'With phone', value: activePlayers.filter(p => p.phone).length },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#FCB514', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 18, lineHeight: 1.7 }}>
+              Syncs <strong style={{ color: 'rgba(255,255,255,0.6)' }}>name</strong>, <strong style={{ color: 'rgba(255,255,255,0.6)' }}>email</strong>, and <strong style={{ color: 'rgba(255,255,255,0.6)' }}>phone</strong> (if set) for every active player.
+              Existing contacts are updated. Safe to run multiple times.
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <button
+                onClick={syncToBrevo}
+                disabled={brevoSyncing || !BREVO_API_KEY}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                  background: BREVO_API_KEY ? 'rgba(252,181,20,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${BREVO_API_KEY ? 'rgba(252,181,20,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  color: BREVO_API_KEY ? '#FCB514' : 'rgba(255,255,255,0.25)',
+                  cursor: brevoSyncing || !BREVO_API_KEY ? 'not-allowed' : 'pointer',
+                  opacity: brevoSyncing ? 0.6 : 1,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>🔄</span>
+                {brevoSyncing ? 'Syncing…' : `Sync ${activePlayers.length} players to Brevo`}
+              </button>
+              {brevoLastSync && (
+                <span style={{ fontSize: 12, color: '#22c55e' }}>
+                  ✓ Last sync: {brevoLastSync.count} contacts at {brevoLastSync.at}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Setup instructions */}
+          {!BREVO_API_KEY && (
+            <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)', fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8 }}>
+              <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 10 }}>Setup — 2 steps</div>
+              <ol style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li>
+                  Create a free account at <strong style={{ color: 'rgba(255,255,255,0.7)' }}>brevo.com</strong>, then go to{' '}
+                  <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Settings → API Keys → Create a new API key</strong> (Contacts permission is enough).
+                </li>
+                <li>
+                  Add <code style={{ color: '#FCB514', fontSize: 12 }}>VITE_BREVO_API_KEY=your_key_here</code> to your <code style={{ color: '#FCB514', fontSize: 12 }}>.env.local</code> file and to your{' '}
+                  <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Vercel project environment variables</strong>, then redeploy.
+                </li>
+              </ol>
+            </div>
+          )}
         </div>
       )}
     </div>
