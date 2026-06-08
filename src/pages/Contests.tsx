@@ -125,18 +125,23 @@ export default function Contests() {
   }
 
   const castVote = async () => {
-    if (!selected || !profile || myVote) return
+    if (!selected || !profile || selected === myVote) return
     setCasting(true)
-    const { error } = await supabase.from('leahey_votes').insert({
-      voter_id: profile.id,
-      nominee_id: selected,
-    })
-    setCasting(false)
-    if (error) {
-      if (error.code === '23505') showToast('You already voted!', 'error')
-      else showToast(error.message, 'error')
+    let error
+    if (myVote) {
+      // Change existing vote
+      ;({ error } = await supabase.from('leahey_votes')
+        .update({ nominee_id: selected })
+        .eq('voter_id', profile.id))
     } else {
-      showToast('Vote cast! 🍺 The spirits are with you.')
+      // First-time vote
+      ;({ error } = await supabase.from('leahey_votes')
+        .insert({ voter_id: profile.id, nominee_id: selected }))
+    }
+    setCasting(false)
+    if (error) showToast(error.message, 'error')
+    else {
+      showToast(myVote ? 'Vote changed! 🔄 The shitwinds have shifted.' : 'Vote cast! 🍺 The spirits are with you.')
       fetchLaheyData()
     }
   }
@@ -254,7 +259,7 @@ export default function Contests() {
               Mr. Jim Lahey Award
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 10px' }}>
-              Presented to the player who best embodies the spirit of Jim Lahey — simultaneously the drunkest <em>and</em> highest individual on the course. Bonus points if they tried to give a liquor speech on the 9th tee. One vote per person. No take-backs. The shitwinds have spoken.
+              Presented to the player who best embodies the spirit of Jim Lahey — simultaneously the drunkest <em>and</em> highest individual on the course. Bonus points if they tried to give a liquor speech on the 9th tee. One vote per person. You can change it until voting closes.
             </p>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
               "The liquor's calling the shots now, Randy." — Jim Lahey
@@ -282,7 +287,7 @@ export default function Contests() {
             <>
               {myVote && (
                 <div style={{ background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(252,181,20,0.8)' }}>
-                  ✅ Your vote is in. The shitwinds are blowing in their direction.
+                  ✅ Your current vote: <strong>{displayName(laheyPlayers.find(p => p.id === myVote)!)}</strong> — select a different player to change it.
                 </div>
               )}
 
@@ -293,14 +298,13 @@ export default function Contests() {
                   return (
                     <button
                       key={player.id}
-                      onClick={() => { if (!myVote) setSelected(player.id) }}
-                      disabled={!!myVote}
+                      onClick={() => setSelected(player.id)}
                       style={{
                         padding: '12px', borderRadius: 12, border: '1px solid',
                         borderColor: isSelected ? '#FCB514' : 'rgba(255,255,255,0.1)',
                         background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
                         color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'rgba(255,255,255,0.8)',
-                        cursor: myVote ? 'default' : 'pointer',
+                        cursor: 'pointer',
                         fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
                       }}
                     >
@@ -310,16 +314,14 @@ export default function Contests() {
                 })}
               </div>
 
-              {!myVote && (
-                <button
-                  className="btn-gold"
-                  onClick={castVote}
-                  disabled={!selected || casting}
-                  style={{ width: '100%', justifyContent: 'center', marginBottom: 28, fontSize: 16, padding: '14px' }}
-                >
-                  {casting ? 'Casting Vote…' : '🍺 Cast My Vote'}
-                </button>
-              )}
+              <button
+                className="btn-gold"
+                onClick={castVote}
+                disabled={!selected || casting || selected === myVote}
+                style={{ width: '100%', justifyContent: 'center', marginBottom: 28, fontSize: 16, padding: '14px' }}
+              >
+                {casting ? 'Saving…' : myVote ? '🔄 Update My Vote' : '🍺 Cast My Vote'}
+              </button>
             </>
           )}
 
