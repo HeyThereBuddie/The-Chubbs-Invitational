@@ -14,6 +14,9 @@ DELETE FROM public.score_approvals;
 -- Foursomes (references teams)
 DELETE FROM public.foursomes;
 
+-- Chulligans
+DELETE FROM public.chulligans;
+
 -- Scores
 DELETE FROM public.scores;
 

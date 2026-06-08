@@ -9,6 +9,7 @@ const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 type TeamFull = Team & { player1?: Player; player2?: Player }
 type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
+type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back' }
 
 const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
@@ -34,10 +35,12 @@ export default function Scores() {
   const { profile, isAdmin } = useAuth()
   const myTeamId = profile?.team_id ?? undefined
 
-  const [allTeams,    setAllTeams]    = useState<TeamFull[]>([])
-  const [myTeam,      setMyTeam]      = useState<TeamFull | null>(null)
-  const [myScores,    setMyScores]    = useState<Record<number, ScoreRow>>({})
-  const [adminScores, setAdminScores] = useState<Record<number, ScoreRow>>({})
+  const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
+  const [myTeam,           setMyTeam]           = useState<TeamFull | null>(null)
+  const [myScores,         setMyScores]         = useState<Record<number, ScoreRow>>({})
+  const [myChulligans,     setMyChulligans]     = useState<ChulliganRow[]>([])
+  const [adminScores,      setAdminScores]      = useState<Record<number, ScoreRow>>({})
+  const [adminChulligans,  setAdminChulligans]  = useState<ChulliganRow[]>([])
   const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
@@ -68,13 +71,15 @@ export default function Scores() {
   }, [viewingTeamId, myTeamId])
 
   useEffect(() => {
+    const reload = () => {
+      if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
+      if (adminTeamId) loadAdminScores(adminTeamId)
+      const vId = viewingTeamIdRef.current
+      if (vId && vId !== myTeamIdRef.current) loadViewTeam(vId)
+    }
     const sub = supabase.channel('scores-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => {
-        if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
-        if (adminTeamId) loadAdminScores(adminTeamId)
-        const vId = viewingTeamIdRef.current
-        if (vId && vId !== myTeamIdRef.current) loadViewTeam(vId)
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' },     reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chulligans' }, reload)
       .subscribe()
     return () => { supabase.removeChannel(sub) }
   }, [adminTeamId])
@@ -96,17 +101,25 @@ export default function Scores() {
       .eq('id', teamId).single()
     if (t) setMyTeam(t)
 
-    const { data } = await supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId)
+    const [{ data: scores }, { data: ch }] = await Promise.all([
+      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+      supabase.from('chulligans').select('id, player_id, half').eq('team_id', teamId),
+    ])
     const map: Record<number, ScoreRow> = {}
-    for (const s of data ?? []) map[s.hole] = s
+    for (const s of scores ?? []) map[s.hole] = s
     setMyScores(map)
+    setMyChulligans((ch ?? []) as ChulliganRow[])
   }
 
   const loadAdminScores = async (teamId: string) => {
-    const { data } = await supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId)
+    const [{ data: scores }, { data: ch }] = await Promise.all([
+      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+      supabase.from('chulligans').select('id, player_id, half').eq('team_id', teamId),
+    ])
     const map: Record<number, ScoreRow> = {}
-    for (const s of data ?? []) map[s.hole] = s
+    for (const s of scores ?? []) map[s.hole] = s
     setAdminScores(map)
+    setAdminChulligans((ch ?? []) as ChulliganRow[])
   }
 
   const loadViewTeam = async (teamId: string) => {
@@ -200,6 +213,25 @@ export default function Scores() {
     if (!existing?.id) return
     await supabase.from('scores').delete().eq('id', existing.id)
     setAdminScores(prev => { const next = { ...prev }; delete next[hole]; return next })
+  }
+
+  const toggleChulligan = async (
+    teamId: string,
+    playerId: string,
+    half: 'front' | 'back',
+    chulligans: ChulliganRow[],
+    setter: (c: ChulliganRow[]) => void,
+  ) => {
+    const existing = chulligans.find(c => c.player_id === playerId && c.half === half)
+    if (existing) {
+      await supabase.from('chulligans').delete().eq('id', existing.id)
+      setter(chulligans.filter(c => c.id !== existing.id))
+    } else {
+      const { data } = await supabase.from('chulligans')
+        .insert({ team_id: teamId, player_id: playerId, half })
+        .select('id, player_id, half').single()
+      if (data) setter([...chulligans, data as ChulliganRow])
+    }
   }
 
   const countDrives = (pid: string | null, from: number, to: number, scoreMap: Record<number, ScoreRow>) => {
@@ -448,6 +480,61 @@ export default function Scores() {
     )
   }
 
+  // ── ChulliganTracker ─────────────────────────────────────────
+
+  const ChulliganTracker = ({
+    teamId, p1, p2, chulligans, setter,
+  }: {
+    teamId: string
+    p1: Player | undefined
+    p2: Player | undefined
+    chulligans: ChulliganRow[]
+    setter: (c: ChulliganRow[]) => void
+  }) => {
+    if (!p1 || !p2) return null
+    const halves: Array<{ label: string; key: 'front' | 'back' }> = [
+      { label: 'Front 9', key: 'front' },
+      { label: 'Back 9',  key: 'back'  },
+    ]
+    return (
+      <div className="glass" style={{ padding: '12px 16px', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+          🍺 Chulligans — 1 per player per nine (must chug)
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {halves.map(({ label, key }) => (
+            <div key={key}>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>{label}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[p1, p2].map(p => {
+                  const used = chulligans.some(c => c.player_id === p.id && c.half === key)
+                  return (
+                    <button key={p.id}
+                      onClick={() => toggleChulligan(teamId, p.id, key, chulligans, setter)}
+                      style={{
+                        flex: 1, padding: '8px 4px', borderRadius: 8, textAlign: 'center',
+                        background: used ? 'rgba(252,181,20,0.12)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${used ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                        cursor: 'pointer',
+                      }}>
+                      <div style={{ fontSize: 16, lineHeight: 1 }}>{used ? '✅' : '🍺'}</div>
+                      <div style={{ fontSize: 10, marginTop: 4, color: used ? '#FCB514' : 'rgba(255,255,255,0.4)', fontWeight: used ? 700 : 400 }}>
+                        {displayName(p)}
+                      </div>
+                      <div style={{ fontSize: 9, marginTop: 2, color: used ? 'rgba(252,181,20,0.6)' : 'rgba(255,255,255,0.2)' }}>
+                        {used ? 'Used' : 'Available'}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   // ── No team ──────────────────────────────────────────────────
 
   if (!isAdmin && !myTeamId) {
@@ -527,6 +614,7 @@ export default function Scores() {
         </div>
 
         <DriveCounter scoreMap={adminScores} p1={adminTeam?.player1} p2={adminTeam?.player2} />
+        {adminTeamId && <ChulliganTracker teamId={adminTeamId} p1={adminTeam?.player1} p2={adminTeam?.player2} chulligans={adminChulligans} setter={setAdminChulligans} />}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(() => {
@@ -640,8 +728,9 @@ export default function Scores() {
         ))}
       </div>
 
-      {/* Drive counter only for own team */}
+      {/* Drive counter + chulligans only for own team */}
       {isViewingMyTeam && <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />}
+      {isViewingMyTeam && myTeamId && <ChulliganTracker teamId={myTeamId} p1={myTeam?.player1} p2={myTeam?.player2} chulligans={myChulligans} setter={setMyChulligans} />}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {(() => {
