@@ -15,19 +15,20 @@ export default function Contests() {
   const [tab, setTab] = useState<ContestType>('ctp')
 
   // CTP / LD state
-  const [entries, setEntries] = useState<(ContestEntry & { player?: Player })[]>([])
-  const [players, setPlayers] = useState<Player[]>([])
-  const [form, setForm] = useState({ player_id: '' })
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [entries,        setEntries]        = useState<(ContestEntry & { player?: Player })[]>([])
+  const [contestPlayers, setContestPlayers] = useState<Player[]>([])
+  const [form,           setForm]           = useState({ player_id: '' })
+  const [photo,          setPhoto]          = useState<File | null>(null)
+  const [submitting,     setSubmitting]     = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Lahey state
-  const [votes, setVotes] = useState<LeaheyVote[]>([])
-  const [myVote, setMyVote] = useState<string | null>(null)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [casting, setCasting] = useState(false)
-  const [votingOpen, setVotingOpen] = useState(false)
+  // Lahey state — separate player list so it's always all active players
+  const [laheyPlayers, setLaheyPlayers] = useState<Player[]>([])
+  const [votes,        setVotes]        = useState<LeaheyVote[]>([])
+  const [myVote,       setMyVote]       = useState<string | null>(null)
+  const [selected,     setSelected]     = useState<string | null>(null)
+  const [casting,      setCasting]      = useState(false)
+  const [votingOpen,   setVotingOpen]   = useState(false)
 
   useEffect(() => {
     if (tab === 'lahey') {
@@ -71,10 +72,10 @@ export default function Contests() {
         .eq('id', profile.team_id)
         .single()
       const td = teamData as unknown as { player1?: Player; player2?: Player }
-      setPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
+      setContestPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
     } else {
       const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
-      setPlayers(data ?? [])
+      setContestPlayers(data ?? [])
     }
   }
 
@@ -84,7 +85,7 @@ export default function Contests() {
       supabase.from('leahey_votes').select('*'),
       supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single(),
     ])
-    setPlayers(playersRes.data ?? [])
+    setLaheyPlayers(playersRes.data ?? [])
     setVotes(votesRes.data ?? [])
     setVotingOpen(settingsRes.data?.lahey_voting_open ?? false)
   }
@@ -142,7 +143,7 @@ export default function Contests() {
 
   // ── Lahey vote tally helpers ─────────────────────────────────
 
-  const voteCounts = players.reduce<Record<string, number>>((acc, p) => {
+  const voteCounts = laheyPlayers.reduce<Record<string, number>>((acc, p) => {
     acc[p.id] = votes.filter(v => v.nominee_id === p.id).length
     return acc
   }, {})
@@ -150,7 +151,7 @@ export default function Contests() {
   const maxVotes = Math.max(1, ...Object.values(voteCounts))
   const frontrunnerEntry = Object.entries(voteCounts).sort(([, a], [, b]) => b - a)[0]
   const frontrunnerPlayer = frontrunnerEntry && frontrunnerEntry[1] > 0
-    ? players.find(p => p.id === frontrunnerEntry[0])
+    ? laheyPlayers.find(p => p.id === frontrunnerEntry[0])
     : null
 
   // ── Render ───────────────────────────────────────────────────
@@ -193,7 +194,7 @@ export default function Contests() {
                 <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Player *</label>
                 <select value={form.player_id} onChange={e => setForm(f => ({ ...f, player_id: e.target.value }))}>
                   <option value="">Select player</option>
-                  {players.map(p => <option key={p.id} value={p.id}>{displayName(p)}</option>)}
+                  {contestPlayers.map(p => <option key={p.id} value={p.id}>{displayName(p)}</option>)}
                 </select>
               </div>
               <div style={{ marginBottom: 12 }}>
@@ -286,7 +287,7 @@ export default function Contests() {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 20 }}>
-                {players.map(player => {
+                {laheyPlayers.map(player => {
                   const isSelected = selected === player.id
                   const isMyVote   = myVote === player.id
                   return (
@@ -327,7 +328,7 @@ export default function Contests() {
               Live Vote Tally
               <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
             </div>
-            {players
+            {laheyPlayers
               .filter(p => voteCounts[p.id] > 0)
               .sort((a, b) => voteCounts[b.id] - voteCounts[a.id])
               .map((player, i) => {
