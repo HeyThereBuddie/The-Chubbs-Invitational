@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile, Team, Update } from '../lib/types'
 import { displayName } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle, Send } from 'lucide-react'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle, Send, Shuffle } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 type RecipientGroup  = 'active' | 'waitlist' | 'admins'
@@ -97,6 +97,38 @@ export default function AdminPanel() {
     fetchProfiles()
   }
 
+  const resetTeamAssignments = async () => {
+    if (!confirm('Remove all player assignments from every team? Player accounts are kept — only the roster slots are cleared.')) return
+    setResettingTeams(true)
+    await Promise.all([
+      supabase.from('teams').update({ p1_id: null, p2_id: null }).neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000'),
+    ])
+    showToast('All team assignments cleared')
+    setResettingTeams(false)
+    fetchTeams()
+    fetchProfiles()
+  }
+
+  const regenerateTeams = async () => {
+    if (!confirm('Randomly assign all active players to teams?')) return
+    setRegenerating(true)
+    const shuffled = [...activePlayers].sort(() => Math.random() - 0.5)
+    const updates: PromiseLike<unknown>[] = []
+    teams.forEach(team => {
+      const p1 = shuffled.shift() ?? null
+      const p2 = shuffled.shift() ?? null
+      updates.push(supabase.from('teams').update({ p1_id: p1?.id ?? null, p2_id: p2?.id ?? null }).eq('id', team.id))
+      if (p1) updates.push(supabase.from('profiles').update({ team_id: team.id }).eq('id', p1.id))
+      if (p2) updates.push(supabase.from('profiles').update({ team_id: team.id }).eq('id', p2.id))
+    })
+    await Promise.all(updates)
+    showToast('Teams regenerated!')
+    setRegenerating(false)
+    fetchTeams()
+    fetchProfiles()
+  }
+
   // ── User management ──────────────────────────────────────────
 
   const promoteUser = async (id: string) => {
@@ -140,6 +172,8 @@ Questions? Reply to this message.
 
 You'll have full control over RSVP, tee times, pairings, and announcements.`
 
+  const [resettingTeams, setResettingTeams] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [laheyVotingOpen, setLaheyVotingOpen] = useState(false)
@@ -263,6 +297,55 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
               <Plus size={14} /> Create Team
             </button>
           </div>
+
+          {/* Team bulk actions */}
+          {teams.length > 0 && (() => {
+            const teamsReset = teams.every(t => !t.p1_id && !t.p2_id)
+            return (
+              <div className="glass" style={{ padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={resetTeamAssignments}
+                  disabled={resettingTeams || teamsReset}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
+                    background: teamsReset ? 'rgba(255,255,255,0.03)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${teamsReset ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.3)'}`,
+                    color: teamsReset ? 'rgba(255,255,255,0.25)' : '#ef4444',
+                    cursor: resettingTeams || teamsReset ? 'not-allowed' : 'pointer',
+                    opacity: resettingTeams ? 0.6 : 1,
+                  }}
+                >
+                  <RotateCcw size={13} />
+                  {resettingTeams ? 'Clearing…' : teamsReset ? 'Teams Already Reset' : 'Reset Teams'}
+                </button>
+
+                <button
+                  onClick={regenerateTeams}
+                  disabled={regenerating || !teamsReset}
+                  title={!teamsReset ? 'Reset team assignments first before regenerating' : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
+                    background: teamsReset ? 'rgba(252,181,20,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${teamsReset ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                    color: teamsReset ? '#FCB514' : 'rgba(255,255,255,0.2)',
+                    cursor: regenerating || !teamsReset ? 'not-allowed' : 'pointer',
+                    opacity: regenerating ? 0.6 : 1,
+                  }}
+                >
+                  <Shuffle size={13} />
+                  {regenerating ? 'Assigning…' : 'Regenerate Teams'}
+                </button>
+
+                {!teamsReset && (
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+                    Reset teams first to enable regeneration
+                  </span>
+                )}
+              </div>
+            )
+          })()}
 
           {teams.length === 0 && (
             <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
