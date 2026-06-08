@@ -177,7 +177,9 @@ export default function Dashboard() {
             label: 'Leader',
             value: leaders[0] ? toPar(Math.round(leaders[0].toPar)) : '—',
             icon: '🏆',
-            sub: leaders[0]?.team.name ?? 'TBD',
+            sub: leaders[0]
+              ? `${leaders[0].team.name} · ${[leaders[0].team.player1 && displayName(leaders[0].team.player1), leaders[0].team.player2 && displayName(leaders[0].team.player2)].filter(Boolean).join(' & ')}`
+              : 'TBD',
           },
         ].map(({ label, value, icon, sub }) => (
           <div key={label} className="glass" style={{
@@ -228,7 +230,7 @@ export default function Dashboard() {
                     {row.team.name}
                   </div>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-                    {[row.team.player1?.name, row.team.player2?.name].filter(Boolean).join(' & ')}
+                    {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>

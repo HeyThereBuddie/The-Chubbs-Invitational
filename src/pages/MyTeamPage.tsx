@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { displayName, HOLE_PARS } from '../lib/types'
 import type { Team, Player } from '../lib/types'
+import { Pencil, Check, X } from 'lucide-react'
 
 type ScoreRow = { hole: number; score: number; putts: number | null; drive_used_id: string | null }
 
@@ -91,6 +92,21 @@ export default function MyTeamPage() {
   const [team, setTeam] = useState<Team | null>(null)
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  async function saveName() {
+    if (!team) return
+    const trimmed = nameInput.trim()
+    if (!trimmed || trimmed === team.name) { setEditingName(false); return }
+    setSaving(true)
+    const { error } = await supabase.from('teams').update({ name: trimmed }).eq('id', team.id)
+    if (!error) setTeam({ ...team, name: trimmed })
+    setSaving(false)
+    setEditingName(false)
+  }
 
   useEffect(() => {
     if (!profile?.team_id) { setLoading(false); return }
@@ -140,10 +156,43 @@ export default function MyTeamPage() {
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4, margin: 0 }}>
-          {team.name}
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginTop: 4 }}>
+        {editingName ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <input
+              ref={nameInputRef}
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false) }}
+              maxLength={50}
+              autoFocus
+              style={{
+                fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: '#FCB514',
+                background: 'rgba(252,181,20,0.07)', border: '1px solid rgba(252,181,20,0.4)',
+                borderRadius: 8, padding: '4px 12px', outline: 'none', minWidth: 0, flex: 1,
+              }}
+            />
+            <button onClick={saveName} disabled={saving} title="Save" style={{ background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#FCB514', display: 'flex', alignItems: 'center' }}>
+              <Check size={16} />
+            </button>
+            <button onClick={() => setEditingName(false)} title="Cancel" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center' }}>
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4, margin: 0 }}>
+              {team.name}
+            </h1>
+            <button
+              onClick={() => { setNameInput(team.name); setEditingName(true) }}
+              title="Rename team"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(252,181,20,0.35)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+            >
+              <Pencil size={14} />
+            </button>
+          </div>
+        )}
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, margin: 0 }}>
           {players.map(p => displayName(p)).join(' & ')}
         </p>
       </div>

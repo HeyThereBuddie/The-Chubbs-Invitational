@@ -410,7 +410,15 @@ export default function Scores() {
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
           {allTeams.map(t => (
             <button key={t.id} onClick={() => { setAdminTeamId(t.id); setAdminScores({}) }}
-              className={`pill-tab ${adminTeamId === t.id ? 'active' : ''}`}>{t.name}</button>
+              className={`pill-tab ${adminTeamId === t.id ? 'active' : ''}`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <span>{t.name}</span>
+              {(t.player1 || t.player2) && (
+                <span style={{ fontSize: 9, opacity: 0.55, whiteSpace: 'nowrap' }}>
+                  {[t.player1 && displayName(t.player1), t.player2 && displayName(t.player2)].filter(Boolean).join(' & ')}
+                </span>
+              )}
+            </button>
           ))}
         </div>
 
