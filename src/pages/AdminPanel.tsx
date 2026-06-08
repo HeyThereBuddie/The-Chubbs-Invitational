@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile, Team, Update } from '../lib/types'
+import { displayName } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle, Send } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
@@ -302,7 +303,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
                               value={p.id}
                               disabled={p.id === otherSlot}
                             >
-                              {p.name}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}
+                              {displayName(p)}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}
                             </option>
                           ))}
                         </select>
@@ -322,7 +323,14 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           {profiles.map(p => (
             <div key={p.id} className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 160 }}>
-                <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{p.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{p.name}</span>
+                  {p.nickname && (
+                    <span style={{ fontSize: 12, color: '#FCB514', background: 'rgba(252,181,20,0.1)', padding: '1px 8px', borderRadius: 999 }}>
+                      "{p.nickname}"
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{p.email}</div>
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -351,6 +359,14 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
                 ) : (
                   <button onClick={() => demoteUser(p.id)} className="btn-ghost" title="Demote to player" style={{ padding: '6px 10px' }}>
                     <ShieldOff size={13} color="rgba(255,255,255,0.4)" />
+                  </button>
+                )}
+                {p.nickname && (
+                  <button
+                    onClick={() => supabase.from('profiles').update({ nickname: null }).eq('id', p.id).then(() => fetchProfiles())}
+                    className="btn-ghost" title="Clear nickname" style={{ padding: '6px 10px', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}
+                  >
+                    ✕ nick
                   </button>
                 )}
                 <button onClick={() => removeUser(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px', color: 'rgba(239,68,68,0.6)' }}>
@@ -669,7 +685,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
                     <input type="checkbox" checked={emailPlayers.has(p.id)} onChange={() => togglePlayer(p.id)}
                       style={{ width: 'auto', accentColor: '#FCB514' }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: '#fff' }}>{p.name}</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#fff' }}>{displayName(p)}</div>
                       <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{p.email}</div>
                     </div>
                     <div style={{

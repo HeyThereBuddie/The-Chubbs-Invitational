@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR } from '../lib/types'
+import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -136,7 +136,7 @@ export default function Dashboard() {
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Welcome back</div>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
-              {profile?.name ?? 'Player'}
+              {profile ? displayName(profile) : 'Player'}
             </div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
               {profile?.role}

@@ -3,6 +3,7 @@ export type Role = 'admin' | 'player'
 export interface Profile {
   id: string
   name: string
+  nickname: string | null
   email: string
   role: Role
   handicap: number | null
@@ -12,6 +13,10 @@ export interface Profile {
   shirt_size: string | null
   notes: string | null
   phone: string | null
+}
+
+export function displayName(p: Pick<Profile, 'name' | 'nickname'>): string {
+  return (p.nickname?.trim()) || p.name
 }
 
 // Profile IS the player — one unified record per person

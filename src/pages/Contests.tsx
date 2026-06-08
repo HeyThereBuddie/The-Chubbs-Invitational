@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
+import { displayName } from '../lib/types'
 import { Target, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -163,7 +164,7 @@ export default function Contests() {
               <span style={{ fontSize: 28 }}>{tab === 'ctp' ? '🎯' : '💥'}</span>
               <div>
                 <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
-                <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player?.name}</div>
+                <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Hole {leader.hole}</div>
               </div>
             </div>
@@ -180,7 +181,7 @@ export default function Contests() {
                   <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Player *</label>
                   <select value={form.player_id} onChange={e => setForm(f => ({ ...f, player_id: e.target.value }))}>
                     <option value="">Select player</option>
-                    {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {players.map(p => <option key={p.id} value={p.id}>{displayName(p)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -217,7 +218,7 @@ export default function Contests() {
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{entry.player?.name}</div>
+                  <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{entry.player && displayName(entry.player)}</div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
                     Hole {entry.hole} • {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
                   </div>
@@ -257,7 +258,7 @@ export default function Contests() {
               <span style={{ fontSize: 28 }}>👑</span>
               <div>
                 <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Front-Runner</div>
-                <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{frontrunnerPlayer.name}</div>
+                <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{displayName(frontrunnerPlayer)}</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{frontrunnerEntry[1]} vote{frontrunnerEntry[1] !== 1 ? 's' : ''}</div>
               </div>
             </div>
@@ -295,7 +296,7 @@ export default function Contests() {
                         fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
                       }}
                     >
-                      {isMyVote && '✅ '}{player.name}
+                      {isMyVote && '✅ '}{displayName(player)}
                     </button>
                   )
                 })}
@@ -329,7 +330,7 @@ export default function Contests() {
                   <div key={player.id} style={{ padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#FCB514' : '#fff' }}>
-                        {i === 0 ? '👑 ' : ''}{player.name}
+                        {i === 0 ? '👑 ' : ''}{displayName(player)}
                       </span>
                       <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
                     </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import type { Team, Player } from '../lib/types'
+import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
@@ -280,7 +281,7 @@ export default function Scores() {
                       opacity: disabled ? 0.3 : 1,
                       transition: 'all 0.15s',
                     }}>
-                    {p.name.split(' ')[0]}
+                    {displayName(p)}
                   </button>
                 )
               })}
@@ -344,7 +345,7 @@ export default function Scores() {
               <div key={label}>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>{label}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {[{ name: p1.name.split(' ')[0], count: p1c }, { name: p2.name.split(' ')[0], count: p2c }].map(({ name, count }) => {
+                  {[{ name: displayName(p1), count: p1c }, { name: displayName(p2), count: p2c }].map(({ name, count }) => {
                     const ok = count >= 4
                     return (
                       <div key={name} style={{
@@ -384,7 +385,7 @@ export default function Scores() {
             <option value="">— Select your team —</option>
             {allTeams.map(t => (
               <option key={t.id} value={t.id}>
-                {t.name}{(t.player1 || t.player2) ? ` — ${[t.player1?.name, t.player2?.name].filter(Boolean).join(' & ')}` : ''}
+                {t.name}{(t.player1 || t.player2) ? ` — ${[t.player1 && displayName(t.player1), t.player2 && displayName(t.player2)].filter(Boolean).join(' & ')}` : ''}
               </option>
             ))}
           </select>
@@ -418,7 +419,7 @@ export default function Scores() {
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{adminTeam.name}</div>
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-                {[adminTeam.player1?.name, adminTeam.player2?.name].filter(Boolean).join(' & ')}
+                {[adminTeam.player1 && displayName(adminTeam.player1), adminTeam.player2 && displayName(adminTeam.player2)].filter(Boolean).join(' & ')}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
@@ -495,7 +496,7 @@ export default function Scores() {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Your Team</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{myTeam.name}</div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-              {[myTeam.player1?.name, myTeam.player2?.name].filter(Boolean).join(' & ')}
+              {[myTeam.player1 && displayName(myTeam.player1), myTeam.player2 && displayName(myTeam.player2)].filter(Boolean).join(' & ')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
-import { COURSE_PAR } from '../lib/types'
+import { COURSE_PAR, displayName } from '../lib/types'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
@@ -119,7 +119,7 @@ export default function Leaderboard() {
                       {row.team.name}
                     </div>
                     <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}>
-                      {[row.team.player1?.name, row.team.player2?.name].filter(Boolean).join(' & ')}
+                      {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                     </div>
                   </div>
 

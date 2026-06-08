@@ -8,7 +8,7 @@ export default function AuthPage() {
   const { showToast } = useToast()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', code: '', handicap: '' })
+  const [form, setForm] = useState({ name: '', nickname: '', email: '', password: '', code: '', handicap: '' })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -46,10 +46,13 @@ export default function AuthPage() {
       },
     })
 
-    // Update handicap on the profile right after creation if provided
-    if (!error && data.user && form.handicap) {
+    // Update optional fields on the profile right after creation
+    if (!error && data.user && (form.handicap || form.nickname.trim())) {
       await supabase.from('profiles')
-        .update({ handicap: +form.handicap })
+        .update({
+          ...(form.handicap ? { handicap: +form.handicap } : {}),
+          ...(form.nickname.trim() ? { nickname: form.nickname.trim() } : {}),
+        })
         .eq('id', data.user.id)
     }
 
@@ -118,6 +121,13 @@ export default function AuthPage() {
                 type="text" placeholder="Your Name"
                 value={form.name} onChange={e => set('name', e.target.value)}
                 required
+              />
+            )}
+            {mode === 'register' && (
+              <input
+                type="text" placeholder='Nickname (optional, e.g. "Big Easy")'
+                value={form.nickname} onChange={e => set('nickname', e.target.value)}
+                maxLength={30}
               />
             )}
             <input
