@@ -282,6 +282,34 @@ export default function AccountPage() {
         </div>
       </div>
 
+      {/* ── Tournament RSVP ── */}
+      {profile.invite_response && (
+        <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 14 }}>
+            Tournament RSVP
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ fontSize: 36 }}>{profile.invite_response === 'yes' ? '⛳' : '😔'}</div>
+            <div>
+              <div style={{
+                fontSize: 15, fontWeight: 700,
+                color: profile.invite_response === 'yes' ? '#22c55e' : '#ef4444',
+              }}>
+                {profile.invite_response === 'yes' ? 'You\'re In — see you on the course!' : 'You declined this year\'s tournament'}
+              </div>
+              {profile.invite_response_at && (
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+                  Responded {new Date(profile.invite_response_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 6 }}>
+                To change your response, contact the organizer.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Password ── */}
       {user?.app_metadata?.provider !== 'google' && (
         <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>

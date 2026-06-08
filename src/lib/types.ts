@@ -13,6 +13,9 @@ export interface Profile {
   notes: string | null
   phone: string | null
   avatar_url: string | null
+  invite_token: string | null
+  invite_response: 'yes' | 'no' | null
+  invite_response_at: string | null
 }
 
 export function displayName(p: Pick<Profile, 'name' | 'nickname'>): string {
