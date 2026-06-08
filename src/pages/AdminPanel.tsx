@@ -189,33 +189,21 @@ export default function AdminPanel() {
   const activePlayers = profiles.filter(p => p.status === 'active')
 
   // ── Brevo sync ────────────────────────────────────────────
-  const BREVO_API_KEY = import.meta.env.VITE_BREVO_API_KEY ?? ''
   const [brevoSyncing, setBrevoSyncing] = useState(false)
   const [brevoLastSync, setBrevoLastSync] = useState<{ count: number; at: string } | null>(null)
 
   const syncToBrevo = async () => {
-    if (!BREVO_API_KEY) { showToast('Add VITE_BREVO_API_KEY to your environment', 'error'); return }
     setBrevoSyncing(true)
-    const contacts = activePlayers.map(p => ({
-      email: p.email,
-      attributes: {
-        FIRSTNAME: p.nickname?.trim() || p.name,
-        LASTNAME: '',
-        ...(p.phone ? { SMS: p.phone } : {}),
-      },
-    }))
     try {
-      const res = await fetch('https://api.brevo.com/v3/contacts/import', {
-        method: 'POST',
-        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updateEnabled: true, jsonBody: contacts }),
+      const { data: { session } } = await supabase.auth.getSession()
+      const { data, error } = await supabase.functions.invoke('brevo-sync', {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as { message?: string }).message ?? `HTTP ${res.status}`)
-      }
-      setBrevoLastSync({ count: contacts.length, at: new Date().toLocaleTimeString() })
-      showToast(`${contacts.length} contacts synced to Brevo ✓`)
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
+      const count = (data as { synced: number }).synced
+      setBrevoLastSync({ count, at: new Date().toLocaleTimeString() })
+      showToast(`${count} contacts synced to Brevo ✓`)
     } catch (e) {
       showToast((e as Error).message ?? 'Sync failed', 'error')
     }
@@ -597,14 +585,15 @@ export default function AdminPanel() {
                   Push all active players to your Brevo audience for email campaigns
                 </div>
               </div>
-              <div style={{
-                marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                background: BREVO_API_KEY ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
-                color: BREVO_API_KEY ? '#22c55e' : 'rgba(255,255,255,0.4)',
-                textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0,
-              }}>
-                {BREVO_API_KEY ? '● Connected' : '● Not configured'}
-              </div>
+              {brevoLastSync && (
+                <div style={{
+                  marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                  background: 'rgba(34,197,94,0.12)', color: '#22c55e',
+                  textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0,
+                }}>
+                  ● Synced
+                </div>
+              )}
             </div>
 
             {/* What gets synced */}
@@ -629,19 +618,17 @@ export default function AdminPanel() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <button
                 onClick={syncToBrevo}
-                disabled={brevoSyncing || !BREVO_API_KEY}
+                disabled={brevoSyncing}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                  background: BREVO_API_KEY ? 'rgba(252,181,20,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${BREVO_API_KEY ? 'rgba(252,181,20,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                  color: BREVO_API_KEY ? '#FCB514' : 'rgba(255,255,255,0.25)',
-                  cursor: brevoSyncing || !BREVO_API_KEY ? 'not-allowed' : 'pointer',
+                  background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.4)',
+                  color: '#FCB514', cursor: brevoSyncing ? 'not-allowed' : 'pointer',
                   opacity: brevoSyncing ? 0.6 : 1,
                 }}
               >
                 <span style={{ fontSize: 16 }}>🔄</span>
-                {brevoSyncing ? 'Syncing…' : `Sync ${activePlayers.length} players to Brevo`}
+                {brevoSyncing ? 'Syncing…' : `Sync ${activePlayers.length} active players to Brevo`}
               </button>
               {brevoLastSync && (
                 <span style={{ fontSize: 12, color: '#22c55e' }}>
@@ -652,21 +639,20 @@ export default function AdminPanel() {
           </div>
 
           {/* Setup instructions */}
-          {!BREVO_API_KEY && (
-            <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)', fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8 }}>
-              <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 10 }}>Setup — 2 steps</div>
-              <ol style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <li>
-                  Create a free account at <strong style={{ color: 'rgba(255,255,255,0.7)' }}>brevo.com</strong>, then go to{' '}
-                  <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Settings → API Keys → Create a new API key</strong> (Contacts permission is enough).
-                </li>
-                <li>
-                  Add <code style={{ color: '#FCB514', fontSize: 12 }}>VITE_BREVO_API_KEY=your_key_here</code> to your <code style={{ color: '#FCB514', fontSize: 12 }}>.env.local</code> file and to your{' '}
-                  <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Vercel project environment variables</strong>, then redeploy.
-                </li>
-              </ol>
-            </div>
-          )}
+          <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)', fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8 }}>
+            <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 10 }}>One-time setup</div>
+            <ol style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <li>
+                In Brevo: <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Settings → API Keys</strong> → create a key with Contacts permission.
+              </li>
+              <li>
+                In Supabase Dashboard: <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Edge Functions → brevo-sync → Secrets</strong>, add <code style={{ color: '#FCB514', fontSize: 12 }}>BREVO_API_KEY</code>.
+              </li>
+              <li>
+                Deploy the function: <code style={{ color: '#FCB514', fontSize: 12 }}>supabase functions deploy brevo-sync</code>
+              </li>
+            </ol>
+          </div>
         </div>
       )}
     </div>
