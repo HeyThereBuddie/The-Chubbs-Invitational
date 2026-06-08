@@ -20,6 +20,7 @@ export default function Contests() {
   const [form,           setForm]           = useState({ player_id: '' })
   const [photo,          setPhoto]          = useState<File | null>(null)
   const [submitting,     setSubmitting]     = useState(false)
+  const [photoErr,       setPhotoErr]       = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Lahey state — separate player list so it's always all active players
@@ -101,7 +102,7 @@ export default function Contests() {
       const ext = photo.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('contest-photos').upload(path, photo)
-      if (uploadErr) { showToast('Photo upload failed', 'error'); setSubmitting(false); return }
+      if (uploadErr) { showToast(`Photo upload failed: ${uploadErr.message}`, 'error'); setSubmitting(false); return }
       const { data: urlData } = supabase.storage.from('contest-photos').getPublicUrl(path)
       photo_url = urlData.publicUrl
     }
@@ -159,6 +160,10 @@ export default function Contests() {
     ? laheyPlayers.find(p => p.id === frontrunnerEntry[0])
     : null
 
+  // reset photo error state whenever the leader entry changes
+  const leaderId = entries[0]?.id
+  useEffect(() => { setPhotoErr(false) }, [leaderId])
+
   // ── Render ───────────────────────────────────────────────────
 
   const leader = entries[0]
@@ -181,11 +186,12 @@ export default function Contests() {
         <>
           {leader && (
             <div className="glass animate-fadeUp" style={{ marginBottom: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
-              {leader.photo_url ? (
+              {leader.photo_url && !photoErr ? (
                 <div style={{ position: 'relative', height: 300, overflow: 'hidden' }}>
                   <img
                     src={leader.photo_url}
                     alt=""
+                    onError={() => setPhotoErr(true)}
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                   {/* gradient overlay */}
