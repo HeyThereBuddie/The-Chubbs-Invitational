@@ -17,7 +17,7 @@ export default function Contests() {
   // CTP / LD state
   const [entries, setEntries] = useState<(ContestEntry & { player?: Player })[]>([])
   const [players, setPlayers] = useState<Player[]>([])
-  const [form, setForm] = useState({ player_id: '', hole: '1' })
+  const [form, setForm] = useState({ player_id: '' })
   const [photo, setPhoto] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -94,7 +94,7 @@ export default function Contests() {
     const { error } = await supabase.from('contest_entries').insert({
       type: tab,
       player_id: form.player_id,
-      hole: +form.hole,
+      hole: 1,
       distance: '',
       photo_url,
     })
@@ -103,7 +103,7 @@ export default function Contests() {
     if (error) showToast(error.message, 'error')
     else {
       showToast('Entry submitted! 🎯')
-      setForm({ player_id: '', hole: '1' })
+      setForm({ player_id: '' })
       setPhoto(null)
       fetchContestData()
     }
@@ -165,7 +165,6 @@ export default function Contests() {
               <div>
                 <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
                 <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Hole {leader.hole}</div>
               </div>
             </div>
           )}
@@ -176,18 +175,12 @@ export default function Contests() {
               Submit Entry
             </div>
             <form onSubmit={submitContest}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Player *</label>
-                  <select value={form.player_id} onChange={e => setForm(f => ({ ...f, player_id: e.target.value }))}>
-                    <option value="">Select player</option>
-                    {players.map(p => <option key={p.id} value={p.id}>{displayName(p)}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Hole *</label>
-                  <input type="number" min={1} max={18} value={form.hole} onChange={e => setForm(f => ({ ...f, hole: e.target.value }))} />
-                </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Player *</label>
+                <select value={form.player_id} onChange={e => setForm(f => ({ ...f, player_id: e.target.value }))}>
+                  <option value="">Select player</option>
+                  {players.map(p => <option key={p.id} value={p.id}>{displayName(p)}</option>)}
+                </select>
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6 }}>Photo (optional)</label>
@@ -220,7 +213,7 @@ export default function Contests() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{entry.player && displayName(entry.player)}</div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-                    Hole {entry.hole} • {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
                   </div>
                 </div>
                 {entry.photo_url && (
