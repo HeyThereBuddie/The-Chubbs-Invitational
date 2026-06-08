@@ -180,12 +180,48 @@ export default function Contests() {
       {(tab === 'ctp' || tab === 'ld') && (
         <>
           {leader && (
-            <div className="glass animate-fadeUp" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)' }}>
-              <span style={{ fontSize: 28 }}>{tab === 'ctp' ? '🎯' : '💥'}</span>
-              <div>
-                <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
-                <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
-              </div>
+            <div className="glass animate-fadeUp" style={{ marginBottom: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
+              {leader.photo_url ? (
+                <div style={{ position: 'relative' }}>
+                  <img
+                    src={leader.photo_url}
+                    alt="Leader's shot"
+                    style={{ width: '100%', maxHeight: 340, objectFit: 'cover', display: 'block' }}
+                  />
+                  {/* gradient overlay */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+                  }} />
+                  {/* top badge */}
+                  <div style={{
+                    position: 'absolute', top: 12, left: 14,
+                    background: 'rgba(252,181,20,0.18)', backdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(252,181,20,0.4)', borderRadius: 999,
+                    padding: '4px 12px', fontSize: 11, fontWeight: 700,
+                    color: '#FCB514', letterSpacing: 1, textTransform: 'uppercase',
+                  }}>
+                    {tab === 'ctp' ? '🎯' : '💥'} Current Leader
+                  </div>
+                  {/* bottom name */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 18px' }}>
+                    <div style={{ fontWeight: 800, color: '#fff', fontSize: 20, textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>
+                      {leader.player && displayName(leader.player)}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(252,181,20,0.8)', marginTop: 2 }}>
+                      {formatDistanceToNow(new Date(leader.created_at), { addSuffix: true })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 28 }}>{tab === 'ctp' ? '🎯' : '💥'}</span>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
+                    <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -237,8 +273,10 @@ export default function Contests() {
                   </div>
                 </div>
                 {entry.photo_url && (
-                  <img src={entry.photo_url} alt="Entry photo"
-                    style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(252,181,20,0.2)' }} />
+                  <a href={entry.photo_url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+                    <img src={entry.photo_url} alt="Entry photo"
+                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: `1px solid ${i === 0 ? 'rgba(252,181,20,0.4)' : 'rgba(255,255,255,0.1)'}`, display: 'block' }} />
+                  </a>
                 )}
               </div>
             ))}
