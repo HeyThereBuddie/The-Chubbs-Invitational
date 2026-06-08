@@ -541,6 +541,11 @@ export default function Scores() {
   const displayScores = isViewingMyTeam ? myScores : viewScores
   const displayStats  = calcStats(displayScores)
 
+  // Own team always pinned to the left
+  const tabTeams = myTeamId
+    ? [...allTeams].sort((a, b) => (a.id === myTeamId ? -1 : b.id === myTeamId ? 1 : 0))
+    : allTeams
+
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {pageHeader}
@@ -548,7 +553,7 @@ export default function Scores() {
       {/* Team tabs — browse all scorecards; own team is editable, others are read-only */}
       {allTeams.length > 1 && (
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
-          {allTeams.map(t => (
+          {tabTeams.map(t => (
             <button key={t.id} onClick={() => setViewingTeamId(t.id)}
               className={`pill-tab ${viewingTeamId === t.id ? 'active' : ''}`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
