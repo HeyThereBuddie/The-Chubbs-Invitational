@@ -188,6 +188,20 @@ export default function Scores() {
     setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
   }
 
+  const resetMyScore = async (hole: number) => {
+    const existing = myScores[hole]
+    if (!existing?.id) return
+    await supabase.from('scores').delete().eq('id', existing.id)
+    setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
+  }
+
+  const resetAdminScore = async (hole: number) => {
+    const existing = adminScores[hole]
+    if (!existing?.id) return
+    await supabase.from('scores').delete().eq('id', existing.id)
+    setAdminScores(prev => { const next = { ...prev }; delete next[hole]; return next })
+  }
+
   const countDrives = (pid: string | null, from: number, to: number, scoreMap: Record<number, ScoreRow>) => {
     if (!pid) return 0
     let n = 0
@@ -221,7 +235,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, readOnly,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, readOnly,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -233,6 +247,7 @@ export default function Scores() {
     onSetDrive?: (playerId: string) => void
     driveDisabled?: Record<string, boolean>
     onSetPutts?: (putts: number) => void
+    onReset?: () => void
     readOnly?: boolean
   }) => {
     const par      = HOLE_PARS[hole - 1]
@@ -286,6 +301,20 @@ export default function Scores() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               ><Plus size={14} /></button>
+              {hasScore && onReset && (
+                <button
+                  onClick={onReset}
+                  disabled={isSaving}
+                  title="Clear score"
+                  style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'rgba(255,255,255,0.25)', cursor: isSaving ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, lineHeight: 1,
+                  }}
+                >×</button>
+              )}
             </div>
           )}
         </div>
@@ -526,6 +555,7 @@ export default function Scores() {
                   onSetDrive={(pid) => setAdminDrive(hole, pid)}
                   driveDisabled={driveDisabled}
                   onSetPutts={(n) => setAdminPutts(hole, n)}
+                  onReset={() => resetAdminScore(hole)}
                 />
               )
             })
@@ -641,6 +671,7 @@ export default function Scores() {
                   onSetDrive={(pid) => setMyDrive(hole, pid)}
                   driveDisabled={driveDisabled}
                   onSetPutts={(n) => setMyPutts(hole, n)}
+                  onReset={() => resetMyScore(hole)}
                 />
               )
             })
