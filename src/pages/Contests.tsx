@@ -56,12 +56,26 @@ export default function Contests() {
   }, [votes, profile])
 
   const fetchContestData = async () => {
-    const [entriesRes, playersRes] = await Promise.all([
-      supabase.from('contest_entries').select('*, player:profiles(*)').eq('type', tab).order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*').eq('status', 'active').order('name'),
-    ])
-    setEntries(entriesRes.data ?? [])
-    setPlayers(playersRes.data ?? [])
+    const { data: entriesData } = await supabase
+      .from('contest_entries')
+      .select('*, player:profiles(*)')
+      .eq('type', tab)
+      .order('created_at', { ascending: false })
+    setEntries(entriesData ?? [])
+
+    // Only show the current user and their teammate in the player dropdown
+    if (profile?.team_id) {
+      const { data: teamData } = await supabase
+        .from('teams')
+        .select('player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+        .eq('id', profile.team_id)
+        .single()
+      const td = teamData as unknown as { player1?: Player; player2?: Player }
+      setPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
+    } else {
+      const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
+      setPlayers(data ?? [])
+    }
   }
 
   const fetchLaheyData = async () => {
