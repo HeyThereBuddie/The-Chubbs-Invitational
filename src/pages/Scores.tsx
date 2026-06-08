@@ -254,9 +254,15 @@ export default function Scores() {
 
           <div style={{ flex: 1 }} />
 
-          <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
-            {hasScore ? score : '—'}
-          </div>
+          {hasScore ? (
+            <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
+              {score}
+            </div>
+          ) : (
+            <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.13)', fontWeight: 300, lineHeight: 1 }}>—</span>
+            </div>
+          )}
 
           {!readOnly && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
