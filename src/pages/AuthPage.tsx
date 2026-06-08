@@ -59,7 +59,9 @@ export default function AuthPage() {
     setLoading(false)
     if (error) showToast(error.message, 'error')
     else if (status === 'waitlist') showToast("You're on the waitlist! We'll reach out when a spot opens.")
-    else showToast('Account created! Welcome to The Chubbs Invitational 🏌️')
+    else {
+      if (data.user) sessionStorage.setItem('chubbs-new-reg', data.user.id)
+    }
   }
 
   const handleGoogle = async () => {

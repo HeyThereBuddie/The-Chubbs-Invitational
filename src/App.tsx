@@ -15,6 +15,7 @@ import Updates from './pages/Updates'
 import AdminPanel from './pages/AdminPanel'
 import AccountPage from './pages/AccountPage'
 import MyTeamPage from './pages/MyTeamPage'
+import WelcomePage from './pages/WelcomePage'
 
 function Spinner() {
   return (
@@ -38,7 +39,8 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
+      <Route path="/auth" element={user ? <Navigate to={sessionStorage.getItem('chubbs-new-reg') ? '/welcome' : '/'} replace /> : <AuthPage />} />
+      <Route path="/welcome" element={<ProtectedRoute><WelcomePage /></ProtectedRoute>} />
       <Route path="/rsvp-landing" element={<RSVPLanding />} />
 
       <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />

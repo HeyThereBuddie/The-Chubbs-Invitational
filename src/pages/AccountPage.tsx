@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { displayName } from '../lib/types'
 
 export default function AccountPage() {
-  const { profile, user } = useAuth()
+  const { profile, user, refreshProfile } = useAuth()
   const { showToast } = useToast()
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const [profileForm, setProfileForm] = useState({
     nickname: '',
@@ -18,6 +19,8 @@ export default function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingEmail, setSavingEmail] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
   useEffect(() => {
     if (profile) {
@@ -53,6 +56,54 @@ export default function AccountPage() {
     else showToast('Check your new email for a confirmation link.')
   }
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+
+    const objectUrl = URL.createObjectURL(file)
+    setAvatarPreview(objectUrl)
+    setUploadingAvatar(true)
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `${profile.id}/avatar.${ext}`
+
+    const { error: uploadErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+
+    if (uploadErr) {
+      showToast(uploadErr.message, 'error')
+      setAvatarPreview(null)
+      setUploadingAvatar(false)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', profile.id)
+
+    setUploadingAvatar(false)
+    if (updateErr) {
+      showToast(updateErr.message, 'error')
+    } else {
+      await refreshProfile()
+      showToast('Profile photo updated!')
+    }
+  }
+
+  const removeAvatar = async () => {
+    if (!profile?.avatar_url) return
+    setUploadingAvatar(true)
+    await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id)
+    setAvatarPreview(null)
+    await refreshProfile()
+    setUploadingAvatar(false)
+    showToast('Photo removed.')
+  }
+
   const savePassword = async () => {
     if (passwordForm.password.length < 6) {
       showToast('Password must be at least 6 characters', 'error'); return
@@ -81,6 +132,71 @@ export default function AccountPage() {
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginTop: 4 }}>
           {displayName(profile)} · {profile.email}
         </p>
+      </div>
+
+      {/* ── Profile Photo ── */}
+      <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
+          Profile Photo
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%',
+            border: '2px solid rgba(252,181,20,0.35)',
+            overflow: 'hidden', flexShrink: 0,
+            background: 'rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
+          }}>
+            {(avatarPreview || profile.avatar_url) ? (
+              <img
+                src={avatarPreview || profile.avatar_url!}
+                alt="Profile"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={() => setAvatarPreview(null)}
+              />
+            ) : (
+              <span style={{ fontSize: 30, color: 'rgba(255,255,255,0.25)', fontFamily: 'Bebas Neue' }}>
+                {displayName(profile).charAt(0).toUpperCase()}
+              </span>
+            )}
+            {uploadingAvatar && (
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div className="animate-spin" style={{ width: 24, height: 24, border: '2px solid rgba(252,181,20,0.3)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              style={{ display: 'none' }}
+              onChange={handleAvatarChange}
+            />
+            <button
+              className="btn-gold"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploadingAvatar}
+              style={{ fontSize: 13 }}
+            >
+              {uploadingAvatar ? 'Uploading…' : profile.avatar_url ? 'Change Photo' : 'Upload Photo'}
+            </button>
+            {(profile.avatar_url || avatarPreview) && !uploadingAvatar && (
+              <button
+                onClick={removeAvatar}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 12, padding: 0, textAlign: 'left' }}
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Profile info ── */}

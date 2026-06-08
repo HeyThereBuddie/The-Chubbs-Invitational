@@ -12,6 +12,7 @@ export interface Profile {
   status: 'active' | 'waitlist' | 'dropped'
   notes: string | null
   phone: string | null
+  avatar_url: string | null
 }
 
 export function displayName(p: Pick<Profile, 'name' | 'nickname'>): string {
