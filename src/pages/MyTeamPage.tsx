@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, memo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { displayName, HOLE_PARS } from '../lib/types'
@@ -144,8 +144,8 @@ export default function MyTeamPage() {
       supabase
         .from('teams')
         .select(`id, name,
-          player1:profiles!teams_p1_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone),
-          player2:profiles!teams_p2_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone)`)
+          player1:profiles!teams_p1_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone, avatar_url),
+          player2:profiles!teams_p2_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone, avatar_url)`)
         .eq('id', viewingTeamId)
         .single(),
       supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', viewingTeamId),
@@ -325,15 +325,8 @@ export default function MyTeamPage() {
           <div style={{ display: 'grid', gridTemplateColumns: players.length > 1 ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
             {players.map(p => (
               <div key={p.id} className="glass animate-fadeUp" style={{ padding: '22px 20px' }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, rgba(252,181,20,0.3), rgba(252,181,20,0.1))',
-                  border: '2px solid rgba(252,181,20,0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22, fontWeight: 800, color: '#FCB514',
-                  fontFamily: 'Bebas Neue', letterSpacing: 1, marginBottom: 12,
-                }}>
-                  {displayName(p).charAt(0).toUpperCase()}
+                <div style={{ marginBottom: 12 }}>
+                  <AvatarCircle player={p} size={56} />
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 17, color: '#fff', marginBottom: p.nickname ? 2 : 6 }}>
                   {displayName(p)}
@@ -471,6 +464,7 @@ export default function MyTeamPage() {
                             const ok = c >= 4
                             return (
                               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <AvatarCircle player={p} size={22} />
                                 <div style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {displayName(p)}
                                 </div>
@@ -506,8 +500,11 @@ export default function MyTeamPage() {
                       ]
                       return (
                         <>
-                          <div key={p.id + '-name'} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {displayName(p)}
+                          <div key={p.id + '-name'} style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                            <AvatarCircle player={p} size={20} />
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {displayName(p)}
+                            </span>
                           </div>
                           {halves.map(h => {
                             const c = chulligans.find(c => c.player_id === p.id && c.half === h.key)
@@ -568,6 +565,31 @@ export default function MyTeamPage() {
     </div>
   )
 }
+
+const AvatarCircle = memo(function AvatarCircle({ player, size }: { player: Player; size: number }) {
+  const [err, setErr] = useState(false)
+  const hasPhoto = !!player.avatar_url && !err
+  const initial  = displayName(player).charAt(0).toUpperCase()
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      border: '2px solid rgba(252,181,20,0.4)',
+      overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: hasPhoto ? '#111' : 'linear-gradient(135deg, rgba(252,181,20,0.3), rgba(252,181,20,0.1))',
+      fontSize: size * 0.4, fontWeight: 800, color: '#FCB514',
+      fontFamily: 'Bebas Neue', letterSpacing: 1,
+    }}>
+      {hasPhoto ? (
+        <img
+          src={player.avatar_url!}
+          alt={displayName(player)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setErr(true)}
+        />
+      ) : initial}
+    </div>
+  )
+})
 
 function StatChip({ label, value }: { label: string; value: number }) {
   return (
