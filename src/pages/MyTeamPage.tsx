@@ -326,7 +326,7 @@ export default function MyTeamPage() {
             {players.map(p => (
               <div key={p.id} className="glass animate-fadeUp" style={{ padding: '22px 20px' }}>
                 <div style={{ marginBottom: 12 }}>
-                  <AvatarCircle player={p} size={56} />
+                  <AvatarCircle player={p} size={80} />
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 17, color: '#fff', marginBottom: p.nickname ? 2 : 6 }}>
                   {displayName(p)}
