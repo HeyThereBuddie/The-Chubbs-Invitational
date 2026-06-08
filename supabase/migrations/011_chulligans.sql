@@ -7,6 +7,7 @@ CREATE TABLE public.chulligans (
   team_id    uuid        NOT NULL REFERENCES public.teams(id)    ON DELETE CASCADE,
   player_id  uuid        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   half       text        NOT NULL CHECK (half IN ('front', 'back')),
+  hole       int         NOT NULL CHECK (hole BETWEEN 1 AND 18),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (team_id, player_id, half)
 );
