@@ -182,16 +182,16 @@ export default function Contests() {
           {leader && (
             <div className="glass animate-fadeUp" style={{ marginBottom: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
               {leader.photo_url ? (
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', height: 300, overflow: 'hidden' }}>
                   <img
                     src={leader.photo_url}
-                    alt="Leader's shot"
-                    style={{ width: '100%', maxHeight: 340, objectFit: 'cover', display: 'block' }}
+                    alt=""
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                   {/* gradient overlay */}
                   <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
                   }} />
                   {/* top badge */}
                   <div style={{
