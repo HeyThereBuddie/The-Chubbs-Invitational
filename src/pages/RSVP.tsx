@@ -167,11 +167,6 @@ export default function RSVP() {
                       <input type="tel" defaultValue={player.phone ?? ''}
                         onBlur={e => { if (e.target.value !== (player.phone ?? '')) updatePlayer(player.id, { phone: e.target.value || null }) }} />
                     </div>
-                    <div>
-                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Shirt Size</label>
-                      <input type="text" placeholder="e.g. M, L, XL" defaultValue={player.shirt_size ?? ''}
-                        onBlur={e => { if (e.target.value !== (player.shirt_size ?? '')) updatePlayer(player.id, { shirt_size: e.target.value || null }) }} />
-                    </div>
                     <div style={{ gridColumn: '1/-1' }}>
                       <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Notes</label>
                       <input type="text" placeholder="Any notes..." defaultValue={player.notes ?? ''}

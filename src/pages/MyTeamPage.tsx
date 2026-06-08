@@ -113,8 +113,8 @@ export default function MyTeamPage() {
     Promise.all([
       supabase.from('teams').select(`
         id, name,
-        player1:profiles!teams_p1_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, shirt_size, notes, phone),
-        player2:profiles!teams_p2_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, shirt_size, notes, phone)
+        player1:profiles!teams_p1_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone),
+        player2:profiles!teams_p2_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone)
       `).eq('id', profile.team_id).single(),
       supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', profile.team_id),
     ]).then(([{ data: t }, { data: s }]) => {

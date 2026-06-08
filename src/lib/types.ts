@@ -10,7 +10,6 @@ export interface Profile {
   joined_at: string
   team_id: string | null
   status: 'active' | 'waitlist' | 'dropped'
-  shirt_size: string | null
   notes: string | null
   phone: string | null
 }
