@@ -412,6 +412,34 @@ export default function Scores() {
           </div>
         )}
 
+        {/* Putts selector — shown whenever a score exists and editable */}
+        {!readOnly && hasScore && onSetPutts && (
+          <div style={{
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {[0, 1, 2, 3, 4, 5].map(n => {
+                const active = putts === n
+                return (
+                  <button key={n} onClick={() => onSetPutts(n)} style={{
+                    width: 32, height: 28, borderRadius: 6,
+                    fontSize: 13, fontWeight: 700, border: '1px solid',
+                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
+                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                    {n}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Chulligan buttons — one per player, only when editable and score exists */}
         {!readOnly && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -435,34 +463,6 @@ export default function Scores() {
                       textDecoration: usedElsewhere ? 'line-through' : 'none',
                     }}>
                     {usedHere ? '✅' : '🍺'} {displayName(p)}{usedElsewhere ? ` H${myC!.hole}` : ''}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Putts selector — shown whenever a score exists and editable */}
-        {!readOnly && hasScore && onSetPutts && (
-          <div style={{
-            marginTop: 10, paddingTop: 10,
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
-            <div style={{ display: 'flex', gap: 5 }}>
-              {[0, 1, 2, 3, 4, 5].map(n => {
-                const active = putts === n
-                return (
-                  <button key={n} onClick={() => onSetPutts(n)} style={{
-                    width: 32, height: 28, borderRadius: 6,
-                    fontSize: 13, fontWeight: 700, border: '1px solid',
-                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
-                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
-                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}>
-                    {n}
                   </button>
                 )
               })}
