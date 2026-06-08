@@ -5,7 +5,8 @@ import { displayName, HOLE_PARS } from '../lib/types'
 import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
 
-type ScoreRow = { hole: number; score: number; putts: number | null; drive_used_id: string | null }
+type ScoreRow     = { hole: number; score: number; putts: number | null; drive_used_id: string | null }
+type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back'; hole: number }
 
 // ── Bio generator ─────────────────────────────────────────
 const BIO_TEMPLATES = [
@@ -86,15 +87,25 @@ function calcStats(scores: ScoreRow[]) {
 function toParStr(n: number) { return n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}` }
 function toParColor(n: number) { return n < 0 ? '#22c55e' : n > 0 ? '#ef4444' : '#FCB514' }
 
+function scoreColor(score: number, par: number) {
+  const d = score - par
+  if (d <= -2) return '#FCB514'
+  if (d === -1) return '#22c55e'
+  if (d === 0)  return 'rgba(255,255,255,0.65)'
+  if (d === 1)  return '#f59e0b'
+  return '#ef4444'
+}
+
 // ── Component ─────────────────────────────────────────────
 export default function MyTeamPage() {
   const { profile } = useAuth()
-  const [team, setTeam] = useState<Team | null>(null)
-  const [scores, setScores] = useState<ScoreRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [team,       setTeam]       = useState<Team | null>(null)
+  const [scores,     setScores]     = useState<ScoreRow[]>([])
+  const [chulligans, setChulligans] = useState<ChulliganRow[]>([])
+  const [loading,    setLoading]    = useState(true)
   const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [nameInput,   setNameInput]   = useState('')
+  const [saving,      setSaving]      = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   async function saveName() {
@@ -117,11 +128,30 @@ export default function MyTeamPage() {
         player2:profiles!teams_p2_id_fkey(id, name, nickname, email, role, status, handicap, joined_at, team_id, notes, phone)
       `).eq('id', profile.team_id).single(),
       supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', profile.team_id),
-    ]).then(([{ data: t }, { data: s }]) => {
+      supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', profile.team_id),
+    ]).then(([{ data: t }, { data: s }, { data: ch }]) => {
       setTeam(t as unknown as Team)
       setScores((s ?? []) as ScoreRow[])
+      setChulligans((ch ?? []) as ChulliganRow[])
       setLoading(false)
     })
+  }, [profile?.team_id])
+
+  // Real-time: refresh scores + chulligans on any change
+  useEffect(() => {
+    if (!profile?.team_id) return
+    const tid = profile.team_id
+    const sub = supabase.channel('myteam-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `team_id=eq.${tid}` }, async () => {
+        const { data } = await supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', tid)
+        if (data) setScores(data as ScoreRow[])
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chulligans', filter: `team_id=eq.${tid}` }, async () => {
+        const { data } = await supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', tid)
+        if (data) setChulligans(data as ChulliganRow[])
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(sub) }
   }, [profile?.team_id])
 
   if (loading) return (
@@ -138,19 +168,35 @@ export default function MyTeamPage() {
     </div>
   )
 
-  const stats = calcStats(scores)
+  const stats   = calcStats(scores)
   const players = [team.player1, team.player2].filter(Boolean) as Player[]
 
-  const driveCount = (playerId: string) => scores.filter(s => s.drive_used_id === playerId).length
+  const driveCount = (pid: string, from = 1, to = 18) =>
+    scores.filter(s => s.hole >= from && s.hole <= to && s.drive_used_id === pid).length
 
   const breakdown = [
-    { label: '🦅 Eagle', count: stats.eagles, color: '#FCB514' },
-    { label: '🐦 Birdie', count: stats.birdies, color: '#22c55e' },
-    { label: 'Par', count: stats.pars, color: 'rgba(255,255,255,0.6)' },
-    { label: 'Bogey', count: stats.bogeys, color: '#f59e0b' },
-    { label: 'Double+', count: stats.doubles, color: '#ef4444' },
+    { label: '🦅 Eagle',  count: stats.eagles,  color: '#FCB514' },
+    { label: '🐦 Birdie', count: stats.birdies,  color: '#22c55e' },
+    { label: 'Par',        count: stats.pars,     color: 'rgba(255,255,255,0.6)' },
+    { label: 'Bogey',      count: stats.bogeys,   color: '#f59e0b' },
+    { label: 'Double+',    count: stats.doubles,  color: '#ef4444' },
   ]
   const maxBreakdown = Math.max(...breakdown.map(b => b.count), 1)
+
+  // Front / Back splits
+  const frontScores = scores.filter(s => s.hole <= 9)
+  const backScores  = scores.filter(s => s.hole >= 10)
+  const frontStats  = calcStats(frontScores)
+  const backStats   = calcStats(backScores)
+
+  // Scorecard lookup
+  const scoreMap: Record<number, ScoreRow> = {}
+  for (const s of scores) scoreMap[s.hole] = s
+
+  const scorecardHalves = [
+    { label: 'FRONT', tag: 'OUT', holes: Array.from({ length: 9 }, (_, i) => i + 1) },
+    { label: 'BACK',  tag: 'IN',  holes: Array.from({ length: 9 }, (_, i) => i + 10) },
+  ]
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -201,7 +247,6 @@ export default function MyTeamPage() {
       <div style={{ display: 'grid', gridTemplateColumns: players.length > 1 ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
         {players.map(p => (
           <div key={p.id} className="glass animate-fadeUp" style={{ padding: '22px 20px' }}>
-            {/* Avatar */}
             <div style={{
               width: 56, height: 56, borderRadius: '50%',
               background: 'linear-gradient(135deg, rgba(252,181,20,0.3), rgba(252,181,20,0.1))',
@@ -213,15 +258,12 @@ export default function MyTeamPage() {
             }}>
               {displayName(p).charAt(0).toUpperCase()}
             </div>
-
             <div style={{ fontWeight: 800, fontSize: 17, color: '#fff', marginBottom: p.nickname ? 2 : 6 }}>
               {displayName(p)}
             </div>
             {p.nickname && (
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{p.name}</div>
             )}
-
-            {/* Bio */}
             <div style={{
               fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65,
               fontStyle: 'italic', marginBottom: 16,
@@ -231,34 +273,210 @@ export default function MyTeamPage() {
             }}>
               {getBio(p.id, displayName(p))}
             </div>
-
-            {/* Player stats */}
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              <StatChip label="Drives" value={driveCount(p.id)} />
+              <StatChip label="All Drives" value={driveCount(p.id)} />
               {p.handicap != null && <StatChip label="HCP" value={p.handicap} />}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Round summary */}
       {stats.played > 0 ? (
         <>
+          {/* ── Round Summary ── */}
           <div className="glass animate-fadeUp" style={{ padding: '22px 26px', marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
               Round Summary
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginBottom: 20 }}>
               <BigStat label="Score" value={`${stats.gross}`} sub={`${toParStr(stats.toPar)} to par`} color={toParColor(stats.toPar)} />
-              <BigStat label="Thru" value={`${stats.played}`} sub="of 18 holes" />
+              <BigStat label="Thru"  value={`${stats.played}`} sub="of 18 holes" />
               <BigStat label="Putts" value={`${stats.putts}`} sub="total" />
               {stats.birdies + stats.eagles > 0 && (
                 <BigStat label="Under Par" value={`${stats.birdies + stats.eagles}`} sub="holes" color="#22c55e" />
               )}
             </div>
+
+            {/* Front / Back split */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16 }}>
+              {[
+                { label: 'Front 9', st: frontStats, played: frontStats.played },
+                { label: 'Back 9',  st: backStats,  played: backStats.played  },
+              ].map(({ label, st, played: p }) => (
+                <div key={label} style={{ textAlign: 'center', padding: '10px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.03)' }}>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                  {p > 0 ? (
+                    <>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: toParColor(st.toPar), fontFamily: 'Bebas Neue', letterSpacing: 2, lineHeight: 1 }}>
+                        {st.gross}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+                        {toParStr(st.toPar)} · {p} holes
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>—</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Scoring breakdown */}
+          {/* ── Scorecard ── */}
+          <div className="glass animate-fadeUp" style={{ padding: '20px 22px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 14 }}>
+              Scorecard
+            </div>
+            {scorecardHalves.map(({ label, tag, holes }) => {
+              const holePars  = holes.map(h => HOLE_PARS[h - 1])
+              const totalPar  = holePars.reduce((a, p) => a + p, 0)
+              const played    = holes.filter(h => scoreMap[h])
+              const subtotal  = played.reduce((a, h) => a + scoreMap[h].score, 0)
+              const playedPar = played.reduce((a, h) => a + HOLE_PARS[h - 1], 0)
+              const toPar     = subtotal - playedPar
+              return (
+                <div key={label} style={{ marginBottom: 16 }}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <div style={{ minWidth: 340 }}>
+                      {/* Hole numbers */}
+                      <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 700, padding: '2px 4px', letterSpacing: 1 }}>{label}</div>
+                        {holes.map(h => (
+                          <div key={h} style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '2px 0' }}>{h}</div>
+                        ))}
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 700, padding: '2px 0' }}>{tag}</div>
+                      </div>
+                      {/* Par row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', padding: '2px 4px' }}>PAR</div>
+                        {holePars.map((par, i) => (
+                          <div key={i} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '2px 0' }}>{par}</div>
+                        ))}
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 700, padding: '2px 0' }}>{totalPar}</div>
+                      </div>
+                      {/* Score row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2 }}>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', padding: '2px 4px' }}>SCORE</div>
+                        {holes.map((h, i) => {
+                          const s = scoreMap[h]?.score ?? null
+                          if (s === null) return (
+                            <div key={h} style={{ fontSize: 10, color: 'rgba(255,255,255,0.13)', textAlign: 'center', padding: '3px 0' }}>—</div>
+                          )
+                          return (
+                            <div key={h} style={{
+                              fontSize: 11, fontWeight: 700,
+                              color: scoreColor(s, holePars[i]),
+                              textAlign: 'center', padding: '3px 0',
+                            }}>{s}</div>
+                          )
+                        })}
+                        <div style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', padding: '3px 0', color: played.length > 0 ? toParColor(toPar) : 'rgba(255,255,255,0.2)' }}>
+                          {played.length > 0 ? `${subtotal}` : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {played.length > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: toParColor(toPar), textAlign: 'right', fontWeight: 600 }}>
+                      {toParStr(toPar)} ({played.length} holes)
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Drive Usage ── */}
+          {players.length === 2 && (
+            <div className="glass animate-fadeUp" style={{ padding: '20px 26px', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 14 }}>
+                Drive Usage — min 4 per player per nine
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[
+                  { label: 'Front 9', from: 1,  to: 9  },
+                  { label: 'Back 9',  from: 10, to: 18 },
+                ].map(({ label, from, to }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 8, fontWeight: 600 }}>{label}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {players.map(p => {
+                        const c  = driveCount(p.id, from, to)
+                        const ok = c >= 4
+                        return (
+                          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {displayName(p)}
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              <div style={{
+                                fontSize: 16, fontWeight: 700,
+                                color: ok ? '#22c55e' : c > 0 ? '#FCB514' : 'rgba(255,255,255,0.3)',
+                                minWidth: 20, textAlign: 'right',
+                              }}>{c}</div>
+                              {ok && <span style={{ fontSize: 10, color: '#22c55e' }}>✓</span>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Chulligans ── */}
+          {players.length === 2 && (
+            <div className="glass animate-fadeUp" style={{ padding: '20px 26px', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 14 }}>
+                🍺 Chulligans — 1 per player per nine (must chug)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: 8, alignItems: 'center' }}>
+                <div />
+                {(['Front 9', 'Back 9'] as const).map(h => (
+                  <div key={h} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
+                ))}
+                {players.map(p => {
+                  const halves: Array<{ label: string; key: 'front' | 'back' }> = [
+                    { label: 'Front 9', key: 'front' },
+                    { label: 'Back 9',  key: 'back'  },
+                  ]
+                  return (
+                    <>
+                      <div key={p.id + '-name'} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {displayName(p)}
+                      </div>
+                      {halves.map(h => {
+                        const c = chulligans.find(c => c.player_id === p.id && c.half === h.key)
+                        return (
+                          <div key={p.id + h.key} style={{
+                            textAlign: 'center', padding: '6px 4px', borderRadius: 7,
+                            background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${c ? 'rgba(252,181,20,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                          }}>
+                            {c ? (
+                              <>
+                                <div style={{ fontSize: 14 }}>✅</div>
+                                <div style={{ fontSize: 9, color: '#FCB514', marginTop: 2 }}>H{c.hole}</div>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{ fontSize: 14 }}>🍺</div>
+                                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Available</div>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Scoring Breakdown ── */}
           <div className="glass animate-fadeUp" style={{ padding: '22px 26px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
               Scoring Breakdown
