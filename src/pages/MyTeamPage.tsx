@@ -421,7 +421,7 @@ export default function MyTeamPage() {
                             ))}
                             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 700, padding: '2px 0' }}>{totalPar}</div>
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
                             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', padding: '2px 4px' }}>SCORE</div>
                             {holes.map((h, i) => {
                               const s = scoreMap[h]?.score ?? null
@@ -435,6 +435,32 @@ export default function MyTeamPage() {
                             <div style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', padding: '3px 0', color: played.length > 0 ? toParColor(toPar) : 'rgba(255,255,255,0.2)' }}>
                               {played.length > 0 ? `${subtotal}` : '—'}
                             </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
+                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', padding: '2px 4px' }}>PUTTS</div>
+                            {holes.map(h => {
+                              const p = scoreMap[h]?.putts ?? null
+                              return (
+                                <div key={h} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '3px 0' }}>
+                                  {p !== null ? p : <span style={{ color: 'rgba(255,255,255,0.1)' }}>—</span>}
+                                </div>
+                              )
+                            })}
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '3px 0', fontWeight: 700 }}>
+                              {played.length > 0 ? played.reduce((a, h) => a + (scoreMap[h]?.putts ?? 0), 0) : '—'}
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2 }}>
+                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', padding: '2px 4px' }}>🍺</div>
+                            {holes.map(h => {
+                              const hit = chulligans.find(c => c.hole === h)
+                              return (
+                                <div key={h} style={{ textAlign: 'center', padding: '2px 0', fontSize: 11 }}>
+                                  {hit ? '🍺' : <span style={{ color: 'rgba(255,255,255,0.08)', fontSize: 9 }}>·</span>}
+                                </div>
+                              )
+                            })}
+                            <div />
                           </div>
                         </div>
                       </div>
