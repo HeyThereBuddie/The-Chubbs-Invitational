@@ -9,7 +9,7 @@ type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'invite' | 'reset' | 'brevo'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'reset' | 'brevo'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamName, setNewTeamName] = useState('')
@@ -143,18 +143,6 @@ export default function AdminPanel() {
   const ADMIN_CODE    = import.meta.env.VITE_ADMIN_CODE    ?? 'CHUBS_ADMIN'
   const WAITLIST_CODE = import.meta.env.VITE_WAITLIST_CODE ?? 'CHUBS_WAITLIST'
 
-  const playerInvite = `Hey! You're invited to The Chubbs Memorial golf tournament. Sign up at ${window.location.origin} using invite code: ${PLAYER_CODE}
-
-Format: Best Ball
-Dress code: Business casual on the course
-Questions? Reply to this message.
-
-"It's all in the hips." — Chubbs Peterson`
-
-  const adminInvite = `Hey! You've been given admin access to The Chubbs Memorial app. Sign up at ${window.location.origin} using the admin invite code (ask me separately for security).
-
-You'll have full control over RSVP, tee times, pairings, and announcements.`
-
   const [resettingTeams, setResettingTeams] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -238,7 +226,7 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Admin Panel</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Manage teams, users, access codes, and invites</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Manage teams, users, and access codes</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -246,7 +234,6 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
           { id: 'teams',  label: '⛳ Teams' },
           { id: 'users',  label: '👥 Users' },
           { id: 'codes',  label: '🔑 Codes' },
-          { id: 'invite', label: '✉️ Invite' },
           { id: 'reset',  label: '⚠️ Reset' },
           { id: 'brevo',  label: '📣 Brevo' },
         ] as const).map(({ id, label }) => (
@@ -475,37 +462,6 @@ You'll have full control over RSVP, tee times, pairings, and announcements.`
             <div style={{ fontSize: 12, color: 'rgba(239,68,68,0.6)', marginTop: 8 }}>
               {adminBlurred ? 'Click code to reveal. ' : ''}Only share with trusted admins — grants full app access.
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Invite tab ──────────────────────────────────────────── */}
-      {tab === 'invite' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {[
-            { label: 'Player Invite Message', text: playerInvite, key: 'playerMsg' },
-            { label: 'Admin Invite Message', text: adminInvite, key: 'adminMsg' },
-          ].map(({ label, text, key }) => (
-            <div key={key} className="glass" style={{ padding: '20px 22px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#FCB514' }}>{label}</div>
-                <button onClick={() => copy(text, key)} className="btn-gold" style={{ padding: '7px 16px', fontSize: 12 }}>
-                  {copiedKey === key ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
-                </button>
-              </div>
-              <div style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 10, padding: '14px 16px',
-                fontSize: 13, color: 'rgba(255,255,255,0.6)',
-                lineHeight: 1.7, whiteSpace: 'pre-wrap',
-              }}>
-                {text}
-              </div>
-            </div>
-          ))}
-          <div className="glass" style={{ padding: '14px 18px', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-            💡 <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Tip:</strong> Paste the player invite message in a group text, iMessage, or email.
           </div>
         </div>
       )}
