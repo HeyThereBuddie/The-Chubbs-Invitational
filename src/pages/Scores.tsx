@@ -9,7 +9,7 @@ const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 type TeamFull = Team & { player1?: Player; player2?: Player }
 type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
-type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back' }
+type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back'; hole: number }
 
 const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
@@ -103,7 +103,7 @@ export default function Scores() {
 
     const [{ data: scores }, { data: ch }] = await Promise.all([
       supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-      supabase.from('chulligans').select('id, player_id, half').eq('team_id', teamId),
+      supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', teamId),
     ])
     const map: Record<number, ScoreRow> = {}
     for (const s of scores ?? []) map[s.hole] = s
@@ -114,7 +114,7 @@ export default function Scores() {
   const loadAdminScores = async (teamId: string) => {
     const [{ data: scores }, { data: ch }] = await Promise.all([
       supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-      supabase.from('chulligans').select('id, player_id, half').eq('team_id', teamId),
+      supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', teamId),
     ])
     const map: Record<number, ScoreRow> = {}
     for (const s of scores ?? []) map[s.hole] = s
@@ -218,18 +218,28 @@ export default function Scores() {
   const toggleChulligan = async (
     teamId: string,
     playerId: string,
-    half: 'front' | 'back',
+    hole: number,
     chulligans: ChulliganRow[],
     setter: (c: ChulliganRow[]) => void,
   ) => {
+    const half: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
     const existing = chulligans.find(c => c.player_id === playerId && c.half === half)
     if (existing) {
       await supabase.from('chulligans').delete().eq('id', existing.id)
-      setter(chulligans.filter(c => c.id !== existing.id))
+      if (existing.hole === hole) {
+        // Same hole — toggle off
+        setter(chulligans.filter(c => c.id !== existing.id))
+      } else {
+        // Different hole — move chulligan to new hole
+        const { data } = await supabase.from('chulligans')
+          .insert({ team_id: teamId, player_id: playerId, half, hole })
+          .select('id, player_id, half, hole').single()
+        if (data) setter([...chulligans.filter(c => c.id !== existing.id), data as ChulliganRow])
+      }
     } else {
       const { data } = await supabase.from('chulligans')
-        .insert({ team_id: teamId, player_id: playerId, half })
-        .select('id, player_id, half').single()
+        .insert({ team_id: teamId, player_id: playerId, half, hole })
+        .select('id, player_id, half, hole').single()
       if (data) setter([...chulligans, data as ChulliganRow])
     }
   }
@@ -267,7 +277,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, readOnly,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -280,6 +290,8 @@ export default function Scores() {
     driveDisabled?: Record<string, boolean>
     onSetPutts?: (putts: number) => void
     onReset?: () => void
+    chulligans?: ChulliganRow[]
+    onToggleChulligan?: (playerId: string, hole: number) => void
     readOnly?: boolean
   }) => {
     const par      = HOLE_PARS[hole - 1]
@@ -400,6 +412,36 @@ export default function Scores() {
           </div>
         )}
 
+        {/* Chulligan buttons — one per player, only when editable and score exists */}
+        {!readOnly && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🍺</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[player1, player2].map(p => {
+                const thisHalf: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
+                const myC = chulligans.find(c => c.player_id === p.id && c.half === thisHalf)
+                const usedHere      = myC?.hole === hole
+                const usedElsewhere = myC && !usedHere
+                return (
+                  <button key={p.id}
+                    onClick={() => !usedElsewhere && onToggleChulligan(p.id, hole)}
+                    title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
+                    style={{
+                      padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                      background: usedHere ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${usedHere ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                      color: usedHere ? '#FCB514' : usedElsewhere ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.45)',
+                      cursor: usedElsewhere ? 'not-allowed' : 'pointer',
+                      textDecoration: usedElsewhere ? 'line-through' : 'none',
+                    }}>
+                    {usedHere ? '✅' : '🍺'} {displayName(p)}{usedElsewhere ? ` H${myC!.hole}` : ''}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Putts selector — shown whenever a score exists and editable */}
         {!readOnly && hasScore && onSetPutts && (
           <div style={{
@@ -480,55 +522,61 @@ export default function Scores() {
     )
   }
 
-  // ── ChulliganTracker ─────────────────────────────────────────
+  // ── ChulliganDashboard ───────────────────────────────────────
 
-  const ChulliganTracker = ({
-    teamId, p1, p2, chulligans, setter,
-  }: {
-    teamId: string
+  const ChulliganDashboard = ({ p1, p2, chulligans }: {
     p1: Player | undefined
     p2: Player | undefined
     chulligans: ChulliganRow[]
-    setter: (c: ChulliganRow[]) => void
   }) => {
     if (!p1 || !p2) return null
+    const rows = [p1, p2]
     const halves: Array<{ label: string; key: 'front' | 'back' }> = [
       { label: 'Front 9', key: 'front' },
       { label: 'Back 9',  key: 'back'  },
     ]
     return (
       <div className="glass" style={{ padding: '12px 16px', marginBottom: 12 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
           🍺 Chulligans — 1 per player per nine (must chug)
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {halves.map(({ label, key }) => (
-            <div key={key}>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>{label}</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[p1, p2].map(p => {
-                  const used = chulligans.some(c => c.player_id === p.id && c.half === key)
-                  return (
-                    <button key={p.id}
-                      onClick={() => toggleChulligan(teamId, p.id, key, chulligans, setter)}
-                      style={{
-                        flex: 1, padding: '8px 4px', borderRadius: 8, textAlign: 'center',
-                        background: used ? 'rgba(252,181,20,0.12)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${used ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                        cursor: 'pointer',
-                      }}>
-                      <div style={{ fontSize: 16, lineHeight: 1 }}>{used ? '✅' : '🍺'}</div>
-                      <div style={{ fontSize: 10, marginTop: 4, color: used ? '#FCB514' : 'rgba(255,255,255,0.4)', fontWeight: used ? 700 : 400 }}>
-                        {displayName(p)}
-                      </div>
-                      <div style={{ fontSize: 9, marginTop: 2, color: used ? 'rgba(252,181,20,0.6)' : 'rgba(255,255,255,0.2)' }}>
-                        {used ? 'Used' : 'Available'}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: 6, alignItems: 'center' }}>
+          {/* Header row */}
+          <div />
+          {halves.map(h => (
+            <div key={h.key} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {h.label}
             </div>
+          ))}
+          {/* Player rows */}
+          {rows.map(p => (
+            <>
+              <div key={p.id + '-name'} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {displayName(p)}
+              </div>
+              {halves.map(h => {
+                const c = chulligans.find(c => c.player_id === p.id && c.half === h.key)
+                return (
+                  <div key={p.id + h.key} style={{
+                    textAlign: 'center', padding: '5px 4px', borderRadius: 7,
+                    background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${c ? 'rgba(252,181,20,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                  }}>
+                    {c ? (
+                      <>
+                        <div style={{ fontSize: 14 }}>✅</div>
+                        <div style={{ fontSize: 9, color: '#FCB514', marginTop: 2 }}>H{c.hole}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 14 }}>🍺</div>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Available</div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </>
           ))}
         </div>
       </div>
@@ -614,7 +662,7 @@ export default function Scores() {
         </div>
 
         <DriveCounter scoreMap={adminScores} p1={adminTeam?.player1} p2={adminTeam?.player2} />
-        {adminTeamId && <ChulliganTracker teamId={adminTeamId} p1={adminTeam?.player1} p2={adminTeam?.player2} chulligans={adminChulligans} setter={setAdminChulligans} />}
+        <ChulliganDashboard p1={adminTeam?.player1} p2={adminTeam?.player2} chulligans={adminChulligans} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(() => {
@@ -644,6 +692,8 @@ export default function Scores() {
                   driveDisabled={driveDisabled}
                   onSetPutts={(n) => setAdminPutts(hole, n)}
                   onReset={() => resetAdminScore(hole)}
+                  chulligans={adminChulligans}
+                  onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
                 />
               )
             })
@@ -730,7 +780,7 @@ export default function Scores() {
 
       {/* Drive counter + chulligans only for own team */}
       {isViewingMyTeam && <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />}
-      {isViewingMyTeam && myTeamId && <ChulliganTracker teamId={myTeamId} p1={myTeam?.player1} p2={myTeam?.player2} chulligans={myChulligans} setter={setMyChulligans} />}
+      {isViewingMyTeam && <ChulliganDashboard p1={myTeam?.player1} p2={myTeam?.player2} chulligans={myChulligans} />}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {(() => {
@@ -761,6 +811,8 @@ export default function Scores() {
                   driveDisabled={driveDisabled}
                   onSetPutts={(n) => setMyPutts(hole, n)}
                   onReset={() => resetMyScore(hole)}
+                  chulligans={myChulligans}
+                  onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
                 />
               )
             })
