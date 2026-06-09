@@ -7,25 +7,26 @@ import { Minus, Plus, Users } from 'lucide-react'
 
 const HOLE_PARS = [5,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
+const BASE = 'https://royalashburngolfclub.com/wp-content/uploads/2016/11'
 const HOLE_DATA: { yards: number; si: number; description?: string; photo?: string }[] = [
-  { yards: 520, si: 5,  description: 'A good starting hole. Play drive squarely down the middle avoiding fairway bunkers both left and right. Long hitters can carry the corner of the dogleg to challenge this green. To ensure a par or birdie try, play second shot to the corner of the dogleg allowing for a short iron to the green.', photo: 'https://royalashburngolfclub.com/wp-content/uploads/2016/11/ROY-Hole-1-1.png' },
-  { yards: 420, si: 11 },
-  { yards: 170, si: 15 },
-  { yards: 510, si: 3  },
-  { yards: 450, si: 1  },
-  { yards: 185, si: 17 },
-  { yards: 410, si: 9  },
-  { yards: 555, si: 7  },
-  { yards: 460, si: 13 },
-  { yards: 445, si: 2  },
-  { yards: 195, si: 16 },
-  { yards: 520, si: 8  },
-  { yards: 440, si: 4  },
-  { yards: 430, si: 10 },
-  { yards: 165, si: 18 },
-  { yards: 530, si: 6  },
-  { yards: 440, si: 12 },
-  { yards: 465, si: 14 },
+  { yards: 520, si: 5,  photo: `${BASE}/ROY-Hole-1-1.png`,  description: 'A good starting hole. Play drive squarely down the middle avoiding fairway bunkers both left and right. Long hitters can carry the corner of the dogleg to challenge this green. To ensure a par or birdie try, play second shot to the corner of the dogleg allowing for a short iron to the green.' },
+  { yards: 420, si: 11, photo: `${BASE}/ROY-Hole-2-1.png`  },
+  { yards: 170, si: 15, photo: `${BASE}/ROY-Hole-3-1.png`  },
+  { yards: 510, si: 3,  photo: `${BASE}/ROY-Hole-4-1.png`  },
+  { yards: 450, si: 1,  photo: `${BASE}/ROY-Hole-5-1.png`  },
+  { yards: 185, si: 17, photo: `${BASE}/ROY-Hole-6-1.png`  },
+  { yards: 410, si: 9,  photo: `${BASE}/ROY-Hole-7-1.png`  },
+  { yards: 555, si: 7,  photo: `${BASE}/ROY-Hole-8-1.png`  },
+  { yards: 460, si: 13, photo: `${BASE}/ROY-Hole-9-1.png`  },
+  { yards: 445, si: 2,  photo: `${BASE}/ROY-Hole-10-1.png` },
+  { yards: 195, si: 16, photo: `${BASE}/ROY-Hole-11-1.png` },
+  { yards: 520, si: 8,  photo: `${BASE}/ROY-Hole-12-1.png` },
+  { yards: 440, si: 4,  photo: `${BASE}/ROY-Hole-13-1.png` },
+  { yards: 430, si: 10, photo: `${BASE}/ROY-Hole-14-1.png` },
+  { yards: 165, si: 18, photo: `${BASE}/ROY-Hole-15-1.png` },
+  { yards: 530, si: 6,  photo: `${BASE}/ROY-Hole-16-1.png` },
+  { yards: 440, si: 12, photo: `${BASE}/ROY-Hole-17-1.png` },
+  { yards: 465, si: 14, photo: `${BASE}/ROY-Hole-18-1.png` },
 ]
 
 async function pingLeadCheck() {
