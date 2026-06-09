@@ -161,12 +161,14 @@ export default function AdminPanel() {
     const [scoresRes, teamsRes] = await Promise.all([
       supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       supabase.from('teams').update({ name: '' }).neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('chulligans').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('feed_events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
     ])
     setResetting(false)
     setResetConfirm(false)
     const error = scoresRes.error ?? teamsRes.error
     if (error) showToast(error.message, 'error')
-    else { showToast('All scores cleared and team names reset!'); fetchTeams() }
+    else { showToast('All scores, chulligans, and live feed cleared!'); fetchTeams() }
   }
 
   const toggleLaheyVoting = async () => {

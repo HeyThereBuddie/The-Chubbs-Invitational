@@ -7,6 +7,41 @@ import { Minus, Plus, Users } from 'lucide-react'
 
 const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
 
+function scoreFeedInfo(score: number, hole: number): { label: string; emoji: string } {
+  if (score === 1) return { emoji: '🕳️', label: 'Hole in One!' }
+  const par = HOLE_PARS[hole - 1]
+  const d = score - par
+  if (d <= -2) return { emoji: '🦅', label: 'Eagle' }
+  if (d === -1) return { emoji: '🐦', label: 'Birdie' }
+  if (d === 0)  return { emoji: '⛳', label: 'Par' }
+  if (d === 1)  return { emoji: '😬', label: 'Bogey' }
+  if (d === 2)  return { emoji: '😤', label: 'Double' }
+  return { emoji: '💥', label: `+${d}` }
+}
+
+async function logFeedEvent(
+  eventType: 'score' | 'chulligan',
+  teamId: string,
+  teamName: string,
+  hole: number,
+  score: number | null,
+  playerName: string | null,
+) {
+  const { label, emoji } = eventType === 'chulligan'
+    ? { label: 'Chulligan', emoji: '🍺' }
+    : scoreFeedInfo(score!, hole)
+  supabase.from('feed_events').insert({
+    event_type: eventType,
+    team_id: teamId,
+    team_name: teamName,
+    player_name: playerName,
+    hole,
+    score,
+    label,
+    emoji,
+  }).then(() => { /* fire and forget */ })
+}
+
 const BASE = 'https://royalashburngolfclub.com/wp-content/uploads/2016/11'
 const HOLE_DATA: { yards: number; si: number; description?: string; photo?: string }[] = [
   { yards: 484, si: 11, photo: `${BASE}/ROY-Hole-1-1.png`,  description: 'A good starting hole. Play drive squarely down the middle avoiding fairway bunkers both left and right. Long hitters can carry the corner of the dogleg to challenge this green. To ensure a par or birdie try, play second shot to the corner of the dogleg allowing for a short iron to the green.' },
@@ -423,6 +458,7 @@ export default function Scores() {
     }
     setSaving(null)
     pingLeadCheck()
+    logFeedEvent('score', myTeamId, myTeam?.name ?? '', hole, next, null)
   }
 
   const adjustAdminScore = async (hole: number, delta: number) => {
@@ -441,6 +477,8 @@ export default function Scores() {
     }
     setSaving(null)
     pingLeadCheck()
+    const adminTeam = allTeams.find(t => t.id === adminTeamId)
+    logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, next, null)
   }
 
   const setMyDrive = async (hole: number, playerId: string) => {
@@ -498,23 +536,31 @@ export default function Scores() {
   ) => {
     const half: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
     const existing = chulligans.find(c => c.player_id === playerId && c.half === half)
+    const team = allTeams.find(t => t.id === teamId) ?? myTeam
+    const player = [team?.player1, team?.player2].find(p => p?.id === playerId)
+    const teamName = team?.name ?? ''
+    const playerName = player ? displayName(player) : ''
     if (existing) {
       await supabase.from('chulligans').delete().eq('id', existing.id)
       if (existing.hole === hole) {
-        // Same hole — toggle off
         setter(chulligans.filter(c => c.id !== existing.id))
       } else {
-        // Different hole — move chulligan to new hole
         const { data } = await supabase.from('chulligans')
           .insert({ team_id: teamId, player_id: playerId, half, hole })
           .select('id, player_id, half, hole').single()
-        if (data) setter([...chulligans.filter(c => c.id !== existing.id), data as ChulliganRow])
+        if (data) {
+          setter([...chulligans.filter(c => c.id !== existing.id), data as ChulliganRow])
+          logFeedEvent('chulligan', teamId, teamName, hole, null, playerName)
+        }
       }
     } else {
       const { data } = await supabase.from('chulligans')
         .insert({ team_id: teamId, player_id: playerId, half, hole })
         .select('id, player_id, half, hole').single()
-      if (data) setter([...chulligans, data as ChulliganRow])
+      if (data) {
+        setter([...chulligans, data as ChulliganRow])
+        logFeedEvent('chulligan', teamId, teamName, hole, null, playerName)
+      }
     }
   }
 

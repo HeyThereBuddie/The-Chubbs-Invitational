@@ -2,31 +2,41 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, HOLE_PARS, displayName } from '../lib/types'
+import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 
-interface FeedEntry {
+interface FeedEvent {
   id: string
+  event_type: 'score' | 'chulligan'
+  team_name: string
+  player_name: string | null
   hole: number
-  score: number
-  updated_at: string
-  team: { name: string } | null
+  score: number | null
+  label: string
+  emoji: string
+  created_at: string
 }
 
-function scoreInfo(score: number, hole: number) {
-  if (score === 1) return { emoji: '🕳️', label: 'Hole in One!', color: '#FCB514', highlight: true }
-  const par = HOLE_PARS[hole - 1]
-  const d = score - par
-  if (d <= -2) return { emoji: '🦅', label: 'Eagle',    color: '#FCB514',                   highlight: true }
-  if (d === -1) return { emoji: '🐦', label: 'Birdie',   color: '#22c55e',                   highlight: true }
-  if (d === 0)  return { emoji: '⛳', label: 'Par',      color: 'rgba(255,255,255,0.55)',     highlight: false }
-  if (d === 1)  return { emoji: '😬', label: 'Bogey',    color: 'rgba(255,255,255,0.38)',     highlight: false }
-  if (d === 2)  return { emoji: '😤', label: 'Double',   color: '#f59e0b',                   highlight: false }
-  return               { emoji: '💥', label: `+${d}`,   color: '#ef4444',                   highlight: false }
+const SCORE_COLORS: Record<string, string> = {
+  'Hole in One!': '#FCB514',
+  'Eagle':        '#FCB514',
+  'Birdie':       '#22c55e',
+  'Par':          'rgba(255,255,255,0.55)',
+  'Bogey':        'rgba(255,255,255,0.38)',
+  'Double':       '#f59e0b',
+}
+
+function eventColor(ev: FeedEvent) {
+  if (ev.event_type === 'chulligan') return '#f59e0b'
+  return SCORE_COLORS[ev.label] ?? '#ef4444'
+}
+
+function isHighlight(ev: FeedEvent) {
+  return ev.event_type === 'chulligan' || ['Hole in One!', 'Eagle', 'Birdie'].includes(ev.label)
 }
 
 interface LeaderRow {
@@ -41,7 +51,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
-  const [feed, setFeed] = useState<FeedEntry[]>([])
+  const [feed, setFeed] = useState<FeedEvent[]>([])
   const [playerCount, setPlayerCount] = useState(0)
   const [teamCount, setTeamCount] = useState(0)
   const [quoteIdx, setQuoteIdx] = useState(0)
@@ -61,14 +71,12 @@ export default function Dashboard() {
   }, [])
 
   const fetchFeed = async () => {
-    const cutoff = new Date(Date.now() - 60_000).toISOString()
     const { data } = await supabase
-      .from('scores')
-      .select('id, hole, score, updated_at, team:teams(name)')
-      .lt('updated_at', cutoff)
-      .order('updated_at', { ascending: false })
-      .limit(30)
-    setFeed((data ?? []) as unknown as FeedEntry[])
+      .from('feed_events')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10)
+    setFeed((data ?? []) as FeedEvent[])
   }
 
   const fetchData = async () => {
@@ -252,15 +260,20 @@ export default function Dashboard() {
         </div>
 
         {/* Live Scoring Feed */}
-        <div className="glass animate-fadeUp delay-200" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          className="glass animate-fadeUp delay-200"
+          onClick={() => navigate('/live-feed')}
+          style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }}
+        >
           <div style={{
             padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
             borderBottom: '1px solid rgba(252,181,20,0.1)',
             background: 'rgba(252,181,20,0.04)',
           }}>
             <span style={{ fontSize: 15 }}>⚡</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Scoring Feed</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Feed</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.5)' }}>View all →</span>
               <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
               <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
             </div>
@@ -268,43 +281,48 @@ export default function Dashboard() {
           {feed.length === 0 ? (
             <div style={{ padding: '32px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Scores appear here as holes are completed</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', marginTop: 4 }}>Updates every 30 seconds · 60s confirmation delay</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Events appear here as scores and chulligans are recorded</div>
             </div>
           ) : (
-            feed.map((entry, i) => {
-              const info = scoreInfo(entry.score, entry.hole)
+            feed.map((ev, i) => {
+              const color = eventColor(ev)
+              const highlight = isHighlight(ev)
               return (
-                <div key={entry.id} style={{
+                <div key={ev.id} style={{
                   display: 'flex', alignItems: 'center', gap: 14, padding: '11px 20px',
                   borderBottom: i < feed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                  background: info.highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
+                  background: highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
                 }}>
                   <div style={{
                     width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                    background: info.highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
+                    background: highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 18,
-                  }}>{info.emoji}</div>
+                  }}>{ev.emoji}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: info.color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-                        {info.label}
+                      <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                        {ev.label}
                       </span>
                       <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {entry.team?.name ?? 'Unknown Team'}
+                        {ev.team_name || 'Unknown Team'}
                       </span>
+                      {ev.player_name && (
+                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{ev.player_name}</span>
+                      )}
                       <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                        Hole {entry.hole}
+                        Hole {ev.hole}
                       </span>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: info.color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
-                      {entry.score}
-                    </div>
+                    {ev.score != null && (
+                      <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
+                        {ev.score}
+                      </div>
+                    )}
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
-                      {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                     </div>
                   </div>
                 </div>
