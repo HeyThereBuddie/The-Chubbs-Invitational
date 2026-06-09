@@ -201,43 +201,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Stats row ─────────────────────────────────────────── */}
-      <div className="animate-fadeUp delay-100" style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-        gap: 10, marginBottom: 20,
-      }}>
-        {[
-          { label: 'Players', value: playerCount, icon: <Users size={18} />, sub: 'confirmed' },
-          { label: 'Teams',   value: teamCount,   icon: <Trophy size={18} />, sub: 'competing' },
-          { label: 'Par',     value: COURSE_PAR,  icon: <Flag size={18} />, sub: '18 holes' },
-          {
-            label: 'Leader',
-            value: leaders[0] ? toPar(Math.round(leaders[0].toPar)) : '—',
-            icon: '🏆',
-            sub: leaders[0]
-              ? `${leaders[0].team.name} · ${[leaders[0].team.player1 && displayName(leaders[0].team.player1), leaders[0].team.player2 && displayName(leaders[0].team.player2)].filter(Boolean).join(' & ')}`
-              : 'TBD',
-          },
-        ].map(({ label, value, icon, sub }) => (
-          <div key={label} className="glass" style={{
-            padding: '18px 16px', textAlign: 'center',
-            borderColor: label === 'Leader' && leaders[0] ? 'rgba(252,181,20,0.3)' : undefined,
-          }}>
-            <div style={{ color: '#FCB514', marginBottom: 8, display: 'flex', justifyContent: 'center', opacity: 0.85 }}>
-              {typeof icon === 'string' ? <span style={{ fontSize: 18 }}>{icon}</span> : icon}
-            </div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
-            <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Leaderboard + Updates ─────────────────────────────── */}
+      {/* ── Live Leaderboard + Live Scoring Feed ─────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
 
         {/* Live leaderboard */}
-        <div className="glass animate-fadeUp delay-200" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="glass animate-fadeUp delay-100" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
             padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
             borderBottom: '1px solid rgba(252,181,20,0.1)',
@@ -281,108 +249,137 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Updates */}
-        <div className="glass animate-fadeUp delay-300" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Live Scoring Feed */}
+        <div className="glass animate-fadeUp delay-200" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
             padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
             borderBottom: '1px solid rgba(252,181,20,0.1)',
             background: 'rgba(252,181,20,0.04)',
           }}>
-            <Pin size={15} color="#FCB514" />
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Updates</span>
+            <span style={{ fontSize: 15 }}>⚡</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Scoring Feed</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
+            </div>
           </div>
-          {updates.length === 0 ? (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
-              No updates yet
+          {feed.length === 0 ? (
+            <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Scores appear here as holes are completed</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', marginTop: 4 }}>Updates every 30 seconds · 60s confirmation delay</div>
             </div>
           ) : (
-            updates.map((u, i) => (
-              <div key={u.id} style={{
-                padding: '14px 20px',
-                borderBottom: i < updates.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                borderLeft: u.pinned ? '3px solid #FCB514' : '3px solid transparent',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  {u.pinned && (
-                    <span style={{ fontSize: 10, color: '#FCB514', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-                      📌 Pinned
-                    </span>
-                  )}
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginLeft: 'auto' }}>
-                    {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
-                  </span>
+            feed.map((entry, i) => {
+              const info = scoreInfo(entry.score, entry.hole)
+              return (
+                <div key={entry.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '11px 20px',
+                  borderBottom: i < feed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  background: info.highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
+                }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                    background: info.highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18,
+                  }}>{info.emoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: info.color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                        {info.label}
+                      </span>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {entry.team?.name ?? 'Unknown Team'}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                        Hole {entry.hole}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: info.color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
+                      {entry.score}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+                      {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true })}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', marginBottom: 4 }}>{u.title}</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.55 }}>{u.body}</div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
 
-      {/* ── Live Scoring Feed ─────────────────────────────────── */}
+      {/* ── Stats row ─────────────────────────────────────────── */}
+      <div className="animate-fadeUp delay-300" style={{
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+        gap: 10, marginBottom: 20,
+      }}>
+        {[
+          { label: 'Players', value: playerCount, icon: <Users size={18} />, sub: 'confirmed' },
+          { label: 'Teams',   value: teamCount,   icon: <Trophy size={18} />, sub: 'competing' },
+          { label: 'Par',     value: COURSE_PAR,  icon: <Flag size={18} />, sub: '18 holes' },
+          {
+            label: 'Leader',
+            value: leaders[0] ? toPar(Math.round(leaders[0].toPar)) : '—',
+            icon: '🏆',
+            sub: leaders[0]
+              ? `${leaders[0].team.name} · ${[leaders[0].team.player1 && displayName(leaders[0].team.player1), leaders[0].team.player2 && displayName(leaders[0].team.player2)].filter(Boolean).join(' & ')}`
+              : 'TBD',
+          },
+        ].map(({ label, value, icon, sub }) => (
+          <div key={label} className="glass" style={{
+            padding: '18px 16px', textAlign: 'center',
+            borderColor: label === 'Leader' && leaders[0] ? 'rgba(252,181,20,0.3)' : undefined,
+          }}>
+            <div style={{ color: '#FCB514', marginBottom: 8, display: 'flex', justifyContent: 'center', opacity: 0.85 }}>
+              {typeof icon === 'string' ? <span style={{ fontSize: 18 }}>{icon}</span> : icon}
+            </div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+            <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Updates ───────────────────────────────────────────── */}
       <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
         <div style={{
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
           borderBottom: '1px solid rgba(252,181,20,0.1)',
           background: 'rgba(252,181,20,0.04)',
         }}>
-          <span style={{ fontSize: 15 }}>⚡</span>
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Scoring Feed</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
-          </div>
+          <Pin size={15} color="#FCB514" />
+          <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Updates</span>
         </div>
-
-        {feed.length === 0 ? (
-          <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Scores appear here as holes are completed</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', marginTop: 4 }}>Updates every 30 seconds · 60s confirmation delay</div>
+        {updates.length === 0 ? (
+          <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+            No updates yet
           </div>
         ) : (
-          feed.map((entry, i) => {
-            const info = scoreInfo(entry.score, entry.hole)
-            return (
-              <div key={entry.id} style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '11px 20px',
-                borderBottom: i < feed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                background: info.highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
-              }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                  background: info.highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18,
-                }}>{info.emoji}</div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: info.color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-                      {info.label}
-                    </span>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {entry.team?.name ?? 'Unknown Team'}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                      Hole {entry.hole}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: info.color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
-                    {entry.score}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
-                    {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true })}
-                  </div>
-                </div>
+          updates.map((u, i) => (
+            <div key={u.id} style={{
+              padding: '14px 20px',
+              borderBottom: i < updates.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              borderLeft: u.pinned ? '3px solid #FCB514' : '3px solid transparent',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                {u.pinned && (
+                  <span style={{ fontSize: 10, color: '#FCB514', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    📌 Pinned
+                  </span>
+                )}
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginLeft: 'auto' }}>
+                  {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
+                </span>
               </div>
-            )
-          })
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', marginBottom: 4 }}>{u.title}</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.55 }}>{u.body}</div>
+            </div>
+          ))
         )}
       </div>
 
