@@ -630,9 +630,10 @@ export default function Scores() {
   const pageHeader = (
     <div style={{ marginBottom: 20 }}>
       <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
-      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Best ball — one score per hole per team</p>
+      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Best ball — one score per hole per team &nbsp;<span style={{fontSize:10,opacity:0.4}}>{BUILD}</span></p>
     </div>
   )
+  const BUILD = 'v2-hole-tabs'
 
   // ── HoleCard ─────────────────────────────────────────────────
 
