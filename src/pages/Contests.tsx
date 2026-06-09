@@ -60,6 +60,12 @@ export default function Contests() {
     }
   }, [votes, profile])
 
+  useEffect(() => {
+    if (!profile?.team_id) return
+    supabase.from('teams').select('name').eq('id', profile.team_id).single()
+      .then(({ data }) => { if (data?.name) setMyTeamName(data.name) })
+  }, [profile?.team_id])
+
   const fetchContestData = async () => {
     const { data: entriesData } = await supabase
       .from('contest_entries')
@@ -162,7 +168,17 @@ export default function Contests() {
     setCasting(false)
     if (error) showToast(error.message, 'error')
     else {
-      showToast(myVote ? 'Vote changed! 🔄 The shitwinds have shifted.' : 'Vote cast! 🍺 The spirits are with you.')
+      showToast(myVote ? 'Vote changed! 🔄 A new jackass rises.' : 'Vote cast! 🤠 Stay out of my way!')
+      const nominee = laheyPlayers.find(p => p.id === selected)
+      await supabase.from('feed_events').insert({
+        event_type: 'contest',
+        team_name: myTeamName,
+        player_name: nominee ? displayName(nominee) : null,
+        hole: 0,
+        score: null,
+        label: 'Jackass Vote',
+        emoji: '🤠',
+      })
       fetchLaheyData()
     }
   }
@@ -235,13 +251,13 @@ export default function Contests() {
       )}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Contests</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Closest to Pin, Longest Drive & The Lahey</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button onClick={() => setTab('ctp')} className={`pill-tab ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
         <button onClick={() => setTab('ld')}  className={`pill-tab ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
-        <button onClick={() => setTab('lahey')} className={`pill-tab ${tab === 'lahey' ? 'active' : ''}`}>🍺 Jim Lahey Award</button>
+        <button onClick={() => setTab('lahey')} className={`pill-tab ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
       </div>
 
       {/* ── CTP / LD ─────────────────────────────────────────────── */}
@@ -385,7 +401,7 @@ export default function Contests() {
         </>
       )}
 
-      {/* ── Mr. Jim Lahey Award ──────────────────────────────────── */}
+      {/* ── Jackass of the Day ──────────────────────────────────── */}
       {tab === 'lahey' && (
         <>
           <div className="glass animate-fadeUp" style={{
@@ -393,15 +409,15 @@ export default function Contests() {
             background: 'linear-gradient(135deg, rgba(18,14,6,0.95) 0%, rgba(40,20,0,0.9) 100%)',
             borderColor: 'rgba(252,181,20,0.3)',
           }}>
-            <div style={{ fontSize: 48, marginBottom: 10 }}>🍺</div>
+            <div style={{ fontSize: 48, marginBottom: 10 }}>🤠</div>
             <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 30, color: '#FCB514', letterSpacing: 4, margin: '0 0 10px', textShadow: '0 0 20px rgba(252,181,20,0.4)' }}>
-              Mr. Jim Lahey Award
+              Jackass of the Day
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 10px' }}>
-              Presented to the player who best embodies the spirit of Jim Lahey — simultaneously the drunkest <em>and</em> highest individual on the course. Bonus points if they tried to give a liquor speech on the 9th tee. One vote per person. You can change it until voting closes.
+              Presented to the player who best channels their inner Shooter McGavin — smugly convinced they're the best on the course, playing like a complete jackass, and absolutely loving every second of it. One vote per person. You can change it until voting closes.
             </p>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
-              "The liquor's calling the shots now, Randy." — Jim Lahey
+              "Just stay out of my way... or you'll pay. LISTEN to what I say." — Shooter McGavin
             </div>
           </div>
 
@@ -459,7 +475,7 @@ export default function Contests() {
                 disabled={!selected || casting || selected === myVote}
                 style={{ width: '100%', justifyContent: 'center', marginBottom: 28, fontSize: 16, padding: '14px' }}
               >
-                {casting ? 'Saving…' : myVote ? '🔄 Update My Vote' : '🍺 Cast My Vote'}
+                {casting ? 'Saving…' : myVote ? '🔄 Update My Vote' : '🤠 Cast My Vote'}
               </button>
             </>
           )}
@@ -495,7 +511,7 @@ export default function Contests() {
               })}
             {votes.length === 0 && (
               <div style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
-                No votes yet. Who's already on their third drink? 🍺
+                No votes yet. Who's played like a complete jackass so far? 🤠
               </div>
             )}
             {votes.length > 0 && (

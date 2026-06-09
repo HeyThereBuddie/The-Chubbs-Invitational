@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile, Team } from '../lib/types'
 import { displayName } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle, Shuffle } from 'lucide-react'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -180,17 +180,17 @@ export default function AdminPanel() {
     if (error) showToast(error.message, 'error')
     else {
       setLaheyVotingOpen(next)
-      showToast(next ? '🍺 Lahey voting is now open!' : 'Lahey voting closed.')
+      showToast(next ? '🤠 Jackass of the Day voting is now open!' : 'Jackass of the Day voting closed.')
     }
   }
 
   const resetLaheyVotes = async () => {
-    if (!confirm('Clear all Lahey votes? This cannot be undone.')) return
+    if (!confirm('Clear all Jackass of the Day votes? This cannot be undone.')) return
     setLaheyResetting(true)
     const { error } = await supabase.from('leahey_votes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     setLaheyResetting(false)
     if (error) showToast(error.message, 'error')
-    else showToast('All Lahey votes cleared.')
+    else showToast('All Jackass of the Day votes cleared.')
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -468,8 +468,8 @@ export default function AdminPanel() {
           {/* Lahey voting controls */}
           <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.25)', background: 'rgba(252,181,20,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <Beer size={20} color="#FCB514" />
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Mr. Jim Lahey Award</div>
+              <span style={{ fontSize: 20 }}>🤠</span>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Jackass of the Day</div>
               <div style={{
                 marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
                 background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
