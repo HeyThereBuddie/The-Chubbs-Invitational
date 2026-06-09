@@ -149,87 +149,45 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Cinematic Hero ────────────────────────────────────── */}
+      {/* ── Compact Hero ─────────────────────────────────────── */}
       <div className="animate-fadeUp" style={{
-        position: 'relative',
-        marginBottom: 20,
-        borderRadius: 20,
-        overflow: 'hidden',
+        position: 'relative', marginBottom: 16, borderRadius: 14, overflow: 'hidden',
         border: '1px solid rgba(252,181,20,0.22)',
-        background: 'linear-gradient(145deg, #0e0a02 0%, #1c1200 40%, #0e0a02 100%)',
+        background: 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)',
       }}>
-        {/* Top gold radiance */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 80% 60% at 30% -10%, rgba(252,181,20,0.14) 0%, transparent 60%)',
-        }} />
-
-        {/* Main content */}
-        <div style={{ padding: '36px 36px 28px', position: 'relative', display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
-
-          {/* Chubbs portrait */}
-          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <div className="animate-glow-pulse" style={{
-              width: 116, height: 116, borderRadius: '50%',
-              border: '3px solid #FCB514',
-              overflow: 'hidden',
-              flexShrink: 0,
-            }}>
-              <img src={CHUBBS_IMG} alt="Chubbs Peterson" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(252,181,20,0.55)', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600 }}>
-              In Memoriam
-            </div>
+        <div style={{ padding: '12px 18px', position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="animate-glow-pulse" style={{
+            width: 42, height: 42, borderRadius: '50%',
+            border: '2px solid rgba(252,181,20,0.7)', overflow: 'hidden', flexShrink: 0,
+          }}>
+            <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
-          {/* Title block */}
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontSize: 11, letterSpacing: 4, color: 'rgba(252,181,20,0.6)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>
-              Annual Golf Tournament
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 3, lineHeight: 1 }}>
+              The Chubbs Invitational
             </div>
-            <div className="text-shimmer" style={{
-              fontFamily: 'Bebas Neue', fontSize: 'clamp(36px, 5vw, 54px)',
-              letterSpacing: 4, lineHeight: 0.95,
-            }}>
-              The Chubbs<br />Invitational
-            </div>
-            <div style={{ marginTop: 12, display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
               <span>⛳ {COURSE_NAME}</span>
               <span>📅 {TOURNAMENT_DATE}</span>
-              <span>🕗 First tee {FIRST_TEE_TIME}</span>
+              <span>🕗 {FIRST_TEE_TIME}</span>
               <span>🏌️ Best Ball</span>
             </div>
           </div>
 
-          {/* Welcome */}
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Welcome back</div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', letterSpacing: 1, textTransform: 'uppercase' }}>Welcome</div>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#FCB514', letterSpacing: 2, lineHeight: 1.1 }}>
               {profile ? displayName(profile) : 'Player'}
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
-              {profile?.role}
             </div>
           </div>
         </div>
 
-        {/* Quote bar */}
-        <div style={{
-          borderTop: '1px solid rgba(252,181,20,0.1)',
-          padding: '13px 36px',
-          background: 'rgba(0,0,0,0.25)',
-          display: 'flex', alignItems: 'center', gap: 12,
-          minHeight: 48,
-        }}>
-          <div style={{ fontSize: 16, opacity: 0.5 }}>💬</div>
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic' }}>
-              "{currentQuote.quote}"
-            </span>
-            <span style={{ fontSize: 12, color: 'rgba(252,181,20,0.55)', marginLeft: 8 }}>
-              — {currentQuote.by}
-            </span>
-          </div>
+        <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '6px 18px', background: 'rgba(0,0,0,0.2)' }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+            💬 "{currentQuote.quote}"
+          </span>
+          <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
         </div>
       </div>
 
