@@ -503,24 +503,6 @@ export default function Scores() {
           </div>
         )}
 
-        {/* Hole guide dropdown */}
-        {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
-          <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {holeInfo.photo && (
-              <img
-                src={holeInfo.photo}
-                alt={`Hole ${hole} diagram`}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            )}
-            {holeInfo.description && (
-              <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
-                {holeInfo.description}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Chulligan buttons — one per player, only when editable and score exists */}
         {!readOnly && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -548,6 +530,24 @@ export default function Scores() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Hole guide dropdown */}
+        {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
+          <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {holeInfo.photo && (
+              <img
+                src={holeInfo.photo}
+                alt={`Hole ${hole} diagram`}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+            )}
+            {holeInfo.description && (
+              <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+                {holeInfo.description}
+              </div>
+            )}
           </div>
         )}
       </div>
