@@ -77,6 +77,13 @@ const HOLE_DATA: { yards: number; si: number; description?: string; photo?: stri
   { yards: 345, si: 14, photo: `${BASE}/ROY-Hole-18.png`,  description: 'Depending on the wind, this hole could be a driver, fairway wood or hybrid from the tee. A well placed drive will leave a mid to short iron to a large tiered green. Locate the pin position and measure your distance accurately as this green is 50 yards in length.' },
 ]
 
+function isHoleComplete(scoreRow: ScoreRow | undefined, twoPlayers: boolean): boolean {
+  if (!scoreRow) return false
+  if (scoreRow.putts == null) return false
+  if (twoPlayers && !scoreRow.drive_used_id) return false
+  return true
+}
+
 async function pingLeadCheck() {
   const { data: { session } } = await supabase.auth.getSession()
   supabase.functions.invoke('notify-lead-change', {
@@ -109,7 +116,7 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
 }
 
 function HoleCard({
-  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo, infoExpanded, onToggleInfo,
+  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, infoExpanded, onToggleInfo,
 }: {
   hole: number
   scoreRow: ScoreRow | undefined
@@ -125,6 +132,7 @@ function HoleCard({
   chulligans?: ChulliganRow[]
   onToggleChulligan?: (playerId: string, hole: number) => void
   readOnly?: boolean
+  locked?: boolean
   holeInfo?: { yards: number; si: number; description?: string; photo?: string }
   infoExpanded?: boolean
   onToggleInfo?: () => void
@@ -178,7 +186,7 @@ function HoleCard({
           </div>
         )}
 
-        {!readOnly && (
+        {!readOnly && !locked && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               onClick={onMinus}
@@ -216,6 +224,12 @@ function HoleCard({
             )}
           </div>
         )}
+        {!readOnly && locked && (
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span style={{ fontSize: 18, opacity: 0.22 }}>🔒</span>
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Hole {hole - 1} first</span>
+          </div>
+        )}
       </div>
 
       {readOnly && hasScore && (scoreRow?.drive_used_id || scoreRow?.putts != null) && (
@@ -232,7 +246,7 @@ function HoleCard({
         </div>
       )}
 
-      {!readOnly && hasScore && player1 && player2 && onSetDrive && (
+      {!readOnly && !locked && hasScore && player1 && player2 && onSetDrive && (
         <div style={{
           marginTop: 10, paddingTop: 10,
           borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -265,7 +279,7 @@ function HoleCard({
         </div>
       )}
 
-      {!readOnly && hasScore && onSetPutts && (
+      {!readOnly && !locked && hasScore && onSetPutts && (
         <div style={{
           marginTop: 10, paddingTop: 10,
           borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -292,7 +306,7 @@ function HoleCard({
         </div>
       )}
 
-      {!readOnly && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
+      {!readOnly && !locked && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🍺</span>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -937,9 +951,11 @@ export default function Scores() {
             const hTo   = half === 'front' ? 9 : 18
             const mp1   = myTeam?.player1
             const mp2   = myTeam?.player2
+            const twoPlayers = !!(mp1 && mp2)
             const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
             const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
             return holes.map(hole => {
+              const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
               const driveId = myScores[hole]?.drive_used_id ?? null
               const driveDisabled: Record<string, boolean> = {
                 ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
@@ -961,6 +977,7 @@ export default function Scores() {
                   onReset={() => resetMyScore(hole)}
                   chulligans={myChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
+                  locked={locked}
                   holeInfo={HOLE_DATA[hole - 1]}
                   infoExpanded={expandedHoles.has(hole)}
                   onToggleInfo={() => toggleHoleInfo(hole)}
