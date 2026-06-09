@@ -1,12 +1,32 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, HL_TYPES } from '../lib/types'
-import type { Team, Score, Player, Update, Highlight } from '../lib/types'
+import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, HOLE_PARS, displayName } from '../lib/types'
+import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
+
+interface FeedEntry {
+  id: string
+  hole: number
+  score: number
+  updated_at: string
+  team: { name: string } | null
+}
+
+function scoreInfo(score: number, hole: number) {
+  if (score === 1) return { emoji: '🕳️', label: 'Hole in One!', color: '#FCB514', highlight: true }
+  const par = HOLE_PARS[hole - 1]
+  const d = score - par
+  if (d <= -2) return { emoji: '🦅', label: 'Eagle',    color: '#FCB514',                   highlight: true }
+  if (d === -1) return { emoji: '🐦', label: 'Birdie',   color: '#22c55e',                   highlight: true }
+  if (d === 0)  return { emoji: '⛳', label: 'Par',      color: 'rgba(255,255,255,0.55)',     highlight: false }
+  if (d === 1)  return { emoji: '😬', label: 'Bogey',    color: 'rgba(255,255,255,0.38)',     highlight: false }
+  if (d === 2)  return { emoji: '😤', label: 'Double',   color: '#f59e0b',                   highlight: false }
+  return               { emoji: '💥', label: `+${d}`,   color: '#ef4444',                   highlight: false }
+}
 
 interface LeaderRow {
   team: Team & { player1?: Player; player2?: Player }
@@ -19,7 +39,7 @@ export default function Dashboard() {
   const { profile } = useAuth()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
-  const [highlights, setHighlights] = useState<Highlight[]>([])
+  const [feed, setFeed] = useState<FeedEntry[]>([])
   const [playerCount, setPlayerCount] = useState(0)
   const [teamCount, setTeamCount] = useState(0)
   const [quoteIdx, setQuoteIdx] = useState(0)
@@ -32,14 +52,29 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchFeed()
+    const t = setInterval(fetchFeed, 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const fetchFeed = async () => {
+    const cutoff = new Date(Date.now() - 60_000).toISOString()
+    const { data } = await supabase
+      .from('scores')
+      .select('id, hole, score, updated_at, team:teams(name)')
+      .lt('updated_at', cutoff)
+      .order('updated_at', { ascending: false })
+      .limit(30)
+    setFeed((data ?? []) as unknown as FeedEntry[])
+  }
 
   const fetchData = async () => {
-    const [teamsRes, scoresRes, playersRes, updatesRes, highlightsRes] = await Promise.all([
+    const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
       supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
       supabase.from('scores').select('*'),
       supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
       supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
-      supabase.from('highlights').select('*').order('created_at', { ascending: false }).limit(8),
     ])
 
     const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
@@ -47,7 +82,6 @@ export default function Dashboard() {
     setPlayerCount(playersRes.count ?? 0)
     setTeamCount(teams.length)
     setUpdates(updatesRes.data ?? [])
-    setHighlights(highlightsRes.data ?? [])
 
     const rows: LeaderRow[] = teams.map(team => {
       const teamScores = scores.filter(s => s.team_id === team.id)
@@ -287,48 +321,70 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Highlight Reel ───────────────────────────────────── */}
-      {highlights.length > 0 && (
-        <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
-          <div style={{
-            padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            borderBottom: '1px solid rgba(252,181,20,0.1)',
-            background: 'rgba(252,181,20,0.04)',
-          }}>
-            <span style={{ fontSize: 15 }}>🎬</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Highlight Reel</span>
+      {/* ── Live Scoring Feed ─────────────────────────────────── */}
+      <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{
+          padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
+          borderBottom: '1px solid rgba(252,181,20,0.1)',
+          background: 'rgba(252,181,20,0.04)',
+        }}>
+          <span style={{ fontSize: 15 }}>⚡</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Scoring Feed</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
           </div>
-          {highlights.map((h, i) => {
-            const t = HL_TYPES.find(x => x.value === h.type) ?? HL_TYPES[4]
+        </div>
+
+        {feed.length === 0 ? (
+          <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Scores appear here as holes are completed</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', marginTop: 4 }}>Updates every 30 seconds · 60s confirmation delay</div>
+          </div>
+        ) : (
+          feed.map((entry, i) => {
+            const info = scoreInfo(entry.score, entry.hole)
             return (
-              <div key={h.id} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px',
-                borderBottom: i < highlights.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              <div key={entry.id} style={{
+                display: 'flex', alignItems: 'center', gap: 14, padding: '11px 20px',
+                borderBottom: i < feed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                background: info.highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
               }}>
                 <div style={{
-                  fontSize: 22, flexShrink: 0, lineHeight: 1, marginTop: 1,
-                  width: 36, height: 36, borderRadius: 10,
-                  background: 'rgba(252,181,20,0.07)',
+                  width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                  background: info.highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{t.emoji}</div>
+                  fontSize: 18,
+                }}>{info.emoji}</div>
+
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#FCB514', textTransform: 'uppercase', letterSpacing: 1.5 }}>{t.label}</span>
-                    <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{h.player_name}</span>
-                    {h.hole && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>· Hole {h.hole}</span>}
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', marginLeft: 'auto' }}>
-                      {formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: info.color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                      {info.label}
+                    </span>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {entry.team?.name ?? 'Unknown Team'}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                      Hole {entry.hole}
                     </span>
                   </div>
-                  {h.description && (
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 3, lineHeight: 1.55 }}>{h.description}</div>
-                  )}
+                </div>
+
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: info.color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
+                    {entry.score}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+                    {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true })}
+                  </div>
                 </div>
               </div>
             )
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
 
       {/* ── Chubbs Legacy card ────────────────────────────────── */}
       <div className="glass animate-fadeUp delay-400" style={{
