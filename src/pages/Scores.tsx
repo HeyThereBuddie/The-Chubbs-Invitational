@@ -7,6 +7,13 @@ import { Minus, Plus, Users } from 'lucide-react'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
+async function pingLeadCheck() {
+  const { data: { session } } = await supabase.auth.getSession()
+  supabase.functions.invoke('notify-lead-change', {
+    headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+  }).catch(() => { /* fire and forget */ })
+}
+
 type TeamFull = Team & { player1?: Player; player2?: Player }
 type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
 type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back'; hole: number }
@@ -150,6 +157,7 @@ export default function Scores() {
       if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
     setSaving(null)
+    pingLeadCheck()
   }
 
   const adjustAdminScore = async (hole: number, delta: number) => {
@@ -167,6 +175,7 @@ export default function Scores() {
       if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
     setSaving(null)
+    pingLeadCheck()
   }
 
   const setMyDrive = async (hole: number, playerId: string) => {

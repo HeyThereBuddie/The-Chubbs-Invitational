@@ -4,6 +4,15 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { displayName } from '../lib/types'
 
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''
+
+function urlBase64ToUint8Array(base64: string) {
+  const pad = '='.repeat((4 - base64.length % 4) % 4)
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(b64)
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+}
+
 export default function AccountPage() {
   const { profile, user, refreshProfile } = useAuth()
   const { showToast } = useToast()
@@ -21,6 +30,53 @@ export default function AccountPage() {
   const [savingPassword, setSavingPassword] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [pushStatus, setPushStatus] = useState<'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'>('unsubscribed')
+  const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatus('unsupported'); return
+    }
+    if (Notification.permission === 'denied') { setPushStatus('denied'); return }
+    navigator.serviceWorker.register('/sw.js').then(async reg => {
+      const sub = await reg.pushManager.getSubscription()
+      setPushStatus(sub ? 'subscribed' : 'unsubscribed')
+    })
+  }, [])
+
+  const subscribePush = async () => {
+    setPushLoading(true)
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') { setPushStatus('denied'); return }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      })
+      await supabase.from('push_subscriptions').upsert({ user_id: user!.id, subscription: sub.toJSON() }, { onConflict: 'user_id' })
+      setPushStatus('subscribed')
+      showToast('Lead notifications enabled!')
+    } catch (e) {
+      showToast((e as Error).message ?? 'Failed to enable notifications', 'error')
+    }
+    setPushLoading(false)
+  }
+
+  const unsubscribePush = async () => {
+    setPushLoading(true)
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/sw.js')
+      const sub = await reg?.pushManager.getSubscription()
+      await sub?.unsubscribe()
+      await supabase.from('push_subscriptions').delete().eq('user_id', user!.id)
+      setPushStatus('unsubscribed')
+      showToast('Notifications disabled')
+    } catch (e) {
+      showToast((e as Error).message ?? 'Failed to disable', 'error')
+    }
+    setPushLoading(false)
+  }
 
   useEffect(() => {
     if (profile) {
@@ -348,6 +404,44 @@ export default function AccountPage() {
           </div>
         </div>
       )}
+
+      {/* ── Push Notifications ── */}
+      <div className="glass" style={{ padding: '24px 26px', marginTop: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 16 }}>
+          Lead Notifications
+        </div>
+        {pushStatus === 'unsupported' && (
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>Push notifications aren't supported in this browser.</p>
+        )}
+        {pushStatus === 'denied' && (
+          <p style={{ fontSize: 13, color: '#ef4444' }}>Notifications are blocked. Enable them in your browser settings, then reload.</p>
+        )}
+        {(pushStatus === 'unsubscribed' || pushStatus === 'subscribed') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 4 }}>
+                {pushStatus === 'subscribed' ? '🔔 Enabled' : '🔕 Disabled'}
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+                Get a notification when a team takes the lead mid-round
+              </div>
+            </div>
+            <button
+              onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+              disabled={pushLoading}
+              style={{
+                marginLeft: 'auto', padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                background: pushStatus === 'subscribed' ? 'rgba(255,255,255,0.06)' : 'rgba(252,181,20,0.15)',
+                border: `1px solid ${pushStatus === 'subscribed' ? 'rgba(255,255,255,0.12)' : 'rgba(252,181,20,0.4)'}`,
+                color: pushStatus === 'subscribed' ? 'rgba(255,255,255,0.5)' : '#FCB514',
+                cursor: pushLoading ? 'not-allowed' : 'pointer', opacity: pushLoading ? 0.6 : 1, whiteSpace: 'nowrap',
+              }}
+            >
+              {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
