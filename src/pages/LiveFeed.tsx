@@ -160,18 +160,31 @@ export default function LiveFeed() {
                     <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
                       {ev.label}
                     </span>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {ev.team_name || 'Unknown Team'}
-                    </span>
-                    {ev.player_name && (
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                        {ev.player_name}
+                    {ev.event_type === 'contest' && ev.label.includes('Vote') ? (
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                        <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.team_name}</strong>
+                        {' voted '}
+                        <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
+                        {' for jackass'}
                       </span>
-                    )}
-                    {ev.event_type !== 'contest' && (
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                        Hole {ev.hole}
-                      </span>
+                    ) : ev.event_type === 'contest' ? (
+                      ev.player_name && (
+                        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>{ev.player_name}</span>
+                      )
+                    ) : (
+                      <>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {ev.team_name || 'Unknown Team'}
+                        </span>
+                        {ev.player_name && (
+                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                            {ev.player_name}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                          Hole {ev.hole}
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
