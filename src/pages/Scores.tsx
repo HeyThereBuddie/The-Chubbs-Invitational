@@ -377,17 +377,21 @@ export default function Scores() {
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
-  const [adminTeamId, setAdminTeamId] = useState<string | null>(null)
-  const [half,        setHalf]        = useState<'front' | 'back'>('front')
-  const [saving,      setSaving]      = useState<number | null>(null)
-  const [teamPick,    setTeamPick]    = useState('')
-  const [settingTeam, setSettingTeam] = useState(false)
-  const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set())
+  const [adminTeamId,   setAdminTeamId]   = useState<string | null>(null)
+  const [selectedHole,  setSelectedHole]  = useState(1)
+  const [saving,        setSaving]        = useState<number | null>(null)
+  const [teamPick,      setTeamPick]      = useState('')
+  const [settingTeam,   setSettingTeam]   = useState(false)
+  const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set([1]))
   const toggleHoleInfo = (hole: number) => setExpandedHoles(prev => {
     const next = new Set(prev)
     next.has(hole) ? next.delete(hole) : next.add(hole)
     return next
   })
+  const handleSelectHole = (hole: number) => {
+    setSelectedHole(hole)
+    setExpandedHoles(prev => new Set([...prev, hole]))
+  }
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
@@ -623,10 +627,6 @@ export default function Scores() {
 
   // ── Helpers ──────────────────────────────────────────────────
 
-  const holes = half === 'front'
-    ? Array.from({ length: 9 }, (_, i) => i + 1)
-    : Array.from({ length: 9 }, (_, i) => i + 10)
-
   const pageHeader = (
     <div style={{ marginBottom: 20 }}>
       <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
@@ -774,6 +774,52 @@ export default function Scores() {
     )
   }
 
+  // ── Hole tab row helper ──────────────────────────────────────
+
+  const HoleTabs = ({ scoreMap, twoPlayers, locked: applyLock }: {
+    scoreMap: Record<number, ScoreRow>
+    twoPlayers: boolean
+    locked?: boolean
+  }) => (
+    <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 14 }}>
+      {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
+        const isLocked = applyLock && hole > 1 && !isHoleComplete(scoreMap[hole - 1], twoPlayers)
+        const sr  = scoreMap[hole]
+        const par = HOLE_PARS[hole - 1]
+        const hasScore = sr?.score !== undefined
+        const diff = hasScore ? sr!.score - par : null
+        const isActive = selectedHole === hole
+        const dotColor = diff === null ? null
+          : diff <= -2 ? '#86efac' : diff === -1 ? '#4ade80' : diff === 0 ? '#22c55e'
+          : diff === 1 ? '#ef4444' : '#dc2626'
+        return (
+          <button key={hole} onClick={() => handleSelectHole(hole)}
+            style={{
+              minWidth: 38, padding: '6px 4px', borderRadius: 8, flexShrink: 0,
+              border: `1px solid ${isActive ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              background: isActive ? 'rgba(252,181,20,0.12)' : 'transparent',
+              cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              opacity: isLocked ? 0.38 : 1, transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700, color: isActive ? '#FCB514' : 'rgba(255,255,255,0.8)', lineHeight: 1 }}>
+              {hole}
+            </span>
+            {isLocked ? (
+              <span style={{ fontSize: 9, lineHeight: 1 }}>🔒</span>
+            ) : dotColor !== null ? (
+              <span style={{ fontSize: 10, fontWeight: 700, color: dotColor, lineHeight: 1 }}>
+                {diff === 0 ? 'E' : diff! > 0 ? `+${diff}` : `${diff}`}
+              </span>
+            ) : (
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'inline-block' }} />
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+
   // ── Admin view ───────────────────────────────────────────────
 
   if (isAdmin) {
@@ -819,55 +865,45 @@ export default function Scores() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {(['front', 'back'] as const).map(h => (
-            <button key={h} onClick={() => setHalf(h)} className={`pill-tab ${half === h ? 'active' : ''}`}>
-              {h === 'front' ? 'Front 9 (1–9)' : 'Back 9 (10–18)'}
-            </button>
-          ))}
-        </div>
+        <HoleTabs scoreMap={adminScores} twoPlayers={!!(adminTeam?.player1 && adminTeam?.player2)} />
 
         <DriveCounter scoreMap={adminScores} p1={adminTeam?.player1} p2={adminTeam?.player2} />
         <ChulliganDashboard p1={adminTeam?.player1} p2={adminTeam?.player2} chulligans={adminChulligans} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(() => {
-            const hFrom = half === 'front' ? 1 : 10
-            const hTo   = half === 'front' ? 9 : 18
-            const ap1   = adminTeam?.player1
-            const ap2   = adminTeam?.player2
-            const p1n   = countDrives(ap1?.id ?? null, hFrom, hTo, adminScores)
-            const p2n   = countDrives(ap2?.id ?? null, hFrom, hTo, adminScores)
-            return holes.map(hole => {
-              const driveId = adminScores[hole]?.drive_used_id ?? null
-              const driveDisabled: Record<string, boolean> = {
-                ...(ap1 ? { [ap1.id]: p1n >= 5 && driveId !== ap1.id } : {}),
-                ...(ap2 ? { [ap2.id]: p2n >= 5 && driveId !== ap2.id } : {}),
-              }
-              return (
-                <HoleCard
-                  key={hole}
-                  hole={hole}
-                  scoreRow={adminScores[hole]}
-                  isSaving={saving === hole}
-                  onMinus={() => adjustAdminScore(hole, -1)}
-                  onPlus={() => adjustAdminScore(hole, 1)}
-                  player1={ap1}
-                  player2={ap2}
-                  onSetDrive={(pid) => setAdminDrive(hole, pid)}
-                  driveDisabled={driveDisabled}
-                  onSetPutts={(n) => setAdminPutts(hole, n)}
-                  onReset={() => resetAdminScore(hole)}
-                  chulligans={adminChulligans}
-                  onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
-                  holeInfo={HOLE_DATA[hole - 1]}
-                  infoExpanded={expandedHoles.has(hole)}
-                  onToggleInfo={() => toggleHoleInfo(hole)}
-                />
-              )
-            })
-          })()}
-        </div>
+        {(() => {
+          const hole  = selectedHole
+          const ap1   = adminTeam?.player1
+          const ap2   = adminTeam?.player2
+          const hFrom = hole <= 9 ? 1 : 10
+          const hTo   = hole <= 9 ? 9 : 18
+          const p1n   = countDrives(ap1?.id ?? null, hFrom, hTo, adminScores)
+          const p2n   = countDrives(ap2?.id ?? null, hFrom, hTo, adminScores)
+          const driveId = adminScores[hole]?.drive_used_id ?? null
+          const driveDisabled: Record<string, boolean> = {
+            ...(ap1 ? { [ap1.id]: p1n >= 5 && driveId !== ap1.id } : {}),
+            ...(ap2 ? { [ap2.id]: p2n >= 5 && driveId !== ap2.id } : {}),
+          }
+          return (
+            <HoleCard
+              hole={hole}
+              scoreRow={adminScores[hole]}
+              isSaving={saving === hole}
+              onMinus={() => adjustAdminScore(hole, -1)}
+              onPlus={() => adjustAdminScore(hole, 1)}
+              player1={ap1}
+              player2={ap2}
+              onSetDrive={(pid) => setAdminDrive(hole, pid)}
+              driveDisabled={driveDisabled}
+              onSetPutts={(n) => setAdminPutts(hole, n)}
+              onReset={() => resetAdminScore(hole)}
+              chulligans={adminChulligans}
+              onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
+              holeInfo={HOLE_DATA[hole - 1]}
+              infoExpanded={expandedHoles.has(hole)}
+              onToggleInfo={() => toggleHoleInfo(hole)}
+            />
+          )
+        })()}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
           <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
@@ -939,74 +975,70 @@ export default function Scores() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['front', 'back'] as const).map(h => (
-          <button key={h} onClick={() => setHalf(h)} className={`pill-tab ${half === h ? 'active' : ''}`}>
-            {h === 'front' ? 'Front 9 (1–9)' : 'Back 9 (10–18)'}
-          </button>
-        ))}
-      </div>
+      <HoleTabs
+        scoreMap={isViewingMyTeam ? myScores : viewScores}
+        twoPlayers={!!(myTeam?.player1 && myTeam?.player2)}
+        locked={isViewingMyTeam}
+      />
 
       {/* Drive counter + chulligans only for own team */}
       {isViewingMyTeam && <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />}
       {isViewingMyTeam && <ChulliganDashboard p1={myTeam?.player1} p2={myTeam?.player2} chulligans={myChulligans} />}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {(() => {
-          if (isViewingMyTeam) {
-            const hFrom = half === 'front' ? 1 : 10
-            const hTo   = half === 'front' ? 9 : 18
-            const mp1   = myTeam?.player1
-            const mp2   = myTeam?.player2
-            const twoPlayers = !!(mp1 && mp2)
-            const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
-            const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
-            return holes.map(hole => {
-              const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
-              const driveId = myScores[hole]?.drive_used_id ?? null
-              const driveDisabled: Record<string, boolean> = {
-                ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
-                ...(mp2 ? { [mp2.id]: p2n >= 5 && driveId !== mp2.id } : {}),
-              }
-              return (
-                <HoleCard
-                  key={hole}
-                  hole={hole}
-                  scoreRow={myScores[hole]}
-                  isSaving={saving === hole}
-                  onMinus={() => adjustMyScore(hole, -1)}
-                  onPlus={() => adjustMyScore(hole, 1)}
-                  player1={mp1}
-                  player2={mp2}
-                  onSetDrive={(pid) => setMyDrive(hole, pid)}
-                  driveDisabled={driveDisabled}
-                  onSetPutts={(n) => setMyPutts(hole, n)}
-                  onReset={() => resetMyScore(hole)}
-                  chulligans={myChulligans}
-                  onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
-                  locked={locked}
-                  holeInfo={HOLE_DATA[hole - 1]}
-                  infoExpanded={expandedHoles.has(hole)}
-                  onToggleInfo={() => toggleHoleInfo(hole)}
-                />
-              )
-            })
+      {(() => {
+        const hole = selectedHole
+        if (isViewingMyTeam) {
+          const mp1 = myTeam?.player1
+          const mp2 = myTeam?.player2
+          const twoPlayers = !!(mp1 && mp2)
+          const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
+          const hFrom = hole <= 9 ? 1 : 10
+          const hTo   = hole <= 9 ? 9 : 18
+          const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
+          const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
+          const driveId = myScores[hole]?.drive_used_id ?? null
+          const driveDisabled: Record<string, boolean> = {
+            ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
+            ...(mp2 ? { [mp2.id]: p2n >= 5 && driveId !== mp2.id } : {}),
           }
-          // Read-only view for another team
-          return holes.map(hole => (
+          return (
             <HoleCard
               key={hole}
               hole={hole}
-              scoreRow={viewScores[hole]}
-              isSaving={false}
-              player1={viewTeam?.player1}
-              player2={viewTeam?.player2}
-              readOnly
+              scoreRow={myScores[hole]}
+              isSaving={saving === hole}
+              onMinus={() => adjustMyScore(hole, -1)}
+              onPlus={() => adjustMyScore(hole, 1)}
+              player1={mp1}
+              player2={mp2}
+              onSetDrive={(pid) => setMyDrive(hole, pid)}
+              driveDisabled={driveDisabled}
+              onSetPutts={(n) => setMyPutts(hole, n)}
+              onReset={() => resetMyScore(hole)}
+              chulligans={myChulligans}
+              onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
+              locked={locked}
               holeInfo={HOLE_DATA[hole - 1]}
+              infoExpanded={expandedHoles.has(hole)}
+              onToggleInfo={() => toggleHoleInfo(hole)}
             />
-          ))
-        })()}
-      </div>
+          )
+        }
+        return (
+          <HoleCard
+            key={hole}
+            hole={hole}
+            scoreRow={viewScores[hole]}
+            isSaving={false}
+            player1={viewTeam?.player1}
+            player2={viewTeam?.player2}
+            readOnly
+            holeInfo={HOLE_DATA[hole - 1]}
+            infoExpanded={expandedHoles.has(hole)}
+            onToggleInfo={() => toggleHoleInfo(hole)}
+          />
+        )
+      })()}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
         <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
