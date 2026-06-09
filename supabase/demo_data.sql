@@ -1,5 +1,5 @@
 -- ============================================================
--- The Chubbs Invitational — Demo Data (20 players / 10 teams)
+-- The Chubbs Memorial — Demo Data (20 players / 10 teams)
 -- Run AFTER migration 005_unify_profiles.sql
 -- Safe to run multiple times (idempotent).
 --
@@ -287,7 +287,7 @@ BEGIN
   INSERT INTO public.updates (id, title, body, pinned, created_by) VALUES
     (
       '33000000-0000-0000-0000-000000000001',
-      'Welcome to The Chubbs Invitational!',
+      'Welcome to The Chubbs Memorial!',
       'Welcome, golfers! The day is finally here. Remember — it''s all in the hips. Check your tee time and enter your scores as you play. Best ball format — take the lowest score between you and your partner for each hole. Good luck out there! 🏌️',
       true,
       real_p1

@@ -129,7 +129,7 @@ ON CONFLICT DO NOTHING;
 -- or remove the created_by column from these inserts if seeding without an auth user.
 INSERT INTO public.updates (title, body, pinned) VALUES
   (
-    '⛳ Welcome to The Chubbs Invitational!',
+    '⛳ Welcome to The Chubbs Memorial!',
     'Welcome everyone! We are thrilled to have you at this year''s tournament. Check the Tee Times page for your starting hole and time. Remember — it''s all in the hips!',
     true
   ),

@@ -1,5 +1,5 @@
 -- ============================================================
--- The Chubbs Invitational — Schema Migration
+-- The Chubbs Memorial — Schema Migration
 -- ============================================================
 
 -- Profiles (extends auth.users)

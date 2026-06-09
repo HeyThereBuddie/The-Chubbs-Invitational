@@ -1,4 +1,4 @@
-# ⛳ The Chubbs Invitational
+# ⛳ The Chubbs Memorial
 
 A full-stack golf tournament management app for a group of friends, themed after Chubbs Peterson from Happy Gilmore.
 

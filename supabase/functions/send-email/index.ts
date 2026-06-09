@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
 const RESEND_API_KEY      = Deno.env.get('RESEND_API_KEY')!
-const FROM_EMAIL          = Deno.env.get('RESEND_FROM_EMAIL') ?? 'The Chubbs Invitational <onboarding@resend.dev>'
+const FROM_EMAIL          = Deno.env.get('RESEND_FROM_EMAIL') ?? 'The Chubbs Memorial <onboarding@resend.dev>'
 const SUPABASE_URL        = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON_KEY   = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -118,7 +118,7 @@ async function buildTeeTimeEmails(db: ReturnType<typeof createClient>): Promise<
       results.push({
         from: FROM_EMAIL,
         to: player.email,
-        subject: 'Your Tee Time — The Chubbs Invitational',
+        subject: 'Your Tee Time — The Chubbs Memorial',
         html: teeTimeHtml({
           playerName: player.name,
           teamName: tt.team.name,
@@ -160,7 +160,7 @@ async function buildWelcomeEmails(
     .map((p: { name: string; email: string }) => ({
       from: FROM_EMAIL,
       to: p.email,
-      subject: 'Welcome to The Chubbs Invitational! ⛳',
+      subject: 'Welcome to The Chubbs Memorial! ⛳',
       html: welcomeHtml(p.name),
     }))
 }
@@ -218,7 +218,7 @@ function wrap(content: string): string {
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
   <tr><td style="background:#0d0900;border:1px solid #4a3800;border-bottom:none;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
-    <div style="font-size:28px;color:#FCB514;font-weight:900;letter-spacing:3px;font-family:Georgia,serif;">THE CHUBBS INVITATIONAL</div>
+    <div style="font-size:28px;color:#FCB514;font-weight:900;letter-spacing:3px;font-family:Georgia,serif;">THE CHUBBS MEMORIAL</div>
     <div style="color:#554030;font-size:11px;margin-top:6px;letter-spacing:3px;text-transform:uppercase;">Annual Golf Tournament</div>
   </td></tr>
   <tr><td style="background:#111008;border-left:1px solid #2a2000;border-right:1px solid #2a2000;padding:32px;">
@@ -247,7 +247,7 @@ function teeTimeHtml(d: { playerName: string; teamName: string; teeTime: string;
     : ''
   return wrap(`
     <h1 style="color:#FCB514;font-size:22px;margin:0 0 6px;font-family:Georgia,serif;">Tee Time Confirmed &#x26F3;</h1>
-    <p style="color:#554030;font-size:13px;margin:0 0 24px;">Your details for The Chubbs Invitational:</p>
+    <p style="color:#554030;font-size:13px;margin:0 0 24px;">Your details for The Chubbs Memorial:</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1200;border:1px solid #4a3800;border-radius:12px;margin-bottom:20px;">
       <tr><td style="padding:20px 24px;">
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -278,10 +278,10 @@ function welcomeHtml(playerName: string): string {
     <div style="text-align:center;margin-bottom:28px;">
       <div style="font-size:48px;">&#x26F3;</div>
       <h1 style="color:#FCB514;font-size:24px;margin:12px 0 8px;font-family:Georgia,serif;">You're In, ${escHtml(playerName)}!</h1>
-      <p style="color:#554030;font-size:14px;margin:0;">Welcome to The Chubbs Invitational</p>
+      <p style="color:#554030;font-size:14px;margin:0;">Welcome to The Chubbs Memorial</p>
     </div>
     <div style="background:#1a1200;border:1px solid #4a3800;border-radius:12px;padding:24px;margin-bottom:20px;">
-      <p style="color:#ccb88a;font-size:14px;line-height:1.8;margin:0 0 14px;">You've been registered for The Chubbs Invitational — a best ball golf tournament in honor of the greatest one-handed golfer who never was.</p>
+      <p style="color:#ccb88a;font-size:14px;line-height:1.8;margin:0 0 14px;">You've been registered for The Chubbs Memorial — a best ball golf tournament in honor of the greatest one-handed golfer who never was.</p>
       <p style="color:#ccb88a;font-size:14px;line-height:1.8;margin:0;">Check the app for tee times, live scores, and tournament updates. And remember: it's all in the hips. &#x1F3CC;</p>
     </div>
     <div style="color:#3a3020;font-size:12px;font-style:italic;text-align:center;padding-top:16px;border-top:1px solid #1a1400;">"You're gonna be a golf legend." — Chubbs Peterson</div>

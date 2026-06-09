@@ -1,5 +1,5 @@
 -- ============================================================
--- Clear Demo Data — The Chubbs Invitational
+-- Clear Demo Data — The Chubbs Memorial
 -- Removes all demo/test data while keeping real registered
 -- accounts and tournament announcements.
 --

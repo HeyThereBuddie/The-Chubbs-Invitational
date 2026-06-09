@@ -78,7 +78,7 @@ export default function Sidebar() {
               The Chubbs
             </div>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: 'rgba(252,181,20,0.55)', letterSpacing: 2 }}>
-              Invitational
+              Memorial
             </div>
           </div>
         </div>

@@ -173,7 +173,7 @@ export default function Dashboard() {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 20, letterSpacing: isMobile ? 2 : 3, lineHeight: 1 }}>
-              The Chubbs Invitational
+              The Chubbs Memorial
             </div>
             <div style={{ display: 'flex', gap: isMobile ? 6 : 10, flexWrap: 'wrap', fontSize: isMobile ? 10 : 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
               <span>⛳ {COURSE_NAME}</span>
