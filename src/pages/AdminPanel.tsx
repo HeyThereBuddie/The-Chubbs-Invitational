@@ -9,7 +9,7 @@ type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
 interface StandingEntry {
   teamName: string; p1Name: string | null; p2Name: string | null
-  p1Id: string | null; p2Id: string | null; toPar: number; thru: number
+  p1Id: string | null; p2Id: string | null; toPar: number; thru: number; gross: number
 }
 
 interface EndTournamentPreview {
@@ -18,9 +18,27 @@ interface EndTournamentPreview {
   ctpWinner: string; ldWinner: string
 }
 
+interface EditCategory {
+  id: string | null
+  team_name: string; player1_name: string; player2_name: string; score_to_par: string; detail: string
+}
+
+interface EditingTournament {
+  id: string; year: number; course: string; date: string; notes: string
+  champion: EditCategory; runner_up: EditCategory; third: EditCategory
+  jackass: EditCategory; ctp: EditCategory; ld: EditCategory
+}
+
+interface THistoryEntry {
+  id: string; year: number; name: string; date: string | null; course: string | null
+  status: string; notes: string | null; deleted_at: string | null
+  final_standings: StandingEntry[] | null
+  results: Array<{ id: string; category: string; team_name: string | null; player1_name: string | null; player2_name: string | null; score_to_par: number | null; detail: string | null }>
+}
+
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'reset' | 'brevo'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'reset' | 'history' | 'brevo'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamName, setNewTeamName] = useState('')
@@ -164,11 +182,20 @@ export default function AdminPanel() {
   const [endTournamentOpen, setEndTournamentOpen] = useState(false)
   const [endTournamentPreview, setEndTournamentPreview] = useState<EndTournamentPreview | null>(null)
   const [endingTournament, setEndingTournament] = useState(false)
+  const [tournamentHistory, setTournamentHistory] = useState<THistoryEntry[]>([])
+  const [editingT, setEditingT] = useState<EditingTournament | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ id: string; year: number; step: 1 | 2 } | null>(null)
+  const [deleteInput, setDeleteInput] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingYear, setDeletingYear] = useState(false)
+  const [restoringYear, setRestoringYear] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
       .then(({ data }) => { if (data) setLaheyVotingOpen(data.lahey_voting_open) })
   }, [])
+
+  useEffect(() => { if (tab === 'history') fetchTournamentHistory() }, [tab])
 
   const resetTournament = async () => {
     setResetting(true)
@@ -233,6 +260,7 @@ export default function AdminPanel() {
         p2Id: team.p2_id ?? null,
         toPar: gross - parSoFar,
         thru,
+        gross,
       }
     }).sort((a, b) => {
       if (a.thru === 0 && b.thru > 0) return 1
@@ -305,8 +333,8 @@ export default function AdminPanel() {
 
       if (rows.length > 0) await supabase.from('tournament_results').insert(rows)
 
-      // Mark completed + seed next year
-      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', activeTournament.id)
+      // Mark completed + save full standings snapshot + seed next year
+      await supabase.from('tournaments').update({ status: 'completed', final_standings: standings }).eq('id', activeTournament.id)
       await supabase.from('tournaments').upsert({ year: activeTournament.year + 1, status: 'active' }, { onConflict: 'year' })
 
       // Reset operational data
@@ -327,6 +355,71 @@ export default function AdminPanel() {
       showToast((e as Error).message ?? 'Archive failed', 'error')
     }
     setEndingTournament(false)
+  }
+
+  const fetchTournamentHistory = async () => {
+    const { data: ts } = await supabase.from('tournaments').select('*').order('year', { ascending: false })
+    if (!ts?.length) { setTournamentHistory([]); return }
+    const ids = ts.map(t => t.id)
+    const { data: results } = await supabase.from('tournament_results').select('*').in('tournament_id', ids)
+    const byT: Record<string, THistoryEntry['results']> = {}
+    for (const r of results ?? []) {
+      if (!byT[r.tournament_id]) byT[r.tournament_id] = []
+      byT[r.tournament_id].push(r)
+    }
+    setTournamentHistory(ts.map(t => ({ ...t, results: byT[t.id] ?? [] })))
+  }
+
+  const blankCat = (): EditCategory => ({ id: null, team_name: '', player1_name: '', player2_name: '', score_to_par: '', detail: '' })
+
+  const openEditT = (t: THistoryEntry) => {
+    const findCat = (cat: string): EditCategory => {
+      const r = t.results.find(r => r.category === cat)
+      if (!r) return blankCat()
+      return { id: r.id, team_name: r.team_name ?? '', player1_name: r.player1_name ?? '', player2_name: r.player2_name ?? '', score_to_par: r.score_to_par != null ? String(r.score_to_par) : '', detail: r.detail ?? '' }
+    }
+    setEditingT({ id: t.id, year: t.year, course: t.course ?? '', date: t.date ?? '', notes: t.notes ?? '', champion: findCat('champion'), runner_up: findCat('runner_up'), third: findCat('third'), jackass: findCat('jackass'), ctp: findCat('ctp'), ld: findCat('ld') })
+  }
+
+  const saveEditT = async () => {
+    if (!editingT) return
+    setSavingEdit(true)
+    await supabase.from('tournaments').update({ course: editingT.course.trim() || null, date: editingT.date || null, notes: editingT.notes.trim() || null }).eq('id', editingT.id)
+    const catMap: Record<string, EditCategory> = { champion: editingT.champion, runner_up: editingT.runner_up, third: editingT.third, jackass: editingT.jackass, ctp: editingT.ctp, ld: editingT.ld }
+    for (const [cat, ec] of Object.entries(catMap)) {
+      const isEmpty = !ec.player1_name.trim() && !ec.team_name.trim()
+      const payload = { team_name: ec.team_name.trim() || null, player1_name: ec.player1_name.trim() || null, player2_name: ec.player2_name.trim() || null, score_to_par: ec.score_to_par !== '' ? parseInt(ec.score_to_par) : null, detail: ec.detail.trim() || null }
+      if (ec.id) {
+        if (isEmpty) await supabase.from('tournament_results').delete().eq('id', ec.id)
+        else await supabase.from('tournament_results').update(payload).eq('id', ec.id)
+      } else if (!isEmpty) {
+        await supabase.from('tournament_results').insert({ ...payload, tournament_id: editingT.id, category: cat })
+      }
+    }
+    setSavingEdit(false)
+    setEditingT(null)
+    fetchTournamentHistory()
+    showToast(`${editingT.year} updated!`)
+  }
+
+  const softDeleteT = async () => {
+    if (!deleteModal || deleteInput !== String(deleteModal.year)) return
+    setDeletingYear(true)
+    await supabase.from('tournaments').update({ deleted_at: new Date().toISOString() }).eq('id', deleteModal.id)
+    setDeletingYear(false)
+    const year = deleteModal.year
+    setDeleteModal(null)
+    setDeleteInput('')
+    fetchTournamentHistory()
+    showToast(`${year} archived. Restore it from Deleted Years anytime.`)
+  }
+
+  const restoreT = async (id: string, year: number) => {
+    setRestoringYear(id)
+    await supabase.from('tournaments').update({ deleted_at: null }).eq('id', id)
+    setRestoringYear(null)
+    fetchTournamentHistory()
+    showToast(`${year} restored to Hall of Fame!`)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -362,11 +455,12 @@ export default function AdminPanel() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
-          { id: 'teams',  label: '⛳ Teams' },
-          { id: 'users',  label: '👥 Users' },
-          { id: 'codes',  label: '🔑 Codes' },
-          { id: 'reset',  label: '⚠️ Reset' },
-          { id: 'brevo',  label: '📣 Brevo' },
+          { id: 'teams',   label: '⛳ Teams' },
+          { id: 'users',   label: '👥 Users' },
+          { id: 'codes',   label: '🔑 Codes' },
+          { id: 'reset',   label: '⚠️ Reset' },
+          { id: 'history', label: '🏆 History' },
+          { id: 'brevo',   label: '📣 Brevo' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -839,6 +933,209 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* ── History tab ─────────────────────────────────────────── */}
+      {tab === 'history' && (() => {
+        const active = tournamentHistory.filter(t => !t.deleted_at)
+        const deleted = tournamentHistory.filter(t => t.deleted_at)
+
+        const catLabel: Record<string, string> = { champion: '🏆 Champion', runner_up: '🥈 Runner-Up', third: '🥉 Third Place', jackass: '🤠 Jackass of the Day', ctp: '🎯 Closest to Pin', ld: '💥 Longest Drive' }
+
+        const EditRow = ({ label, ec, update }: { label: string; ec: EditCategory; update: (p: Partial<EditCategory>) => void }) => (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {['jackass', 'ctp', 'ld'].some(k => label.toLowerCase().includes(k.slice(0,3))) ? (
+                <>
+                  <input placeholder="Name…" value={ec.player1_name} onChange={e => update({ player1_name: e.target.value })} style={{ flex: '2 1 160px' }} />
+                  <input placeholder="Detail (votes / distance)…" value={ec.detail} onChange={e => update({ detail: e.target.value })} style={{ flex: '2 1 160px' }} />
+                </>
+              ) : (
+                <>
+                  <input placeholder="Team name…" value={ec.team_name} onChange={e => update({ team_name: e.target.value })} style={{ flex: '2 1 140px' }} />
+                  <input placeholder="Player 1…" value={ec.player1_name} onChange={e => update({ player1_name: e.target.value })} style={{ flex: '2 1 120px' }} />
+                  <input placeholder="Player 2…" value={ec.player2_name} onChange={e => update({ player2_name: e.target.value })} style={{ flex: '2 1 120px' }} />
+                  <input placeholder="Score (E=0, -4=-4)…" type="number" value={ec.score_to_par} onChange={e => update({ score_to_par: e.target.value })} style={{ flex: '1 1 80px' }} />
+                </>
+              )}
+            </div>
+          </div>
+        )
+
+        const editKey = (cat: keyof EditingTournament) => (p: Partial<EditCategory>) =>
+          setEditingT(prev => prev ? { ...prev, [cat]: { ...(prev[cat] as EditCategory), ...p } } : prev)
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {active.length === 0 && (
+              <div className="glass" style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+                No tournament years recorded. Run "End Tournament &amp; Archive" from the ⚠️ Reset tab to create your first entry.
+              </div>
+            )}
+
+            {active.map(t => {
+              const champ = t.results.find(r => r.category === 'champion')
+              return (
+                <div key={t.id} className="glass" style={{ padding: '18px 22px', border: t.status === 'active' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(252,181,20,0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: t.status === 'active' ? '#22c55e' : '#FCB514', lineHeight: 1 }}>{t.year}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1, background: t.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)', color: t.status === 'active' ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>
+                          {t.status === 'active' ? '● Active' : '🔒 Locked'}
+                        </div>
+                        {t.course && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>⛳ {t.course}</div>}
+                      </div>
+                      {champ && (
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>
+                          🏆 {champ.team_name ?? champ.player1_name ?? '—'}
+                          {champ.score_to_par != null && <span style={{ color: champ.score_to_par < 0 ? '#34d399' : '#f87171', marginLeft: 6 }}>{champ.score_to_par === 0 ? 'E' : champ.score_to_par > 0 ? `+${champ.score_to_par}` : champ.score_to_par}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => openEditT(t)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(252,181,20,0.1)', border: '1px solid rgba(252,181,20,0.3)', color: '#FCB514', cursor: 'pointer' }}>Edit</button>
+                      {t.status !== 'active' && (
+                        <button onClick={() => setDeleteModal({ id: t.id, year: t.year, step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
+                      )}
+                    </div>
+                  </div>
+                  {t.final_standings && t.final_standings.length > 0 && (
+                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 8 }}>Full Final Standings</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {(t.final_standings).map((s, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                            <span style={{ width: 20, textAlign: 'center', flexShrink: 0, color: 'rgba(255,255,255,0.3)', fontFamily: 'Bebas Neue' }}>{i + 1}</span>
+                            <span style={{ flex: 1, color: i === 0 ? '#FCB514' : 'rgba(255,255,255,0.65)' }}>{s.teamName} {(s.p1Name || s.p2Name) && <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>— {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</span>}</span>
+                            <span style={{ fontFamily: 'Bebas Neue', fontSize: 14, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>{s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}</span>
+                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', minWidth: 30, textAlign: 'right' }}>/{s.thru}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Deleted years */}
+            {deleted.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  🗑️ Deleted Years <span style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 999, padding: '1px 8px', fontSize: 10 }}>{deleted.length}</span>
+                </div>
+                {deleted.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 8, opacity: 0.7 }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'rgba(255,255,255,0.3)', letterSpacing: 2 }}>{t.year}</div>
+                    <div style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
+                      Removed {t.deleted_at ? new Date(t.deleted_at).toLocaleDateString() : ''}
+                    </div>
+                    <button
+                      onClick={() => restoreT(t.id, t.year)}
+                      disabled={restoringYear === t.id}
+                      style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', cursor: 'pointer', opacity: restoringYear === t.id ? 0.6 : 1 }}
+                    >
+                      {restoringYear === t.id ? 'Restoring…' : 'Restore'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Edit modal */}
+            {editingT && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 20 }}>Edit {editingT.year}</div>
+
+                  {/* Metadata */}
+                  <div style={{ marginBottom: 22 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Tournament Info</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                      <div style={{ flex: '2 1 200px' }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Course</label>
+                        <input placeholder="Course name…" value={editingT.course} onChange={e => setEditingT(p => p ? { ...p, course: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                      <div style={{ flex: '1 1 140px' }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Date</label>
+                        <input type="date" value={editingT.date} onChange={e => setEditingT(p => p ? { ...p, date: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Notes</label>
+                      <input placeholder="Any notes about this year…" value={editingT.notes} onChange={e => setEditingT(p => p ? { ...p, notes: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+
+                  {/* Results */}
+                  <div style={{ marginBottom: 22 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 12 }}>Results <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.2)' }}>(clear all fields to remove a category)</span></div>
+                    {([['champion', '🏆 Champion'], ['runner_up', '🥈 Runner-Up'], ['third', '🥉 Third Place'], ['jackass', '🤠 Jackass of the Day'], ['ctp', '🎯 Closest to Pin'], ['ld', '💥 Longest Drive']] as [keyof EditingTournament, string][]).map(([cat, label]) => (
+                      <EditRow key={cat} label={label} ec={editingT[cat] as EditCategory} update={editKey(cat)} />
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={saveEditT} disabled={savingEdit} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.6 : 1 }}>
+                      {savingEdit ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button onClick={() => setEditingT(null)} disabled={savingEdit} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Delete modal — step 1 */}
+            {deleteModal?.step === 1 && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Remove {deleteModal.year}?</div>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 8, lineHeight: 1.6 }}>This will hide <strong style={{ color: '#fff' }}>{deleteModal.year}</strong> from the Hall of Fame.</p>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 24, lineHeight: 1.6 }}>The data is not permanently deleted — you can restore it from the Deleted Years section at any time.</p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={() => setDeleteModal(d => d ? { ...d, step: 2 } : d)} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer' }}>Yes, remove it</button>
+                    <button onClick={() => setDeleteModal(null)} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Delete modal — step 2 */}
+            {deleteModal?.step === 2 && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Final Confirmation</div>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 20, lineHeight: 1.6 }}>
+                    Type <strong style={{ color: '#fff' }}>{deleteModal.year}</strong> to confirm removal from the Hall of Fame.
+                  </p>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder={`Type ${deleteModal.year} here…`}
+                    value={deleteInput}
+                    onChange={e => setDeleteInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && deleteInput === String(deleteModal.year) && softDeleteT()}
+                    style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, textAlign: 'center', fontSize: 18, letterSpacing: 4 }}
+                  />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={softDeleteT}
+                      disabled={deletingYear || deleteInput !== String(deleteModal.year)}
+                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: deleteInput === String(deleteModal.year) ? '#ef4444' : 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: deleteInput === String(deleteModal.year) ? '#fff' : 'rgba(239,68,68,0.4)', cursor: deletingYear || deleteInput !== String(deleteModal.year) ? 'not-allowed' : 'pointer', opacity: deletingYear ? 0.6 : 1 }}
+                    >
+                      {deletingYear ? 'Removing…' : 'Confirm Remove'}
+                    </button>
+                    <button onClick={() => { setDeleteModal(null); setDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {Object.keys(catLabel).length > 0 && null /* suppress unused var */}
+          </div>
+        )
+      })()}
 
       {/* ── Brevo tab ───────────────────────────────────────────── */}
       {tab === 'brevo' && (
