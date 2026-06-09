@@ -2,27 +2,36 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
-  Mail, Target, Shield
+  Mail, Target, Shield, UserCircle
 } from 'lucide-react'
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
-  { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
+  { to: '/contests', icon: Target, label: 'Contests' },
+  { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
-  { to: '/contests', icon: Target, label: 'Contest' },
+  { to: '/account', icon: UserCircle, label: 'Account' },
 ]
 
-const adminExtra = [
+const adminNav = [
+  { to: '/', icon: LayoutDashboard, label: 'Home' },
+  { to: '/scores', icon: ClipboardList, label: 'Scores' },
+  { to: '/leaderboard', icon: Trophy, label: 'Board' },
+  { to: '/contests', icon: Target, label: 'Contests' },
+  { to: '/my-team', icon: Users2, label: 'My Team' },
+  { to: '/tee-times', icon: Clock, label: 'Tees' },
+  { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/rsvp', icon: Mail, label: 'RSVP' },
+  { to: '/account', icon: UserCircle, label: 'Account' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ]
 
 export default function BottomNav() {
   const { isAdmin } = useAuth()
-  const navItems = isAdmin ? [...playerNav, ...adminExtra] : playerNav
+  const navItems = isAdmin ? adminNav : playerNav
 
   return (
     <nav style={{

@@ -11,17 +11,25 @@ const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/C
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { to: '/contests', icon: Target, label: 'Contests' },
+  { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/tee-times', icon: Clock, label: 'Tee Times' },
   { to: '/groups', icon: Users, label: 'Groups' },
-  { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/account', icon: UserCircle, label: 'My Account' },
 ]
 
-const adminExtra = [
+const adminNav = [
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/scores', icon: ClipboardList, label: 'Scores' },
+  { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { to: '/contests', icon: Target, label: 'Contests' },
+  { to: '/my-team', icon: Users2, label: 'My Team' },
+  { to: '/tee-times', icon: Clock, label: 'Tee Times' },
+  { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/rsvp', icon: Mail, label: 'RSVP' },
+  { to: '/account', icon: UserCircle, label: 'My Account' },
   { to: '/admin', icon: Shield, label: 'Admin Panel' },
 ]
 
@@ -36,7 +44,7 @@ export default function Sidebar() {
     return () => clearInterval(i)
   }, [])
 
-  const navItems = isAdmin ? [...playerNav, ...adminExtra] : playerNav
+  const navItems = isAdmin ? adminNav : playerNav
 
   return (
     <aside style={{
