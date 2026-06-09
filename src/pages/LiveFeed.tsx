@@ -4,7 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 
 interface FeedEvent {
   id: string
-  event_type: 'score' | 'chulligan' | 'putt'
+  event_type: 'score' | 'chulligan' | 'putt' | 'contest'
   team_name: string
   player_name: string | null
   hole: number
@@ -24,6 +24,7 @@ const SCORE_COLORS: Record<string, string> = {
 }
 
 function eventColor(ev: FeedEvent) {
+  if (ev.event_type === 'contest') return '#FCB514'
   if (ev.event_type === 'chulligan') return '#f59e0b'
   if (ev.event_type === 'putt') {
     if (ev.label === '3-Putt') return '#fb923c'
@@ -35,7 +36,7 @@ function eventColor(ev: FeedEvent) {
 }
 
 function isHighlight(ev: FeedEvent) {
-  return ev.event_type === 'chulligan' || ev.event_type === 'putt' || ['Hole in One!', 'Eagle', 'Birdie'].includes(ev.label)
+  return ev.event_type === 'contest' || ev.event_type === 'chulligan' || ev.event_type === 'putt' || ['Hole in One!', 'Eagle', 'Birdie'].includes(ev.label)
 }
 
 export default function LiveFeed() {
@@ -168,9 +169,11 @@ export default function LiveFeed() {
                         {ev.player_name}
                       </span>
                     )}
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                      Hole {ev.hole}
-                    </span>
+                    {ev.event_type !== 'contest' && (
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                        Hole {ev.hole}
+                      </span>
+                    )}
                   </div>
                 </div>
 

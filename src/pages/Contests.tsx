@@ -19,6 +19,7 @@ export default function Contests() {
   const [contestPlayers, setContestPlayers] = useState<Player[]>([])
   const [form,           setForm]           = useState({ player_id: '' })
   const [photo,          setPhoto]          = useState<File | null>(null)
+  const [myTeamName,     setMyTeamName]     = useState('')
   const [submitting,     setSubmitting]     = useState(false)
   const [photoErr,       setPhotoErr]       = useState(false)
   const [lightbox,       setLightbox]       = useState<string | null>(null)
@@ -71,10 +72,11 @@ export default function Contests() {
     if (profile?.team_id) {
       const { data: teamData } = await supabase
         .from('teams')
-        .select('player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+        .select('name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
         .eq('id', profile.team_id)
         .single()
-      const td = teamData as unknown as { player1?: Player; player2?: Player }
+      const td = teamData as unknown as { name?: string; player1?: Player; player2?: Player }
+      setMyTeamName(td?.name ?? '')
       setContestPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
     } else {
       const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
@@ -127,6 +129,16 @@ export default function Contests() {
     if (error) showToast(error.message, 'error')
     else {
       showToast('Entry submitted! 🎯')
+      const player = contestPlayers.find(p => p.id === form.player_id)
+      await supabase.from('feed_events').insert({
+        event_type: 'contest',
+        team_name: myTeamName,
+        player_name: player ? displayName(player) : null,
+        hole: 0,
+        score: null,
+        label: tab === 'ctp' ? 'CTP Entry' : 'LD Entry',
+        emoji: tab === 'ctp' ? '🎯' : '💥',
+      })
       setForm({ player_id: '' })
       setPhoto(null)
       fetchContestData()
