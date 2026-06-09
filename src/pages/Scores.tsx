@@ -342,10 +342,10 @@ export default function Scores() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              width: 42, height: 42, borderRadius: 10, flexShrink: 0,
               background: 'rgba(252,181,20,0.1)', border: '1px solid rgba(252,181,20,0.22)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 15, fontWeight: 800, color: '#FCB514',
+              fontSize: 20, fontWeight: 800, color: '#FCB514',
             }}>{hole}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
