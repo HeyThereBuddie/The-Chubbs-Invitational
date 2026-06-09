@@ -155,39 +155,32 @@ export default function Dashboard() {
         border: '1px solid rgba(252,181,20,0.22)',
         background: 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)',
       }}>
-        <div style={{ padding: '12px 18px', position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="animate-glow-pulse" style={{
-            width: 42, height: 42, borderRadius: '50%',
-            border: '2px solid rgba(252,181,20,0.7)', overflow: 'hidden', flexShrink: 0,
-          }}>
-            <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div className="hero-row">
+          <div className="animate-glow-pulse hero-avatar">
+            <img src={CHUBBS_IMG} alt="Chubbs" />
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 3, lineHeight: 1 }}>
-              The Chubbs Invitational
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+            <div className="text-shimmer hero-title">The Chubbs Invitational</div>
+            <div className="hero-meta">
               <span>⛳ {COURSE_NAME}</span>
               <span>📅 {TOURNAMENT_DATE}</span>
-              <span>🕗 {FIRST_TEE_TIME}</span>
-              <span>🏌️ Best Ball</span>
+              <span className="hero-meta-hide">🕗 {FIRST_TEE_TIME}</span>
+              <span className="hero-meta-hide">🏌️ Best Ball</span>
             </div>
           </div>
 
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', letterSpacing: 1, textTransform: 'uppercase' }}>Welcome</div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#FCB514', letterSpacing: 2, lineHeight: 1.1 }}>
-              {profile ? displayName(profile) : 'Player'}
-            </div>
+            <div className="hero-welcome-label">Welcome</div>
+            <div className="hero-welcome-name">{profile ? displayName(profile) : 'Player'}</div>
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '6px 18px', background: 'rgba(0,0,0,0.2)' }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+        <div className="hero-quote">
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
             💬 "{currentQuote.quote}"
           </span>
-          <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
+          <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
         </div>
       </div>
 
