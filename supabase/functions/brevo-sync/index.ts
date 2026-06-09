@@ -39,36 +39,35 @@ serve(async (req) => {
       return new Response(JSON.stringify({ synced: 0 }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
     }
 
-    const jsonBody = players.map(p => {
+    const results = await Promise.all(players.map(async p => {
       const parts = p.name.trim().split(' ')
       const first = p.nickname?.trim() || parts[0] || ''
       const last  = parts.slice(1).join(' ') || ''
-      return {
-        email: p.email,
-        attributes: {
-          FIRSTNAME: first,
-          LASTNAME: last,
-          ...(p.phone ? { SMS: p.phone } : {}),
-        },
-      }
-    })
 
-    const res = await fetch('https://api.brevo.com/v3/contacts/import', {
-      method: 'POST',
-      headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updateEnabled: true, jsonBody }),
-    })
+      const res = await fetch('https://api.brevo.com/v3/contacts', {
+        method: 'POST',
+        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: p.email,
+          updateEnabled: true,
+          attributes: {
+            FIRSTNAME: first,
+            LASTNAME: last,
+            ...(p.phone ? { SMS: p.phone } : {}),
+          },
+        }),
+      })
 
-    const resText = await res.text()
-    console.log('[brevo] status:', res.status, 'body:', resText)
+      const text = await res.text()
+      console.log(`[brevo] ${p.email} → ${res.status}: ${text}`)
+      return { email: p.email, status: res.status, ok: res.status === 201 || res.status === 204 }
+    }))
 
-    if (!res.ok) {
-      let msg = `Brevo HTTP ${res.status}`
-      try { msg = (JSON.parse(resText) as { message?: string }).message ?? msg } catch { /* ignore */ }
-      return new Response(JSON.stringify({ error: msg }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } })
-    }
+    const synced = results.filter(r => r.ok).length
+    const failed = results.filter(r => !r.ok)
+    console.log(`[brevo] synced: ${synced}, failed: ${failed.length}`, JSON.stringify(failed))
 
-    return new Response(JSON.stringify({ synced: jsonBody.length }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ synced, failed: failed.length }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
   }
