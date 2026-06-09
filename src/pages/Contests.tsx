@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
-import { Target, Upload } from 'lucide-react'
+import { Camera, Target, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 type ContestType = 'ctp' | 'ld' | 'lahey'
@@ -22,7 +22,8 @@ export default function Contests() {
   const [submitting,     setSubmitting]     = useState(false)
   const [photoErr,       setPhotoErr]       = useState(false)
   const [lightbox,       setLightbox]       = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileRef   = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
 
   // Lahey state — separate player list so it's always all active players
   const [laheyPlayers, setLaheyPlayers] = useState<Player[]>([])
@@ -252,17 +253,39 @@ export default function Contests() {
                 <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 6 }}>
                   Photo (optional){!form.player_id && <span style={{ marginLeft: 6, color: 'rgba(255,255,255,0.2)' }}>— select a player first</span>}
                 </label>
+                {/* File picker — any image from library */}
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  disabled={!form.player_id}
-                  onClick={() => fileRef.current?.click()}
-                  style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed' }}
-                >
-                  <Upload size={13} /> {photo ? photo.name : 'Upload Photo'}
-                </button>
+                  onChange={e => { setPhoto(e.target.files?.[0] ?? null); e.target.value = '' }} />
+                {/* Camera — opens rear camera directly on mobile */}
+                <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                  onChange={e => { setPhoto(e.target.files?.[0] ?? null); e.target.value = '' }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    disabled={!form.player_id}
+                    onClick={() => fileRef.current?.click()}
+                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed' }}
+                  >
+                    <Upload size={13} /> Upload Photo
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    disabled={!form.player_id}
+                    onClick={() => cameraRef.current?.click()}
+                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed' }}
+                  >
+                    <Camera size={13} /> Take Photo
+                  </button>
+                  {photo && (
+                    <span style={{ fontSize: 12, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      ✓ {photo.name.length > 24 ? photo.name.slice(0, 24) + '…' : photo.name}
+                      <button type="button" onClick={() => setPhoto(null)}
+                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                    </span>
+                  )}
+                </div>
               </div>
               <button type="submit" className="btn-gold" disabled={submitting}>
                 {submitting ? 'Submitting…' : `Submit ${tab === 'ctp' ? 'CTP' : 'LD'} Entry`}
