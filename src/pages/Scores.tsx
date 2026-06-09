@@ -10,7 +10,7 @@ const HOLE_PARS = [5,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 const BASE = 'https://royalashburngolfclub.com/wp-content/uploads/2016/11'
 const HOLE_DATA: { yards: number; si: number; description?: string; photo?: string }[] = [
   { yards: 520, si: 5,  photo: `${BASE}/ROY-Hole-1-1.png`,  description: 'A good starting hole. Play drive squarely down the middle avoiding fairway bunkers both left and right. Long hitters can carry the corner of the dogleg to challenge this green. To ensure a par or birdie try, play second shot to the corner of the dogleg allowing for a short iron to the green.' },
-  { yards: 420, si: 11, photo: `${BASE}/ROY-Hole-2-1.png`  },
+  { yards: 420, si: 11, photo: `${BASE}/ROY-Hole-2-1.png`, description: '"Par here" always brings a smile. A good drive favouring the right side will kick to the left because of the tilted fairway. Make sure you select the proper club to carry your ball onto the green as this green is slightly raised. Putting from below the hole is a must to give the best chance to make a putt.' },
   { yards: 170, si: 15, photo: `${BASE}/ROY-Hole-3-1.png`  },
   { yards: 510, si: 3,  photo: `${BASE}/ROY-Hole-4-1.png`  },
   { yards: 450, si: 1,  photo: `${BASE}/ROY-Hole-5-1.png`  },
