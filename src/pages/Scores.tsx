@@ -540,6 +540,7 @@ export default function Scores() {
               <img
                 src={holeInfo.photo}
                 alt={`Hole ${hole} diagram`}
+                referrerPolicy="no-referrer"
                 style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             )}
