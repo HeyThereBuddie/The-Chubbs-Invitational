@@ -176,33 +176,36 @@ export default function Dashboard() {
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
       {/* ── Year Selector ─────────────────────────────────────── */}
-      {(completedTournaments.length > 0 || !isCurrentYear) && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
-          padding: '10px 16px', borderRadius: 12,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.07)',
-        }}>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
-            📅 Year
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
+        padding: '10px 16px', borderRadius: 12,
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.07)',
+      }}>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
+          📅 Year
+        </span>
+        <select
+          value={viewingTournamentId ?? ''}
+          onChange={e => setViewingTournamentId(e.target.value || null)}
+          style={{ flex: 1, maxWidth: 220 }}
+        >
+          <option value="">Current Year ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
+          {completedTournaments.map(t => (
+            <option key={t.id} value={t.id}>{t.year} — {t.name}</option>
+          ))}
+        </select>
+        {completedTournaments.length === 0 && (
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>
+            Past years appear here after archiving
           </span>
-          <select
-            value={viewingTournamentId ?? ''}
-            onChange={e => setViewingTournamentId(e.target.value || null)}
-            style={{ flex: 1, maxWidth: 220 }}
-          >
-            <option value="">Current Year ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
-            {completedTournaments.map(t => (
-              <option key={t.id} value={t.id}>{t.year} — {t.name}</option>
-            ))}
-          </select>
-          {!isCurrentYear && viewingTournament && (
-            <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', fontWeight: 600 }}>
-              🔒 Viewing {viewingTournament.year}
-            </span>
-          )}
-        </div>
-      )}
+        )}
+        {!isCurrentYear && viewingTournament && (
+          <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', fontWeight: 600 }}>
+            🔒 Viewing {viewingTournament.year}
+          </span>
+        )}
+      </div>
 
       {/* Waitlist banner */}
       {profile?.status === 'waitlist' && isCurrentYear && (
