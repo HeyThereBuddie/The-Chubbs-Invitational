@@ -5,27 +5,27 @@ import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
 
-const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
+const HOLE_PARS = [5,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
-const HOLE_DATA = [
-  { yards: 435, si: 5,  tip: 'Aim left-centre off the tee to avoid the fairway bunker on the right.' },
-  { yards: 420, si: 11, tip: 'Elevated green — take an extra club on your approach.' },
-  { yards: 170, si: 15, tip: 'Front bunkers are the main threat. Favour the middle of the green.' },
-  { yards: 510, si: 3,  tip: 'Reachable in two — lay up short of the creek or go for the green.' },
-  { yards: 450, si: 1,  tip: 'Hardest hole on the course. Long and tight. Make par and walk away happy.' },
-  { yards: 185, si: 17, tip: 'Wind plays tricks here. Club up and aim centre — bunkers guard both sides.' },
-  { yards: 410, si: 9,  tip: 'Stay left off the tee. The right rough leaves a blind approach.' },
-  { yards: 555, si: 7,  tip: 'Reachable in two — but the green falls away sharply at the back.' },
-  { yards: 460, si: 13, tip: 'Uphill approach. The green appears closer than it is — take two clubs extra.' },
-  { yards: 445, si: 2,  tip: 'Downhill tee shot, then uphill approach. A true two-shot hole.' },
-  { yards: 195, si: 16, tip: 'Water left punishes anything pulled. Aim right-centre and two-putt.' },
-  { yards: 520, si: 8,  tip: 'Creek fronts the green on the approach. Lay up or fly it clean.' },
-  { yards: 440, si: 4,  tip: 'Dogleg left — cut the corner with a big drive to open up the approach.' },
-  { yards: 430, si: 10, tip: 'No bunkers, but the undulating green is the toughest read on the course.' },
-  { yards: 165, si: 18, tip: "Pond fronts the green. Take enough club and you'll have a birdie putt." },
-  { yards: 530, si: 6,  tip: 'Water guards the left all the way in. Big hitters go for it; everyone else lays up.' },
-  { yards: 440, si: 12, tip: 'Classic risk/reward second shot over bunkers to a narrow elevated green.' },
-  { yards: 465, si: 14, tip: 'Uphill finishing hole with bunkers left and right. Par here feels like a birdie.' },
+const HOLE_DATA: { yards: number; si: number; description?: string; photo?: string }[] = [
+  { yards: 520, si: 5,  description: 'A good starting hole. Play drive squarely down the middle avoiding fairway bunkers both left and right. Long hitters can carry the corner of the dogleg to challenge this green. To ensure a par or birdie try, play second shot to the corner of the dogleg allowing for a short iron to the green.', photo: 'https://royalashburngolfclub.com/wp-content/uploads/2016/11/ROY-Hole-1-1.png' },
+  { yards: 420, si: 11 },
+  { yards: 170, si: 15 },
+  { yards: 510, si: 3  },
+  { yards: 450, si: 1  },
+  { yards: 185, si: 17 },
+  { yards: 410, si: 9  },
+  { yards: 555, si: 7  },
+  { yards: 460, si: 13 },
+  { yards: 445, si: 2  },
+  { yards: 195, si: 16 },
+  { yards: 520, si: 8  },
+  { yards: 440, si: 4  },
+  { yards: 430, si: 10 },
+  { yards: 165, si: 18 },
+  { yards: 530, si: 6  },
+  { yards: 440, si: 12 },
+  { yards: 465, si: 14 },
 ]
 
 async function pingLeadCheck() {
@@ -78,6 +78,12 @@ export default function Scores() {
   const [saving,      setSaving]      = useState<number | null>(null)
   const [teamPick,    setTeamPick]    = useState('')
   const [settingTeam, setSettingTeam] = useState(false)
+  const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set())
+  const toggleHoleInfo = (hole: number) => setExpandedHoles(prev => {
+    const next = new Set(prev)
+    next.has(hole) ? next.delete(hole) : next.add(hole)
+    return next
+  })
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
@@ -310,7 +316,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo, infoExpanded, onToggleInfo,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -326,7 +332,9 @@ export default function Scores() {
     chulligans?: ChulliganRow[]
     onToggleChulligan?: (playerId: string, hole: number) => void
     readOnly?: boolean
-    holeInfo?: { yards: number; si: number; tip: string }
+    holeInfo?: { yards: number; si: number; description?: string; photo?: string }
+    infoExpanded?: boolean
+    onToggleInfo?: () => void
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
@@ -352,6 +360,15 @@ export default function Scores() {
               <span style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
               {holeInfo && (
                 <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.6)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
+              )}
+              {(holeInfo?.description || holeInfo?.photo) && (
+                <button onClick={onToggleInfo} style={{
+                  marginTop: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  color: infoExpanded ? '#FCB514' : 'rgba(255,255,255,0.3)',
+                  fontSize: 11, display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1,
+                }}>
+                  <span>{infoExpanded ? '▲' : '▼'}</span> hole guide
+                </button>
               )}
             </div>
           </div>
@@ -482,6 +499,24 @@ export default function Scores() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Hole guide dropdown */}
+        {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
+          <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {holeInfo.photo && (
+              <img
+                src={holeInfo.photo}
+                alt={`Hole ${hole} diagram`}
+                style={{ width: '100%', display: 'block', maxHeight: 260, objectFit: 'cover' }}
+              />
+            )}
+            {holeInfo.description && (
+              <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+                {holeInfo.description}
+              </div>
+            )}
           </div>
         )}
 
@@ -743,6 +778,8 @@ export default function Scores() {
                   chulligans={adminChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
                   holeInfo={HOLE_DATA[hole - 1]}
+                  infoExpanded={expandedHoles.has(hole)}
+                  onToggleInfo={() => toggleHoleInfo(hole)}
                 />
               )
             })
@@ -863,6 +900,8 @@ export default function Scores() {
                   chulligans={myChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
                   holeInfo={HOLE_DATA[hole - 1]}
+                  infoExpanded={expandedHoles.has(hole)}
+                  onToggleInfo={() => toggleHoleInfo(hole)}
                 />
               )
             })
