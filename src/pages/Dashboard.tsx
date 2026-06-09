@@ -54,6 +54,14 @@ interface LeaderRow {
   thru: number
 }
 
+interface DefendingChamp {
+  teamName: string
+  player1Name: string | null
+  player2Name: string | null
+  toPar: number | null
+  year: number
+}
+
 export default function Dashboard() {
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -64,6 +72,7 @@ export default function Dashboard() {
   const [teamCount, setTeamCount] = useState(0)
   const [quoteIdx, setQuoteIdx] = useState(0)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+  const [defendingChamp, setDefendingChamp] = useState<DefendingChamp | null>(null)
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 640)
@@ -78,7 +87,7 @@ export default function Dashboard() {
     return () => clearInterval(i)
   }, [])
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData(); fetchDefendingChamp() }, [])
   useEffect(() => {
     fetchFeedRef.current = fetchFeed
   })
@@ -109,6 +118,24 @@ export default function Dashboard() {
   }
 
   const fetchFeedRef = useRef(fetchFeed)
+
+  const fetchDefendingChamp = async () => {
+    const { data: lastT } = await supabase
+      .from('tournaments').select('id, year').eq('status', 'completed')
+      .order('year', { ascending: false }).limit(1).single()
+    if (!lastT) return
+    const { data: result } = await supabase
+      .from('tournament_results').select('*')
+      .eq('tournament_id', lastT.id).eq('category', 'champion').single()
+    if (!result) return
+    setDefendingChamp({
+      teamName: result.team_name ?? '',
+      player1Name: result.player1_name ?? null,
+      player2Name: result.player2_name ?? null,
+      toPar: result.score_to_par ?? null,
+      year: lastT.year,
+    })
+  }
 
   const fetchData = async () => {
     const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
@@ -197,6 +224,40 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Defending Champions ──────────────────────────────── */}
+      {defendingChamp && (
+        <div className="animate-fadeUp" style={{
+          marginBottom: 14, borderRadius: 12,
+          border: '1px solid rgba(252,181,20,0.2)',
+          background: 'linear-gradient(135deg, rgba(252,181,20,0.06) 0%, rgba(12,8,0,0.0) 100%)',
+          padding: isMobile ? '10px 14px' : '12px 18px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>🏆</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(252,181,20,0.55)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+              {defendingChamp.year} Defending Champions
+            </div>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+              {defendingChamp.teamName}
+            </div>
+            {(defendingChamp.player1Name || defendingChamp.player2Name) && (
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                {[defendingChamp.player1Name, defendingChamp.player2Name].filter(Boolean).join(' & ')}
+              </div>
+            )}
+          </div>
+          {defendingChamp.toPar != null && (
+            <div style={{
+              fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, flexShrink: 0,
+              color: defendingChamp.toPar < 0 ? '#34d399' : defendingChamp.toPar > 0 ? '#f87171' : '#FCB514',
+            }}>
+              {defendingChamp.toPar === 0 ? 'E' : defendingChamp.toPar > 0 ? `+${defendingChamp.toPar}` : defendingChamp.toPar}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Live Leaderboard + Live Scoring Feed ─────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>

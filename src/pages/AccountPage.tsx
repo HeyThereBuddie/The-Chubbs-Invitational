@@ -32,6 +32,7 @@ export default function AccountPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [pushStatus, setPushStatus] = useState<'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'>('unsubscribed')
   const [pushLoading, setPushLoading] = useState(false)
+  const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -79,6 +80,23 @@ export default function AccountPage() {
       showToast((e as Error).message ?? 'Failed to disable', 'error')
     }
     setPushLoading(false)
+  }
+
+  useEffect(() => {
+    if (profile) fetchCareerStats(profile.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
+
+  const fetchCareerStats = async (profileId: string) => {
+    const { data: results } = await supabase
+      .from('tournament_results')
+      .select('category, tournament_id, tournaments!inner(year)')
+      .or(`player1_id.eq.${profileId},player2_id.eq.${profileId}`)
+    const flat = (results ?? []).map((r: { category: string; tournaments: { year: number } | { year: number }[] | null }) => ({
+      category: r.category,
+      year: Array.isArray(r.tournaments) ? r.tournaments[0]?.year : (r.tournaments as { year: number } | null)?.year ?? 0,
+    }))
+    setCareerStats(flat)
   }
 
   useEffect(() => {
@@ -311,6 +329,43 @@ export default function AccountPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Career Highlights ── */}
+      {careerStats.length > 0 && (() => {
+        const cats = [
+          { key: 'champion', emoji: '🏆', label: 'Championship' },
+          { key: 'runner_up', emoji: '🥈', label: 'Runner-Up' },
+          { key: 'third', emoji: '🥉', label: 'Third Place' },
+          { key: 'jackass', emoji: '🤠', label: 'Jackass Award' },
+          { key: 'ctp', emoji: '🎯', label: 'Closest to Pin' },
+          { key: 'ld', emoji: '💥', label: 'Longest Drive' },
+        ]
+        const rows = cats.map(c => ({ ...c, years: careerStats.filter(s => s.category === c.key).map(s => s.year).sort() })).filter(r => r.years.length > 0)
+        if (!rows.length) return null
+        return (
+          <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 16 }}>
+              Career Highlights
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {rows.map(r => (
+                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(252,181,20,0.06)' : 'rgba(255,255,255,0.02)', border: r.key === 'champion' ? '1px solid rgba(252,181,20,0.2)' : '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{r.emoji}</span>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#FCB514' : '#fff' }}>
+                      {r.label}
+                    </span>
+                    {r.years.length > 1 && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginLeft: 8 }}>×{r.years.length}</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'right' }}>
+                    {r.years.join(', ')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Email ── */}
       <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>

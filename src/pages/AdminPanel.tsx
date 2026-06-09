@@ -2,10 +2,21 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile, Team } from '../lib/types'
-import { displayName } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle } from 'lucide-react'
+import { displayName, HOLE_PARS } from '../lib/types'
+import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
+
+interface StandingEntry {
+  teamName: string; p1Name: string | null; p2Name: string | null
+  p1Id: string | null; p2Id: string | null; toPar: number; thru: number
+}
+
+interface EndTournamentPreview {
+  standings: StandingEntry[]
+  jackassName: string | null; jackassId: string | null; jackassVotes: number
+  ctpWinner: string; ldWinner: string
+}
 
 export default function AdminPanel() {
   const { showToast } = useToast()
@@ -150,6 +161,9 @@ export default function AdminPanel() {
   const [laheyVotingOpen, setLaheyVotingOpen] = useState(false)
   const [laheyResetting, setLaheyResetting] = useState(false)
   const [laheyTogglingOpen, setLaheyTogglingOpen] = useState(false)
+  const [endTournamentOpen, setEndTournamentOpen] = useState(false)
+  const [endTournamentPreview, setEndTournamentPreview] = useState<EndTournamentPreview | null>(null)
+  const [endingTournament, setEndingTournament] = useState(false)
 
   useEffect(() => {
     supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
@@ -191,6 +205,128 @@ export default function AdminPanel() {
     setLaheyResetting(false)
     if (error) showToast(error.message, 'error')
     else showToast('All Jackass of the Day votes cleared.')
+  }
+
+  const prepareEndTournament = async () => {
+    const [teamsRes, scoresRes, votesRes] = await Promise.all([
+      supabase.from('teams').select('id, name, p1_id, p2_id, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)'),
+      supabase.from('scores').select('team_id, hole, score'),
+      supabase.from('leahey_votes').select('nominee_id'),
+    ])
+
+    const teams = (teamsRes.data ?? []) as unknown as (Team & { player1?: Profile; player2?: Profile })[]
+    const allScores = scoresRes.data ?? []
+
+    const standings: StandingEntry[] = teams.map(team => {
+      const teamScores = allScores.filter(s => s.team_id === team.id)
+      const scoreMap: Record<number, number> = {}
+      for (const s of teamScores) scoreMap[s.hole] = s.score
+      const played = Array.from({ length: 18 }, (_, i) => scoreMap[i + 1] ?? null).filter(Boolean) as number[]
+      const thru = played.length
+      const gross = played.reduce((a, b) => a + b, 0)
+      const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
+      return {
+        teamName: team.name || '(unnamed)',
+        p1Name: team.player1 ? displayName(team.player1) : null,
+        p2Name: team.player2 ? displayName(team.player2) : null,
+        p1Id: team.p1_id ?? null,
+        p2Id: team.p2_id ?? null,
+        toPar: gross - parSoFar,
+        thru,
+      }
+    }).sort((a, b) => {
+      if (a.thru === 0 && b.thru > 0) return 1
+      if (b.thru === 0 && a.thru > 0) return -1
+      return a.toPar - b.toPar || b.thru - a.thru
+    }).filter(t => t.thru > 0)
+
+    const votes = votesRes.data ?? []
+    const voteCounts: Record<string, number> = {}
+    for (const v of votes) voteCounts[v.nominee_id] = (voteCounts[v.nominee_id] ?? 0) + 1
+    const jackassId = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+    let jackassName: string | null = null
+    let jackassVotes = 0
+    if (jackassId) {
+      const { data: jp } = await supabase.from('profiles').select('name, nickname').eq('id', jackassId).single()
+      if (jp) jackassName = displayName(jp as Profile)
+      jackassVotes = voteCounts[jackassId]
+    }
+
+    setEndTournamentPreview({ standings, jackassName, jackassId, jackassVotes, ctpWinner: '', ldWinner: '' })
+    setEndTournamentOpen(true)
+  }
+
+  const doEndTournament = async () => {
+    if (!endTournamentPreview) return
+    setEndingTournament(true)
+    try {
+      const { standings, jackassName, jackassId, jackassVotes, ctpWinner, ldWinner } = endTournamentPreview
+
+      // Get or create active tournament
+      let { data: activeTournament } = await supabase
+        .from('tournaments').select('id, year').eq('status', 'active').order('year', { ascending: false }).limit(1).single()
+
+      if (!activeTournament) {
+        const { data: newT } = await supabase
+          .from('tournaments').insert({ year: new Date().getFullYear(), status: 'active' }).select().single()
+        activeTournament = newT
+      }
+      if (!activeTournament) throw new Error('Could not find or create tournament')
+
+      // Build results rows
+      const rows: Record<string, unknown>[] = []
+      const cats: [string, StandingEntry | undefined][] = [
+        ['champion', standings[0]],
+        ['runner_up', standings[1]],
+        ['third', standings[2]],
+      ]
+      for (const [cat, s] of cats) {
+        if (!s) continue
+        rows.push({
+          tournament_id: activeTournament.id, category: cat,
+          team_name: s.teamName, player1_name: s.p1Name, player2_name: s.p2Name,
+          player1_id: s.p1Id, player2_id: s.p2Id, score_to_par: s.toPar,
+        })
+      }
+      if (jackassName) {
+        rows.push({
+          tournament_id: activeTournament.id, category: 'jackass',
+          player1_name: jackassName, player1_id: jackassId,
+          detail: jackassVotes > 0 ? `${jackassVotes} vote${jackassVotes !== 1 ? 's' : ''}` : null,
+        })
+      }
+      if (ctpWinner.trim()) {
+        rows.push({ tournament_id: activeTournament.id, category: 'ctp', player1_name: ctpWinner.trim() })
+      }
+      if (ldWinner.trim()) {
+        rows.push({ tournament_id: activeTournament.id, category: 'ld', player1_name: ldWinner.trim() })
+      }
+
+      if (rows.length > 0) await supabase.from('tournament_results').insert(rows)
+
+      // Mark completed + seed next year
+      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', activeTournament.id)
+      await supabase.from('tournaments').upsert({ year: activeTournament.year + 1, status: 'active' }, { onConflict: 'year' })
+
+      // Reset operational data
+      await Promise.all([
+        supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('teams').update({ name: '' }).neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('chulligans').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('feed_events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('contest_entries').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('leahey_votes').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      ])
+
+      setEndTournamentOpen(false)
+      setEndTournamentPreview(null)
+      showToast(`${activeTournament.year} tournament archived! Ready for next year 🏆`)
+      fetchTeams()
+    } catch (e) {
+      showToast((e as Error).message ?? 'Archive failed', 'error')
+    }
+    setEndingTournament(false)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -515,6 +651,132 @@ export default function AdminPanel() {
               </button>
             </div>
           </div>
+
+          {/* End Tournament — archive results */}
+          <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.04)', marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <Archive size={20} color="#FCB514" />
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>End Tournament & Archive</div>
+            </div>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
+              Saves the final standings, Jackass winner, and contest winners to the <strong style={{ color: '#FCB514' }}>Hall of Fame</strong>, then clears all scores for the next year.
+            </p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 18, lineHeight: 1.6 }}>
+              Use this at the end of each year's tournament. Teams and player accounts are preserved.
+            </p>
+            <button
+              onClick={prepareEndTournament}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
+                background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.5)',
+                color: '#FCB514', cursor: 'pointer',
+              }}
+            >
+              <Archive size={15} /> Archive Results & Reset
+            </button>
+          </div>
+
+          {/* End Tournament Modal */}
+          {endTournamentOpen && endTournamentPreview && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+              zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            }}>
+              <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 22, lineHeight: 1.5 }}>
+                  Review the results that will be saved to the Hall of Fame, then confirm to archive and reset.
+                </p>
+
+                {/* Standings preview */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Final Standings</div>
+                  {endTournamentPreview.standings.length === 0 ? (
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '10px 0' }}>No scores recorded</div>
+                  ) : (
+                    endTournamentPreview.standings.slice(0, 3).map((s, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 6, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{i === 0 ? '🏆' : i === 1 ? '🥈' : '🥉'}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#FCB514' : '#fff' }}>{s.teamName}</div>
+                          {(s.p1Name || s.p2Name) && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</div>}
+                        </div>
+                        <div style={{ fontFamily: 'Bebas Neue', fontSize: 17, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>
+                          {s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Jackass preview */}
+                <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 6 }}>🤠 Jackass of the Day</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#FCB514' }}>
+                    {endTournamentPreview.jackassName ?? 'No votes recorded'}
+                    {endTournamentPreview.jackassVotes > 0 && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>({endTournamentPreview.jackassVotes} votes)</span>}
+                  </div>
+                </div>
+
+                {/* Contest winner inputs */}
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Contest Winners (optional)</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>🎯 Closest to Pin winner</label>
+                      <input
+                        type="text"
+                        placeholder="Player name..."
+                        value={endTournamentPreview.ctpWinner}
+                        onChange={e => setEndTournamentPreview(p => p ? { ...p, ctpWinner: e.target.value } : p)}
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>💥 Longest Drive winner</label>
+                      <input
+                        type="text"
+                        placeholder="Player name..."
+                        value={endTournamentPreview.ldWinner}
+                        onChange={e => setEndTournamentPreview(p => p ? { ...p, ldWinner: e.target.value } : p)}
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 12, color: 'rgba(239,68,68,0.7)', marginBottom: 16, lineHeight: 1.6, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  ⚠️ After archiving, all scores, chulligans, contest entries, votes, and feed events will be permanently cleared.
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={doEndTournament}
+                    disabled={endingTournament}
+                    style={{
+                      flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                      background: '#FCB514', border: 'none', color: '#0a0800',
+                      cursor: endingTournament ? 'not-allowed' : 'pointer', opacity: endingTournament ? 0.6 : 1,
+                    }}
+                  >
+                    {endingTournament ? 'Archiving…' : '🏆 Archive & Reset for Next Year'}
+                  </button>
+                  <button
+                    onClick={() => { setEndTournamentOpen(false); setEndTournamentPreview(null) }}
+                    disabled={endingTournament}
+                    style={{
+                      padding: '12px 20px', borderRadius: 999, fontSize: 14,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Score reset */}
           <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', marginBottom: 16 }}>
