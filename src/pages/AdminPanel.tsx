@@ -158,11 +158,15 @@ export default function AdminPanel() {
 
   const resetTournament = async () => {
     setResetting(true)
-    const { error } = await supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    const [scoresRes, teamsRes] = await Promise.all([
+      supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('teams').update({ name: '' }).neq('id', '00000000-0000-0000-0000-000000000000'),
+    ])
     setResetting(false)
     setResetConfirm(false)
+    const error = scoresRes.error ?? teamsRes.error
     if (error) showToast(error.message, 'error')
-    else showToast('All scores cleared — tournament reset!')
+    else { showToast('All scores cleared and team names reset!'); fetchTeams() }
   }
 
   const toggleLaheyVoting = async () => {
@@ -540,7 +544,7 @@ export default function AdminPanel() {
                   Are you absolutely sure?
                 </div>
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
-                  Every score will be gone. This cannot be undone.
+                  Every score will be deleted and all team names cleared. This cannot be undone.
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
