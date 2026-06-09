@@ -14,7 +14,7 @@ function urlBase64ToUint8Array(base64: string) {
 }
 
 export default function AccountPage() {
-  const { profile, user, refreshProfile } = useAuth()
+  const { profile, user, refreshProfile, signOut } = useAuth()
   const { showToast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -407,6 +407,20 @@ export default function AccountPage() {
           </div>
         </div>
       )}
+
+      {/* ── Sign Out ── */}
+      <div style={{ marginTop: 24, paddingBottom: 8 }}>
+        <button
+          onClick={signOut}
+          style={{
+            width: '100%', padding: '13px 0', borderRadius: 12, fontSize: 14, fontWeight: 600,
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+            color: 'rgba(239,68,68,0.75)', cursor: 'pointer', letterSpacing: 0.5,
+          }}
+        >
+          Sign Out
+        </button>
+      </div>
 
       {/* ── Push Notifications ── */}
       <div className="glass" style={{ padding: '24px 26px', marginTop: 16 }}>
