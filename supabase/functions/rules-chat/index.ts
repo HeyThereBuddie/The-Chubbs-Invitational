@@ -126,6 +126,11 @@ Keep answers short and friendly. Use golf lingo naturally. If a situation isn't 
 - Silence phones or set to vibrate during shots
 - Congratulate good shots; commiserate bad ones — this is a social round
 
+━━━ TIEBREAKER ━━━
+- If two or more teams finish with the same total score, the team with the fewest total putts wins
+- If putts are also tied, the team that used fewer chulligans over the round wins
+- If still tied after both tiebreakers, the admin decides (coin flip, sudden death, etc.)
+
 ━━━ GENERAL RULES ━━━
 - USGA Rules of Golf apply for any situation not specifically covered by tournament rules
 - The tournament admin has final say on all rules disputes — no arguments, just play
