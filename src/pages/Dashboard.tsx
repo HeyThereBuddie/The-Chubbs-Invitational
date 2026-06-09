@@ -22,17 +22,22 @@ interface FeedEvent {
 }
 
 const SCORE_COLORS: Record<string, string> = {
-  'Hole in One!': '#FCB514',
-  'Eagle':        '#FCB514',
-  'Birdie':       '#22c55e',
-  'Par':          'rgba(255,255,255,0.55)',
-  'Bogey':        'rgba(255,255,255,0.38)',
-  'Double':       '#f59e0b',
+  'Hole in One!': '#3b82f6',
+  'Eagle':        '#86efac',
+  'Birdie':       '#4ade80',
+  'Par':          '#22c55e',
+  'Bogey':        '#ef4444',
+  'Double':       '#dc2626',
 }
 
 function eventColor(ev: FeedEvent) {
   if (ev.event_type === 'chulligan') return '#f59e0b'
-  if (ev.event_type === 'putt') return '#ef4444'
+  if (ev.event_type === 'putt') {
+    if (ev.label === '3-Putt') return '#fb923c'
+    if (ev.label === '4-Putt') return '#ea580c'
+    return '#c2410c'
+  }
+  if (ev.label.startsWith('+')) return '#991b1b'
   return SCORE_COLORS[ev.label] ?? '#ef4444'
 }
 
@@ -74,7 +79,7 @@ export default function Dashboard() {
     const channel = supabase
       .channel('feed_events_dashboard')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_events' }, payload => {
-        setFeed(prev => [payload.new as FeedEvent, ...prev].slice(0, 10))
+        setFeed(prev => [payload.new as FeedEvent, ...prev].slice(0, 7))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feed_events' }, () => {
         fetchFeedRef.current()
@@ -90,7 +95,7 @@ export default function Dashboard() {
       .from('feed_events')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(10)
+      .limit(7)
     setFeed((data ?? []) as FeedEvent[])
   }
 
@@ -333,9 +338,12 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    {ev.score != null && (
-                      <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
-                        {ev.score}
+                    {ev.score != null && ev.event_type === 'score' && (
+                      <div>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
+                          {ev.score}
+                        </div>
                       </div>
                     )}
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
