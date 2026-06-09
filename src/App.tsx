@@ -15,6 +15,7 @@ import Updates from './pages/Updates'
 import AdminPanel from './pages/AdminPanel'
 import AccountPage from './pages/AccountPage'
 import MyTeamPage from './pages/MyTeamPage'
+import CoursePage from './pages/CoursePage'
 import WelcomePage from './pages/WelcomePage'
 import InviteResponsePage from './pages/InviteResponsePage'
 
@@ -47,6 +48,7 @@ function AppRoutes() {
 
       <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/my-team" element={<ProtectedRoute><Layout><MyTeamPage /></Layout></ProtectedRoute>} />
+      <Route path="/course" element={<ProtectedRoute><Layout><CoursePage /></Layout></ProtectedRoute>} />
       <Route path="/scores" element={<ProtectedRoute><Layout><Scores /></Layout></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
       <Route path="/tee-times" element={<ProtectedRoute><Layout><TeeTimes /></Layout></ProtectedRoute>} />
