@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -41,6 +41,14 @@ function isHighlight(ev: FeedEvent) {
 export default function LiveFeed() {
   const [events, setEvents] = useState<FeedEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+
+  const teamNames = useMemo(() => {
+    const names = new Set(events.map(e => e.team_name).filter(Boolean))
+    return Array.from(names).sort()
+  }, [events])
+
+  const filtered = selectedTeam ? events.filter(e => e.team_name === selectedTeam) : events
 
   const fetchEvents = async () => {
     const { data } = await supabase
@@ -88,25 +96,49 @@ export default function LiveFeed() {
         </div>
       </div>
 
+      {!loading && teamNames.length > 0 && (
+        <div style={{ marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
+            <button
+              className={selectedTeam === null ? 'pill-tab active' : 'pill-tab'}
+              onClick={() => setSelectedTeam(null)}
+            >
+              All Teams
+            </button>
+            {teamNames.map(name => (
+              <button
+                key={name}
+                className={selectedTeam === name ? 'pill-tab active' : 'pill-tab'}
+                onClick={() => setSelectedTeam(prev => prev === name ? null : name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="glass" style={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>
         {loading ? (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
             <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%', margin: '0 auto' }} />
           </div>
-        ) : events.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>⛳</div>
-            <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.35)' }}>No events yet</div>
+            <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.35)' }}>
+              {selectedTeam ? `No events for ${selectedTeam}` : 'No events yet'}
+            </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>Events appear here as scores and chulligans are recorded</div>
           </div>
         ) : (
-          events.map((ev, i) => {
+          filtered.map((ev, i) => {
             const color = eventColor(ev)
             const highlight = isHighlight(ev)
             return (
               <div key={ev.id} style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
-                borderBottom: i < events.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                 background: highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
               }}>
                 <div style={{
