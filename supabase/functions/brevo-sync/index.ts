@@ -29,11 +29,16 @@ serve(async (req) => {
     if (!BREVO_API_KEY) return new Response(JSON.stringify({ error: 'BREVO_API_KEY secret not set' }), { status: 500, headers: CORS })
 
     // Fetch active + waitlist players
-    const { data: players } = await supabase
+    const { data: players, error: dbErr } = await supabase
       .from('profiles')
-      .select('email, name, nickname, phone, status, invite_token')
+      .select('email, name, nickname, phone, status')
       .in('status', ['active', 'waitlist'])
       .order('name')
+
+    if (dbErr) {
+      console.log('[brevo] db error:', dbErr.message)
+      return new Response(JSON.stringify({ error: dbErr.message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    }
 
     if (!players?.length) {
       return new Response(JSON.stringify({ synced: 0 }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
