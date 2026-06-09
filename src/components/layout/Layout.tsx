@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
+import RulesChat from '../RulesChat'
 import { UserCircle } from 'lucide-react'
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -10,6 +11,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="bg-mesh" style={{ minHeight: '100dvh' }}>
+      <RulesChat />
       {isDesktop ? (
         <div style={{ display: 'flex' }}>
           <Sidebar />
