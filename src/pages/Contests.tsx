@@ -265,7 +265,7 @@ export default function Contests() {
                     className="btn-ghost"
                     disabled={!form.player_id}
                     onClick={() => fileRef.current?.click()}
-                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed' }}
+                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed', color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}
                   >
                     <Upload size={13} /> Upload Photo
                   </button>
@@ -274,7 +274,7 @@ export default function Contests() {
                     className="btn-ghost"
                     disabled={!form.player_id}
                     onClick={() => cameraRef.current?.click()}
-                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed' }}
+                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed', color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}
                   >
                     <Camera size={13} /> Take Photo
                   </button>
