@@ -7,6 +7,27 @@ import { Minus, Plus, Users } from 'lucide-react'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
+const HOLE_DATA = [
+  { yards: 435, si: 5,  tip: 'Aim left-centre off the tee to avoid the fairway bunker on the right.' },
+  { yards: 420, si: 11, tip: 'Elevated green — take an extra club on your approach.' },
+  { yards: 170, si: 15, tip: 'Front bunkers are the main threat. Favour the middle of the green.' },
+  { yards: 510, si: 3,  tip: 'Reachable in two — lay up short of the creek or go for the green.' },
+  { yards: 450, si: 1,  tip: 'Hardest hole on the course. Long and tight. Make par and walk away happy.' },
+  { yards: 185, si: 17, tip: 'Wind plays tricks here. Club up and aim centre — bunkers guard both sides.' },
+  { yards: 410, si: 9,  tip: 'Stay left off the tee. The right rough leaves a blind approach.' },
+  { yards: 555, si: 7,  tip: 'Reachable in two — but the green falls away sharply at the back.' },
+  { yards: 460, si: 13, tip: 'Uphill approach. The green appears closer than it is — take two clubs extra.' },
+  { yards: 445, si: 2,  tip: 'Downhill tee shot, then uphill approach. A true two-shot hole.' },
+  { yards: 195, si: 16, tip: 'Water left punishes anything pulled. Aim right-centre and two-putt.' },
+  { yards: 520, si: 8,  tip: 'Creek fronts the green on the approach. Lay up or fly it clean.' },
+  { yards: 440, si: 4,  tip: 'Dogleg left — cut the corner with a big drive to open up the approach.' },
+  { yards: 430, si: 10, tip: 'No bunkers, but the undulating green is the toughest read on the course.' },
+  { yards: 165, si: 18, tip: "Pond fronts the green. Take enough club and you'll have a birdie putt." },
+  { yards: 530, si: 6,  tip: 'Water guards the left all the way in. Big hitters go for it; everyone else lays up.' },
+  { yards: 440, si: 12, tip: 'Classic risk/reward second shot over bunkers to a narrow elevated green.' },
+  { yards: 465, si: 14, tip: 'Uphill finishing hole with bunkers left and right. Par here feels like a birdie.' },
+]
+
 async function pingLeadCheck() {
   const { data: { session } } = await supabase.auth.getSession()
   supabase.functions.invoke('notify-lead-change', {
@@ -57,6 +78,12 @@ export default function Scores() {
   const [saving,      setSaving]      = useState<number | null>(null)
   const [teamPick,    setTeamPick]    = useState('')
   const [settingTeam, setSettingTeam] = useState(false)
+  const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set())
+  const toggleHoleInfo = (hole: number) => setExpandedHoles(prev => {
+    const next = new Set(prev)
+    next.has(hole) ? next.delete(hole) : next.add(hole)
+    return next
+  })
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
@@ -289,7 +316,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo, infoExpanded, onToggleInfo,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -305,6 +332,9 @@ export default function Scores() {
     chulligans?: ChulliganRow[]
     onToggleChulligan?: (playerId: string, hole: number) => void
     readOnly?: boolean
+    holeInfo?: { yards: number; si: number; tip: string }
+    infoExpanded?: boolean
+    onToggleInfo?: () => void
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
@@ -323,7 +353,22 @@ export default function Scores() {
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
           </div>
 
-          <div style={{ flex: 1 }} />
+          {holeInfo ? (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>{holeInfo.yards}y</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>SI {holeInfo.si}</span>
+              </div>
+              <button
+                onClick={onToggleInfo}
+                style={{ marginTop: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: infoExpanded ? 'rgba(252,181,20,0.6)' : 'rgba(255,255,255,0.2)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 3 }}
+              >
+                <span style={{ fontSize: 9 }}>{infoExpanded ? '▲' : '▼'}</span> tip
+              </button>
+            </div>
+          ) : (
+            <div style={{ flex: 1 }} />
+          )}
 
           {hasScore ? (
             <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
@@ -449,6 +494,18 @@ export default function Scores() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Hole tip */}
+        {holeInfo && infoExpanded && (
+          <div style={{
+            marginTop: 8, padding: '7px 10px', borderRadius: 7,
+            borderLeft: '2px solid rgba(252,181,20,0.3)',
+            background: 'rgba(252,181,20,0.04)',
+            fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55,
+          }}>
+            ⛳ {holeInfo.tip}
           </div>
         )}
 
@@ -709,6 +766,9 @@ export default function Scores() {
                   onReset={() => resetAdminScore(hole)}
                   chulligans={adminChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
+                  holeInfo={HOLE_DATA[hole - 1]}
+                  infoExpanded={expandedHoles.has(hole)}
+                  onToggleInfo={() => toggleHoleInfo(hole)}
                 />
               )
             })
@@ -828,6 +888,9 @@ export default function Scores() {
                   onReset={() => resetMyScore(hole)}
                   chulligans={myChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
+                  holeInfo={HOLE_DATA[hole - 1]}
+                  infoExpanded={expandedHoles.has(hole)}
+                  onToggleInfo={() => toggleHoleInfo(hole)}
                 />
               )
             })
@@ -842,6 +905,9 @@ export default function Scores() {
               player1={viewTeam?.player1}
               player2={viewTeam?.player2}
               readOnly
+              holeInfo={HOLE_DATA[hole - 1]}
+              infoExpanded={expandedHoles.has(hole)}
+              onToggleInfo={() => toggleHoleInfo(hole)}
             />
           ))
         })()}
