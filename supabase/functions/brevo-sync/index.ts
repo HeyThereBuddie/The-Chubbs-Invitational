@@ -37,13 +37,13 @@ serve(async (req) => {
 
     if (dbErr) {
       console.log('[brevo] db error:', dbErr.message)
-      return new Response(JSON.stringify({ error: dbErr.message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ error: `DB error: ${dbErr.message}` }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
     }
 
     if (!players?.length) {
       return new Response(
         JSON.stringify({ error: `DB returned 0 players (has_brevo_key: ${!!BREVO_API_KEY})` }),
-        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+        { headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -78,8 +78,8 @@ serve(async (req) => {
     if (synced === 0 && failed.length > 0) {
       const sample = failed[0]
       return new Response(
-        JSON.stringify({ error: `Brevo rejected all contacts (status ${sample.status} for ${sample.email}). Check your API key permissions.` }),
-        { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Brevo rejected contacts — status ${sample.status} for ${sample.email}. Check API key has Contacts permission.` }),
+        { headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
 
