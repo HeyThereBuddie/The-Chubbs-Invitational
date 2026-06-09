@@ -39,16 +39,23 @@ function isHighlight(ev: FeedEvent) {
   return ev.event_type === 'contest' || ev.event_type === 'chulligan' || ev.event_type === 'putt' || ['Hole in One!', 'Eagle', 'Birdie'].includes(ev.label)
 }
 
+type FilterType = 'golf' | 'contests' | 'jackass'
+
 export default function LiveFeed() {
   const [events, setEvents] = useState<FeedEvent[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
-  const [teamNames, setTeamNames] = useState<string[]>([])
+  const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null)
 
-  const filtered = useMemo(
-    () => selectedTeam ? events.filter(e => e.team_name === selectedTeam) : events,
-    [events, selectedTeam]
-  )
+  const filtered = useMemo(() => {
+    if (!selectedFilter) return events
+    if (selectedFilter === 'golf')
+      return events.filter(e => e.event_type === 'score' || e.event_type === 'putt' || e.event_type === 'chulligan')
+    if (selectedFilter === 'contests')
+      return events.filter(e => e.event_type === 'contest' && (e.label === 'CTP Entry' || e.label === 'LD Entry'))
+    if (selectedFilter === 'jackass')
+      return events.filter(e => e.event_type === 'contest' && (e.label === 'Jackass Vote' || e.label === 'Vote Changed'))
+    return events
+  }, [events, selectedFilter])
 
   const fetchEvents = async () => {
     const { data } = await supabase
@@ -59,14 +66,6 @@ export default function LiveFeed() {
     setEvents((data ?? []) as FeedEvent[])
     setLoading(false)
   }
-
-  useEffect(() => {
-    supabase
-      .from('teams')
-      .select('name')
-      .order('name')
-      .then(({ data }) => setTeamNames((data ?? []).map(t => t.name).filter(Boolean)))
-  }, [])
 
   useEffect(() => {
     fetchEvents()
@@ -104,27 +103,24 @@ export default function LiveFeed() {
         </div>
       </div>
 
-      {teamNames.length > 0 && (
-        <div style={{ marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
-          <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
+      <div style={{ marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
+        <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
+          {([
+            { id: null,       label: 'All' },
+            { id: 'golf',     label: '⛳ Golf' },
+            { id: 'contests', label: '🎯 Contests' },
+            { id: 'jackass',  label: '🤠 Jackass Award' },
+          ] as const).map(({ id, label }) => (
             <button
-              className={selectedTeam === null ? 'pill-tab active' : 'pill-tab'}
-              onClick={() => setSelectedTeam(null)}
+              key={String(id)}
+              className={selectedFilter === id ? 'pill-tab active' : 'pill-tab'}
+              onClick={() => setSelectedFilter(prev => prev === id ? null : id)}
             >
-              All Teams
+              {label}
             </button>
-            {teamNames.map(name => (
-              <button
-                key={name}
-                className={selectedTeam === name ? 'pill-tab active' : 'pill-tab'}
-                onClick={() => setSelectedTeam(prev => prev === name ? null : name)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
-      )}
+      </div>
 
       <div className="glass" style={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>
         {loading ? (
@@ -135,7 +131,10 @@ export default function LiveFeed() {
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>⛳</div>
             <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.35)' }}>
-              {selectedTeam ? `No events for ${selectedTeam}` : 'No events yet'}
+              {selectedFilter === 'golf' ? 'No golf events yet'
+                : selectedFilter === 'contests' ? 'No contest entries yet'
+                : selectedFilter === 'jackass' ? 'No votes yet'
+                : 'No events yet'}
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>Events appear here as scores and chulligans are recorded</div>
           </div>

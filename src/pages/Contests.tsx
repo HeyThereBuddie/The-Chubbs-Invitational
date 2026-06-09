@@ -176,7 +176,7 @@ export default function Contests() {
         player_name: nominee ? displayName(nominee) : null,
         hole: 0,
         score: null,
-        label: 'Jackass Vote',
+        label: myVote ? 'Vote Changed' : 'Jackass Vote',
         emoji: '🤠',
       })
       fetchLaheyData()
