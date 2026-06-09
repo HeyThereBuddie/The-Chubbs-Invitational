@@ -97,7 +97,10 @@ export default function Scores() {
       .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
     if (data) {
       setAllTeams(data)
-      if (isAdmin && data.length) setAdminTeamId(data[0].id)
+      if (isAdmin && data.length) {
+        const initial = (myTeamId && data.find(t => t.id === myTeamId)) ? myTeamId : data[0].id
+        setAdminTeamId(initial)
+      }
     }
   }
 
@@ -625,17 +628,20 @@ export default function Scores() {
   if (isAdmin) {
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
     const stats = adminTeam ? calcStats(adminScores) : null
+    const adminTabTeams = myTeamId
+      ? [...allTeams].sort((a, b) => (a.id === myTeamId ? -1 : b.id === myTeamId ? 1 : 0))
+      : allTeams
 
     return (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         {pageHeader}
 
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
-          {allTeams.map(t => (
+          {adminTabTeams.map(t => (
             <button key={t.id} onClick={() => { setAdminTeamId(t.id); setAdminScores({}) }}
               className={`pill-tab ${adminTeamId === t.id ? 'active' : ''}`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-              <span>{t.name}</span>
+              <span>{t.name}{t.id === myTeamId ? ' ⭐' : ''}</span>
               {(t.player1 || t.player2) && (
                 <span style={{ fontSize: 9, opacity: 0.55, whiteSpace: 'nowrap' }}>
                   {[t.player1 && displayName(t.player1), t.player2 && displayName(t.player2)].filter(Boolean).join(' & ')}
