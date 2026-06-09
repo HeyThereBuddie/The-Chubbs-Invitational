@@ -9,6 +9,14 @@ import { formatDistanceToNow } from 'date-fns'
 
 type ContestType = 'ctp' | 'ld' | 'lahey'
 
+interface JackassFeedEvent {
+  id: string
+  voter_name: string | null
+  player_name: string | null
+  label: string
+  created_at: string
+}
+
 export default function Contests() {
   const { profile } = useAuth()
   const { showToast } = useToast()
@@ -31,14 +39,22 @@ export default function Contests() {
   const [votes,        setVotes]        = useState<LeaheyVote[]>([])
   const [myVote,       setMyVote]       = useState<string | null>(null)
   const [selected,     setSelected]     = useState<string | null>(null)
+  const [jackassFeed,  setJackassFeed]  = useState<JackassFeedEvent[]>([])
   const [casting,      setCasting]      = useState(false)
   const [votingOpen,   setVotingOpen]   = useState(false)
 
   useEffect(() => {
     if (tab === 'lahey') {
       fetchLaheyData()
+      fetchJackassFeed()
       const sub = supabase.channel('leahey-rt')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'leahey_votes' }, fetchLaheyData)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_events' }, payload => {
+          const ev = payload.new as JackassFeedEvent & { event_type: string }
+          if (ev.event_type === 'contest' && ev.label?.includes('Vote')) {
+            setJackassFeed(prev => [ev, ...prev].slice(0, 20))
+          }
+        })
         .subscribe()
       return () => { supabase.removeChannel(sub) }
     } else {
@@ -88,6 +104,17 @@ export default function Contests() {
       const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
       setContestPlayers(data ?? [])
     }
+  }
+
+  const fetchJackassFeed = async () => {
+    const { data } = await supabase
+      .from('feed_events')
+      .select('id, voter_name, player_name, label, created_at')
+      .eq('event_type', 'contest')
+      .in('label', ['Jackass Vote', 'Vote Changed'])
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setJackassFeed((data ?? []) as JackassFeedEvent[])
   }
 
   const fetchLaheyData = async () => {
@@ -405,20 +432,25 @@ export default function Contests() {
       {/* ── Jackass of the Day ──────────────────────────────────── */}
       {tab === 'lahey' && (
         <>
-          <div className="glass animate-fadeUp" style={{
-            padding: '28px 24px', marginBottom: 20, textAlign: 'center',
-            background: 'linear-gradient(135deg, rgba(18,14,6,0.95) 0%, rgba(40,20,0,0.9) 100%)',
-            borderColor: 'rgba(252,181,20,0.3)',
+          <div className="animate-fadeUp" style={{
+            marginBottom: 16, borderRadius: 12, overflow: 'hidden',
+            border: '1px solid rgba(252,181,20,0.22)',
+            background: 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)',
           }}>
-            <div style={{ fontSize: 48, marginBottom: 10 }}>🤠</div>
-            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 30, color: '#FCB514', letterSpacing: 4, margin: '0 0 10px', textShadow: '0 0 20px rgba(252,181,20,0.4)' }}>
-              Jackass of the Day
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 10px' }}>
-              Presented to the player who best channels their inner Shooter McGavin — smugly convinced they're the best on the course, playing like a complete jackass, and absolutely loving every second of it. One vote per person. You can change it until voting closes.
-            </p>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
-              "Just stay out of my way... or you'll pay. LISTEN to what I say." — Shooter McGavin
+            <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 26, flexShrink: 0 }}>🤠</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
+                  Jackass of the Day
+                </div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
+                  Vote for who best channels their inner Shooter McGavin. One vote per person.
+                </div>
+              </div>
+            </div>
+            <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>💬 "Just stay out of my way... or you'll pay."</span>
+              <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— Shooter McGavin</span>
             </div>
           </div>
 
@@ -521,6 +553,42 @@ export default function Contests() {
               </div>
             )}
           </div>
+
+          {jackassFeed.length > 0 && (
+            <div className="glass" style={{ padding: 0, overflow: 'hidden', marginTop: 16 }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 700, color: '#FCB514', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                Vote Activity
+                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
+              </div>
+              {jackassFeed.map((ev, i) => (
+                <div key={ev.id} style={{
+                  padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
+                  borderBottom: i < jackassFeed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>🤠</span>
+                  <div style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                    {ev.label === 'Vote Changed' ? (
+                      <>
+                        <strong style={{ color: '#fff' }}>{ev.voter_name}</strong>
+                        {' changed their vote to '}
+                        <strong style={{ color: '#FCB514' }}>{ev.player_name}</strong>
+                      </>
+                    ) : (
+                      <>
+                        <strong style={{ color: '#fff' }}>{ev.voter_name}</strong>
+                        {' voted '}
+                        <strong style={{ color: '#FCB514' }}>{ev.player_name}</strong>
+                        {' for jackass'}
+                      </>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                    {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
