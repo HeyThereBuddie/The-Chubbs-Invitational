@@ -103,7 +103,7 @@ export default function LiveFeed() {
         </div>
       </div>
 
-      {!loading && teamNames.length > 0 && (
+      {teamNames.length > 0 && (
         <div style={{ marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
           <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
             <button
