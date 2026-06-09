@@ -49,8 +49,18 @@ export default function LiveFeed() {
 
   useEffect(() => {
     fetchEvents()
-    const t = setInterval(fetchEvents, 30_000)
-    return () => clearInterval(t)
+
+    const channel = supabase
+      .channel('feed_events_livefeed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_events' }, payload => {
+        setEvents(prev => [payload.new as FeedEvent, ...prev].slice(0, 200))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feed_events' }, () => {
+        fetchEvents()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   return (

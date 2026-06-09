@@ -42,16 +42,17 @@ async function logFeedEvent(
   } else {
     const info = scoreFeedInfo(score!, hole); label = info.label; emoji = info.emoji
   }
-  supabase.from('feed_events').insert({
+  const { error } = await supabase.from('feed_events').insert({
     event_type: eventType,
-    team_id: teamId,
+    team_id: teamId || null,
     team_name: teamName,
     player_name: playerName,
     hole,
     score,
     label,
     emoji,
-  }).then(() => { /* fire and forget */ })
+  })
+  if (error) console.error('[feed_events insert]', error.message)
 }
 
 const BASE = 'https://royalashburngolfclub.com/wp-content/uploads/2016/11'

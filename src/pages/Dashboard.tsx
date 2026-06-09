@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -66,9 +66,23 @@ export default function Dashboard() {
 
   useEffect(() => { fetchData() }, [])
   useEffect(() => {
+    fetchFeedRef.current = fetchFeed
+  })
+  useEffect(() => {
     fetchFeed()
-    const t = setInterval(fetchFeed, 30_000)
-    return () => clearInterval(t)
+
+    const channel = supabase
+      .channel('feed_events_dashboard')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_events' }, payload => {
+        setFeed(prev => [payload.new as FeedEvent, ...prev].slice(0, 10))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feed_events' }, () => {
+        fetchFeedRef.current()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchFeed = async () => {
@@ -79,6 +93,8 @@ export default function Dashboard() {
       .limit(10)
     setFeed((data ?? []) as FeedEvent[])
   }
+
+  const fetchFeedRef = useRef(fetchFeed)
 
   const fetchData = async () => {
     const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
