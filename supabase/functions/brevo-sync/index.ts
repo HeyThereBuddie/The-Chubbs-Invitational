@@ -60,12 +60,20 @@ serve(async (req) => {
 
       const text = await res.text()
       console.log(`[brevo] ${p.email} → ${res.status}: ${text}`)
-      return { email: p.email, status: res.status, ok: res.status === 201 || res.status === 204 }
+      return { email: p.email, status: res.status, ok: res.ok }
     }))
 
-    const synced = results.filter(r => r.ok).length
-    const failed = results.filter(r => !r.ok)
-    console.log(`[brevo] synced: ${synced}, failed: ${failed.length}`, JSON.stringify(failed))
+    const synced  = results.filter(r => r.ok).length
+    const failed  = results.filter(r => !r.ok)
+    console.log(`[brevo] synced=${synced} failed=${failed.length}`, JSON.stringify(failed))
+
+    if (synced === 0 && failed.length > 0) {
+      const sample = failed[0]
+      return new Response(
+        JSON.stringify({ error: `Brevo rejected all contacts (status ${sample.status} for ${sample.email}). Check your API key permissions.` }),
+        { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
 
     return new Response(JSON.stringify({ synced, failed: failed.length }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
   } catch (e) {
