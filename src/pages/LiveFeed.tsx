@@ -6,6 +6,7 @@ interface FeedEvent {
   id: string
   event_type: 'score' | 'chulligan' | 'putt' | 'contest'
   team_name: string
+  voter_name: string | null
   player_name: string | null
   hole: number
   score: number | null
@@ -162,7 +163,7 @@ export default function LiveFeed() {
                     </span>
                     {ev.event_type === 'contest' && ev.label.includes('Vote') ? (
                       <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                        <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.team_name}</strong>
+                        <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.voter_name}</strong>
                         {' voted '}
                         <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
                         {' for jackass'}

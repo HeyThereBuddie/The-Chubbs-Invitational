@@ -172,7 +172,8 @@ export default function Contests() {
       const nominee = laheyPlayers.find(p => p.id === selected)
       await supabase.from('feed_events').insert({
         event_type: 'contest',
-        team_name: profile ? displayName(profile) : '',
+        team_name: '',
+        voter_name: profile ? displayName(profile) : '',
         player_name: nominee ? displayName(nominee) : null,
         hole: 0,
         score: null,
