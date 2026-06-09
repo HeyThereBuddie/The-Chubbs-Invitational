@@ -1,6 +1,6 @@
 CREATE TABLE public.feed_events (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_type  text        NOT NULL CHECK (event_type IN ('score', 'chulligan')),
+  event_type  text        NOT NULL CHECK (event_type IN ('score', 'chulligan', 'putt')),
   team_id     uuid        REFERENCES public.teams(id) ON DELETE CASCADE,
   team_name   text        NOT NULL DEFAULT '',
   player_name text,

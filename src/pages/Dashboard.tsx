@@ -11,7 +11,7 @@ const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/C
 
 interface FeedEvent {
   id: string
-  event_type: 'score' | 'chulligan'
+  event_type: 'score' | 'chulligan' | 'putt'
   team_name: string
   player_name: string | null
   hole: number
@@ -32,11 +32,12 @@ const SCORE_COLORS: Record<string, string> = {
 
 function eventColor(ev: FeedEvent) {
   if (ev.event_type === 'chulligan') return '#f59e0b'
+  if (ev.event_type === 'putt') return '#ef4444'
   return SCORE_COLORS[ev.label] ?? '#ef4444'
 }
 
 function isHighlight(ev: FeedEvent) {
-  return ev.event_type === 'chulligan' || ['Hole in One!', 'Eagle', 'Birdie'].includes(ev.label)
+  return ev.event_type === 'chulligan' || ev.event_type === 'putt' || ['Hole in One!', 'Eagle', 'Birdie'].includes(ev.label)
 }
 
 interface LeaderRow {

@@ -19,17 +19,29 @@ function scoreFeedInfo(score: number, hole: number): { label: string; emoji: str
   return { emoji: '💥', label: `+${d}` }
 }
 
+function puttFeedInfo(putts: number): { label: string; emoji: string } {
+  if (putts >= 5) return { label: `${putts}-Putt`, emoji: '💀' }
+  if (putts === 4) return { label: '4-Putt', emoji: '😱' }
+  return { label: '3-Putt', emoji: '😰' }
+}
+
 async function logFeedEvent(
-  eventType: 'score' | 'chulligan',
+  eventType: 'score' | 'chulligan' | 'putt',
   teamId: string,
   teamName: string,
   hole: number,
   score: number | null,
   playerName: string | null,
+  putts?: number,
 ) {
-  const { label, emoji } = eventType === 'chulligan'
-    ? { label: 'Chulligan', emoji: '🍺' }
-    : scoreFeedInfo(score!, hole)
+  let label: string, emoji: string
+  if (eventType === 'chulligan') {
+    label = 'Chulligan'; emoji = '🍺'
+  } else if (eventType === 'putt' && putts != null) {
+    const info = puttFeedInfo(putts); label = info.label; emoji = info.emoji
+  } else {
+    const info = scoreFeedInfo(score!, hole); label = info.label; emoji = info.emoji
+  }
   supabase.from('feed_events').insert({
     event_type: eventType,
     team_id: teamId,
@@ -503,6 +515,8 @@ export default function Scores() {
     const newPutts = existing.putts === putts ? null : putts
     await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
+    if (newPutts != null && newPutts >= 3)
+      logFeedEvent('putt', myTeamId!, myTeam?.name ?? '', hole, null, null, newPutts)
   }
 
   const setAdminPutts = async (hole: number, putts: number) => {
@@ -511,6 +525,10 @@ export default function Scores() {
     const newPutts = existing.putts === putts ? null : putts
     await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
     setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
+    if (newPutts != null && newPutts >= 3) {
+      const adminTeam = allTeams.find(t => t.id === adminTeamId)
+      logFeedEvent('putt', adminTeamId!, adminTeam?.name ?? '', hole, null, null, newPutts)
+    }
   }
 
   const resetMyScore = async (hole: number) => {
