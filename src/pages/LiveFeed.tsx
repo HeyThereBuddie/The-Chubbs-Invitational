@@ -42,13 +42,12 @@ export default function LiveFeed() {
   const [events, setEvents] = useState<FeedEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [teamNames, setTeamNames] = useState<string[]>([])
 
-  const teamNames = useMemo(() => {
-    const names = new Set(events.map(e => e.team_name).filter(Boolean))
-    return Array.from(names).sort()
-  }, [events])
-
-  const filtered = selectedTeam ? events.filter(e => e.team_name === selectedTeam) : events
+  const filtered = useMemo(
+    () => selectedTeam ? events.filter(e => e.team_name === selectedTeam) : events,
+    [events, selectedTeam]
+  )
 
   const fetchEvents = async () => {
     const { data } = await supabase
@@ -59,6 +58,14 @@ export default function LiveFeed() {
     setEvents((data ?? []) as FeedEvent[])
     setLoading(false)
   }
+
+  useEffect(() => {
+    supabase
+      .from('teams')
+      .select('name')
+      .order('name')
+      .then(({ data }) => setTeamNames((data ?? []).map(t => t.name).filter(Boolean)))
+  }, [])
 
   useEffect(() => {
     fetchEvents()
