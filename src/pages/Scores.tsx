@@ -5,7 +5,7 @@ import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
 
-const HOLE_PARS = [5,4,5,3,4,4,4,5,4, 4,3,5,4,4,3,5,4,4]
+const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
 
 const BASE = 'https://royalashburngolfclub.com/wp-content/uploads/2016/11'
 const HOLE_DATA: { yards: number; si: number; description?: string; photo?: string }[] = [
@@ -15,18 +15,18 @@ const HOLE_DATA: { yards: number; si: number; description?: string; photo?: stri
   { yards: 510, si: 3,  photo: `${BASE}/ROY-Hole-4-1.png`, description: 'With water on the left and a long bunker on the right, a well played tee shot is a must. Calculate your yardage accurately, as this green is 50 yards deep. Because of the size of the green, a long first putt is very common. A 3 here is a great score.' },
   { yards: 450, si: 1,  photo: `${BASE}/ROY-Hole-5-1.png`, description: 'With 5 ponds and the creek to negotiate, this moderate length hole is a tough one. A well placed drive should be played down the left centre of the fairway avoiding a watery grave. The approach shot needs to carry both the creek and the pond guarding the front and left side of this green.' },
   { yards: 185, si: 17, photo: `${BASE}/ROY-Hole-6-1.png`, description: 'A well played tee shot would be played towards the 150 yard marker avoiding a series of mounds to the left of the fairway. This slight dogleg to the right always seems to play longer than the yardage on the scorecard. One of the 3 bunkers surrounding the green will often catch a wayward approach.' },
-  { yards: 410, si: 9,  photo: `${BASE}/ROY-Hole-7-1.png`  },
-  { yards: 555, si: 7,  photo: `${BASE}/ROY-Hole-8-1.png`  },
-  { yards: 460, si: 13, photo: `${BASE}/ROY-Hole-9-1.png`  },
-  { yards: 445, si: 2,  photo: `${BASE}/ROY-Hole-10-1.png` },
-  { yards: 195, si: 16, photo: `${BASE}/ROY-Hole-11-1.png` },
-  { yards: 520, si: 8,  photo: `${BASE}/ROY-Hole-12-1.png` },
-  { yards: 440, si: 4,  photo: `${BASE}/ROY-Hole-13-1.png` },
-  { yards: 430, si: 10, photo: `${BASE}/ROY-Hole-14-1.png` },
-  { yards: 165, si: 18, photo: `${BASE}/ROY-Hole-15-1.png` },
-  { yards: 530, si: 6,  photo: `${BASE}/ROY-Hole-16-1.png` },
-  { yards: 440, si: 12, photo: `${BASE}/ROY-Hole-17-1.png` },
-  { yards: 465, si: 14, photo: `${BASE}/ROY-Hole-18-1.png` },
+  { yards: 410, si: 9,  photo: `${BASE}/ROY-Hole-7-1.png`,  description: 'Be aware of the pin position on this two-tier, 48 yard deep green. Remember to take more club as you are hitting uphill. This moderate length hole is quite the challenge. Play smart and avoid the big number here.' },
+  { yards: 555, si: 7,  photo: `${BASE}/ROY-Hole-8-1.png`,  description: 'A panoramic view reveals an open and inviting fairway with little trouble. A well struck tee shot will finish close to the 100 yard marker. The second shot requires a precise short iron approach to a tricky green. This triple-tiered green is guarded by 2 bunkers on the left and a horse shoe pond on the right.' },
+  { yards: 460, si: 13, photo: `${BASE}/ROY-Hole-9-1.png`,  description: 'This hole plays longer than its measured distance. Any drive in the fairway just past the 150 yard marker gives the best approach to the green. Don\'t fear taking an extra club approaching this green as it too is uphill and occasionally into the wind.' },
+  { yards: 445, si: 2,  photo: `${BASE}/ROY-Hole-10-1.png`, description: 'This hole doglegs to the right in between bunkers, mounds and trees. Play your drive to the left centre of the fairway. Three bunkers surrounding this elevated green makes this one of the most demanding shots on the back nine. A crisply hit shot has the best chance to find the green, otherwise a recovery from the rough or sand will follow.' },
+  { yards: 195, si: 16, photo: `${BASE}/ROY-Hole-11-1.png`, description: 'Woods and water dictate caution on this dogleg left. Select a club to play short of the pond and hit straight down the middle of the fairway. The second shot is usually with a short iron, played to the pin for a birdie opportunity. Play beyond the pin when the hole is placed on the front of the green to avoid the water.' },
+  { yards: 520, si: 8,  photo: `${BASE}/ROY-Hole-12-1.png`, description: 'Due to this tilted fairway, a well placed drive is hit left of centre. With out of bounds to the left and a green that falls sharply to the right and over the back, the only safe bail out area is short. The second shot is usually played with a mid iron to hybrid. You\'ll work hard for your par here.' },
+  { yards: 440, si: 4,  photo: `${BASE}/ROY-Hole-13-1.png`, description: 'This tee shot is intimidating with Lynde Creek surrounding the entire green. It\'s important to know which way the wind is blowing before making your way into the valley, as it is difficult to detect from the tee. This narrow green makes a precision tee shot a must. Another challenging par.' },
+  { yards: 430, si: 10, photo: `${BASE}/ROY-Hole-14-1.png`, description: 'A wide, inviting fairway gives you a chance to freely swing away, advancing your tee shot as far down as possible. A good drive will leave a long wood shot on this slight dogleg to the left. If successful in negotiating the first two shots, the third will be with a mid to short iron to the green. Be cautious when putting from above the hole.' },
+  { yards: 165, si: 18, photo: `${BASE}/ROY-Hole-15-1.png`, description: 'This wide but tree lined fairway provides an intimidating tee shot on this long par 4. Even after a good drive, your second requires a well struck shot, usually with a hybrid or wood. The green is well protected with bunkers placed front left and back right. Any shot hit short will end up in a watery grave. A bogey is not a bad score on this hole.' },
+  { yards: 530, si: 6,  photo: `${BASE}/ROY-Hole-16-1.png`, description: 'Our signature hole on the back nine favours an accurately hit, high flying shot. The key to this hole is a careful club selection. A misguided tee shot will find the two ponds flanking the elevated green or one of the surrounding bunkers. Putting from back to front can be quite treacherous.' },
+  { yards: 440, si: 12, photo: `${BASE}/ROY-Hole-17-1.png`, description: 'This very demanding tee shot must negotiate Lynde Creek, a series of bunkers lining both sides of the fairway and usually the wind. A solidly struck second shot with a fairway wood or hybrid will leave you around the 100 yard mark. The third shot can be played aggressively to the hole reserving some caution if the pin is near the right side of the green.' },
+  { yards: 465, si: 14, photo: `${BASE}/ROY-Hole-18-1.png`, description: 'Depending on the wind, this hole could be a driver, fairway wood or hybrid from the tee. A well placed drive will leave a mid to short iron to a large tiered green. Locate the pin position and measure your distance accurately as this green is 50 yards in length.' },
 ]
 
 async function pingLeadCheck() {
