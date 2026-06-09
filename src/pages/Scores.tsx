@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useYear } from '../context/YearContext'
 import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
@@ -33,6 +34,7 @@ async function logFeedEvent(
   score: number | null,
   playerName: string | null,
   putts?: number,
+  tournamentId?: string | null,
 ) {
   let label: string, emoji: string
   if (eventType === 'chulligan') {
@@ -51,6 +53,7 @@ async function logFeedEvent(
     score,
     label,
     emoji,
+    ...(tournamentId && { tournament_id: tournamentId }),
   })
   if (error) console.error('[feed_events insert]', error.message)
 }
@@ -367,7 +370,8 @@ function HoleCard({
 
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
-  const myTeamId = profile?.team_id ?? undefined
+  const { effectiveTournamentId, isCurrentYear } = useYear()
+  const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
   const [myTeam,           setMyTeam]           = useState<TeamFull | null>(null)
@@ -402,7 +406,7 @@ export default function Scores() {
 
   // ── Load ────────────────────────────────────────────────────
 
-  useEffect(() => { loadAllTeams() }, [])
+  useEffect(() => { loadAllTeams() }, [effectiveTournamentId])
   useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
   // Default view to own team on first load; switch to other teams for read-only browse
@@ -429,13 +433,13 @@ export default function Scores() {
   }, [adminTeamId])
 
   const loadAllTeams = async () => {
-    const { data } = await supabase
-      .from('teams')
-      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+    let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    const { data } = await q
     if (data) {
       setAllTeams(data)
-      if (isAdmin && data.length) {
-        const initial = (myTeamId && data.find(t => t.id === myTeamId)) ? myTeamId : data[0].id
+      if (isAdmin && isCurrentYear && data.length) {
+        const initial = (myTeamId && data.find((t: TeamFull) => t.id === myTeamId)) ? myTeamId : data[0].id
         setAdminTeamId(initial)
       }
     }
@@ -498,7 +502,7 @@ export default function Scores() {
     }
     setSaving(null)
     pingLeadCheck()
-    logFeedEvent('score', myTeamId, myTeam?.name ?? '', hole, next, null)
+    logFeedEvent('score', myTeamId, myTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
   }
 
   const adjustAdminScore = async (hole: number, delta: number) => {
@@ -518,7 +522,7 @@ export default function Scores() {
     setSaving(null)
     pingLeadCheck()
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
-    logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, next, null)
+    logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
   }
 
   const setMyDrive = async (hole: number, playerId: string) => {
@@ -544,7 +548,7 @@ export default function Scores() {
     await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
     if (newPutts != null && newPutts >= 3)
-      logFeedEvent('putt', myTeamId!, myTeam?.name ?? '', hole, null, null, newPutts)
+      logFeedEvent('putt', myTeamId!, myTeam?.name ?? '', hole, null, null, newPutts, effectiveTournamentId)
   }
 
   const setAdminPutts = async (hole: number, putts: number) => {
@@ -555,7 +559,7 @@ export default function Scores() {
     setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
     if (newPutts != null && newPutts >= 3) {
       const adminTeam = allTeams.find(t => t.id === adminTeamId)
-      logFeedEvent('putt', adminTeamId!, adminTeam?.name ?? '', hole, null, null, newPutts)
+      logFeedEvent('putt', adminTeamId!, adminTeam?.name ?? '', hole, null, null, newPutts, effectiveTournamentId)
     }
   }
 
@@ -596,7 +600,7 @@ export default function Scores() {
           .select('id, player_id, half, hole').single()
         if (data) {
           setter([...chulligans.filter(c => c.id !== existing.id), data as ChulliganRow])
-          logFeedEvent('chulligan', teamId, teamName, hole, null, playerName)
+          logFeedEvent('chulligan', teamId, teamName, hole, null, playerName, undefined, effectiveTournamentId)
         }
       }
     } else {
@@ -605,7 +609,7 @@ export default function Scores() {
         .select('id, player_id, half, hole').single()
       if (data) {
         setter([...chulligans, data as ChulliganRow])
-        logFeedEvent('chulligan', teamId, teamName, hole, null, playerName)
+        logFeedEvent('chulligan', teamId, teamName, hole, null, playerName, undefined, effectiveTournamentId)
       }
     }
   }
@@ -751,7 +755,7 @@ export default function Scores() {
 
   // ── No team ──────────────────────────────────────────────────
 
-  if (!isAdmin && !myTeamId) {
+  if (!isAdmin && !myTeamId && isCurrentYear) {
     return (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         {pageHeader}
@@ -823,9 +827,9 @@ export default function Scores() {
     </div>
   )
 
-  // ── Admin view ───────────────────────────────────────────────
+  // ── Admin view (current year only) ───────────────────────────
 
-  if (isAdmin) {
+  if (isAdmin && isCurrentYear) {
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
     const stats = adminTeam ? calcStats(adminScores) : null
     const adminTabTeams = myTeamId

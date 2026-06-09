@@ -46,18 +46,30 @@ export default function AdminPanel() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
 
-  useEffect(() => { fetchProfiles(); fetchTeams() }, [])
+  useEffect(() => {
+    fetchProfiles()
+    fetchActiveTournament().then(id => fetchTeams(id))
+  }, [])
 
   const fetchProfiles = async () => {
     const { data } = await supabase.from('profiles').select('*').order('name')
     setProfiles(data ?? [])
   }
 
-  const fetchTeams = async () => {
-    const { data } = await supabase
-      .from('teams')
+  const fetchActiveTournament = async (): Promise<string | null> => {
+    const { data } = await supabase.from('tournaments').select('id').eq('status', 'active').limit(1).single()
+    const id = data?.id ?? null
+    setActiveTournamentId(id)
+    return id
+  }
+
+  const fetchTeams = async (tournamentId?: string | null) => {
+    const tid = tournamentId !== undefined ? tournamentId : activeTournamentId
+    let q = supabase.from('teams')
       .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
       .order('created_at')
+    if (tid) q = q.eq('tournament_id', tid)
+    const { data } = await q
     setTeams(data ?? [])
   }
 
@@ -66,7 +78,9 @@ export default function AdminPanel() {
   const createTeam = async () => {
     if (!newTeamName.trim()) return
     setCreating(true)
-    const { error } = await supabase.from('teams').insert({ name: newTeamName.trim() })
+    const payload: Record<string, unknown> = { name: newTeamName.trim() }
+    if (activeTournamentId) payload.tournament_id = activeTournamentId
+    const { error } = await supabase.from('teams').insert(payload)
     setCreating(false)
     if (error) showToast(error.message, 'error')
     else { showToast('Team created!'); setNewTeamName(''); fetchTeams() }
@@ -189,6 +203,7 @@ export default function AdminPanel() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingYear, setDeletingYear] = useState(false)
   const [restoringYear, setRestoringYear] = useState<string | null>(null)
+  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
@@ -198,19 +213,25 @@ export default function AdminPanel() {
   useEffect(() => { if (tab === 'history') fetchTournamentHistory() }, [tab])
 
   const resetTournament = async () => {
+    if (!activeTournamentId) return
     setResetting(true)
-    const [scoresRes, teamsRes] = await Promise.all([
-      supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('teams').update({ name: '' }).neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('chulligans').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('feed_events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('contest_entries').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    // Only delete current year data
+    const { data: curTeams } = await supabase.from('teams').select('id').eq('tournament_id', activeTournamentId)
+    const teamIds = (curTeams ?? []).map(t => t.id)
+    await Promise.all([
+      teamIds.length > 0
+        ? supabase.from('scores').delete().in('team_id', teamIds)
+        : Promise.resolve({ error: null }),
+      teamIds.length > 0
+        ? supabase.from('chulligans').delete().in('team_id', teamIds)
+        : Promise.resolve({ error: null }),
+      supabase.from('feed_events').delete().eq('tournament_id', activeTournamentId),
+      supabase.from('contest_entries').delete().eq('tournament_id', activeTournamentId),
     ])
     setResetting(false)
     setResetConfirm(false)
-    const error = scoresRes.error ?? teamsRes.error
-    if (error) showToast(error.message, 'error')
-    else { showToast('All scores, chulligans, contests, and live feed cleared!'); fetchTeams() }
+    showToast('All scores, chulligans, contests, and live feed cleared!')
+    fetchTeams()
   }
 
   const toggleLaheyVoting = async () => {
@@ -228,17 +249,24 @@ export default function AdminPanel() {
   const resetLaheyVotes = async () => {
     if (!confirm('Clear all Jackass of the Day votes? This cannot be undone.')) return
     setLaheyResetting(true)
-    const { error } = await supabase.from('leahey_votes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    let q = supabase.from('leahey_votes').delete()
+    if (activeTournamentId) q = q.eq('tournament_id', activeTournamentId)
+    else q = q.neq('id', '00000000-0000-0000-0000-000000000000')
+    const { error } = await q
     setLaheyResetting(false)
     if (error) showToast(error.message, 'error')
     else showToast('All Jackass of the Day votes cleared.')
   }
 
   const prepareEndTournament = async () => {
+    let teamsQ = supabase.from('teams').select('id, name, p1_id, p2_id, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
+    if (activeTournamentId) teamsQ = teamsQ.eq('tournament_id', activeTournamentId)
+    let votesQ = supabase.from('leahey_votes').select('nominee_id')
+    if (activeTournamentId) votesQ = votesQ.eq('tournament_id', activeTournamentId)
     const [teamsRes, scoresRes, votesRes] = await Promise.all([
-      supabase.from('teams').select('id, name, p1_id, p2_id, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)'),
+      teamsQ,
       supabase.from('scores').select('team_id, hole, score'),
-      supabase.from('leahey_votes').select('nominee_id'),
+      votesQ,
     ])
 
     const teams = (teamsRes.data ?? []) as unknown as (Team & { player1?: Profile; player2?: Profile })[]
@@ -333,24 +361,24 @@ export default function AdminPanel() {
 
       if (rows.length > 0) await supabase.from('tournament_results').insert(rows)
 
-      // Mark completed + save full standings snapshot + seed next year
+      // Mark completed + save full standings snapshot
       await supabase.from('tournaments').update({ status: 'completed', final_standings: standings }).eq('id', activeTournament.id)
-      await supabase.from('tournaments').upsert({ year: activeTournament.year + 1, status: 'active' }, { onConflict: 'year' })
 
-      // Reset operational data
-      await Promise.all([
-        supabase.from('scores').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('teams').update({ name: '' }).neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('chulligans').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('feed_events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('contest_entries').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('leahey_votes').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      ])
+      // Create the next year's tournament
+      const { data: nextT } = await supabase
+        .from('tournaments')
+        .upsert({ year: activeTournament.year + 1, status: 'active' }, { onConflict: 'year' })
+        .select().single()
+
+      // Clear player team assignments so they join fresh teams next year
+      await supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000')
 
       setEndTournamentOpen(false)
       setEndTournamentPreview(null)
-      showToast(`${activeTournament.year} tournament archived! Ready for next year 🏆`)
-      fetchTeams()
+      const newId = nextT?.id ?? null
+      setActiveTournamentId(newId)
+      showToast(`${activeTournament.year} tournament archived! Ready for ${activeTournament.year + 1} 🏆`)
+      fetchTeams(newId)
     } catch (e) {
       showToast((e as Error).message ?? 'Archive failed', 'error')
     }

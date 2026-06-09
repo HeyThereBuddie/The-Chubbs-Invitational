@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, memo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useYear } from '../context/YearContext'
 import { displayName, HOLE_PARS } from '../lib/types'
 import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
@@ -100,7 +101,8 @@ function scoreColor(score: number, par: number) {
 // ── Component ─────────────────────────────────────────────
 export default function MyTeamPage() {
   const { profile } = useAuth()
-  const myTeamId = profile?.team_id ?? null
+  const { effectiveTournamentId, isCurrentYear } = useYear()
+  const myTeamId = isCurrentYear ? (profile?.team_id ?? null) : null
 
   const [allTeams,      setAllTeams]      = useState<TeamFull[]>([])
   const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
@@ -119,10 +121,9 @@ export default function MyTeamPage() {
 
   // Load all teams for the tab bar
   useEffect(() => {
-    supabase
-      .from('teams')
-      .select('*, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
-      .then(({ data }) => {
+    let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
+    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    q.then(({ data }) => {
         if (data) {
           const teams = data as unknown as TeamFull[]
           setAllTeams(teams)
@@ -134,7 +135,7 @@ export default function MyTeamPage() {
         }
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [effectiveTournamentId])
 
   // Load full data whenever selected team changes
   useEffect(() => {
@@ -206,7 +207,7 @@ export default function MyTeamPage() {
     ? [...allTeams].sort((a, b) => (a.id === myTeamId ? -1 : b.id === myTeamId ? 1 : 0))
     : allTeams
 
-  const isOwnTeam = viewingTeamId === myTeamId && myTeamId !== null
+  const isOwnTeam = viewingTeamId === myTeamId && myTeamId !== null && isCurrentYear
 
   // ── Stats ─────────────────────────────────────────────────
   const stats      = calcStats(scores)

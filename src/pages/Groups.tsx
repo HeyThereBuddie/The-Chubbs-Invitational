@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useYear } from '../context/YearContext'
 import type { Player, Pairing } from '../lib/types'
 import { Lock, Shuffle, Save } from 'lucide-react'
 
 export default function Groups() {
   const { isAdmin } = useAuth()
   const { showToast } = useToast()
+  const { isCurrentYear } = useYear()
   const [players, setPlayers] = useState<Player[]>([])
   const [pairings, setPairings] = useState<(Pairing & { player_a?: Player; player_b?: Player })[]>([])
   const [draftPairings, setDraftPairings] = useState<{ a: Player; b: Player; name: string }[]>([])
@@ -109,7 +111,7 @@ export default function Groups() {
       {/* Pairings tab */}
       {tab === 'pairings' && (
         <div>
-          {isAdmin && (
+          {isAdmin && isCurrentYear && (
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
               <button className="btn-gold" onClick={generatePairings}>
                 <Shuffle size={14} /> Generate Pairings

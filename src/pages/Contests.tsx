@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useYear } from '../context/YearContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Camera, Target, Upload } from 'lucide-react'
@@ -20,6 +21,7 @@ interface JackassFeedEvent {
 export default function Contests() {
   const { profile } = useAuth()
   const { showToast } = useToast()
+  const { effectiveTournamentId, isCurrentYear } = useYear()
   const [tab, setTab] = useState<ContestType>('ctp')
 
   // CTP / LD state
@@ -83,11 +85,9 @@ export default function Contests() {
   }, [profile?.team_id])
 
   const fetchContestData = async () => {
-    const { data: entriesData } = await supabase
-      .from('contest_entries')
-      .select('*, player:profiles(*)')
-      .eq('type', tab)
-      .order('created_at', { ascending: false })
+    let q = supabase.from('contest_entries').select('*, player:profiles(*)').eq('type', tab).order('created_at', { ascending: false })
+    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    const { data: entriesData } = await q
     setEntries(entriesData ?? [])
 
     // Only show the current user and their teammate in the player dropdown
@@ -118,14 +118,16 @@ export default function Contests() {
   }
 
   const fetchLaheyData = async () => {
+    let votesQ = supabase.from('leahey_votes').select('*')
+    if (effectiveTournamentId) votesQ = votesQ.eq('tournament_id', effectiveTournamentId)
     const [playersRes, votesRes, settingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('status', 'active').order('name'),
-      supabase.from('leahey_votes').select('*'),
+      votesQ,
       supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single(),
     ])
     setLaheyPlayers(playersRes.data ?? [])
     setVotes(votesRes.data ?? [])
-    setVotingOpen(settingsRes.data?.lahey_voting_open ?? false)
+    setVotingOpen(isCurrentYear ? (settingsRes.data?.lahey_voting_open ?? false) : false)
   }
 
   const submitContest = async (e: React.FormEvent) => {
@@ -156,6 +158,7 @@ export default function Contests() {
       hole: 1,
       distance: '',
       photo_url,
+      ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
     })
 
     setSubmitting(false)
@@ -171,6 +174,7 @@ export default function Contests() {
         score: null,
         label: tab === 'ctp' ? 'CTP Entry' : 'LD Entry',
         emoji: tab === 'ctp' ? '🎯' : '💥',
+        ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
       })
       setForm({ player_id: '' })
       setPhoto(null)
@@ -190,7 +194,7 @@ export default function Contests() {
     } else {
       // First-time vote
       ;({ error } = await supabase.from('leahey_votes')
-        .insert({ voter_id: profile.id, nominee_id: selected }))
+        .insert({ voter_id: profile.id, nominee_id: selected, ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }) }))
     }
     setCasting(false)
     if (error) showToast(error.message, 'error')
@@ -206,6 +210,7 @@ export default function Contests() {
         score: null,
         label: myVote ? 'Vote Changed' : 'Jackass Vote',
         emoji: '🤠',
+        ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
       })
       fetchLaheyData()
     }
@@ -292,7 +297,7 @@ export default function Contests() {
       {(tab === 'ctp' || tab === 'ld') && (
         <>
 
-          <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
+          {isCurrentYear && <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
             <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 14, fontSize: 14 }}>
               <Target size={14} style={{ display: 'inline', marginRight: 6 }} />
               Submit Entry
@@ -347,7 +352,7 @@ export default function Contests() {
                 {submitting ? 'Submitting…' : `Submit ${tab === 'ctp' ? 'CTP' : 'LD'} Entry`}
               </button>
             </form>
-          </div>
+          </div>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {entries.length === 0 && (

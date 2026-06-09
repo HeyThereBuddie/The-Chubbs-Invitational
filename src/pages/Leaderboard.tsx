@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
 import { COURSE_PAR, displayName } from '../lib/types'
+import { useYear } from '../context/YearContext'
 
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
@@ -24,22 +25,28 @@ interface LeaderRow {
 }
 
 export default function Leaderboard() {
+  const { effectiveTournamentId, isCurrentYear } = useYear()
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchData()
 
+    if (!isCurrentYear) return
+
     const sub = supabase.channel('leaderboard-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, fetchData)
       .subscribe()
 
     return () => { supabase.removeChannel(sub) }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTournamentId, isCurrentYear])
 
   const fetchData = async () => {
+    let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+    if (effectiveTournamentId) teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [teamsRes, scoresRes] = await Promise.all([
-      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
+      teamsQ,
       supabase.from('scores').select('*'),
     ])
 
@@ -84,12 +91,14 @@ export default function Leaderboard() {
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Leaderboard</h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Live standings • Best Ball Format • Par {COURSE_PAR}</p>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{isCurrentYear ? 'Live standings' : 'Final standings'} • Best Ball Format • Par {COURSE_PAR}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-          <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
-          Live
-        </div>
+        {isCurrentYear && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
+            Live
+          </div>
+        )}
       </div>
 
       {loading ? (

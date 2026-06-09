@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
+import { useYear } from '../context/YearContext'
 
 interface FeedEvent {
   id: string
@@ -43,6 +44,7 @@ function isHighlight(ev: FeedEvent) {
 type FilterType = 'golf' | 'contests' | 'jackass'
 
 export default function LiveFeed() {
+  const { effectiveTournamentId, isCurrentYear } = useYear()
   const [events, setEvents] = useState<FeedEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null)
@@ -59,17 +61,17 @@ export default function LiveFeed() {
   }, [events, selectedFilter])
 
   const fetchEvents = async () => {
-    const { data } = await supabase
-      .from('feed_events')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200)
+    let q = supabase.from('feed_events').select('*').order('created_at', { ascending: false }).limit(200)
+    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    const { data } = await q
     setEvents((data ?? []) as FeedEvent[])
     setLoading(false)
   }
 
   useEffect(() => {
     fetchEvents()
+
+    if (!isCurrentYear) return
 
     const channel = supabase
       .channel('feed_events_livefeed')
@@ -82,7 +84,8 @@ export default function LiveFeed() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTournamentId, isCurrentYear])
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -97,10 +100,14 @@ export default function LiveFeed() {
               All tournament events
             </div>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
-          </div>
+          {isCurrentYear ? (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
+            </div>
+          ) : (
+            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'rgba(252,181,20,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' }}>🔒 Archived</span>
+          )}
         </div>
       </div>
 

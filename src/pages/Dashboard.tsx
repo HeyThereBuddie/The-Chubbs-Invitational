@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useYear } from '../context/YearContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
@@ -65,6 +66,7 @@ interface DefendingChamp {
 export default function Dashboard() {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const { tournaments, viewingTournamentId, effectiveTournamentId, isCurrentYear, setViewingTournamentId, activeTournamentId } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
   const [feed, setFeed] = useState<FeedEvent[]>([])
@@ -87,12 +89,14 @@ export default function Dashboard() {
     return () => clearInterval(i)
   }, [])
 
-  useEffect(() => { fetchData(); fetchDefendingChamp() }, [])
+  useEffect(() => { fetchData(); fetchDefendingChamp() }, [effectiveTournamentId])
   useEffect(() => {
     fetchFeedRef.current = fetchFeed
   })
   useEffect(() => {
     fetchFeed()
+
+    if (!isCurrentYear) return
 
     const channel = supabase
       .channel('feed_events_dashboard')
@@ -106,14 +110,12 @@ export default function Dashboard() {
 
     return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [isCurrentYear, effectiveTournamentId])
 
   const fetchFeed = async () => {
-    const { data } = await supabase
-      .from('feed_events')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(7)
+    let q = supabase.from('feed_events').select('*').order('created_at', { ascending: false }).limit(7)
+    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    const { data } = await q
     setFeed((data ?? []) as FeedEvent[])
   }
 
@@ -138,8 +140,10 @@ export default function Dashboard() {
   }
 
   const fetchData = async () => {
+    let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+    if (effectiveTournamentId) teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
-      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
+      teamsQ,
       supabase.from('scores').select('*'),
       supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
       supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
@@ -165,11 +169,43 @@ export default function Dashboard() {
   const toPar = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
   const currentQuote = ALL_QUOTES[quoteIdx]
 
+  const completedTournaments = tournaments.filter(t => t.status === 'completed')
+  const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
+      {/* ── Year Selector ─────────────────────────────────────── */}
+      {(completedTournaments.length > 0 || !isCurrentYear) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
+          padding: '10px 16px', borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+        }}>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
+            📅 Year
+          </span>
+          <select
+            value={viewingTournamentId ?? ''}
+            onChange={e => setViewingTournamentId(e.target.value || null)}
+            style={{ flex: 1, maxWidth: 220 }}
+          >
+            <option value="">Current Year ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
+            {completedTournaments.map(t => (
+              <option key={t.id} value={t.id}>{t.year} — {t.name}</option>
+            ))}
+          </select>
+          {!isCurrentYear && viewingTournament && (
+            <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', fontWeight: 600 }}>
+              🔒 Viewing {viewingTournament.year}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Waitlist banner */}
-      {profile?.status === 'waitlist' && (
+      {profile?.status === 'waitlist' && isCurrentYear && (
         <div style={{
           background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
           borderRadius: 14, padding: '14px 20px', marginBottom: 20,
@@ -270,8 +306,8 @@ export default function Dashboard() {
             background: 'rgba(252,181,20,0.04)',
           }}>
             <Trophy size={15} color="#FCB514" />
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Leaderboard</span>
-            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', marginLeft: 'auto', display: 'inline-block' }} />
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>{isCurrentYear ? 'Live Leaderboard' : 'Final Standings'}</span>
+            {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', marginLeft: 'auto', display: 'inline-block' }} />}
           </div>
           {leaders.length === 0 ? (
             <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>

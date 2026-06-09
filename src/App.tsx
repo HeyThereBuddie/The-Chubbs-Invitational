@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
+import { YearProvider } from './context/YearContext'
 import Layout from './components/layout/Layout'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
@@ -72,7 +73,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
-          <AppRoutes />
+          <YearProvider>
+            <AppRoutes />
+          </YearProvider>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

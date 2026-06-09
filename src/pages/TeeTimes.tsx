@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useYear } from '../context/YearContext'
 import type { TeeTime, Team, Player } from '../lib/types'
 import { Clock, GripVertical, Zap, Shuffle } from 'lucide-react'
 
@@ -32,6 +33,7 @@ function buildFoursomes(teeTimes: TeeTimeRow[]): Foursome[] {
 export default function TeeTimes() {
   const { isAdmin } = useAuth()
   const { showToast } = useToast()
+  const { effectiveTournamentId, isCurrentYear } = useYear()
   const [teeTimes, setTeeTimes] = useState<TeeTimeRow[]>([])
   const [teams, setTeams] = useState<(Team & { player1?: Player; player2?: Player })[]>([])
   const [tab, setTab] = useState<'view' | 'arrange' | 'auto'>('view')
@@ -42,15 +44,16 @@ export default function TeeTimes() {
   const [dragTeamId, setDragTeamId] = useState<string | null>(null)
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null)
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => { fetchAll() }, [effectiveTournamentId])
 
   const fetchAll = async () => {
+    let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+    if (effectiveTournamentId) teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [ttRes, teamsRes] = await Promise.all([
       supabase.from('tee_times')
         .select('*, team:teams(*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*))')
         .order('tee_time'),
-      supabase.from('teams')
-        .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
+      teamsQ,
     ])
     setTeeTimes(ttRes.data ?? [])
     setTeams(teamsRes.data ?? [])
@@ -125,7 +128,7 @@ export default function TeeTimes() {
               : 'No tee times assigned yet'}
           </p>
         </div>
-        {isAdmin && (
+        {isAdmin && isCurrentYear && (
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setTab('view')} className={`pill-tab ${tab === 'view' ? 'active' : ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
