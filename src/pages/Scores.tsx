@@ -5,15 +5,15 @@ import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
 
-const HOLE_PARS = [5,4,5,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
+const HOLE_PARS = [5,4,5,3,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 const BASE = 'https://royalashburngolfclub.com/wp-content/uploads/2016/11'
 const HOLE_DATA: { yards: number; si: number; description?: string; photo?: string }[] = [
   { yards: 520, si: 5,  photo: `${BASE}/ROY-Hole-1-1.png`,  description: 'A good starting hole. Play drive squarely down the middle avoiding fairway bunkers both left and right. Long hitters can carry the corner of the dogleg to challenge this green. To ensure a par or birdie try, play second shot to the corner of the dogleg allowing for a short iron to the green.' },
   { yards: 420, si: 11, photo: `${BASE}/ROY-Hole-2-1.png`, description: '"Par here" always brings a smile. A good drive favouring the right side will kick to the left because of the tilted fairway. Make sure you select the proper club to carry your ball onto the green as this green is slightly raised. Putting from below the hole is a must to give the best chance to make a putt.' },
   { yards: 170, si: 15, photo: `${BASE}/ROY-Hole-3-1.png`, description: 'With many options from the tee, you must decide to attack the hole or play it safe as Lynde Creek waits in the distance. Be careful with your second shot as the cross bunkers and mound are at the 100 yard mark. The shot into this green will generally play close to a club longer being uphill and usually into the wind.' },
-  { yards: 510, si: 3,  photo: `${BASE}/ROY-Hole-4-1.png`  },
-  { yards: 450, si: 1,  photo: `${BASE}/ROY-Hole-5-1.png`  },
+  { yards: 510, si: 3,  photo: `${BASE}/ROY-Hole-4-1.png`, description: 'With water on the left and a long bunker on the right, a well played tee shot is a must. Calculate your yardage accurately, as this green is 50 yards deep. Because of the size of the green, a long first putt is very common. A 3 here is a great score.' },
+  { yards: 450, si: 1,  photo: `${BASE}/ROY-Hole-5-1.png`, description: 'With 5 ponds and the creek to negotiate, this moderate length hole is a tough one. A well placed drive should be played down the left centre of the fairway avoiding a watery grave. The approach shot needs to carry both the creek and the pond guarding the front and left side of this green.' },
   { yards: 185, si: 17, photo: `${BASE}/ROY-Hole-6-1.png`  },
   { yards: 410, si: 9,  photo: `${BASE}/ROY-Hole-7-1.png`  },
   { yards: 555, si: 7,  photo: `${BASE}/ROY-Hole-8-1.png`  },
