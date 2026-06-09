@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
-import type { Team, Score, Player, Update } from '../lib/types'
+import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, HL_TYPES } from '../lib/types'
+import type { Team, Score, Player, Update, Highlight } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -19,6 +19,7 @@ export default function Dashboard() {
   const { profile } = useAuth()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
+  const [highlights, setHighlights] = useState<Highlight[]>([])
   const [playerCount, setPlayerCount] = useState(0)
   const [teamCount, setTeamCount] = useState(0)
   const [quoteIdx, setQuoteIdx] = useState(0)
@@ -33,11 +34,12 @@ export default function Dashboard() {
   useEffect(() => { fetchData() }, [])
 
   const fetchData = async () => {
-    const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
+    const [teamsRes, scoresRes, playersRes, updatesRes, highlightsRes] = await Promise.all([
       supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)'),
       supabase.from('scores').select('*'),
       supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
       supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
+      supabase.from('highlights').select('*').order('created_at', { ascending: false }).limit(8),
     ])
 
     const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
@@ -45,6 +47,7 @@ export default function Dashboard() {
     setPlayerCount(playersRes.count ?? 0)
     setTeamCount(teams.length)
     setUpdates(updatesRes.data ?? [])
+    setHighlights(highlightsRes.data ?? [])
 
     const rows: LeaderRow[] = teams.map(team => {
       const teamScores = scores.filter(s => s.team_id === team.id)
@@ -283,6 +286,49 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* ── Highlight Reel ───────────────────────────────────── */}
+      {highlights.length > 0 && (
+        <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+          <div style={{
+            padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
+            borderBottom: '1px solid rgba(252,181,20,0.1)',
+            background: 'rgba(252,181,20,0.04)',
+          }}>
+            <span style={{ fontSize: 15 }}>🎬</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Highlight Reel</span>
+          </div>
+          {highlights.map((h, i) => {
+            const t = HL_TYPES.find(x => x.value === h.type) ?? HL_TYPES[4]
+            return (
+              <div key={h.id} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px',
+                borderBottom: i < highlights.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              }}>
+                <div style={{
+                  fontSize: 22, flexShrink: 0, lineHeight: 1, marginTop: 1,
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'rgba(252,181,20,0.07)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{t.emoji}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#FCB514', textTransform: 'uppercase', letterSpacing: 1.5 }}>{t.label}</span>
+                    <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{h.player_name}</span>
+                    {h.hole && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>· Hole {h.hole}</span>}
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', marginLeft: 'auto' }}>
+                      {formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                  {h.description && (
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 3, lineHeight: 1.55 }}>{h.description}</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Chubbs Legacy card ────────────────────────────────── */}
       <div className="glass animate-fadeUp delay-400" style={{

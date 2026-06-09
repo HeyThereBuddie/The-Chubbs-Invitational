@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import type { Profile, Team } from '../lib/types'
-import { displayName } from '../lib/types'
+import type { Profile, Team, Highlight, HighlightType } from '../lib/types'
+import { displayName, HL_TYPES } from '../lib/types'
+import { formatDistanceToNow } from 'date-fns'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, Beer, PlayCircle, Shuffle } from 'lucide-react'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'reset' | 'brevo'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'reset' | 'brevo' | 'highlights'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamName, setNewTeamName] = useState('')
@@ -17,7 +18,7 @@ export default function AdminPanel() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
 
-  useEffect(() => { fetchProfiles(); fetchTeams() }, [])
+  useEffect(() => { fetchProfiles(); fetchTeams(); fetchHighlights() }, [])
 
   const fetchProfiles = async () => {
     const { data } = await supabase.from('profiles').select('*').order('name')
@@ -192,6 +193,38 @@ export default function AdminPanel() {
 
   const activePlayers = profiles.filter(p => p.status === 'active')
 
+  // ── Highlights ───────────────────────────────────────────
+  const [highlights, setHighlights] = useState<Highlight[]>([])
+  const [hlType, setHlType] = useState<HighlightType>('moment')
+  const [hlPlayer, setHlPlayer] = useState('')
+  const [hlHole, setHlHole] = useState('')
+  const [hlDesc, setHlDesc] = useState('')
+  const [hlSaving, setHlSaving] = useState(false)
+
+  const fetchHighlights = async () => {
+    const { data } = await supabase.from('highlights').select('*').order('created_at', { ascending: false })
+    setHighlights(data ?? [])
+  }
+
+  const addHighlight = async () => {
+    if (!hlPlayer.trim()) return
+    setHlSaving(true)
+    const { error } = await supabase.from('highlights').insert({
+      type: hlType,
+      player_name: hlPlayer.trim(),
+      hole: hlHole ? parseInt(hlHole) : null,
+      description: hlDesc.trim() || null,
+    })
+    setHlSaving(false)
+    if (error) showToast(error.message, 'error')
+    else { showToast('Highlight pinned!'); setHlPlayer(''); setHlHole(''); setHlDesc(''); fetchHighlights() }
+  }
+
+  const deleteHighlight = async (id: string) => {
+    await supabase.from('highlights').delete().eq('id', id)
+    setHighlights(h => h.filter(x => x.id !== id))
+  }
+
   // ── Brevo sync ────────────────────────────────────────────
   const [brevoSyncing, setBrevoSyncing] = useState(false)
   const [brevoLastSync, setBrevoLastSync] = useState<{ count: number; at: string } | null>(null)
@@ -227,7 +260,8 @@ export default function AdminPanel() {
           { id: 'users',  label: '👥 Users' },
           { id: 'codes',  label: '🔑 Codes' },
           { id: 'reset',  label: '⚠️ Reset' },
-          { id: 'brevo',  label: '📣 Brevo' },
+          { id: 'brevo',       label: '📣 Brevo' },
+          { id: 'highlights',  label: '🎬 Highlights' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -572,6 +606,113 @@ export default function AdminPanel() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Highlights tab ──────────────────────────────────────── */}
+      {tab === 'highlights' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Add form */}
+          <div className="glass" style={{ padding: '20px 22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 16 }}>
+              Pin a Moment
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              {HL_TYPES.map(t => (
+                <button
+                  key={t.value}
+                  onClick={() => setHlType(t.value)}
+                  style={{
+                    padding: '8px 14px', borderRadius: 999, fontSize: 13, fontWeight: 700,
+                    background: hlType === t.value ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${hlType === t.value ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                    color: hlType === t.value ? '#FCB514' : 'rgba(255,255,255,0.4)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t.emoji} {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 10, marginBottom: 10 }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Player or team name…"
+                  value={hlPlayer}
+                  onChange={e => setHlPlayer(e.target.value)}
+                  list="hl-players"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <datalist id="hl-players">
+                  {activePlayers.map(p => <option key={p.id} value={displayName(p)} />)}
+                </datalist>
+              </div>
+              <input
+                type="number"
+                placeholder="Hole #"
+                value={hlHole}
+                onChange={e => setHlHole(e.target.value)}
+                min={1} max={18}
+              />
+            </div>
+
+            <textarea
+              placeholder="What happened? (optional)"
+              value={hlDesc}
+              onChange={e => setHlDesc(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', minHeight: 68, resize: 'vertical', marginBottom: 12 }}
+            />
+
+            <button
+              className="btn-gold"
+              onClick={addHighlight}
+              disabled={hlSaving || !hlPlayer.trim()}
+            >
+              {hlSaving ? 'Saving…' : '📌 Pin to Reel'}
+            </button>
+          </div>
+
+          {/* List */}
+          {highlights.length === 0 ? (
+            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🎬</div>
+              No highlights yet — pin the first moment above.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {highlights.map(h => {
+                const t = HL_TYPES.find(x => x.value === h.type) ?? HL_TYPES[4]
+                return (
+                  <div key={h.id} className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                    <div style={{ fontSize: 24, flexShrink: 0, lineHeight: 1, marginTop: 2 }}>{t.emoji}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#FCB514', textTransform: 'uppercase', letterSpacing: 1.5 }}>{t.label}</span>
+                        <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{h.player_name}</span>
+                        {h.hole && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>· Hole {h.hole}</span>}
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginLeft: 'auto' }}>
+                          {formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                      {h.description && (
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 4, lineHeight: 1.55 }}>{h.description}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteHighlight(h.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: '2px 4px', flexShrink: 0 }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

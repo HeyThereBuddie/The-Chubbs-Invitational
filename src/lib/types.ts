@@ -100,6 +100,26 @@ export interface ContestEntry {
   player?: Player
 }
 
+export type HighlightType = 'eagle' | 'ace' | 'birdie' | 'disaster' | 'moment'
+
+export interface Highlight {
+  id: string
+  created_at: string
+  type: HighlightType
+  player_name: string
+  hole: number | null
+  description: string | null
+  created_by: string | null
+}
+
+export const HL_TYPES: { value: HighlightType; emoji: string; label: string }[] = [
+  { value: 'eagle',    emoji: '🦅', label: 'Eagle' },
+  { value: 'ace',      emoji: '🕳️', label: 'Ace' },
+  { value: 'birdie',   emoji: '🐦', label: 'Birdie' },
+  { value: 'disaster', emoji: '💥', label: 'Disaster' },
+  { value: 'moment',   emoji: '📸', label: 'Moment' },
+]
+
 export interface LeaheyVote {
   id: string
   voter_id: string
