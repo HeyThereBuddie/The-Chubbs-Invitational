@@ -45,9 +45,14 @@ export default function RulesChat() {
     })
 
     setLoading(false)
-    const reply = (!error && !data?.error)
-      ? data.reply
-      : "Sorry, couldn't connect right now. Try again in a moment."
+    let reply: string
+    if (error) {
+      reply = `Invoke error: ${error.message ?? JSON.stringify(error)}`
+    } else if (data?.error) {
+      reply = `API error: ${data.error}`
+    } else {
+      reply = data?.reply ?? "No reply returned."
+    }
     setMessages(prev => [...prev, { role: 'assistant', content: reply }])
   }
 

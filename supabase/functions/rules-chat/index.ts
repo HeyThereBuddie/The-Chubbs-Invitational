@@ -1,7 +1,5 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
 
 const SYSTEM_PROMPT = `You are the official rules assistant for The Chubbs Invitational, an annual best-ball golf tournament played in memory of Chubbs Peterson from Happy Gilmore. Your job is to answer questions about golf rules and this tournament only. If someone asks about anything unrelated to golf or this tournament, politely decline and redirect them to golf topics.
 
@@ -146,6 +144,14 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
+    if (!GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY secret is not set' }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+
     const { message, history } = await req.json()
 
     const contents = [
