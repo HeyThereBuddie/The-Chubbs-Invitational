@@ -349,9 +349,9 @@ export default function Scores() {
               letterSpacing: -0.5,
             }}>{hole}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
               {holeInfo && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.55)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
+                <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.6)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
               )}
             </div>
           </div>
