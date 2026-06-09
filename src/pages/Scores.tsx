@@ -60,6 +60,240 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
   return { gross, thru, toPar, putts, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
 }
 
+function HoleCard({
+  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo, infoExpanded, onToggleInfo,
+}: {
+  hole: number
+  scoreRow: ScoreRow | undefined
+  isSaving: boolean
+  onMinus?: () => void
+  onPlus?: () => void
+  player1?: Player
+  player2?: Player
+  onSetDrive?: (playerId: string) => void
+  driveDisabled?: Record<string, boolean>
+  onSetPutts?: (putts: number) => void
+  onReset?: () => void
+  chulligans?: ChulliganRow[]
+  onToggleChulligan?: (playerId: string, hole: number) => void
+  readOnly?: boolean
+  holeInfo?: { yards: number; si: number; description?: string; photo?: string }
+  infoExpanded?: boolean
+  onToggleInfo?: () => void
+}) {
+  const par      = HOLE_PARS[hole - 1]
+  const score    = scoreRow?.score
+  const hasScore = score !== undefined
+  const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
+  const driveId  = scoreRow?.drive_used_id ?? null
+  const putts    = scoreRow?.putts ?? null
+
+  return (
+    <div className="glass animate-fadeUp" style={{
+      padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 12, flexShrink: 0,
+            background: 'rgba(252,181,20,0.12)', border: '2px solid rgba(252,181,20,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 24, fontWeight: 900, color: '#FCB514',
+            letterSpacing: -0.5,
+          }}>{hole}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
+            {holeInfo && (
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.6)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
+            )}
+            {(holeInfo?.description || holeInfo?.photo) && (
+              <button type="button" onClick={onToggleInfo} style={{
+                marginTop: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                color: infoExpanded ? '#FCB514' : 'rgba(255,255,255,0.3)',
+                fontSize: 11, display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1,
+              }}>
+                <span>{infoExpanded ? '▲' : '▼'}</span> hole guide
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {hasScore ? (
+          <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
+            {score}
+          </div>
+        ) : (
+          <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.13)', fontWeight: 300, lineHeight: 1 }}>—</span>
+          </div>
+        )}
+
+        {!readOnly && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={onMinus}
+              disabled={isSaving || (hasScore && score <= 1)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            ><Minus size={14} /></button>
+            <button
+              onClick={onPlus}
+              disabled={isSaving}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)',
+                color: '#FCB514', cursor: isSaving ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            ><Plus size={14} /></button>
+            {hasScore && onReset && (
+              <button
+                onClick={onReset}
+                disabled={isSaving}
+                title="Clear score"
+                style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.25)', cursor: isSaving ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, lineHeight: 1,
+                }}
+              >×</button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {readOnly && hasScore && (scoreRow?.drive_used_id || scoreRow?.putts != null) && (
+        <div style={{ marginTop: 8, display: 'flex', gap: 14 }}>
+          {scoreRow?.drive_used_id && (player1 || player2) && (() => {
+            const driver = [player1, player2].find(p => p?.id === scoreRow.drive_used_id)
+            return driver ? (
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Drive: {displayName(driver)}</span>
+            ) : null
+          })()}
+          {scoreRow?.putts != null && (
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Putts: {scoreRow.putts}</span>
+          )}
+        </div>
+      )}
+
+      {!readOnly && hasScore && player1 && player2 && onSetDrive && (
+        <div style={{
+          marginTop: 10, paddingTop: 10,
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Drive:</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[player1, player2].map(p => {
+              const active   = driveId === p.id
+              const disabled = driveDisabled?.[p.id] ?? false
+              return (
+                <button key={p.id} onClick={() => !disabled && onSetDrive(p.id)}
+                  disabled={disabled}
+                  title={disabled ? 'Max 5 drives per half reached' : undefined}
+                  style={{
+                    padding: '4px 12px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 600, border: '1px solid',
+                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
+                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    opacity: disabled ? 0.3 : 1,
+                    transition: 'all 0.15s',
+                  }}>
+                  {displayName(p)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {!readOnly && hasScore && onSetPutts && (
+        <div style={{
+          marginTop: 10, paddingTop: 10,
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {[0, 1, 2, 3, 4, 5].map(n => {
+              const active = putts === n
+              return (
+                <button key={n} onClick={() => onSetPutts(n)} style={{
+                  width: 32, height: 28, borderRadius: 6,
+                  fontSize: 13, fontWeight: 700, border: '1px solid',
+                  background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                  borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
+                  color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}>
+                  {n}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {!readOnly && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🍺</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[player1, player2].map(p => {
+              const thisHalf: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
+              const myC = chulligans.find(c => c.player_id === p.id && c.half === thisHalf)
+              const usedHere      = myC?.hole === hole
+              const usedElsewhere = myC && !usedHere
+              return (
+                <button key={p.id}
+                  onClick={() => !usedElsewhere && onToggleChulligan(p.id, hole)}
+                  title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
+                  style={{
+                    padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                    background: usedHere ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${usedHere ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                    color: usedHere ? '#FCB514' : usedElsewhere ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.45)',
+                    cursor: usedElsewhere ? 'not-allowed' : 'pointer',
+                    textDecoration: usedElsewhere ? 'line-through' : 'none',
+                  }}>
+                  {usedHere ? '✅' : '🍺'} {displayName(p)}{usedElsewhere ? ` H${myC!.hole}` : ''}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
+        <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+          {holeInfo.photo && (
+            <img
+              src={holeInfo.photo}
+              alt={`Hole ${hole} diagram`}
+              referrerPolicy="no-referrer"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
+          )}
+          {holeInfo.description && (
+            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+              {holeInfo.description}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
   const myTeamId = profile?.team_id ?? undefined
@@ -315,245 +549,6 @@ export default function Scores() {
   )
 
   // ── HoleCard ─────────────────────────────────────────────────
-
-  const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo, infoExpanded, onToggleInfo,
-  }: {
-    hole: number
-    scoreRow: ScoreRow | undefined
-    isSaving: boolean
-    onMinus?: () => void
-    onPlus?: () => void
-    player1?: Player
-    player2?: Player
-    onSetDrive?: (playerId: string) => void
-    driveDisabled?: Record<string, boolean>
-    onSetPutts?: (putts: number) => void
-    onReset?: () => void
-    chulligans?: ChulliganRow[]
-    onToggleChulligan?: (playerId: string, hole: number) => void
-    readOnly?: boolean
-    holeInfo?: { yards: number; si: number; description?: string; photo?: string }
-    infoExpanded?: boolean
-    onToggleInfo?: () => void
-  }) => {
-    const par      = HOLE_PARS[hole - 1]
-    const score    = scoreRow?.score
-    const hasScore = score !== undefined
-    const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
-    const driveId  = scoreRow?.drive_used_id ?? null
-    const putts    = scoreRow?.putts ?? null
-
-    return (
-      <div className="glass animate-fadeUp" style={{
-        padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: 12, flexShrink: 0,
-              background: 'rgba(252,181,20,0.12)', border: '2px solid rgba(252,181,20,0.35)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 24, fontWeight: 900, color: '#FCB514',
-              letterSpacing: -0.5,
-            }}>{hole}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
-              {holeInfo && (
-                <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.6)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
-              )}
-              {(holeInfo?.description || holeInfo?.photo) && (
-                <button onClick={onToggleInfo} style={{
-                  marginTop: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  color: infoExpanded ? '#FCB514' : 'rgba(255,255,255,0.3)',
-                  fontSize: 11, display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1,
-                }}>
-                  <span>{infoExpanded ? '▲' : '▼'}</span> hole guide
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div style={{ flex: 1 }} />
-
-          {hasScore ? (
-            <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
-              {score}
-            </div>
-          ) : (
-            <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.13)', fontWeight: 300, lineHeight: 1 }}>—</span>
-            </div>
-          )}
-
-          {!readOnly && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={onMinus}
-                disabled={isSaving || (hasScore && score <= 1)}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              ><Minus size={14} /></button>
-              <button
-                onClick={onPlus}
-                disabled={isSaving}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)',
-                  color: '#FCB514', cursor: isSaving ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              ><Plus size={14} /></button>
-              {hasScore && onReset && (
-                <button
-                  onClick={onReset}
-                  disabled={isSaving}
-                  title="Clear score"
-                  style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'rgba(255,255,255,0.25)', cursor: isSaving ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, lineHeight: 1,
-                  }}
-                >×</button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Read-only drive/putts summary */}
-        {readOnly && hasScore && (scoreRow?.drive_used_id || scoreRow?.putts != null) && (
-          <div style={{ marginTop: 8, display: 'flex', gap: 14 }}>
-            {scoreRow?.drive_used_id && (player1 || player2) && (() => {
-              const driver = [player1, player2].find(p => p?.id === scoreRow.drive_used_id)
-              return driver ? (
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Drive: {displayName(driver)}</span>
-              ) : null
-            })()}
-            {scoreRow?.putts != null && (
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Putts: {scoreRow.putts}</span>
-            )}
-          </div>
-        )}
-
-        {/* Drive selector — shown whenever a score exists and editable */}
-        {!readOnly && hasScore && player1 && player2 && onSetDrive && (
-          <div style={{
-            marginTop: 10, paddingTop: 10,
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Drive:</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[player1, player2].map(p => {
-                const active   = driveId === p.id
-                const disabled = driveDisabled?.[p.id] ?? false
-                return (
-                  <button key={p.id} onClick={() => !disabled && onSetDrive(p.id)}
-                    disabled={disabled}
-                    title={disabled ? 'Max 5 drives per half reached' : undefined}
-                    style={{
-                      padding: '4px 12px', borderRadius: 999,
-                      fontSize: 12, fontWeight: 600, border: '1px solid',
-                      background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
-                      borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
-                      color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
-                      cursor: disabled ? 'not-allowed' : 'pointer',
-                      opacity: disabled ? 0.3 : 1,
-                      transition: 'all 0.15s',
-                    }}>
-                    {displayName(p)}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Putts selector — shown whenever a score exists and editable */}
-        {!readOnly && hasScore && onSetPutts && (
-          <div style={{
-            marginTop: 10, paddingTop: 10,
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
-            <div style={{ display: 'flex', gap: 5 }}>
-              {[0, 1, 2, 3, 4, 5].map(n => {
-                const active = putts === n
-                return (
-                  <button key={n} onClick={() => onSetPutts(n)} style={{
-                    width: 32, height: 28, borderRadius: 6,
-                    fontSize: 13, fontWeight: 700, border: '1px solid',
-                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
-                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
-                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}>
-                    {n}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Chulligan buttons — one per player, only when editable and score exists */}
-        {!readOnly && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🍺</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[player1, player2].map(p => {
-                const thisHalf: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
-                const myC = chulligans.find(c => c.player_id === p.id && c.half === thisHalf)
-                const usedHere      = myC?.hole === hole
-                const usedElsewhere = myC && !usedHere
-                return (
-                  <button key={p.id}
-                    onClick={() => !usedElsewhere && onToggleChulligan(p.id, hole)}
-                    title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
-                    style={{
-                      padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                      background: usedHere ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${usedHere ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                      color: usedHere ? '#FCB514' : usedElsewhere ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.45)',
-                      cursor: usedElsewhere ? 'not-allowed' : 'pointer',
-                      textDecoration: usedElsewhere ? 'line-through' : 'none',
-                    }}>
-                    {usedHere ? '✅' : '🍺'} {displayName(p)}{usedElsewhere ? ` H${myC!.hole}` : ''}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Hole guide dropdown */}
-        {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
-          <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {holeInfo.photo && (
-              <img
-                src={holeInfo.photo}
-                alt={`Hole ${hole} diagram`}
-                referrerPolicy="no-referrer"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            )}
-            {holeInfo.description && (
-              <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
-                {holeInfo.description}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   // ── DriveCounter ─────────────────────────────────────────────
 
