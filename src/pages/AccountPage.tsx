@@ -45,6 +45,9 @@ export default function AccountPage() {
   }, [])
 
   const subscribePush = async () => {
+    if (!VAPID_PUBLIC_KEY) {
+      showToast('Push notifications not configured (missing VAPID key)', 'error'); return
+    }
     setPushLoading(true)
     try {
       const reg = await navigator.serviceWorker.register('/sw.js')
