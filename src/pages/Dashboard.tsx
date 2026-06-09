@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, HOLE_PARS, displayName } from '../lib/types'
@@ -37,6 +38,7 @@ interface LeaderRow {
 
 export default function Dashboard() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
   const [feed, setFeed] = useState<FeedEntry[]>([])
@@ -345,7 +347,11 @@ export default function Dashboard() {
       </div>
 
       {/* ── Updates ───────────────────────────────────────────── */}
-      <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+      <div
+        className="glass animate-fadeUp delay-400"
+        onClick={() => navigate('/updates')}
+        style={{ padding: 0, overflow: 'hidden', marginBottom: 20, cursor: 'pointer' }}
+      >
         <div style={{
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
           borderBottom: '1px solid rgba(252,181,20,0.1)',
@@ -353,6 +359,7 @@ export default function Dashboard() {
         }}>
           <Pin size={15} color="#FCB514" />
           <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Updates</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(252,181,20,0.5)' }}>View all →</span>
         </div>
         {updates.length === 0 ? (
           <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>

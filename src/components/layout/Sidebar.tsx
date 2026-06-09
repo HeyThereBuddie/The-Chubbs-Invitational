@@ -4,7 +4,7 @@ import { CHUBBS_QUOTES, displayName } from '../../lib/types'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
-  Mail, Target, Megaphone, Shield, LogOut, UserCircle
+  Mail, Target, Shield, LogOut, UserCircle
 } from 'lucide-react'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
@@ -17,7 +17,6 @@ const playerNav = [
   { to: '/tee-times', icon: Clock, label: 'Tee Times' },
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/updates', icon: Megaphone, label: 'Updates' },
   { to: '/account', icon: UserCircle, label: 'My Account' },
 ]
 
