@@ -115,7 +115,7 @@ export default function RulesChat() {
             }}>⛳</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#FCB514', lineHeight: 1 }}>Rules Assistant</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Powered by Gemini · Ask anything</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Powered by Claude · Ask anything</div>
             </div>
             <button
               onClick={() => setOpen(false)}

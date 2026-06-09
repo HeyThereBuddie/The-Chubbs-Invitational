@@ -144,43 +144,47 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-    if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY secret is not set' }), {
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY secret is not set' }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`
 
     const { message, history } = await req.json()
 
-    const contents = [
+    const messages = [
       ...(history ?? []).map((m: { role: string; content: string }) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
       })),
-      { role: 'user', parts: [{ text: message }] },
+      { role: 'user' as const, content: message },
     ]
 
-    const res = await fetch(GEMINI_URL, {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        system: SYSTEM_PROMPT,
+        messages,
       }),
     })
 
     if (!res.ok) {
       const err = await res.text()
-      return new Response(JSON.stringify({ error: `Gemini error: ${err}` }), {
+      return new Response(JSON.stringify({ error: `Claude error: ${err}` }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
 
     const data = await res.json()
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
+    const reply = data.content?.[0]?.text
       ?? "Sorry, I couldn't get a response. Please try again."
 
     return new Response(JSON.stringify({ reply }), {
