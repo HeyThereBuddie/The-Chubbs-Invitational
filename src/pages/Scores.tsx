@@ -170,7 +170,7 @@ function HoleCard({
         <div style={{ flex: 1 }} />
 
         {hasScore ? (
-          <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
+          <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 26 }}>
             {score}
           </div>
         ) : (
