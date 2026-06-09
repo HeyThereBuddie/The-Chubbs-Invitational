@@ -41,7 +41,10 @@ serve(async (req) => {
     }
 
     if (!players?.length) {
-      return new Response(JSON.stringify({ synced: 0 }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
+      return new Response(
+        JSON.stringify({ error: `DB returned 0 players (has_brevo_key: ${!!BREVO_API_KEY})` }),
+        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
     }
 
     const results = await Promise.all(players.map(async p => {
