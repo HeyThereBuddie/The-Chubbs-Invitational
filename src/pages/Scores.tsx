@@ -162,15 +162,6 @@ function HoleCard({
             {holeInfo && (
               <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.6)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
             )}
-            {(holeInfo?.description || holeInfo?.photo) && (
-              <button type="button" onClick={onToggleInfo} style={{
-                marginTop: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                color: infoExpanded ? '#FCB514' : 'rgba(255,255,255,0.3)',
-                fontSize: 11, display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1,
-              }}>
-                <span>{infoExpanded ? '▲' : '▼'}</span> hole guide
-              </button>
-            )}
           </div>
         </div>
 
@@ -332,6 +323,22 @@ function HoleCard({
               )
             })}
           </div>
+        </div>
+      )}
+
+      {(holeInfo?.description || holeInfo?.photo) && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <button type="button" onClick={onToggleInfo} style={{
+            width: '100%', padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+            background: infoExpanded ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${infoExpanded ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.1)'}`,
+            color: infoExpanded ? '#FCB514' : 'rgba(255,255,255,0.6)',
+            fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <span style={{ fontSize: 15 }}>⛳</span>
+            {infoExpanded ? 'Hide Hole Guide' : 'View Hole Guide'}
+            <span style={{ fontSize: 11, opacity: 0.6 }}>{infoExpanded ? '▲' : '▼'}</span>
+          </button>
         </div>
       )}
 
