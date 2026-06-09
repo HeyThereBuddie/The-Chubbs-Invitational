@@ -510,7 +510,7 @@ export default function Scores() {
               <img
                 src={holeInfo.photo}
                 alt={`Hole ${hole} diagram`}
-                style={{ width: '100%', display: 'block', maxHeight: 260, objectFit: 'cover' }}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             )}
             {holeInfo.description && (
