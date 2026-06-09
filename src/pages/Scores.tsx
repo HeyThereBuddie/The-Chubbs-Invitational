@@ -78,12 +78,6 @@ export default function Scores() {
   const [saving,      setSaving]      = useState<number | null>(null)
   const [teamPick,    setTeamPick]    = useState('')
   const [settingTeam, setSettingTeam] = useState(false)
-  const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set())
-  const toggleHoleInfo = (hole: number) => setExpandedHoles(prev => {
-    const next = new Set(prev)
-    next.has(hole) ? next.delete(hole) : next.add(hole)
-    return next
-  })
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
@@ -316,7 +310,7 @@ export default function Scores() {
   // ── HoleCard ─────────────────────────────────────────────────
 
   const HoleCard = ({
-    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo, infoExpanded, onToggleInfo,
+    hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, holeInfo,
   }: {
     hole: number
     scoreRow: ScoreRow | undefined
@@ -333,8 +327,6 @@ export default function Scores() {
     onToggleChulligan?: (playerId: string, hole: number) => void
     readOnly?: boolean
     holeInfo?: { yards: number; si: number; tip: string }
-    infoExpanded?: boolean
-    onToggleInfo?: () => void
   }) => {
     const par      = HOLE_PARS[hole - 1]
     const score    = scoreRow?.score
@@ -348,27 +340,15 @@ export default function Scores() {
         padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{hole}</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Par {par}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Par {par}</div>
+            {holeInfo && (
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{holeInfo.yards}y</div>
+            )}
           </div>
 
-          {holeInfo ? (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>{holeInfo.yards}y</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>SI {holeInfo.si}</span>
-              </div>
-              <button
-                onClick={onToggleInfo}
-                style={{ marginTop: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: infoExpanded ? 'rgba(252,181,20,0.6)' : 'rgba(255,255,255,0.2)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 3 }}
-              >
-                <span style={{ fontSize: 9 }}>{infoExpanded ? '▲' : '▼'}</span> tip
-              </button>
-            </div>
-          ) : (
-            <div style={{ flex: 1 }} />
-          )}
+          <div style={{ flex: 1 }} />
 
           {hasScore ? (
             <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 20 }}>
@@ -494,18 +474,6 @@ export default function Scores() {
                 )
               })}
             </div>
-          </div>
-        )}
-
-        {/* Hole tip */}
-        {holeInfo && infoExpanded && (
-          <div style={{
-            marginTop: 8, padding: '7px 10px', borderRadius: 7,
-            borderLeft: '2px solid rgba(252,181,20,0.3)',
-            background: 'rgba(252,181,20,0.04)',
-            fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55,
-          }}>
-            ⛳ {holeInfo.tip}
           </div>
         )}
 
@@ -767,8 +735,6 @@ export default function Scores() {
                   chulligans={adminChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
                   holeInfo={HOLE_DATA[hole - 1]}
-                  infoExpanded={expandedHoles.has(hole)}
-                  onToggleInfo={() => toggleHoleInfo(hole)}
                 />
               )
             })
@@ -889,8 +855,6 @@ export default function Scores() {
                   chulligans={myChulligans}
                   onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
                   holeInfo={HOLE_DATA[hole - 1]}
-                  infoExpanded={expandedHoles.has(hole)}
-                  onToggleInfo={() => toggleHoleInfo(hole)}
                 />
               )
             })
@@ -906,8 +870,6 @@ export default function Scores() {
               player2={viewTeam?.player2}
               readOnly
               holeInfo={HOLE_DATA[hole - 1]}
-              infoExpanded={expandedHoles.has(hole)}
-              onToggleInfo={() => toggleHoleInfo(hole)}
             />
           ))
         })()}
