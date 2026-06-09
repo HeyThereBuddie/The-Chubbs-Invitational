@@ -98,12 +98,14 @@ type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back'; hol
 const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
 function scoreBubbleClass(score: number, par: number): string {
+  if (score === 1) return 'score-hole-in-one'
   const diff = score - par
   if (diff <= -2) return 'score-eagle'
   if (diff === -1) return 'score-birdie'
   if (diff === 0)  return 'score-par'
   if (diff === 1)  return 'score-bogey'
-  return 'score-double'
+  if (diff === 2)  return 'score-double'
+  return 'score-triple-plus'
 }
 
 function calcStats(scoreMap: Record<number, ScoreRow>) {
