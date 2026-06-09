@@ -48,8 +48,6 @@ serve(async (req) => {
         attributes: {
           FIRSTNAME: first,
           LASTNAME: last,
-          STATUS: p.status,
-          INVITE_TOKEN: p.invite_token ?? '',
           ...(p.phone ? { SMS: p.phone } : {}),
         },
       }
@@ -61,9 +59,12 @@ serve(async (req) => {
       body: JSON.stringify({ updateEnabled: true, jsonBody }),
     })
 
+    const resText = await res.text()
+    console.log('[brevo] status:', res.status, 'body:', resText)
+
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      const msg = (err as { message?: string }).message ?? `Brevo HTTP ${res.status}`
+      let msg = `Brevo HTTP ${res.status}`
+      try { msg = (JSON.parse(resText) as { message?: string }).message ?? msg } catch { /* ignore */ }
       return new Response(JSON.stringify({ error: msg }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } })
     }
 
