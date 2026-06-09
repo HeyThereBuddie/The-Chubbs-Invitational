@@ -61,6 +61,13 @@ export default function Dashboard() {
   const [playerCount, setPlayerCount] = useState(0)
   const [teamCount, setTeamCount] = useState(0)
   const [quoteIdx, setQuoteIdx] = useState(0)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => {
     const i = setInterval(() => {
@@ -151,37 +158,42 @@ export default function Dashboard() {
 
       {/* ── Compact Hero ─────────────────────────────────────── */}
       <div className="animate-fadeUp" style={{
-        position: 'relative', marginBottom: 16, borderRadius: 14, overflow: 'hidden',
+        marginBottom: 14, borderRadius: 12, overflow: 'hidden',
         border: '1px solid rgba(252,181,20,0.22)',
         background: 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)',
       }}>
-        <div className="hero-row">
-          <div className="animate-glow-pulse hero-avatar">
-            <img src={CHUBBS_IMG} alt="Chubbs" />
-          </div>
+        <div style={{ padding: isMobile ? '8px 12px' : '12px 18px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
+          {!isMobile && (
+            <div className="animate-glow-pulse" style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid rgba(252,181,20,0.6)', overflow: 'hidden', flexShrink: 0 }}>
+              <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          )}
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="text-shimmer hero-title">The Chubbs Invitational</div>
-            <div className="hero-meta">
+            <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 20, letterSpacing: isMobile ? 2 : 3, lineHeight: 1 }}>
+              The Chubbs Invitational
+            </div>
+            <div style={{ display: 'flex', gap: isMobile ? 6 : 10, flexWrap: 'wrap', fontSize: isMobile ? 10 : 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
               <span>⛳ {COURSE_NAME}</span>
               <span>📅 {TOURNAMENT_DATE}</span>
-              <span className="hero-meta-hide">🕗 {FIRST_TEE_TIME}</span>
-              <span className="hero-meta-hide">🏌️ Best Ball</span>
+              {!isMobile && <span>🕗 {FIRST_TEE_TIME}</span>}
             </div>
           </div>
 
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
-            <div className="hero-welcome-label">Welcome</div>
-            <div className="hero-welcome-name">{profile ? displayName(profile) : 'Player'}</div>
+            {!isMobile && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 1 }}>Welcome</div>}
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 19, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+              {profile ? displayName(profile) : 'Player'}
+            </div>
           </div>
         </div>
 
-        <div className="hero-quote">
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
-            💬 "{currentQuote.quote}"
-          </span>
-          <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
-        </div>
+        {!isMobile && (
+          <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
+            <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>💬 "{currentQuote.quote}"</span>
+            <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
+          </div>
+        )}
       </div>
 
       {/* ── Live Leaderboard + Live Scoring Feed ─────────────── */}
