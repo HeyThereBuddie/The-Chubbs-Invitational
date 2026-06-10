@@ -727,11 +727,10 @@ export default function Scores() {
 
   // ── Helpers ──────────────────────────────────────────────────
 
-  const BUILD = 'v2-hole-tabs'
   const pageHeader = (
     <div style={{ marginBottom: 20 }}>
       <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
-      <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Modified Scramble — one score per hole per team &nbsp;<span style={{fontSize:10,opacity:0.4}}>{BUILD}</span></p>
+      <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Modified Scramble — one score per hole per team</p>
     </div>
   )
 
