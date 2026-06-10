@@ -171,49 +171,27 @@ BEGIN
       END IF;
     END LOOP; -- end holes loop
 
-    /* Chulligans: one per player per half (front 9 and back 9) */
+    /* Chulligans: one per player per round */
     IF v_team.p1_id IS NOT NULL THEN
-      -- p1 front nine (holes 2–8)
-      v_chull_h := (floor(random() * 7) + 2)::int;
-      INSERT INTO chulligans (id, team_id, player_id, half, hole, created_at)
-      VALUES (gen_random_uuid(), v_team.id, v_team.p1_id, 'front', v_chull_h,
-              now() - interval '5 hours' + (v_idx * interval '3 minutes'));
+      v_chull_h := (floor(random() * 14) + 2)::int;  -- any hole 2–15
+      INSERT INTO chulligans (id, team_id, player_id, hole, created_at)
+      VALUES (gen_random_uuid(), v_team.id, v_team.p1_id, v_chull_h,
+              now() - interval '4 hours' + (v_idx * interval '3 minutes'));
       INSERT INTO feed_events (id, event_type, team_id, team_name, player_name, hole, score, label, emoji, created_at, tournament_id)
       VALUES (gen_random_uuid(), 'chulligan', v_team.id, v_team.name, v_team.p1_name,
               v_chull_h, NULL, 'Chulligan', '🍺',
-              now() - interval '5 hours' + (v_idx * interval '3 minutes'), v_tid);
-
-      -- p1 back nine (holes 11–17)
-      v_chull_h := (floor(random() * 7) + 11)::int;
-      INSERT INTO chulligans (id, team_id, player_id, half, hole, created_at)
-      VALUES (gen_random_uuid(), v_team.id, v_team.p1_id, 'back', v_chull_h,
-              now() - interval '2 hours' + (v_idx * interval '3 minutes'));
-      INSERT INTO feed_events (id, event_type, team_id, team_name, player_name, hole, score, label, emoji, created_at, tournament_id)
-      VALUES (gen_random_uuid(), 'chulligan', v_team.id, v_team.name, v_team.p1_name,
-              v_chull_h, NULL, 'Chulligan', '🍺',
-              now() - interval '2 hours' + (v_idx * interval '3 minutes'), v_tid);
+              now() - interval '4 hours' + (v_idx * interval '3 minutes'), v_tid);
     END IF;
 
     IF v_team.p2_id IS NOT NULL THEN
-      -- p2 front nine
-      v_chull_h := (floor(random() * 7) + 2)::int;
-      INSERT INTO chulligans (id, team_id, player_id, half, hole, created_at)
-      VALUES (gen_random_uuid(), v_team.id, v_team.p2_id, 'front', v_chull_h,
-              now() - interval '4 hours' + (v_idx * interval '3 minutes'));
+      v_chull_h := (floor(random() * 14) + 2)::int;
+      INSERT INTO chulligans (id, team_id, player_id, hole, created_at)
+      VALUES (gen_random_uuid(), v_team.id, v_team.p2_id, v_chull_h,
+              now() - interval '2 hours' + (v_idx * interval '3 minutes'));
       INSERT INTO feed_events (id, event_type, team_id, team_name, player_name, hole, score, label, emoji, created_at, tournament_id)
       VALUES (gen_random_uuid(), 'chulligan', v_team.id, v_team.name, v_team.p2_name,
               v_chull_h, NULL, 'Chulligan', '🍺',
-              now() - interval '4 hours' + (v_idx * interval '3 minutes'), v_tid);
-
-      -- p2 back nine
-      v_chull_h := (floor(random() * 7) + 11)::int;
-      INSERT INTO chulligans (id, team_id, player_id, half, hole, created_at)
-      VALUES (gen_random_uuid(), v_team.id, v_team.p2_id, 'back', v_chull_h,
-              now() - interval '1 hour' + (v_idx * interval '3 minutes'));
-      INSERT INTO feed_events (id, event_type, team_id, team_name, player_name, hole, score, label, emoji, created_at, tournament_id)
-      VALUES (gen_random_uuid(), 'chulligan', v_team.id, v_team.name, v_team.p2_name,
-              v_chull_h, NULL, 'Chulligan', '🍺',
-              now() - interval '1 hour' + (v_idx * interval '3 minutes'), v_tid);
+              now() - interval '2 hours' + (v_idx * interval '3 minutes'), v_tid);
     END IF;
 
   END LOOP; -- end teams loop

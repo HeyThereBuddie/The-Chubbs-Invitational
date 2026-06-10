@@ -7,7 +7,7 @@ import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
 
 type ScoreRow     = { hole: number; score: number; putts: number | null; drive_used_id: string | null }
-type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back'; hole: number }
+type ChulliganRow = { id: string; player_id: string; hole: number }
 type TeamFull     = Team & { player1?: Player; player2?: Player }
 
 // ── Bio generator ─────────────────────────────────────────
@@ -151,7 +151,7 @@ export default function MyTeamPage() {
         .eq('id', viewingTeamId)
         .single(),
       supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', viewingTeamId),
-      supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', viewingTeamId),
+      supabase.from('chulligans').select('id, player_id, hole').eq('team_id', viewingTeamId),
     ]).then(([{ data: t }, { data: s }, { data: ch }]) => {
       setTeam(t as unknown as TeamFull)
       setScores((s ?? []) as ScoreRow[])
@@ -167,7 +167,7 @@ export default function MyTeamPage() {
       if (!tid) return
       const [{ data: s }, { data: ch }] = await Promise.all([
         supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', tid),
-        supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', tid),
+        supabase.from('chulligans').select('id, player_id, hole').eq('team_id', tid),
       ])
       if (s)  setScores(s as ScoreRow[])
       if (ch) setChulligans(ch as ChulliganRow[])
@@ -514,49 +514,28 @@ export default function MyTeamPage() {
               {players.length === 2 && (
                 <div className="glass animate-fadeUp" style={{ padding: '20px 26px', marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 14 }}>
-                    🍺 Chulligans — 1 per player per nine (must chug)
+                    🍺 Chulligans — 1 per player per round (must chug)
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: 8, alignItems: 'center' }}>
-                    <div />
-                    {['Front 9', 'Back 9'].map(h => (
-                      <div key={h} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
-                    ))}
+                  <div style={{ display: 'flex', gap: 10 }}>
                     {players.map(p => {
-                      const halves: Array<{ label: string; key: 'front' | 'back' }> = [
-                        { label: 'Front 9', key: 'front' },
-                        { label: 'Back 9',  key: 'back'  },
-                      ]
+                      const c = chulligans.find(ch => ch.player_id === p.id)
                       return (
-                        <>
-                          <div key={p.id + '-name'} style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
-                            <AvatarCircle player={p} size={20} />
-                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {displayName(p)}
-                            </span>
+                        <div key={p.id} style={{
+                          flex: 1, textAlign: 'center', padding: '12px 10px', borderRadius: 12,
+                          background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.07)'}`,
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                            <AvatarCircle player={p} size={36} />
                           </div>
-                          {halves.map(h => {
-                            const c = chulligans.find(c => c.player_id === p.id && c.half === h.key)
-                            return (
-                              <div key={p.id + h.key} style={{
-                                textAlign: 'center', padding: '6px 4px', borderRadius: 7,
-                                background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
-                                border: `1px solid ${c ? 'rgba(252,181,20,0.3)' : 'rgba(255,255,255,0.07)'}`,
-                              }}>
-                                {c ? (
-                                  <>
-                                    <div style={{ fontSize: 14 }}>✅</div>
-                                    <div style={{ fontSize: 9, color: '#FCB514', marginTop: 2 }}>H{c.hole}</div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div style={{ fontSize: 14 }}>🍺</div>
-                                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Available</div>
-                                  </>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {displayName(p)}
+                          </div>
+                          <div style={{ fontSize: 22, marginBottom: 4 }}>{c ? '✅' : '🍺'}</div>
+                          <div style={{ fontSize: 11, color: c ? '#FCB514' : 'rgba(255,255,255,0.25)', fontWeight: 600 }}>
+                            {c ? `Used H${c.hole}` : 'Available'}
+                          </div>
+                        </div>
                       )
                     })}
                   </div>

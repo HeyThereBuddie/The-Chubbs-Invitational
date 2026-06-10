@@ -96,7 +96,7 @@ async function pingLeadCheck() {
 
 type TeamFull = Team & { player1?: Player; player2?: Player }
 type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
-type ChulliganRow = { id: string; player_id: string; half: 'front' | 'back'; hole: number }
+type ChulliganRow = { id: string; player_id: string; hole: number }
 
 const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
@@ -307,8 +307,7 @@ function HoleCard({
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🍺</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {[player1, player2].map(p => {
-              const thisHalf: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
-              const myC = chulligans.find(c => c.player_id === p.id && c.half === thisHalf)
+              const myC = chulligans.find(c => c.player_id === p.id)
               const usedHere      = myC?.hole === hole
               const usedElsewhere = myC && !usedHere
               return (
@@ -455,7 +454,7 @@ export default function Scores() {
 
     const [{ data: scores }, { data: ch }] = await Promise.all([
       supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-      supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', teamId),
+      supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
     ])
     const map: Record<number, ScoreRow> = {}
     for (const s of scores ?? []) map[s.hole] = s
@@ -466,7 +465,7 @@ export default function Scores() {
   const loadAdminScores = async (teamId: string) => {
     const [{ data: scores }, { data: ch }] = await Promise.all([
       supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-      supabase.from('chulligans').select('id, player_id, half, hole').eq('team_id', teamId),
+      supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
     ])
     const map: Record<number, ScoreRow> = {}
     for (const s of scores ?? []) map[s.hole] = s
@@ -585,8 +584,7 @@ export default function Scores() {
     chulligans: ChulliganRow[],
     setter: (c: ChulliganRow[]) => void,
   ) => {
-    const half: 'front' | 'back' = hole <= 9 ? 'front' : 'back'
-    const existing = chulligans.find(c => c.player_id === playerId && c.half === half)
+    const existing = chulligans.find(c => c.player_id === playerId)
     const team = allTeams.find(t => t.id === teamId) ?? myTeam
     const player = [team?.player1, team?.player2].find(p => p?.id === playerId)
     const teamName = team?.name ?? ''
@@ -597,8 +595,8 @@ export default function Scores() {
         setter(chulligans.filter(c => c.id !== existing.id))
       } else {
         const { data } = await supabase.from('chulligans')
-          .insert({ team_id: teamId, player_id: playerId, half, hole })
-          .select('id, player_id, half, hole').single()
+          .insert({ team_id: teamId, player_id: playerId, hole })
+          .select('id, player_id, hole').single()
         if (data) {
           setter([...chulligans.filter(c => c.id !== existing.id), data as ChulliganRow])
           logFeedEvent('chulligan', teamId, teamName, hole, null, playerName, undefined, effectiveTournamentId)
@@ -606,8 +604,8 @@ export default function Scores() {
       }
     } else {
       const { data } = await supabase.from('chulligans')
-        .insert({ team_id: teamId, player_id: playerId, half, hole })
-        .select('id, player_id, half, hole').single()
+        .insert({ team_id: teamId, player_id: playerId, hole })
+        .select('id, player_id, hole').single()
       if (data) {
         setter([...chulligans, data as ChulliganRow])
         logFeedEvent('chulligan', teamId, teamName, hole, null, playerName, undefined, effectiveTournamentId)
@@ -638,7 +636,7 @@ export default function Scores() {
   const pageHeader = (
     <div style={{ marginBottom: 20 }}>
       <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
-      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Best ball — one score per hole per team &nbsp;<span style={{fontSize:10,opacity:0.4}}>{BUILD}</span></p>
+      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Modified Scramble — one score per hole per team &nbsp;<span style={{fontSize:10,opacity:0.4}}>{BUILD}</span></p>
     </div>
   )
 
@@ -701,54 +699,30 @@ export default function Scores() {
     chulligans: ChulliganRow[]
   }) => {
     if (!p1 || !p2) return null
-    const rows = [p1, p2]
-    const halves: Array<{ label: string; key: 'front' | 'back' }> = [
-      { label: 'Front 9', key: 'front' },
-      { label: 'Back 9',  key: 'back'  },
-    ]
     return (
       <div className="glass" style={{ padding: '12px 16px', marginBottom: 12 }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
-          🍺 Chulligans — 1 per player per nine (must chug)
+          🍺 Chulligans — 1 per player per round (must chug)
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: 6, alignItems: 'center' }}>
-          {/* Header row */}
-          <div />
-          {halves.map(h => (
-            <div key={h.key} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {h.label}
-            </div>
-          ))}
-          {/* Player rows */}
-          {rows.map(p => (
-            <>
-              <div key={p.id + '-name'} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {displayName(p)}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[p1, p2].map(p => {
+            const c = chulligans.find(ch => ch.player_id === p.id)
+            return (
+              <div key={p.id} style={{
+                flex: 1, textAlign: 'center', padding: '10px 8px', borderRadius: 10,
+                background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.07)'}`,
+              }}>
+                <div style={{ fontSize: 20, marginBottom: 4 }}>{c ? '✅' : '🍺'}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: c ? '#FCB514' : 'rgba(255,255,255,0.65)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {displayName(p)}
+                </div>
+                <div style={{ fontSize: 10, color: c ? '#FCB514' : 'rgba(255,255,255,0.25)' }}>
+                  {c ? `Used H${c.hole}` : 'Available'}
+                </div>
               </div>
-              {halves.map(h => {
-                const c = chulligans.find(c => c.player_id === p.id && c.half === h.key)
-                return (
-                  <div key={p.id + h.key} style={{
-                    textAlign: 'center', padding: '5px 4px', borderRadius: 7,
-                    background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${c ? 'rgba(252,181,20,0.3)' : 'rgba(255,255,255,0.07)'}`,
-                  }}>
-                    {c ? (
-                      <>
-                        <div style={{ fontSize: 14 }}>✅</div>
-                        <div style={{ fontSize: 9, color: '#FCB514', marginTop: 2 }}>H{c.hole}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: 14 }}>🍺</div>
-                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Available</div>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-            </>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
