@@ -184,9 +184,18 @@ export default function Leaderboard() {
                   <div style={{ width: 42, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                     {rankIndicator}
                     {back !== null && back > 0 && (
-                      <span style={{ fontSize: 10, color: 'var(--tx3)', whiteSpace: 'nowrap', lineHeight: 1, fontWeight: 600 }}>
-                        {back} back
-                      </span>
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                        padding: '3px 6px', borderRadius: 6,
+                        background: 'rgba(239, 68, 68, 0.09)',
+                        border: '1px solid rgba(239, 68, 68, 0.22)',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, lineHeight: 1 }}>
+                          <span style={{ fontSize: 8, color: '#f87171', lineHeight: 1 }}>▲</span>
+                          <span style={{ fontFamily: 'Bebas Neue', fontSize: 15, color: '#f87171', letterSpacing: 0.5, lineHeight: 1 }}>{back}</span>
+                        </div>
+                        <span style={{ fontSize: 7, color: 'rgba(248,113,113,0.6)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1 }}>back</span>
+                      </div>
                     )}
                   </div>
 
