@@ -278,7 +278,7 @@ export default function Contests() {
             style={{
               position: 'absolute', top: 16, right: 16,
               width: 36, height: 36, borderRadius: '50%',
-              background: 'var(--tx5)', border: '1px solid var(--bdr2)',
+              background: 'var(--surf2)', border: '1px solid var(--bdr2)',
               color: 'var(--tx1)', fontSize: 20, lineHeight: 1,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -380,7 +380,7 @@ export default function Contests() {
                 {entry.photo_url && (
                   <div onClick={() => setLightbox(entry.photo_url!)} style={{ flexShrink: 0, cursor: 'zoom-in' }}>
                     <img src={entry.photo_url} alt=""
-                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: `1px solid ${i === 0 ? 'rgba(252,181,20,0.4)' : 'var(--tx5)'}`, display: 'block' }} />
+                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: `1px solid ${i === 0 ? 'rgba(252,181,20,0.4)' : 'var(--bdr)'}`, display: 'block' }} />
                   </div>
                 )}
               </div>
@@ -497,7 +497,7 @@ export default function Contests() {
                       onClick={() => setSelected(player.id)}
                       style={{
                         padding: '12px', borderRadius: 12, border: '1px solid',
-                        borderColor: isSelected ? '#FCB514' : 'var(--tx5)',
+                        borderColor: isSelected ? '#FCB514' : 'var(--bdr)',
                         background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
                         color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
                         cursor: 'pointer',
@@ -540,7 +540,7 @@ export default function Contests() {
                       </span>
                       <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
                     </div>
-                    <div style={{ height: 6, borderRadius: 999, background: 'var(--tx5)', overflow: 'hidden' }}>
+                    <div style={{ height: 6, borderRadius: 999, background: 'var(--surf2)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 999, transition: 'width 0.5s ease',
                         width: `${(count / maxVotes) * 100}%`,

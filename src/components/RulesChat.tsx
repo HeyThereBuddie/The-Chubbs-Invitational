@@ -161,8 +161,8 @@ export default function RulesChat() {
                   borderBottomRightRadius: m.role === 'user' ? 4 : 14,
                   borderBottomLeftRadius:  m.role === 'assistant' ? 4 : 14,
                   fontSize: 13, lineHeight: 1.6,
-                  background: m.role === 'user' ? 'rgba(252,181,20,0.15)' : 'var(--tx5)',
-                  border: `1px solid ${m.role === 'user' ? 'rgba(252,181,20,0.3)' : 'var(--tx5)'}`,
+                  background: m.role === 'user' ? 'rgba(252,181,20,0.15)' : 'var(--surf2)',
+                  border: `1px solid ${m.role === 'user' ? 'rgba(252,181,20,0.3)' : 'var(--bdr)'}`,
                   color: m.role === 'user' ? '#FCB514' : 'var(--tx1)',
                   whiteSpace: 'pre-wrap',
                 }}>
@@ -217,8 +217,8 @@ export default function RulesChat() {
               disabled={!input.trim() || loading}
               style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: input.trim() && !loading ? 'rgba(252,181,20,0.18)' : 'var(--tx5)',
-                border: `1px solid ${input.trim() && !loading ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
+                background: input.trim() && !loading ? 'rgba(252,181,20,0.18)' : 'var(--surf2)',
+                border: `1px solid ${input.trim() && !loading ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
                 color: input.trim() && !loading ? '#FCB514' : 'var(--tx4)',
                 cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

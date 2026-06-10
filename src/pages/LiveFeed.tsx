@@ -256,7 +256,7 @@ export default function LiveFeed() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                    background: highlight ? 'rgba(252,181,20,0.1)' : 'var(--tx5)',
+                    background: highlight ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 18,
                   }}>{ev.emoji}</div>

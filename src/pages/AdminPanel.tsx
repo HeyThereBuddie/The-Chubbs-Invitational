@@ -577,8 +577,8 @@ export default function AdminPanel() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 7,
                     padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                    background: teamsReset ? 'var(--tx5)' : 'rgba(239,68,68,0.1)',
-                    border: `1px solid ${teamsReset ? 'var(--tx5)' : 'rgba(239,68,68,0.3)'}`,
+                    background: teamsReset ? 'var(--surf2)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${teamsReset ? 'var(--bdr)' : 'rgba(239,68,68,0.3)'}`,
                     color: teamsReset ? 'var(--tx4)' : '#ef4444',
                     cursor: resettingTeams || teamsReset ? 'not-allowed' : 'pointer',
                     opacity: resettingTeams ? 0.6 : 1,
@@ -595,8 +595,8 @@ export default function AdminPanel() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 7,
                     padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                    background: teamsReset ? 'rgba(252,181,20,0.12)' : 'var(--tx5)',
-                    border: `1px solid ${teamsReset ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
+                    background: teamsReset ? 'rgba(252,181,20,0.12)' : 'var(--surf2)',
+                    border: `1px solid ${teamsReset ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
                     color: teamsReset ? '#FCB514' : 'var(--tx4)',
                     cursor: regenerating || !teamsReset ? 'not-allowed' : 'pointer',
                     opacity: regenerating ? 0.6 : 1,
@@ -687,7 +687,7 @@ export default function AdminPanel() {
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  background: p.role === 'admin' ? 'rgba(252,181,20,0.15)' : 'var(--tx5)',
+                  background: p.role === 'admin' ? 'rgba(252,181,20,0.15)' : 'var(--surf2)',
                   color: p.role === 'admin' ? '#FCB514' : 'var(--tx2)',
                   textTransform: 'uppercase', letterSpacing: 1,
                 }}>
@@ -830,7 +830,7 @@ export default function AdminPanel() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)', marginBottom: 4 }}>{t.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1, background: t.status === 'active' ? 'rgba(34,197,94,0.12)' : 'var(--tx5)', color: t.status === 'active' ? '#22c55e' : 'var(--tx2)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1, background: t.status === 'active' ? 'rgba(34,197,94,0.12)' : 'var(--surf2)', color: t.status === 'active' ? '#22c55e' : 'var(--tx2)' }}>
                           {t.status === 'active' ? '● Active' : '🔒 Locked'}
                         </div>
                         {t.course && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>⛳ {t.course}</div>}
@@ -875,7 +875,7 @@ export default function AdminPanel() {
                   🗑️ Deleted Years <span style={{ background: 'var(--surf2)', borderRadius: 999, padding: '1px 8px', fontSize: 10 }}>{deleted.length}</span>
                 </div>
                 {deleted.map(t => (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderRadius: 12, background: 'var(--tx5)', border: '1px solid var(--bdr)', marginBottom: 8, opacity: 0.7 }}>
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', marginBottom: 8, opacity: 0.7 }}>
                     <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--tx4)', letterSpacing: 2 }}>{t.year}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, color: 'var(--tx2)', fontWeight: 600 }}>{t.name}</div>
@@ -1067,7 +1067,7 @@ export default function AdminPanel() {
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Jackass of the Day</div>
                     <div style={{
                       marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                      background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'var(--tx5)',
+                      background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'var(--surf2)',
                       color: laheyVotingOpen ? '#22c55e' : 'var(--tx3)',
                       textTransform: 'uppercase', letterSpacing: 1,
                     }}>
@@ -1084,8 +1084,8 @@ export default function AdminPanel() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8,
                         padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                        background: laheyVotingOpen ? 'var(--tx5)' : 'rgba(34,197,94,0.15)',
-                        border: `1px solid ${laheyVotingOpen ? 'var(--tx5)' : 'rgba(34,197,94,0.4)'}`,
+                        background: laheyVotingOpen ? 'var(--surf2)' : 'rgba(34,197,94,0.15)',
+                        border: `1px solid ${laheyVotingOpen ? 'var(--bdr)' : 'rgba(34,197,94,0.4)'}`,
                         color: laheyVotingOpen ? 'var(--tx2)' : '#22c55e',
                         cursor: laheyTogglingOpen ? 'not-allowed' : 'pointer',
                         opacity: laheyTogglingOpen ? 0.6 : 1,

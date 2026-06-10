@@ -522,8 +522,8 @@ export default function MyTeamPage() {
                       return (
                         <div key={p.id} style={{
                           flex: 1, textAlign: 'center', padding: '12px 10px', borderRadius: 12,
-                          background: c ? 'rgba(252,181,20,0.1)' : 'var(--tx5)',
-                          border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
+                          background: c ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
+                          border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                             <AvatarCircle player={p} size={36} />

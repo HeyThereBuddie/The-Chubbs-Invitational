@@ -119,7 +119,7 @@ export default function MrLeahey() {
                 padding: '12px',
                 borderRadius: 12,
                 border: '1px solid',
-                borderColor: isSelected ? '#FCB514' : 'var(--tx5)',
+                borderColor: isSelected ? '#FCB514' : 'var(--bdr)',
                 background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
                 color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
                 cursor: myVote ? 'default' : 'pointer',
@@ -167,7 +167,7 @@ export default function MrLeahey() {
                   </span>
                   <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 999, background: 'var(--tx5)', overflow: 'hidden' }}>
+                <div style={{ height: 6, borderRadius: 999, background: 'var(--surf2)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${(count / maxVotes) * 100}%`,
