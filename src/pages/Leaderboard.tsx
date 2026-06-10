@@ -181,9 +181,14 @@ export default function Leaderboard() {
               }} >
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ width: 42, flexShrink: 0, textAlign: 'center', lineHeight: 1, display: 'flex', justifyContent: 'center' }}>
+                  <div style={{ width: 42, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                     {rankIndicator}
-                  </span>
+                    {back !== null && back > 0 && (
+                      <span style={{ fontSize: 10, color: 'var(--tx3)', whiteSpace: 'nowrap', lineHeight: 1, fontWeight: 600 }}>
+                        {back} back
+                      </span>
+                    )}
+                  </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: isLeader ? '#FCB514' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -194,28 +199,24 @@ export default function Leaderboard() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 12, textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 20, textAlign: 'right', flexShrink: 0 }}>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
                         {row.thru > 0 ? toPar(row.toPar) : '—'}
                       </div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>TO PAR</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>TO PAR</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{back !== null ? back : '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>BACK</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.gross || '—'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>GROSS</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{row.gross || '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>GROSS</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.thru}</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>THRU</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{row.thru}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>THRU</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{row.putts || '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>PUTTS</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.putts || '—'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>PUTTS</div>
                     </div>
                   </div>
                 </div>
