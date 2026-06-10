@@ -607,7 +607,7 @@ function StatChip({ label, value }: { label: string; value: number }) {
   )
 }
 
-function BigStat({ label, value, sub, color = '#fff' }: { label: string; value: string; sub: string; color?: string }) {
+function BigStat({ label, value, sub, color = 'var(--tx1)' }: { label: string; value: string; sub: string; color?: string }) {
   return (
     <div style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 12, background: 'var(--surf)' }}>
       <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{label}</div>
