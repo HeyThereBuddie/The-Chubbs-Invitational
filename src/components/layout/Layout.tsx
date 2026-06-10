@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { useTheme } from '../../context/ThemeContext'
+import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import RulesChat from '../RulesChat'
@@ -15,6 +17,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { isCurrentYear, tournaments, viewingTournamentId } = useYear()
   const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
   const viewingYear = viewingTournament?.year ?? null
+
+  const handleRefresh = useCallback(() => { window.location.reload() }, [])
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh)
 
   return (
     <div className="bg-mesh" style={{ minHeight: '100dvh' }}>
@@ -88,6 +93,24 @@ export default function Layout({ children }: { children: ReactNode }) {
             </Link>
           </header>
           <main style={{ flex: 1, padding: '20px 16px', paddingBottom: 80 }}>
+            {/* Pull-to-refresh indicator */}
+            <div style={{
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              overflow: 'hidden',
+              height: isRefreshing ? 40 : Math.min(pullDistance * 0.5, 40),
+              transition: isRefreshing ? 'none' : 'height 0.15s ease',
+              marginTop: -8, marginBottom: 4,
+            }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                border: '2.5px solid rgba(252,181,20,0.25)',
+                borderTopColor: '#FCB514',
+                opacity: isRefreshing ? 1 : Math.min(pullDistance / 72, 1),
+                animation: isRefreshing ? 'spinAnim 0.7s linear infinite' : 'none',
+                transform: isRefreshing ? 'none' : `rotate(${(pullDistance / 72) * 240}deg)`,
+                transition: isRefreshing ? 'none' : 'opacity 0.1s',
+              }} />
+            </div>
             {children}
           </main>
           <BottomNav />
