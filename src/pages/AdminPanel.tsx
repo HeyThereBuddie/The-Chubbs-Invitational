@@ -842,7 +842,9 @@ export default function AdminPanel() {
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => openEditT(t)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(252,181,20,0.1)', border: '1px solid rgba(252,181,20,0.3)', color: '#FCB514', cursor: 'pointer' }}>Edit</button>
-                      <button onClick={() => setDeleteModal({ id: t.id, year: t.year, name: t.name, isActive: t.status === 'active', step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
+                      {t.status !== 'active' && (
+                        <button onClick={() => setDeleteModal({ id: t.id, year: t.year, name: t.name, isActive: false, step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
+                      )}
                     </div>
                   </div>
                   {t.final_standings && t.final_standings.length > 0 && (
