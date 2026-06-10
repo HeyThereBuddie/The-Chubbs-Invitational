@@ -4,7 +4,7 @@ import type { Team, Score, Player } from '../lib/types'
 import { COURSE_PAR, displayName } from '../lib/types'
 import { useYear } from '../context/YearContext'
 
-const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
+const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
@@ -162,25 +162,45 @@ export default function Leaderboard() {
                   </div>
                 )}
 
-                {/* Hole dots */}
+                {/* Hole grid: hole numbers on top, score bubbles below */}
                 {row.thru > 0 && (
-                  <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    {row.holeScores.map((score, holeIdx) => {
-                      const par = HOLE_PARS[holeIdx]
-                      if (score === null) {
-                        return (
-                          <div key={holeIdx} title={`Hole ${holeIdx + 1}`} style={{ width: 22, height: 22, borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.08)', flexShrink: 0 }} />
-                        )
-                      }
-                      return (
-                        <div key={holeIdx} className={`score-bubble ${scoreBubbleClass(score, par)}`}
-                          style={{ width: 22, height: 22, fontSize: 10, flexShrink: 0 }}
-                          title={`Hole ${holeIdx + 1}: ${score} (Par ${par})`}
-                        >
-                          {score}
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, minWidth: 'max-content' }}>
+                      {/* Hole number row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
+                          Hole:
                         </div>
-                      )
-                    })}
+                        {row.holeScores.map((_, holeIdx) => (
+                          <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
+                            {holeIdx + 1}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Score bubble row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
+                          Score:
+                        </div>
+                        {row.holeScores.map((score, holeIdx) => {
+                          const par = HOLE_PARS[holeIdx]
+                          if (score === null) {
+                            return (
+                              <div key={holeIdx} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.08)', flexShrink: 0 }} />
+                            )
+                          }
+                          return (
+                            <div key={holeIdx}
+                              className={`score-bubble ${scoreBubbleClass(score, par)}`}
+                              style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}
+                              title={`Hole ${holeIdx + 1}: ${score} (Par ${par})`}
+                            >
+                              {score}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
