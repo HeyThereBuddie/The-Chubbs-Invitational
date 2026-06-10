@@ -9,7 +9,7 @@ import { Lock, Shuffle, Save } from 'lucide-react'
 export default function Groups() {
   const { isAdmin } = useAuth()
   const { showToast } = useToast()
-  const { isCurrentYear } = useYear()
+  const { isCurrentYear, activeTournamentId } = useYear()
   const [players, setPlayers] = useState<Player[]>([])
   const [pairings, setPairings] = useState<(Pairing & { player_a?: Player; player_b?: Player })[]>([])
   const [draftPairings, setDraftPairings] = useState<{ a: Player; b: Player; name: string }[]>([])
@@ -52,17 +52,44 @@ export default function Groups() {
   }
 
   const savePairings = async () => {
-    // Clear existing
+    if (!activeTournamentId) {
+      showToast('No active tournament. Create one in the Admin panel first.', 'error')
+      return
+    }
+
+    // 1. Replace pairings
     await supabase.from('pairings').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-    const inserts = draftPairings.map(p => ({
-      player_a_id: p.a.id,
-      player_b_id: p.b.id,
-      team_name: p.name,
-      generated_at: new Date().toISOString(),
-    }))
-    const { error } = await supabase.from('pairings').insert(inserts)
-    if (error) showToast(error.message, 'error')
-    else { showToast('Pairings saved and released!'); fetchData(); setDraftPairings([]) }
+    const { error: pErr } = await supabase.from('pairings').insert(
+      draftPairings.map(p => ({ player_a_id: p.a.id, player_b_id: p.b.id, team_name: p.name, generated_at: new Date().toISOString() }))
+    )
+    if (pErr) { showToast(pErr.message, 'error'); return }
+
+    // 2. Clear player team assignments for existing teams in this tournament
+    const { data: oldTeams } = await supabase.from('teams').select('id').eq('tournament_id', activeTournamentId)
+    if (oldTeams?.length) {
+      await supabase.from('profiles').update({ team_id: null }).in('team_id', oldTeams.map(t => t.id))
+      await supabase.from('teams').delete().eq('tournament_id', activeTournamentId)
+    }
+
+    // 3. Create teams from pairings
+    const { data: newTeams, error: tErr } = await supabase
+      .from('teams')
+      .insert(draftPairings.map(p => ({ name: p.name, p1_id: p.a.id, p2_id: p.b.id, tournament_id: activeTournamentId })))
+      .select('id, p1_id, p2_id')
+    if (tErr) { showToast(tErr.message, 'error'); return }
+
+    // 4. Assign each player to their new team
+    if (newTeams) {
+      await Promise.all(
+        newTeams.map(t =>
+          supabase.from('profiles').update({ team_id: t.id }).in('id', [t.p1_id, t.p2_id].filter(Boolean))
+        )
+      )
+    }
+
+    showToast('Pairings saved — teams created and players assigned!')
+    fetchData()
+    setDraftPairings([])
   }
 
   return (
