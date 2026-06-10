@@ -150,7 +150,7 @@ export default function Leaderboard() {
             return rows.map((row, i) => {
               const { pos, tied } = posInfo[i]
               const isLeader = pos === 1 && row.thru > 0
-              const gap = pos > 1 && rows[0].thru > 0 ? row.toPar - rows[0].toPar : null
+              const back = pos > 1 && rows[0].thru > 0 && row.thru > 0 ? row.toPar - rows[0].toPar : null
 
               const rankIndicator = (() => {
                 const emoji = pos === 1 ? '🏆' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null
@@ -202,6 +202,10 @@ export default function Leaderboard() {
                       <div style={{ fontSize: 10, color: 'var(--tx4)' }}>TO PAR</div>
                     </div>
                     <div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{back !== null ? back : '—'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>BACK</div>
+                    </div>
+                    <div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.gross || '—'}</div>
                       <div style={{ fontSize: 10, color: 'var(--tx4)' }}>GROSS</div>
                     </div>
@@ -215,13 +219,6 @@ export default function Leaderboard() {
                     </div>
                   </div>
                 </div>
-
-                {/* Gap from leader */}
-                {gap !== null && gap > 0 && row.thru > 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4, marginLeft: 54 }}>
-                    {gap} back
-                  </div>
-                )}
 
                 {/* Hole grid: hole numbers on top, score bubbles below */}
                 {row.thru > 0 && (

@@ -396,6 +396,7 @@ export default function Scores() {
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
   const [adminTeamId,   setAdminTeamId]   = useState<string | null>(null)
+  const [leaderToPar,   setLeaderToPar]   = useState<number | null>(null)
   const [selectedHole,  setSelectedHole]  = useState<number>(() => {
     const h = _jump?.hole ?? parseInt(searchParams.get('hole') ?? '1')
     return h >= 1 && h <= 18 ? h : 1
@@ -416,6 +417,7 @@ export default function Scores() {
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
+  const allTeamsRef      = useRef<TeamFull[]>([])
   // Clean up sessionStorage entry and legacy URL params on mount
   useEffect(() => {
     sessionStorage.removeItem('scores-jump')
@@ -425,6 +427,7 @@ export default function Scores() {
   }, [])
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
   useEffect(() => { viewingTeamIdRef.current = viewingTeamId }, [viewingTeamId])
+  useEffect(() => { allTeamsRef.current = allTeams }, [allTeams])
 
   // ── Load ────────────────────────────────────────────────────
 
@@ -447,6 +450,7 @@ export default function Scores() {
       if (adminTeamId) loadAdminScores(adminTeamId)
       const vId = viewingTeamIdRef.current
       if (vId && vId !== myTeamIdRef.current) loadViewTeam(vId)
+      computeLeaderToPar(allTeamsRef.current)
     }
     const sub = supabase.channel('scores-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' },     reload)
@@ -456,17 +460,34 @@ export default function Scores() {
   }, [adminTeamId])
 
   const loadAllTeams = async () => {
-    if (!effectiveTournamentId) { setAllTeams([]); return }
+    if (!effectiveTournamentId) { setAllTeams([]); setLeaderToPar(null); return }
     let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
     q = q.eq('tournament_id', effectiveTournamentId)
     const { data } = await q
     if (data) {
       setAllTeams(data)
+      computeLeaderToPar(data)
       if (isAdmin && isCurrentYear && data.length) {
         const initial = (myTeamId && data.find((t: TeamFull) => t.id === myTeamId)) ? myTeamId : data[0].id
         setAdminTeamId(initial)
       }
     }
+  }
+
+  const computeLeaderToPar = async (teams: TeamFull[]) => {
+    if (!teams.length) { setLeaderToPar(null); return }
+    const { data: scores } = await supabase.from('scores').select('team_id, hole, score')
+    if (!scores) return
+    let best: number | null = null
+    for (const team of teams) {
+      const ts = scores.filter(s => s.team_id === team.id)
+      if (!ts.length) continue
+      const gross = ts.reduce((a, s) => a + s.score, 0)
+      const parSoFar = HOLE_PARS.slice(0, ts.length).reduce((a, b) => a + b, 0)
+      const toPar = gross - parSoFar
+      if (best === null || toPar < best) best = toPar
+    }
+    setLeaderToPar(best)
   }
 
   const loadPlayerData = async (teamId: string) => {
@@ -953,6 +974,7 @@ export default function Scores() {
             </div>
             <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
               <div><div style={{ fontSize: 22, fontWeight: 700, color: stats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{stats.toParStr}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>To Par</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.thru > 0 && leaderToPar !== null && stats.toPar - leaderToPar > 0 ? stats.toPar - leaderToPar : '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Back</div></div>
               <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.gross || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Gross</div></div>
               <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.thru}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Thru</div></div>
               <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.putts || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts</div></div>
@@ -1056,6 +1078,7 @@ export default function Scores() {
           </div>
           <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
             <div><div style={{ fontSize: 22, fontWeight: 700, color: displayStats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{displayStats.toParStr}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>To Par</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.thru > 0 && leaderToPar !== null && displayStats.toPar - leaderToPar > 0 ? displayStats.toPar - leaderToPar : '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Back</div></div>
             <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Gross</div></div>
             <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.thru}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Thru</div></div>
             <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts</div></div>
