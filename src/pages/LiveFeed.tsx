@@ -61,8 +61,9 @@ export default function LiveFeed() {
   }, [events, selectedFilter])
 
   const fetchEvents = async () => {
+    if (!effectiveTournamentId) { setEvents([]); setLoading(false); return }
     let q = supabase.from('feed_events').select('*').order('created_at', { ascending: false }).limit(200)
-    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    q = q.eq('tournament_id', effectiveTournamentId)
     const { data } = await q
     setEvents((data ?? []) as FeedEvent[])
     setLoading(false)

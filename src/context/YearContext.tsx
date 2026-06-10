@@ -14,7 +14,9 @@ interface YearContextValue {
   viewingTournamentId: string | null
   effectiveTournamentId: string | null
   isCurrentYear: boolean
+  ready: boolean
   setViewingTournamentId: (id: string | null) => void
+  refreshTournaments: () => void
 }
 
 const YearContext = createContext<YearContextValue>({
@@ -23,27 +25,33 @@ const YearContext = createContext<YearContextValue>({
   viewingTournamentId: null,
   effectiveTournamentId: null,
   isCurrentYear: true,
+  ready: false,
   setViewingTournamentId: () => {},
+  refreshTournaments: () => {},
 })
 
 export function YearProvider({ children }: { children: ReactNode }) {
   const [tournaments, setTournaments] = useState<TournamentOption[]>([])
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
   const [viewingTournamentId, setViewingTournamentId] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
 
-  useEffect(() => {
+  const loadTournaments = () => {
     supabase
       .from('tournaments')
       .select('id, year, name, status')
       .is('deleted_at', null)
       .order('year', { ascending: false })
       .then(({ data }) => {
-        if (!data) return
-        setTournaments(data as TournamentOption[])
-        const active = (data as TournamentOption[]).find(t => t.status === 'active')
-        if (active) setActiveTournamentId(active.id)
+        const list = (data ?? []) as TournamentOption[]
+        setTournaments(list)
+        const active = list.find(t => t.status === 'active')
+        setActiveTournamentId(active?.id ?? null)
+        setReady(true)
       })
-  }, [])
+  }
+
+  useEffect(() => { loadTournaments() }, [])
 
   const effectiveTournamentId = viewingTournamentId ?? activeTournamentId
   const isCurrentYear = viewingTournamentId === null || viewingTournamentId === activeTournamentId
@@ -55,7 +63,9 @@ export function YearProvider({ children }: { children: ReactNode }) {
       viewingTournamentId,
       effectiveTournamentId,
       isCurrentYear,
+      ready,
       setViewingTournamentId,
+      refreshTournaments: loadTournaments,
     }}>
       {children}
     </YearContext.Provider>

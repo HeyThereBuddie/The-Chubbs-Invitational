@@ -121,8 +121,9 @@ export default function MyTeamPage() {
 
   // Load all teams for the tab bar
   useEffect(() => {
+    if (!effectiveTournamentId) { setAllTeams([]); setLoading(false); return }
     let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
-    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    q = q.eq('tournament_id', effectiveTournamentId)
     q.then(({ data }) => {
         if (data) {
           const teams = data as unknown as TeamFull[]

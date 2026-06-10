@@ -43,8 +43,9 @@ export default function Leaderboard() {
   }, [effectiveTournamentId, isCurrentYear])
 
   const fetchData = async () => {
+    if (!effectiveTournamentId) { setRows([]); setLoading(false); return }
     let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-    if (effectiveTournamentId) teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
+    teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [teamsRes, scoresRes] = await Promise.all([
       teamsQ,
       supabase.from('scores').select('*'),

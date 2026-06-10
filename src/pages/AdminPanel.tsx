@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
+import { useYear } from '../context/YearContext'
 import type { Profile, Team } from '../lib/types'
 import { displayName, HOLE_PARS } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
@@ -38,6 +39,7 @@ interface THistoryEntry {
 
 export default function AdminPanel() {
   const { showToast } = useToast()
+  const { refreshTournaments } = useYear()
   const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'tournament' | 'brevo'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
@@ -208,6 +210,9 @@ export default function AdminPanel() {
   const [testTournamentName, setTestTournamentName] = useState('')
   const [testTournamentYear, setTestTournamentYear] = useState(String(new Date().getFullYear()))
   const [creatingTestTournament, setCreatingTestTournament] = useState(false)
+  const [createTournamentOpen, setCreateTournamentOpen] = useState(false)
+  const [createTournamentName, setCreateTournamentName] = useState('')
+  const [creatingTournament, setCreatingTournament] = useState(false)
 
   useEffect(() => {
     supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
@@ -368,22 +373,15 @@ export default function AdminPanel() {
       // Mark completed + save full standings snapshot
       await supabase.from('tournaments').update({ status: 'completed', final_standings: standings }).eq('id', activeTournament.id)
 
-      // Create the new active tournament for the current calendar year
-      const currentYear = new Date().getFullYear()
-      const { data: nextT } = await supabase
-        .from('tournaments')
-        .insert({ year: currentYear, status: 'active' })
-        .select().single()
-
-      // Clear player team assignments so they join fresh teams
+      // Clear player team assignments
       await supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000')
 
       setEndTournamentOpen(false)
       setEndTournamentPreview(null)
-      const newId = nextT?.id ?? null
-      setActiveTournamentId(newId)
-      showToast(`${activeTournament.name || activeTournament.year} archived! New ${currentYear} tournament ready 🏆`)
-      fetchTeams(newId)
+      setActiveTournamentId(null)
+      showToast(`${activeTournament.name || activeTournament.year} archived! Create a new tournament when you're ready. 🏆`)
+      fetchTeams(null)
+      refreshTournaments()
     } catch (e) {
       showToast((e as Error).message ?? 'Archive failed', 'error')
     }
@@ -468,6 +466,25 @@ export default function AdminPanel() {
     setTestTournamentYear(String(new Date().getFullYear()))
     fetchTournamentHistory()
     showToast(`"${name}" created! It will appear in the year selector.`)
+  }
+
+  const createNewTournament = async () => {
+    const name = createTournamentName.trim()
+    if (!name) return
+    setCreatingTournament(true)
+    const { data, error } = await supabase
+      .from('tournaments')
+      .insert({ name, year: new Date().getFullYear(), status: 'active' })
+      .select().single()
+    setCreatingTournament(false)
+    if (error) { showToast(error.message, 'error'); return }
+    setActiveTournamentId(data.id)
+    setCreateTournamentOpen(false)
+    setCreateTournamentName('')
+    fetchTeams(data.id)
+    fetchTournamentHistory()
+    refreshTournaments()
+    showToast(`"${name}" is live! 🏆`)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -957,7 +974,23 @@ export default function AdminPanel() {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 16 }}>
                 Current Tournament Actions
               </div>
+              {!activeTournamentId && (
+                <div style={{ padding: '28px 24px', borderRadius: 14, border: '1px dashed rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.03)', textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ fontSize: 32, marginBottom: 10 }}>⛳</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>No active tournament</div>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 18, lineHeight: 1.5 }}>
+                    Create a new tournament to start tracking scores, teams, and events.
+                  </p>
+                  <button
+                    onClick={() => setCreateTournamentOpen(true)}
+                    style={{ padding: '12px 28px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: 'pointer' }}
+                  >
+                    + Create Tournament
+                  </button>
+                </div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {activeTournamentId && (<>
 
                 {/* Jackass voting */}
                 <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.25)', background: 'rgba(252,181,20,0.04)' }}>
@@ -1092,8 +1125,42 @@ export default function AdminPanel() {
                   )}
                 </div>
 
+              </>)}
               </div>
             </div>
+
+            {/* Create Tournament modal */}
+            {createTournamentOpen && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>New Tournament</div>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.5 }}>
+                    Give this tournament a name. It will be set to {new Date().getFullYear()} and go live immediately.
+                  </p>
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
+                    <input
+                      autoFocus
+                      placeholder="e.g. The Chubbs Memorial"
+                      value={createTournamentName}
+                      onChange={e => setCreateTournamentName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && createNewTournament()}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={createNewTournament}
+                      disabled={creatingTournament || !createTournamentName.trim()}
+                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: creatingTournament ? 'not-allowed' : 'pointer', opacity: creatingTournament ? 0.6 : 1 }}
+                    >
+                      {creatingTournament ? 'Creating…' : 'Create & Go Live'}
+                    </button>
+                    <button onClick={() => { setCreateTournamentOpen(false); setCreateTournamentName('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* End Tournament Modal */}
             {endTournamentOpen && endTournamentPreview && (

@@ -85,8 +85,9 @@ export default function Contests() {
   }, [profile?.team_id])
 
   const fetchContestData = async () => {
+    if (!effectiveTournamentId) { setEntries([]); return }
     let q = supabase.from('contest_entries').select('*, player:profiles(*)').eq('type', tab).order('created_at', { ascending: false })
-    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    q = q.eq('tournament_id', effectiveTournamentId)
     const { data: entriesData } = await q
     setEntries(entriesData ?? [])
 
@@ -118,8 +119,9 @@ export default function Contests() {
   }
 
   const fetchLaheyData = async () => {
+    if (!effectiveTournamentId) { setLaheyPlayers([]); setVotes([]); return }
     let votesQ = supabase.from('leahey_votes').select('*')
-    if (effectiveTournamentId) votesQ = votesQ.eq('tournament_id', effectiveTournamentId)
+    votesQ = votesQ.eq('tournament_id', effectiveTournamentId)
     const [playersRes, votesRes, settingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('status', 'active').order('name'),
       votesQ,

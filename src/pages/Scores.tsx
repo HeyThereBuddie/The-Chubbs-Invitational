@@ -433,8 +433,9 @@ export default function Scores() {
   }, [adminTeamId])
 
   const loadAllTeams = async () => {
+    if (!effectiveTournamentId) { setAllTeams([]); return }
     let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    q = q.eq('tournament_id', effectiveTournamentId)
     const { data } = await q
     if (data) {
       setAllTeams(data)

@@ -47,8 +47,9 @@ export default function TeeTimes() {
   useEffect(() => { fetchAll() }, [effectiveTournamentId])
 
   const fetchAll = async () => {
+    if (!effectiveTournamentId) { setTeams([]); return }
     let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-    if (effectiveTournamentId) teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
+    teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [ttRes, teamsRes] = await Promise.all([
       supabase.from('tee_times')
         .select('*, team:teams(*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*))')

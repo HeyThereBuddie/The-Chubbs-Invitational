@@ -113,8 +113,9 @@ export default function Dashboard() {
   }, [isCurrentYear, effectiveTournamentId])
 
   const fetchFeed = async () => {
+    if (!effectiveTournamentId) { setFeed([]); return }
     let q = supabase.from('feed_events').select('*').order('created_at', { ascending: false }).limit(7)
-    if (effectiveTournamentId) q = q.eq('tournament_id', effectiveTournamentId)
+    q = q.eq('tournament_id', effectiveTournamentId)
     const { data } = await q
     setFeed((data ?? []) as FeedEvent[])
   }
@@ -140,8 +141,9 @@ export default function Dashboard() {
   }
 
   const fetchData = async () => {
+    if (!effectiveTournamentId) { setLeaders([]); setTeamCount(0); return }
     let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-    if (effectiveTournamentId) teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
+    teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
       teamsQ,
       supabase.from('scores').select('*'),
