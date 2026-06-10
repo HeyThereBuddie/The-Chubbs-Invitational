@@ -206,7 +206,7 @@ export default function AdminPanel() {
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
   const [testTournamentOpen, setTestTournamentOpen] = useState(false)
   const [testTournamentName, setTestTournamentName] = useState('')
-  const [testTournamentYear, setTestTournamentYear] = useState('')
+  const [testTournamentYear, setTestTournamentYear] = useState(String(new Date().getFullYear()))
   const [creatingTestTournament, setCreatingTestTournament] = useState(false)
 
   useEffect(() => {
@@ -325,7 +325,7 @@ export default function AdminPanel() {
 
       // Get or create active tournament
       let { data: activeTournament } = await supabase
-        .from('tournaments').select('id, year').eq('status', 'active').order('year', { ascending: false }).limit(1).single()
+        .from('tournaments').select('id, year, name').eq('status', 'active').order('year', { ascending: false }).limit(1).single()
 
       if (!activeTournament) {
         const { data: newT } = await supabase
@@ -368,20 +368,21 @@ export default function AdminPanel() {
       // Mark completed + save full standings snapshot
       await supabase.from('tournaments').update({ status: 'completed', final_standings: standings }).eq('id', activeTournament.id)
 
-      // Create the next year's tournament
+      // Create the new active tournament for the current calendar year
+      const currentYear = new Date().getFullYear()
       const { data: nextT } = await supabase
         .from('tournaments')
-        .upsert({ year: activeTournament.year + 1, status: 'active' }, { onConflict: 'year' })
+        .insert({ year: currentYear, status: 'active' })
         .select().single()
 
-      // Clear player team assignments so they join fresh teams next year
+      // Clear player team assignments so they join fresh teams
       await supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000')
 
       setEndTournamentOpen(false)
       setEndTournamentPreview(null)
       const newId = nextT?.id ?? null
       setActiveTournamentId(newId)
-      showToast(`${activeTournament.year} tournament archived! Ready for ${activeTournament.year + 1} 🏆`)
+      showToast(`${activeTournament.name || activeTournament.year} archived! New ${currentYear} tournament ready 🏆`)
       fetchTeams(newId)
     } catch (e) {
       showToast((e as Error).message ?? 'Archive failed', 'error')
@@ -464,7 +465,7 @@ export default function AdminPanel() {
     if (error) { showToast(error.message, 'error'); return }
     setTestTournamentOpen(false)
     setTestTournamentName('')
-    setTestTournamentYear('')
+    setTestTournamentYear(String(new Date().getFullYear()))
     fetchTournamentHistory()
     showToast(`"${name}" created! It will appear in the year selector.`)
   }
@@ -1231,7 +1232,7 @@ export default function AdminPanel() {
                     >
                       {creatingTestTournament ? 'Creating…' : 'Create'}
                     </button>
-                    <button onClick={() => { setTestTournamentOpen(false); setTestTournamentName(''); setTestTournamentYear('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => { setTestTournamentOpen(false); setTestTournamentName(''); setTestTournamentYear(String(new Date().getFullYear())) }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
