@@ -107,6 +107,16 @@ export interface SyncMeta {
   value: string
 }
 
+export interface PendingWrite {
+  id?: number           // auto-increment primary key
+  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan'
+  payload: string       // JSON string of the operation data
+  conflict_key: string  // JSON string used for deduplication e.g. '{"team_id":"x","hole":5}'
+  client_ts: string     // ISO timestamp — used for LWW ordering
+  status: 'pending' | 'failed'
+  retries?: number
+}
+
 class ChubbsLocalDB extends Dexie {
   teams!: Table<LocalTeam>
   profiles!: Table<LocalProfile>
@@ -119,6 +129,7 @@ class ChubbsLocalDB extends Dexie {
   feed_reactions!: Table<LocalFeedReaction>
   pairings!: Table<LocalPairing>
   sync_meta!: Table<SyncMeta>
+  pending_writes!: Table<PendingWrite>
 
   constructor() {
     super('chubbs-memorial')
@@ -134,6 +145,22 @@ class ChubbsLocalDB extends Dexie {
       feed_reactions:  'id, event_id',
       pairings:        'id',
       sync_meta:       'key',
+    })
+    this.version(2).stores({
+      teams:           'id, tournament_id',
+      profiles:        'id, status',
+      scores:          'id, team_id',
+      chulligans:      'id, team_id, player_id',
+      tee_times:       'id',
+      contest_entries: 'id, type, tournament_id',
+      leahey_votes:    'id, voter_id, tournament_id',
+      feed_events:     'id, tournament_id, event_type',
+      feed_reactions:  'id, event_id',
+      pairings:        'id',
+      sync_meta:       'key',
+      pending_writes:  '++id, op_type, status, client_ts',
+    }).upgrade(() => {
+      // No data migration needed — just adding the new pending_writes table
     })
   }
 }

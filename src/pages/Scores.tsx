@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
+import { useSyncContext } from '../context/SyncContext'
+import { localDb } from '../lib/localDb'
+import { enqueue } from '../lib/writeQueue'
 import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
@@ -370,6 +373,7 @@ function HoleCard({
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { isOnline, refreshPendingCount } = useSyncContext()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
@@ -406,7 +410,8 @@ export default function Scores() {
   // ── Load ────────────────────────────────────────────────────
 
   useEffect(() => { loadAllTeams() }, [effectiveTournamentId])
-  useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId, isOnline])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
   // Default view to own team on first load; switch to other teams for read-only browse
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -446,6 +451,17 @@ export default function Scores() {
   }
 
   const loadPlayerData = async (teamId: string) => {
+    if (!isOnline) {
+      // Offline: load from IndexedDB cache
+      const localScores = await localDb.scores.where('team_id').equals(teamId).toArray()
+      const map: Record<number, ScoreRow> = {}
+      for (const s of localScores) map[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
+      setMyScores(map)
+      const localCh = await localDb.chulligans.where('team_id').equals(teamId).toArray()
+      setMyChulligans(localCh.map(c => ({ id: c.id, player_id: c.player_id, hole: c.hole })))
+      return
+    }
+
     const { data: t } = await supabase
       .from('teams')
       .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
@@ -492,6 +508,23 @@ export default function Scores() {
     const next = Math.max(1, cur + delta)
     setSaving(hole)
     const existing = myScores[hole]
+
+    if (!isOnline) {
+      // Optimistic local update
+      const fakeId = existing?.id ?? `offline-${myTeamId}-${hole}`
+      setMyScores(prev => ({ ...prev, [hole]: { id: fakeId, hole, score: next, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
+      // Also update local IndexedDB cache
+      if (existing?.id && !String(existing.id).startsWith('offline-')) {
+        await localDb.scores.update(existing.id, { score: next })
+      } else {
+        await localDb.scores.put({ id: fakeId, team_id: myTeamId, hole, score: next, drive_used_id: null, putts: null, updated_at: new Date().toISOString() })
+      }
+      await enqueue('set_score', { team_id: myTeamId, hole, score: next }, { team_id: myTeamId, hole })
+      await refreshPendingCount()
+      setSaving(null)
+      return
+    }
+
     if (existing?.id) {
       await supabase.from('scores').update({ score: next }).eq('id', existing.id)
       setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
@@ -529,6 +562,17 @@ export default function Scores() {
     const existing = myScores[hole]
     if (!existing?.id) return
     const newId = existing.drive_used_id === playerId ? null : playerId
+
+    if (!isOnline) {
+      setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
+      if (!String(existing.id).startsWith('offline-')) {
+        await localDb.scores.update(existing.id, { drive_used_id: newId })
+      }
+      await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
+      await refreshPendingCount()
+      return
+    }
+
     await supabase.from('scores').update({ drive_used_id: newId }).eq('id', existing.id)
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
   }
@@ -545,6 +589,17 @@ export default function Scores() {
     const existing = myScores[hole]
     if (!existing?.id) return
     const newPutts = existing.putts === putts ? null : putts
+
+    if (!isOnline) {
+      setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
+      if (!String(existing.id).startsWith('offline-')) {
+        await localDb.scores.update(existing.id, { putts: newPutts })
+      }
+      await enqueue('set_putts', { team_id: myTeamId!, hole, putts: newPutts }, { team_id: myTeamId!, hole })
+      await refreshPendingCount()
+      return
+    }
+
     await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
     if (newPutts != null && newPutts >= 3)
@@ -566,6 +621,20 @@ export default function Scores() {
   const resetMyScore = async (hole: number) => {
     const existing = myScores[hole]
     if (!existing?.id) return
+
+    if (!isOnline) {
+      setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
+      if (!String(existing.id).startsWith('offline-')) {
+        await localDb.scores.delete(existing.id)
+        await enqueue('delete_score', { team_id: myTeamId!, hole }, { team_id: myTeamId!, hole })
+        await refreshPendingCount()
+      } else {
+        // Was never synced — just remove from local cache, no need to queue a delete
+        await localDb.scores.delete(existing.id)
+      }
+      return
+    }
+
     await supabase.from('scores').delete().eq('id', existing.id)
     setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
   }
@@ -589,6 +658,32 @@ export default function Scores() {
     const player = [team?.player1, team?.player2].find(p => p?.id === playerId)
     const teamName = team?.name ?? ''
     const playerName = player ? displayName(player) : ''
+
+    if (!isOnline) {
+      if (existing) {
+        if (existing.hole === hole) {
+          // Remove chulligan
+          setter(chulligans.filter(c => c.id !== existing.id))
+          await localDb.chulligans.delete(existing.id)
+          await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: false }, { team_id: teamId, player_id: playerId })
+        } else {
+          // Move chulligan to new hole
+          const fakeId = `offline-ch-${teamId}-${playerId}`
+          setter([...chulligans.filter(c => c.id !== existing.id), { id: fakeId, player_id: playerId, hole }])
+          await localDb.chulligans.delete(existing.id)
+          await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
+          await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
+        }
+      } else {
+        const fakeId = `offline-ch-${teamId}-${playerId}`
+        setter([...chulligans, { id: fakeId, player_id: playerId, hole }])
+        await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
+        await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
+      }
+      await refreshPendingCount()
+      return
+    }
+
     if (existing) {
       await supabase.from('chulligans').delete().eq('id', existing.id)
       if (existing.hole === hole) {
