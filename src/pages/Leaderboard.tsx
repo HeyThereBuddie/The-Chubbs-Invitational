@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
 import { COURSE_PAR, displayName } from '../lib/types'
@@ -28,6 +29,7 @@ interface LeaderRow {
 
 export default function Leaderboard() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const navigate = useNavigate()
   const { isOnline } = useSyncContext()
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -233,7 +235,9 @@ export default function Leaderboard() {
                           Hole:
                         </div>
                         {row.holeScores.map((_, holeIdx) => (
-                          <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--tx3)' }}>
+                          <div key={holeIdx}
+                            onClick={() => navigate(`/scores?hole=${holeIdx + 1}`)}
+                            style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--tx3)', cursor: 'pointer' }}>
                             {holeIdx + 1}
                           </div>
                         ))}
@@ -247,13 +251,16 @@ export default function Leaderboard() {
                           const par = HOLE_PARS[holeIdx]
                           if (score === null) {
                             return (
-                              <div key={holeIdx} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--bdr)', flexShrink: 0 }} />
+                              <div key={holeIdx}
+                                onClick={() => navigate(`/scores?hole=${holeIdx + 1}`)}
+                                style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--bdr)', flexShrink: 0, cursor: 'pointer' }} />
                             )
                           }
                           return (
                             <div key={holeIdx}
                               className={`score-bubble ${scoreBubbleClass(score, par)}`}
-                              style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}
+                              onClick={() => navigate(`/scores?hole=${holeIdx + 1}`)}
+                              style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0, cursor: 'pointer' }}
                               title={`Hole ${holeIdx + 1}: ${score} (Par ${par})`}
                             >
                               {score}

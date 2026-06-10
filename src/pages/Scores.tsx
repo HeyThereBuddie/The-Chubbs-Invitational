@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
@@ -386,8 +387,12 @@ export default function Scores() {
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
+  const [searchParams, setSearchParams] = useSearchParams()
   const [adminTeamId,   setAdminTeamId]   = useState<string | null>(null)
-  const [selectedHole,  setSelectedHole]  = useState(1)
+  const [selectedHole,  setSelectedHole]  = useState(() => {
+    const h = parseInt(searchParams.get('hole') ?? '1')
+    return h >= 1 && h <= 18 ? h : 1
+  })
   const [saving,        setSaving]        = useState<number | null>(null)
   const [teamPick,      setTeamPick]      = useState('')
   const [settingTeam,   setSettingTeam]   = useState(false)
@@ -404,6 +409,11 @@ export default function Scores() {
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
+  // Clear the ?hole= param from the URL after it's been consumed
+  useEffect(() => {
+    if (searchParams.get('hole')) setSearchParams({}, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
   useEffect(() => { viewingTeamIdRef.current = viewingTeamId }, [viewingTeamId])
 
