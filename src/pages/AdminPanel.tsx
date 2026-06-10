@@ -38,7 +38,7 @@ interface THistoryEntry {
 
 export default function AdminPanel() {
   const { showToast } = useToast()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'reset' | 'history' | 'brevo'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'tournament' | 'brevo'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamName, setNewTeamName] = useState('')
@@ -214,7 +214,7 @@ export default function AdminPanel() {
       .then(({ data }) => { if (data) setLaheyVotingOpen(data.lahey_voting_open) })
   }, [])
 
-  useEffect(() => { if (tab === 'history') fetchTournamentHistory() }, [tab])
+  useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
 
   const resetTournament = async () => {
     if (!activeTournamentId) return
@@ -503,12 +503,11 @@ export default function AdminPanel() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
-          { id: 'teams',   label: '⛳ Teams' },
-          { id: 'users',   label: '👥 Users' },
-          { id: 'codes',   label: '🔑 Codes' },
-          { id: 'reset',   label: '⚠️ Reset' },
-          { id: 'history', label: '🏆 History' },
-          { id: 'brevo',   label: '📣 Brevo' },
+          { id: 'teams',      label: '⛳ Teams' },
+          { id: 'users',      label: '👥 Users' },
+          { id: 'codes',      label: '🔑 Codes' },
+          { id: 'tournament', label: '🏆 Tournament' },
+          { id: 'brevo',      label: '📣 Brevo' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -739,251 +738,8 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ── Reset tab ───────────────────────────────────────────── */}
-      {tab === 'reset' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Lahey voting controls */}
-          <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.25)', background: 'rgba(252,181,20,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span style={{ fontSize: 20 }}>🤠</span>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Jackass of the Day</div>
-              <div style={{
-                marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
-                color: laheyVotingOpen ? '#22c55e' : 'rgba(255,255,255,0.4)',
-                textTransform: 'uppercase', letterSpacing: 1,
-              }}>
-                {laheyVotingOpen ? '● Open' : '● Closed'}
-              </div>
-            </div>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 18, lineHeight: 1.6 }}>
-              Control when players can vote. Reset clears all votes so you can start fresh.
-            </p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                onClick={toggleLaheyVoting}
-                disabled={laheyTogglingOpen}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                  background: laheyVotingOpen ? 'rgba(255,255,255,0.06)' : 'rgba(34,197,94,0.15)',
-                  border: `1px solid ${laheyVotingOpen ? 'rgba(255,255,255,0.12)' : 'rgba(34,197,94,0.4)'}`,
-                  color: laheyVotingOpen ? 'rgba(255,255,255,0.6)' : '#22c55e',
-                  cursor: laheyTogglingOpen ? 'not-allowed' : 'pointer',
-                  opacity: laheyTogglingOpen ? 0.6 : 1,
-                }}
-              >
-                <PlayCircle size={15} />
-                {laheyTogglingOpen ? 'Updating…' : laheyVotingOpen ? 'Close Voting' : 'Open Voting'}
-              </button>
-              <button
-                onClick={resetLaheyVotes}
-                disabled={laheyResetting}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                  color: '#ef4444', cursor: laheyResetting ? 'not-allowed' : 'pointer',
-                  opacity: laheyResetting ? 0.6 : 1,
-                }}
-              >
-                <RotateCcw size={15} />
-                {laheyResetting ? 'Clearing…' : 'Reset All Votes'}
-              </button>
-            </div>
-          </div>
-
-          {/* End Tournament — archive results */}
-          <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.04)', marginBottom: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <Archive size={20} color="#FCB514" />
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>End Tournament & Archive</div>
-            </div>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
-              Saves the final standings, Jackass winner, and contest winners to the <strong style={{ color: '#FCB514' }}>Hall of Fame</strong>, then clears all scores for the next year.
-            </p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 18, lineHeight: 1.6 }}>
-              Use this at the end of each year's tournament. Teams and player accounts are preserved.
-            </p>
-            <button
-              onClick={prepareEndTournament}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
-                background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.5)',
-                color: '#FCB514', cursor: 'pointer',
-              }}
-            >
-              <Archive size={15} /> Archive Results & Reset
-            </button>
-          </div>
-
-          {/* End Tournament Modal */}
-          {endTournamentOpen && endTournamentPreview && (
-            <div style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
-              zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-            }}>
-              <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
-                <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 22, lineHeight: 1.5 }}>
-                  Review the results that will be saved to the Hall of Fame, then confirm to archive and reset.
-                </p>
-
-                {/* Standings preview */}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Final Standings</div>
-                  {endTournamentPreview.standings.length === 0 ? (
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '10px 0' }}>No scores recorded</div>
-                  ) : (
-                    endTournamentPreview.standings.slice(0, 3).map((s, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 6, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{i === 0 ? '🏆' : i === 1 ? '🥈' : '🥉'}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#FCB514' : '#fff' }}>{s.teamName}</div>
-                          {(s.p1Name || s.p2Name) && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</div>}
-                        </div>
-                        <div style={{ fontFamily: 'Bebas Neue', fontSize: 17, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>
-                          {s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Jackass preview */}
-                <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 6 }}>🤠 Jackass of the Day</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#FCB514' }}>
-                    {endTournamentPreview.jackassName ?? 'No votes recorded'}
-                    {endTournamentPreview.jackassVotes > 0 && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>({endTournamentPreview.jackassVotes} votes)</span>}
-                  </div>
-                </div>
-
-                {/* Contest winner inputs */}
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Contest Winners (optional)</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div>
-                      <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>🎯 Closest to Pin winner</label>
-                      <input
-                        type="text"
-                        placeholder="Player name..."
-                        value={endTournamentPreview.ctpWinner}
-                        onChange={e => setEndTournamentPreview(p => p ? { ...p, ctpWinner: e.target.value } : p)}
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>💥 Longest Drive winner</label>
-                      <input
-                        type="text"
-                        placeholder="Player name..."
-                        value={endTournamentPreview.ldWinner}
-                        onChange={e => setEndTournamentPreview(p => p ? { ...p, ldWinner: e.target.value } : p)}
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ fontSize: 12, color: 'rgba(239,68,68,0.7)', marginBottom: 16, lineHeight: 1.6, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  ⚠️ After archiving, all scores, chulligans, contest entries, votes, and feed events will be permanently cleared.
-                </div>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={doEndTournament}
-                    disabled={endingTournament}
-                    style={{
-                      flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                      background: '#FCB514', border: 'none', color: '#0a0800',
-                      cursor: endingTournament ? 'not-allowed' : 'pointer', opacity: endingTournament ? 0.6 : 1,
-                    }}
-                  >
-                    {endingTournament ? 'Archiving…' : '🏆 Archive & Reset for Next Year'}
-                  </button>
-                  <button
-                    onClick={() => { setEndTournamentOpen(false); setEndTournamentPreview(null) }}
-                    disabled={endingTournament}
-                    style={{
-                      padding: '12px 20px', borderRadius: 999, fontSize: 14,
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Score reset */}
-          <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <RotateCcw size={20} color="#ef4444" />
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#ef4444' }}>Reset Tournament</div>
-            </div>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
-              This will permanently delete <strong style={{ color: '#fff' }}>all scores and drive selections</strong> for every team.
-            </p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
-              Teams, player assignments, tee times, and all other data will remain untouched. Only the scorecard is cleared.
-            </p>
-
-            {!resetConfirm ? (
-              <button
-                onClick={() => setResetConfirm(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
-                  background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
-                  color: '#ef4444', cursor: 'pointer',
-                }}
-              >
-                <RotateCcw size={15} /> Reset All Scores
-              </button>
-            ) : (
-              <div style={{ padding: '16px 20px', borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)' }}>
-                <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15, marginBottom: 6 }}>
-                  Are you absolutely sure?
-                </div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
-                  Every score will be deleted and all team names cleared. This cannot be undone.
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={resetTournament}
-                    disabled={resetting}
-                    style={{
-                      padding: '10px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                      background: '#ef4444', border: 'none', color: '#fff',
-                      cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.6 : 1,
-                    }}
-                  >
-                    {resetting ? 'Resetting…' : 'Yes, delete all scores'}
-                  </button>
-                  <button
-                    onClick={() => setResetConfirm(false)}
-                    style={{
-                      padding: '10px 24px', borderRadius: 999, fontSize: 14,
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── History tab ─────────────────────────────────────────── */}
-      {tab === 'history' && (() => {
+      {/* ── Tournament tab ──────────────────────────────────────── */}
+      {tab === 'tournament' && (() => {
         const active = tournamentHistory.filter(t => !t.deleted_at)
         const deleted = tournamentHistory.filter(t => t.deleted_at)
 
@@ -1026,7 +782,7 @@ export default function AdminPanel() {
 
             {active.length === 0 && (
               <div className="glass" style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
-                No tournament years recorded. Run "End Tournament &amp; Archive" from the ⚠️ Reset tab to create your first entry.
+                No tournaments archived yet. Use "End Tournament &amp; Archive" below to save your first entry.
               </div>
             )}
 
@@ -1195,6 +951,214 @@ export default function AdminPanel() {
             )}
 
             {Object.keys(catLabel).length > 0 && null /* suppress unused var */}
+
+            {/* ── Current Tournament Actions ───────────────────── */}
+            <div style={{ marginTop: 8, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 16 }}>
+                Current Tournament Actions
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Jackass voting */}
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.25)', background: 'rgba(252,181,20,0.04)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <span style={{ fontSize: 20 }}>🤠</span>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Jackass of the Day</div>
+                    <div style={{
+                      marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                      background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                      color: laheyVotingOpen ? '#22c55e' : 'rgba(255,255,255,0.4)',
+                      textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      {laheyVotingOpen ? '● Open' : '● Closed'}
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 18, lineHeight: 1.6 }}>
+                    Control when players can vote. Reset clears all votes so you can start fresh.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={toggleLaheyVoting}
+                      disabled={laheyTogglingOpen}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                        background: laheyVotingOpen ? 'rgba(255,255,255,0.06)' : 'rgba(34,197,94,0.15)',
+                        border: `1px solid ${laheyVotingOpen ? 'rgba(255,255,255,0.12)' : 'rgba(34,197,94,0.4)'}`,
+                        color: laheyVotingOpen ? 'rgba(255,255,255,0.6)' : '#22c55e',
+                        cursor: laheyTogglingOpen ? 'not-allowed' : 'pointer',
+                        opacity: laheyTogglingOpen ? 0.6 : 1,
+                      }}
+                    >
+                      <PlayCircle size={15} />
+                      {laheyTogglingOpen ? 'Updating…' : laheyVotingOpen ? 'Close Voting' : 'Open Voting'}
+                    </button>
+                    <button
+                      onClick={resetLaheyVotes}
+                      disabled={laheyResetting}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                        color: '#ef4444', cursor: laheyResetting ? 'not-allowed' : 'pointer',
+                        opacity: laheyResetting ? 0.6 : 1,
+                      }}
+                    >
+                      <RotateCcw size={15} />
+                      {laheyResetting ? 'Clearing…' : 'Reset All Votes'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* End Tournament & Archive */}
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.04)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <Archive size={20} color="#FCB514" />
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>End Tournament & Archive</div>
+                  </div>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
+                    Saves the final standings, Jackass winner, and contest winners to the <strong style={{ color: '#FCB514' }}>Hall of Fame</strong>, then clears all scores for the next tournament.
+                  </p>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 18, lineHeight: 1.6 }}>
+                    Teams and player accounts are preserved.
+                  </p>
+                  <button
+                    onClick={prepareEndTournament}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
+                      background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.5)',
+                      color: '#FCB514', cursor: 'pointer',
+                    }}
+                  >
+                    <Archive size={15} /> Archive Results & Reset
+                  </button>
+                </div>
+
+                {/* Score reset */}
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <RotateCcw size={20} color="#ef4444" />
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#ef4444' }}>Reset Tournament</div>
+                  </div>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
+                    Permanently deletes <strong style={{ color: '#fff' }}>all scores and drive selections</strong> for every team.
+                  </p>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
+                    Teams, player assignments, tee times, and all other data remain untouched.
+                  </p>
+                  {!resetConfirm ? (
+                    <button
+                      onClick={() => setResetConfirm(true)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
+                        background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+                        color: '#ef4444', cursor: 'pointer',
+                      }}
+                    >
+                      <RotateCcw size={15} /> Reset All Scores
+                    </button>
+                  ) : (
+                    <div style={{ padding: '16px 20px', borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)' }}>
+                      <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15, marginBottom: 6 }}>Are you absolutely sure?</div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
+                        Every score will be deleted. This cannot be undone.
+                      </div>
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                          onClick={resetTournament}
+                          disabled={resetting}
+                          style={{
+                            padding: '10px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                            background: '#ef4444', border: 'none', color: '#fff',
+                            cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.6 : 1,
+                          }}
+                        >
+                          {resetting ? 'Resetting…' : 'Yes, delete all scores'}
+                        </button>
+                        <button
+                          onClick={() => setResetConfirm(false)}
+                          style={{
+                            padding: '10px 24px', borderRadius: 999, fontSize: 14,
+                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+            {/* End Tournament Modal */}
+            {endTournamentOpen && endTournamentPreview && (
+              <div style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+                zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+              }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 22, lineHeight: 1.5 }}>
+                    Review the results that will be saved to the Hall of Fame, then confirm to archive and reset.
+                  </p>
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Final Standings</div>
+                    {endTournamentPreview.standings.length === 0 ? (
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '10px 0' }}>No scores recorded</div>
+                    ) : (
+                      endTournamentPreview.standings.slice(0, 3).map((s, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 6, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{i === 0 ? '🏆' : i === 1 ? '🥈' : '🥉'}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#FCB514' : '#fff' }}>{s.teamName}</div>
+                            {(s.p1Name || s.p2Name) && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</div>}
+                          </div>
+                          <div style={{ fontFamily: 'Bebas Neue', fontSize: 17, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>
+                            {s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 6 }}>🤠 Jackass of the Day</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#FCB514' }}>
+                      {endTournamentPreview.jackassName ?? 'No votes recorded'}
+                      {endTournamentPreview.jackassVotes > 0 && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>({endTournamentPreview.jackassVotes} votes)</span>}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Contest Winners (optional)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>🎯 Closest to Pin winner</label>
+                        <input type="text" placeholder="Player name..." value={endTournamentPreview.ctpWinner} onChange={e => setEndTournamentPreview(p => p ? { ...p, ctpWinner: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>💥 Longest Drive winner</label>
+                        <input type="text" placeholder="Player name..." value={endTournamentPreview.ldWinner} onChange={e => setEndTournamentPreview(p => p ? { ...p, ldWinner: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(239,68,68,0.7)', marginBottom: 16, lineHeight: 1.6, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    ⚠️ After archiving, all scores, chulligans, contest entries, votes, and feed events will be permanently cleared.
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={doEndTournament} disabled={endingTournament} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: endingTournament ? 'not-allowed' : 'pointer', opacity: endingTournament ? 0.6 : 1 }}>
+                      {endingTournament ? 'Archiving…' : '🏆 Archive & Reset for Next Year'}
+                    </button>
+                    <button onClick={() => { setEndTournamentOpen(false); setEndTournamentPreview(null) }} disabled={endingTournament} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Create Test Tournament modal */}
             {testTournamentOpen && (
