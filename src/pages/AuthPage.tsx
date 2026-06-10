@@ -8,7 +8,9 @@ export default function AuthPage() {
   const { showToast } = useToast()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', nickname: '', email: '', password: '', code: '', handicap: '' })
+  const [form, setForm] = useState({ name: '', nickname: '', email: '', password: '', code: '', handicap: '', phone: '' })
+  const [kissMsg, setKissMsg] = useState<string | null>(null)
+  const [kissAnswer, setKissAnswer] = useState('')
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -46,12 +48,13 @@ export default function AuthPage() {
       },
     })
 
-    // Update optional fields on the profile right after creation
-    if (!error && data.user && (form.handicap || form.nickname.trim())) {
+    // Update profile fields right after creation
+    if (!error && data.user) {
       await supabase.from('profiles')
         .update({
           ...(form.handicap ? { handicap: +form.handicap } : {}),
           ...(form.nickname.trim() ? { nickname: form.nickname.trim() } : {}),
+          ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
         })
         .eq('id', data.user.id)
     }
@@ -151,10 +154,53 @@ export default function AuthPage() {
             )}
             {mode === 'register' && (
               <input
-                type="number" placeholder="Handicap (optional)"
+                type="tel" placeholder="Phone Number"
+                value={form.phone} onChange={e => set('phone', e.target.value)}
+                required
+              />
+            )}
+            {mode === 'register' && (
+              <input
+                type="number" placeholder="Handicap"
                 value={form.handicap} onChange={e => set('handicap', e.target.value)}
                 min={0} max={54} step={0.1}
+                required
               />
+            )}
+            {mode === 'register' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <select
+                  value={kissAnswer}
+                  onChange={e => {
+                    const v = e.target.value
+                    if (v === 'no') {
+                      setKissAnswer('yes')
+                      setKissMsg("Sure buddy. But your golf swing says otherwise — and that thing doesn't lie.")
+                    } else if (v === 'yes') {
+                      setKissAnswer('yes')
+                      setKissMsg("Yeah, not surprised. Your golf swing tells me all I need to know.")
+                    } else {
+                      setKissAnswer('')
+                      setKissMsg(null)
+                    }
+                  }}
+                  style={{ color: kissAnswer ? 'var(--tx1)' : 'var(--tx4)' }}
+                >
+                  <option value="">Do you kiss boys?</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+                {kissMsg && (
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 10,
+                    background: 'rgba(252,181,20,0.08)',
+                    border: '1px solid rgba(252,181,20,0.25)',
+                    fontSize: 13, color: '#FCB514', fontStyle: 'italic', lineHeight: 1.5,
+                  }}>
+                    🏌️ {kissMsg}
+                  </div>
+                )}
+              </div>
             )}
             <button type="submit" className="btn-gold" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
               {loading ? (
