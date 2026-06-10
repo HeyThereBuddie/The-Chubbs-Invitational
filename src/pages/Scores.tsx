@@ -377,25 +377,22 @@ export default function Scores() {
   const { isOnline, refreshPendingCount } = useSyncContext()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const _initTeam = searchParams.get('team')
+  const _initHole = parseInt(searchParams.get('hole') ?? '1')
+
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
   const [myTeam,           setMyTeam]           = useState<TeamFull | null>(null)
   const [myScores,         setMyScores]         = useState<Record<number, ScoreRow>>({})
   const [myChulligans,     setMyChulligans]     = useState<ChulliganRow[]>([])
   const [adminScores,      setAdminScores]      = useState<Record<number, ScoreRow>>({})
   const [adminChulligans,  setAdminChulligans]  = useState<ChulliganRow[]>([])
-  const [viewingTeamId, setViewingTeamId] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('team') ?? null
-  })
+  const [viewingTeamId, setViewingTeamId] = useState<string | null>(_initTeam)
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
-  const [searchParams, setSearchParams] = useSearchParams()
   const [adminTeamId,   setAdminTeamId]   = useState<string | null>(null)
-  const [selectedHole,  setSelectedHole]  = useState(() => {
-    const h = parseInt(searchParams.get('hole') ?? '1')
-    return h >= 1 && h <= 18 ? h : 1
-  })
+  const [selectedHole,  setSelectedHole]  = useState(_initHole >= 1 && _initHole <= 18 ? _initHole : 1)
   const [saving,        setSaving]        = useState<number | null>(null)
   const [teamPick,      setTeamPick]      = useState('')
   const [settingTeam,   setSettingTeam]   = useState(false)
@@ -426,9 +423,9 @@ export default function Scores() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId, isOnline])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
-  // Default view to own team on first load; switch to other teams for read-only browse
+  // Default view to own team on first load, but not when a team was deep-linked via URL
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (myTeamId && !viewingTeamId) setViewingTeamId(myTeamId) }, [myTeamId])
+  useEffect(() => { if (myTeamId && !viewingTeamId && !_initTeam) setViewingTeamId(myTeamId) }, [myTeamId])
   useEffect(() => {
     if (!viewingTeamId || viewingTeamId === myTeamId) return
     loadViewTeam(viewingTeamId)
