@@ -201,7 +201,7 @@ export default function Leaderboard() {
 
                   <div style={{ display: 'flex', gap: 16, textAlign: 'right', flexShrink: 0 }}>
                     <div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
                         {row.thru > 0 ? toPar(row.toPar) : '—'}
                       </div>
                       <div style={{ fontSize: 9, color: 'var(--tx4)' }}>TO PAR</div>
