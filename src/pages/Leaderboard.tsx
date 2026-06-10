@@ -138,8 +138,10 @@ export default function Leaderboard() {
               }} >
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 22, width: 32, flexShrink: 0 }}>
-                    {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 14, color: 'var(--tx3)', fontWeight: 700 }}>{i + 1}</span>}
+                  <span style={{ fontSize: 34, width: 42, flexShrink: 0, textAlign: 'center', lineHeight: 1 }}>
+                    {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : (
+                      <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: 'var(--tx2)', letterSpacing: 1 }}>{i + 1}</span>
+                    )}
                   </span>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -175,7 +177,7 @@ export default function Leaderboard() {
 
                 {/* Gap from leader */}
                 {gap !== null && gap > 0 && row.thru > 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4, marginLeft: 44 }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4, marginLeft: 54 }}>
                     {gap} back
                   </div>
                 )}
