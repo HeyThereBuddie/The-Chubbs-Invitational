@@ -82,6 +82,7 @@ export default function Dashboard() {
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const { tournaments, viewingTournamentId, effectiveTournamentId, isCurrentYear, setViewingTournamentId, activeTournamentId } = useYear()
+  const { isDark } = useTheme()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
   const [feed, setFeed] = useState<FeedEvent[]>([])

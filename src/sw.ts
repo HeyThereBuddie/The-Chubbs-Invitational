@@ -3,15 +3,12 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 
 declare const self: ServiceWorkerGlobalScope
 
-// Precache all build assets (Vite injects the manifest here)
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// Take control immediately on install/activate
 self.addEventListener('install',  () => self.skipWaiting())
 self.addEventListener('activate', e  => e.waitUntil(self.clients.claim()))
 
-// ── Push notifications (preserved from existing sw.js) ────────────────────
 self.addEventListener('push', event => {
   const data = event.data?.json() ?? {}
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

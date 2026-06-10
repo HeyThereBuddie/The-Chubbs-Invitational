@@ -44,6 +44,8 @@ export default defineConfig({
         ],
       },
 
+      manifestFilename: 'site.webmanifest',
+
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
       },
