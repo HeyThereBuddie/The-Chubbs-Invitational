@@ -1,7 +1,12 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 export default function UpdatePrompt() {
-  const { needRefresh: [needRefresh, setNeedRefresh], updateServiceWorker } = useRegisterSW()
+  const { needRefresh: [needRefresh, setNeedRefresh], updateServiceWorker } = useRegisterSW({
+    onRegisteredSW(_swUrl, registration) {
+      // Poll for updates every 60s — important for standalone PWA mode
+      setInterval(() => registration?.update(), 60_000)
+    },
+  })
 
   if (!needRefresh) return null
 

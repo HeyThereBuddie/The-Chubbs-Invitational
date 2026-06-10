@@ -6,8 +6,13 @@ declare const self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-self.addEventListener('install',  () => self.skipWaiting())
-self.addEventListener('activate', e  => e.waitUntil(self.clients.claim()))
+// Don't auto-skipWaiting — wait for user to approve via UpdatePrompt
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()))
+
+// useRegisterSW sends this message when user taps "Reload"
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
 
 self.addEventListener('push', event => {
   const data = event.data?.json() ?? {}
