@@ -236,7 +236,7 @@ export default function Leaderboard() {
                         </div>
                         {row.holeScores.map((_, holeIdx) => (
                           <div key={holeIdx}
-                            onClick={() => navigate(`/scores?hole=${holeIdx + 1}&team=${row.team.id}`)}
+                            onClick={() => navigate('/scores', { state: { hole: holeIdx + 1, teamId: row.team.id } })}
                             style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--tx3)', cursor: 'pointer' }}>
                             {holeIdx + 1}
                           </div>
@@ -252,14 +252,14 @@ export default function Leaderboard() {
                           if (score === null) {
                             return (
                               <div key={holeIdx}
-                                onClick={() => navigate(`/scores?hole=${holeIdx + 1}&team=${row.team.id}`)}
+                                onClick={() => navigate('/scores', { state: { hole: holeIdx + 1, teamId: row.team.id } })}
                                 style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--bdr)', flexShrink: 0, cursor: 'pointer' }} />
                             )
                           }
                           return (
                             <div key={holeIdx}
                               className={`score-bubble ${scoreBubbleClass(score, par)}`}
-                              onClick={() => navigate(`/scores?hole=${holeIdx + 1}&team=${row.team.id}`)}
+                              onClick={() => navigate('/scores', { state: { hole: holeIdx + 1, teamId: row.team.id } })}
                               style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0, cursor: 'pointer' }}
                               title={`Hole ${holeIdx + 1}: ${score} (Par ${par})`}
                             >

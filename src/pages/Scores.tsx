@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
@@ -377,9 +377,12 @@ export default function Scores() {
   const { isOnline, refreshPendingCount } = useSyncContext()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const _initTeam = searchParams.get('team')
-  const _initHole = parseInt(searchParams.get('hole') ?? '1')
+  // State passed via navigate('/scores', { state: { hole, teamId } }) takes priority over URL params
+  const _navState = location.state as { hole?: number; teamId?: string } | null
+  const _initTeam = _navState?.teamId ?? null
+  const _initHole = _navState?.hole ?? parseInt(searchParams.get('hole') ?? '1')
 
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
   const [myTeam,           setMyTeam]           = useState<TeamFull | null>(null)
@@ -409,9 +412,14 @@ export default function Scores() {
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
-  // Clear the ?hole= param from the URL after it's been consumed
+  // Clear any leftover URL params (legacy, from old ?hole=N approach)
   useEffect(() => {
     if (searchParams.get('hole') || searchParams.get('team')) setSearchParams({}, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Clear navigation state so back-navigation doesn't re-apply it
+  useEffect(() => {
+    if (_initTeam) window.history.replaceState({}, '')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
