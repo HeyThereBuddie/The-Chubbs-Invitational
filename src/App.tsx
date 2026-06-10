@@ -21,6 +21,7 @@ import LiveFeed from './pages/LiveFeed'
 import WelcomePage from './pages/WelcomePage'
 import InviteResponsePage from './pages/InviteResponsePage'
 import HallOfFame from './pages/HallOfFame'
+import UpdatePrompt from './components/UpdatePrompt'
 
 function Spinner() {
   return (
@@ -76,6 +77,7 @@ export default function App() {
           <ToastProvider>
             <YearProvider>
               <AppRoutes />
+              <UpdatePrompt />
             </YearProvider>
           </ToastProvider>
         </AuthProvider>
