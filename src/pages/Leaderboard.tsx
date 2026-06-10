@@ -164,22 +164,22 @@ export default function Leaderboard() {
 
                 {/* Hole grid: hole numbers on top, score bubbles below */}
                 {row.thru > 0 && (
-                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
-                    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, minWidth: 'max-content' }}>
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto', overflowY: 'visible' }}>
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 'max-content' }}>
                       {/* Hole number row */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
                           Hole:
                         </div>
                         {row.holeScores.map((_, holeIdx) => (
-                          <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
+                          <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>
                             {holeIdx + 1}
                           </div>
                         ))}
                       </div>
-                      {/* Score bubble row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
+                      {/* Score bubble row — padding lets outlines (outline-offset: 3px) render without clipping */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
+                        <div style={{ width: 44, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
                           Score:
                         </div>
                         {row.holeScores.map((score, holeIdx) => {
