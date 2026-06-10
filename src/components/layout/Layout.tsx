@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import RulesChat from '../RulesChat'
+import OfflineBanner from '../OfflineBanner'
 import { UserCircle, Sun, Moon } from 'lucide-react'
 import { useYear } from '../../context/YearContext'
 
@@ -92,6 +93,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <BottomNav />
         </div>
       )}
+      <OfflineBanner />
     </div>
   )
 }

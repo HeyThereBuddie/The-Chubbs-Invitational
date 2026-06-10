@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
+import { useSyncContext } from '../context/SyncContext'
+import { localDb, parseJson } from '../lib/localDb'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Camera, Target, Upload } from 'lucide-react'
@@ -22,6 +24,7 @@ export default function Contests() {
   const { profile } = useAuth()
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { isOnline } = useSyncContext()
   const [tab, setTab] = useState<ContestType>('ctp')
 
   // CTP / LD state
@@ -86,6 +89,37 @@ export default function Contests() {
 
   const fetchContestData = async () => {
     if (!effectiveTournamentId) { setEntries([]); return }
+
+    if (!isOnline) {
+      const localEntries = await localDb.contest_entries
+        .where('tournament_id').equals(effectiveTournamentId)
+        .toArray()
+      const filtered = localEntries.filter(e => e.type === tab)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      setEntries(filtered.map(e => ({
+        ...e,
+        player: parseJson<Player>(e.player_json),
+      } as unknown as ContestEntry & { player?: Player })))
+
+      if (profile?.team_id) {
+        const localProfiles = await localDb.profiles.toArray()
+        const localTeams = await localDb.teams.toArray()
+        const myTeam = localTeams.find(t => t.id === profile.team_id)
+        if (myTeam) {
+          setMyTeamName(myTeam.name)
+          const p1 = parseJson<Player>(myTeam.player1_json)
+          const p2 = parseJson<Player>(myTeam.player2_json)
+          setContestPlayers([p1, p2].filter(Boolean) as Player[])
+        } else {
+          setContestPlayers(localProfiles as Player[])
+        }
+      } else {
+        const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
+        setContestPlayers(localProfiles as Player[])
+      }
+      return
+    }
+
     let q = supabase.from('contest_entries').select('*, player:profiles(*)').eq('type', tab).order('created_at', { ascending: false })
     q = q.eq('tournament_id', effectiveTournamentId)
     const { data: entriesData } = await q
@@ -108,6 +142,18 @@ export default function Contests() {
   }
 
   const fetchJackassFeed = async () => {
+    if (!isOnline) {
+      if (!effectiveTournamentId) { setJackassFeed([]); return }
+      const localEvents = await localDb.feed_events
+        .where('tournament_id').equals(effectiveTournamentId)
+        .toArray()
+      const filtered = localEvents
+        .filter(e => e.event_type === 'contest' && (e.label === 'Jackass Vote' || e.label === 'Vote Changed'))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 20)
+      setJackassFeed(filtered as JackassFeedEvent[])
+      return
+    }
     const { data } = await supabase
       .from('feed_events')
       .select('id, voter_name, player_name, label, created_at')
@@ -120,6 +166,16 @@ export default function Contests() {
 
   const fetchLaheyData = async () => {
     if (!effectiveTournamentId) { setLaheyPlayers([]); setVotes([]); return }
+
+    if (!isOnline) {
+      const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
+      const localVotes = await localDb.leahey_votes.where('tournament_id').equals(effectiveTournamentId).toArray()
+      setLaheyPlayers(localProfiles as Player[])
+      setVotes(localVotes as LeaheyVote[])
+      setVotingOpen(false)
+      return
+    }
+
     let votesQ = supabase.from('leahey_votes').select('*')
     votesQ = votesQ.eq('tournament_id', effectiveTournamentId)
     const [playersRes, votesRes, settingsRes] = await Promise.all([

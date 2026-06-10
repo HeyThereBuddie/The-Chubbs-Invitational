@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
+import { useSyncContext } from '../context/SyncContext'
+import { localDb, parseJson } from '../lib/localDb'
 import type { TeeTime, Team, Player } from '../lib/types'
 import { Clock, GripVertical, Zap, Shuffle } from 'lucide-react'
 
@@ -34,6 +36,7 @@ export default function TeeTimes() {
   const { isAdmin } = useAuth()
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { isOnline } = useSyncContext()
   const [teeTimes, setTeeTimes] = useState<TeeTimeRow[]>([])
   const [teams, setTeams] = useState<(Team & { player1?: Player; player2?: Player })[]>([])
   const [tab, setTab] = useState<'view' | 'arrange' | 'auto'>('view')
@@ -44,10 +47,30 @@ export default function TeeTimes() {
   const [dragTeamId, setDragTeamId] = useState<string | null>(null)
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null)
 
-  useEffect(() => { fetchAll() }, [effectiveTournamentId])
+  useEffect(() => { fetchAll() }, [effectiveTournamentId, isOnline])
 
   const fetchAll = async () => {
     if (!effectiveTournamentId) { setTeams([]); return }
+
+    if (!isOnline) {
+      const localTTs = await localDb.tee_times.toArray()
+      const mappedTTs: TeeTimeRow[] = localTTs.map(tt => {
+        const teamObj = parseJson<Team & { player1?: Player; player2?: Player }>(tt.team_json)
+        return {
+          id: tt.id,
+          team_id: tt.team_id,
+          tee_time: tt.tee_time,
+          starting_hole: tt.starting_hole,
+          cart: tt.cart,
+          notes: tt.notes,
+          team: teamObj,
+        } as TeeTimeRow
+      })
+      setTeeTimes(mappedTTs)
+      setTeams([])
+      return
+    }
+
     let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
     teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
     const [ttRes, teamsRes] = await Promise.all([

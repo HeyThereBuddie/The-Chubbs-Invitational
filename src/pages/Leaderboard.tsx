@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
 import { COURSE_PAR, displayName } from '../lib/types'
 import { useYear } from '../context/YearContext'
+import { useSyncContext } from '../context/SyncContext'
+import { localDb, parseJson } from '../lib/localDb'
 
 const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
 
@@ -26,6 +28,7 @@ interface LeaderRow {
 
 export default function Leaderboard() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { isOnline } = useSyncContext()
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -44,15 +47,30 @@ export default function Leaderboard() {
 
   const fetchData = async () => {
     if (!effectiveTournamentId) { setRows([]); setLoading(false); return }
-    let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-    teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
-    const [teamsRes, scoresRes] = await Promise.all([
-      teamsQ,
-      supabase.from('scores').select('*'),
-    ])
 
-    const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
-    const allScores: Score[] = scoresRes.data ?? []
+    let teams: (Team & { player1?: Player; player2?: Player })[]
+    let allScores: Score[]
+
+    if (!isOnline) {
+      const localTeams = await localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray()
+      const localScores = await localDb.scores.toArray()
+      teams = localTeams.map(t => ({
+        id: t.id, name: t.name, tournament_id: t.tournament_id,
+        p1_id: t.p1_id, p2_id: t.p2_id,
+        player1: parseJson<Player>(t.player1_json),
+        player2: parseJson<Player>(t.player2_json),
+      } as unknown as Team & { player1?: Player; player2?: Player }))
+      allScores = localScores as Score[]
+    } else {
+      let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+      teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
+      const [teamsRes, scoresRes] = await Promise.all([
+        teamsQ,
+        supabase.from('scores').select('*'),
+      ])
+      teams = teamsRes.data ?? []
+      allScores = scoresRes.data ?? []
+    }
 
     const leaderRows: LeaderRow[] = teams.map(team => {
       const teamScores = allScores.filter(s => s.team_id === team.id)

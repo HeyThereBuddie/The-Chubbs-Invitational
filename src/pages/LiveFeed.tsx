@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
 import { useYear } from '../context/YearContext'
 import { useAuth } from '../context/AuthContext'
+import { useSyncContext } from '../context/SyncContext'
+import { localDb } from '../lib/localDb'
 import ReactionBar from '../components/ReactionBar'
 import type { ReactionGroup } from '../components/ReactionBar'
 
@@ -63,6 +65,7 @@ function buildReactionsMap(rows: { event_id: string; player_id: string; emoji: s
 export default function LiveFeed() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { profile } = useAuth()
+  const { isOnline } = useSyncContext()
   const [events, setEvents] = useState<FeedEvent[]>([])
   const [reactions, setReactions] = useState<Record<string, ReactionGroup[]>>({})
   const [loading, setLoading] = useState(true)
@@ -81,6 +84,27 @@ export default function LiveFeed() {
 
   const fetchEvents = async () => {
     if (!effectiveTournamentId) { setEvents([]); setLoading(false); return }
+
+    if (!isOnline) {
+      const localEvents = await localDb.feed_events
+        .where('tournament_id').equals(effectiveTournamentId)
+        .toArray()
+      const sorted = localEvents
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 200)
+      setEvents(sorted as FeedEvent[])
+
+      if (sorted.length > 0) {
+        const eventIds = sorted.map(e => e.id)
+        const localReactions = await localDb.feed_reactions
+          .where('event_id').anyOf(eventIds)
+          .toArray()
+        setReactions(buildReactionsMap(localReactions))
+      }
+
+      setLoading(false)
+      return
+    }
 
     const { data: eventsData } = await supabase
       .from('feed_events')

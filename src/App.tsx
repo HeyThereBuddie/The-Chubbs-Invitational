@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { YearProvider } from './context/YearContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { SyncProvider } from './context/SyncContext'
 import Layout from './components/layout/Layout'
 import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
@@ -76,8 +77,10 @@ export default function App() {
         <AuthProvider>
           <ToastProvider>
             <YearProvider>
-              <AppRoutes />
-              <UpdatePrompt />
+              <SyncProvider>
+                <AppRoutes />
+                <UpdatePrompt />
+              </SyncProvider>
             </YearProvider>
           </ToastProvider>
         </AuthProvider>

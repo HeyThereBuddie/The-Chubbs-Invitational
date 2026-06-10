@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
+import { useSyncContext } from '../context/SyncContext'
+import { localDb, parseJson } from '../lib/localDb'
 import type { Player, Pairing } from '../lib/types'
 import { Lock, Shuffle, Save } from 'lucide-react'
 
@@ -10,15 +12,33 @@ export default function Groups() {
   const { isAdmin } = useAuth()
   const { showToast } = useToast()
   const { isCurrentYear, activeTournamentId } = useYear()
+  const { isOnline } = useSyncContext()
   const [players, setPlayers] = useState<Player[]>([])
   const [pairings, setPairings] = useState<(Pairing & { player_a?: Player; player_b?: Player })[]>([])
   const [draftPairings, setDraftPairings] = useState<{ a: Player; b: Player; name: string }[]>([])
   const [tab, setTab] = useState<'groups' | 'pairings'>('groups')
   const [pairingsReleased, setPairingsReleased] = useState(false)
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [isOnline])
 
   const fetchData = async () => {
+    if (!isOnline) {
+      const localPairings = await localDb.pairings.toArray()
+      const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
+      setPlayers(localProfiles as Player[])
+      const mappedPairings = localPairings.map(p => ({
+        id: p.id,
+        player_a_id: p.player_a_id,
+        player_b_id: p.player_b_id,
+        team_name: p.team_name,
+        generated_at: p.generated_at,
+        player_a: parseJson<Player>(p.player_a_json),
+        player_b: parseJson<Player>(p.player_b_json),
+      } as Pairing & { player_a?: Player; player_b?: Player }))
+      setPairings(mappedPairings)
+      setPairingsReleased(mappedPairings.length > 0)
+      return
+    }
     const [playersRes, pairingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('status', 'active').order('handicap'),
       supabase.from('pairings').select('*, player_a:profiles!pairings_player_a_id_fkey(*), player_b:profiles!pairings_player_b_id_fkey(*)').order('generated_at', { ascending: false }),
