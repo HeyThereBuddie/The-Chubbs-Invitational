@@ -200,11 +200,14 @@ export default function AdminPanel() {
   const [endingTournament, setEndingTournament] = useState(false)
   const [tournamentHistory, setTournamentHistory] = useState<THistoryEntry[]>([])
   const [editingT, setEditingT] = useState<EditingTournament | null>(null)
-  const [deleteModal, setDeleteModal] = useState<{ id: string; year: number; step: 1 | 2 } | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ id: string; year: number; name: string; isActive: boolean; step: 1 | 2 } | null>(null)
   const [deleteInput, setDeleteInput] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingYear, setDeletingYear] = useState(false)
   const [restoringYear, setRestoringYear] = useState<string | null>(null)
+  const [permDeleteModal, setPermDeleteModal] = useState<{ id: string; name: string } | null>(null)
+  const [permDeleteInput, setPermDeleteInput] = useState('')
+  const [permDeleting, setPermDeleting] = useState(false)
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
   const [testTournamentOpen, setTestTournamentOpen] = useState(false)
   const [testTournamentName, setTestTournamentName] = useState('')
@@ -438,11 +441,13 @@ export default function AdminPanel() {
     setDeletingYear(true)
     await supabase.from('tournaments').update({ deleted_at: new Date().toISOString() }).eq('id', deleteModal.id)
     setDeletingYear(false)
-    const year = deleteModal.year
+    const { name, isActive } = deleteModal
+    if (isActive) { setActiveTournamentId(null); fetchTeams(null) }
     setDeleteModal(null)
     setDeleteInput('')
     fetchTournamentHistory()
-    showToast(`${year} archived. Restore it from Deleted Years anytime.`)
+    refreshTournaments()
+    showToast(`"${name}" removed. Restore it from Deleted Years anytime.`)
   }
 
   const restoreT = async (id: string, year: number) => {
@@ -451,6 +456,17 @@ export default function AdminPanel() {
     setRestoringYear(null)
     fetchTournamentHistory()
     showToast(`${year} restored to Hall of Fame!`)
+  }
+
+  const permanentDeleteT = async () => {
+    if (!permDeleteModal || permDeleteInput !== permDeleteModal.name) return
+    setPermDeleting(true)
+    await supabase.from('tournaments').delete().eq('id', permDeleteModal.id)
+    setPermDeleting(false)
+    setPermDeleteModal(null)
+    setPermDeleteInput('')
+    fetchTournamentHistory()
+    showToast(`"${permDeleteModal.name}" permanently deleted.`)
   }
 
   const createTestTournament = async () => {
@@ -826,9 +842,7 @@ export default function AdminPanel() {
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => openEditT(t)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(252,181,20,0.1)', border: '1px solid rgba(252,181,20,0.3)', color: '#FCB514', cursor: 'pointer' }}>Edit</button>
-                      {t.status !== 'active' && (
-                        <button onClick={() => setDeleteModal({ id: t.id, year: t.year, step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
-                      )}
+                      <button onClick={() => setDeleteModal({ id: t.id, year: t.year, name: t.name, isActive: t.status === 'active', step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
                     </div>
                   </div>
                   {t.final_standings && t.final_standings.length > 0 && (
@@ -859,16 +873,27 @@ export default function AdminPanel() {
                 {deleted.map(t => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 8, opacity: 0.7 }}>
                     <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'rgba(255,255,255,0.3)', letterSpacing: 2 }}>{t.year}</div>
-                    <div style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
-                      Removed {t.deleted_at ? new Date(t.deleted_at).toLocaleDateString() : ''}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{t.name}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>
+                        Removed {t.deleted_at ? new Date(t.deleted_at).toLocaleDateString() : ''}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => restoreT(t.id, t.year)}
-                      disabled={restoringYear === t.id}
-                      style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', cursor: 'pointer', opacity: restoringYear === t.id ? 0.6 : 1 }}
-                    >
-                      {restoringYear === t.id ? 'Restoring…' : 'Restore'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => restoreT(t.id, t.year)}
+                        disabled={restoringYear === t.id}
+                        style={{ padding: '7px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', cursor: 'pointer', opacity: restoringYear === t.id ? 0.6 : 1 }}
+                      >
+                        {restoringYear === t.id ? 'Restoring…' : 'Restore'}
+                      </button>
+                      <button
+                        onClick={() => { setPermDeleteModal({ id: t.id, name: t.name }); setPermDeleteInput('') }}
+                        style={{ padding: '7px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer' }}
+                      >
+                        Delete Forever
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -925,9 +950,14 @@ export default function AdminPanel() {
             {deleteModal?.step === 1 && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Remove {deleteModal.year}?</div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 8, lineHeight: 1.6 }}>This will hide <strong style={{ color: '#fff' }}>{deleteModal.year}</strong> from the Hall of Fame.</p>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 24, lineHeight: 1.6 }}>The data is not permanently deleted — you can restore it from the Deleted Years section at any time.</p>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Remove "{deleteModal.name}"?</div>
+                  {deleteModal.isActive && (
+                    <p style={{ fontSize: 13, color: '#f59e0b', marginBottom: 10, lineHeight: 1.6, padding: '8px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                      ⚠️ This is the active tournament. Removing it will put the app into off-season mode until you create a new one.
+                    </p>
+                  )}
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 8, lineHeight: 1.6 }}>This will hide <strong style={{ color: '#fff' }}>{deleteModal.name}</strong> from the Hall of Fame.</p>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 24, lineHeight: 1.6 }}>Not permanent — restore it from Deleted Years at any time.</p>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button onClick={() => setDeleteModal(d => d ? { ...d, step: 2 } : d)} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer' }}>Yes, remove it</button>
                     <button onClick={() => setDeleteModal(null)} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
@@ -962,6 +992,40 @@ export default function AdminPanel() {
                       {deletingYear ? 'Removing…' : 'Confirm Remove'}
                     </button>
                     <button onClick={() => { setDeleteModal(null); setDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Permanent delete modal */}
+            {permDeleteModal && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Delete Forever?</div>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 8, lineHeight: 1.6 }}>
+                    This will <strong style={{ color: '#fff' }}>permanently delete</strong> all data for this tournament — standings, results, scores, and feed events. <strong style={{ color: '#ef4444' }}>This cannot be undone.</strong>
+                  </p>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
+                    Type <strong style={{ color: '#fff' }}>{permDeleteModal.name}</strong> to confirm.
+                  </p>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder={`Type "${permDeleteModal.name}" here…`}
+                    value={permDeleteInput}
+                    onChange={e => setPermDeleteInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && permDeleteInput === permDeleteModal.name && permanentDeleteT()}
+                    style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20 }}
+                  />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={permanentDeleteT}
+                      disabled={permDeleting || permDeleteInput !== permDeleteModal.name}
+                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: permDeleteInput === permDeleteModal.name ? '#ef4444' : 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: permDeleteInput === permDeleteModal.name ? '#fff' : 'rgba(239,68,68,0.4)', cursor: permDeleting || permDeleteInput !== permDeleteModal.name ? 'not-allowed' : 'pointer', opacity: permDeleting ? 0.6 : 1 }}
+                    >
+                      {permDeleting ? 'Deleting…' : 'Delete Forever'}
+                    </button>
+                    <button onClick={() => { setPermDeleteModal(null); setPermDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
