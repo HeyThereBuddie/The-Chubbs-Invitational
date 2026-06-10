@@ -10,7 +10,7 @@ const playerNav = [
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/my-team', icon: Users2, label: 'My Team' },
+  { to: '/my-team', icon: Users2, label: 'Team' },
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/hall-of-fame', icon: Star, label: 'HOF' },
@@ -22,7 +22,7 @@ const adminNav = [
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/my-team', icon: Users2, label: 'My Team' },
+  { to: '/my-team', icon: Users2, label: 'Team' },
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/hall-of-fame', icon: Star, label: 'HOF' },
@@ -50,23 +50,39 @@ export default function BottomNav() {
           key={to}
           to={to}
           end={to === '/'}
-          style={({ isActive }) => ({
+          style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '8px 2px 6px',
+            padding: '6px 2px 6px',
             textDecoration: 'none',
-            color: isActive ? '#FCB514' : 'var(--tx3)',
-            transition: 'color 0.2s',
             minWidth: 0,
-          })}
+          }}
         >
           {({ isActive }) => (
             <>
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-              <span style={{ fontSize: 10, marginTop: 3, fontWeight: isActive ? 700 : 400, letterSpacing: 0.3 }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 40,
+                height: 26,
+                borderRadius: 999,
+                background: isActive ? 'rgba(252,181,20,0.18)' : 'transparent',
+                transition: 'background 0.2s',
+                marginBottom: 2,
+              }}>
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#FCB514' : 'var(--tx3)'} />
+              </div>
+              <span style={{
+                fontSize: 10,
+                fontWeight: isActive ? 700 : 500,
+                letterSpacing: 0.3,
+                color: isActive ? '#FCB514' : 'var(--tx3)',
+                transition: 'color 0.2s',
+              }}>
                 {label}
               </span>
             </>

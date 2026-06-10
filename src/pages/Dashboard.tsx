@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
+import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
@@ -78,6 +79,7 @@ interface DefendingChamp {
 
 export default function Dashboard() {
   const { profile } = useAuth()
+  const { isDark } = useTheme()
   const navigate = useNavigate()
   const { tournaments, viewingTournamentId, effectiveTournamentId, isCurrentYear, setViewingTournamentId, activeTournamentId } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
@@ -302,7 +304,9 @@ export default function Dashboard() {
       <div className="animate-fadeUp" style={{
         marginBottom: 14, borderRadius: 12, overflow: 'hidden',
         border: '1px solid rgba(252,181,20,0.22)',
-        background: 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)',
+        background: isDark
+          ? 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)'
+          : 'linear-gradient(135deg, #fffbef 0%, #fff8e1 50%, #fffbef 100%)',
       }}>
         <div style={{ padding: isMobile ? '8px 12px' : '12px 18px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
           {!isMobile && (
