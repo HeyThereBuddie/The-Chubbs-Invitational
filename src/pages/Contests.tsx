@@ -192,7 +192,8 @@ export default function Contests() {
       // Change existing vote
       ;({ error } = await supabase.from('leahey_votes')
         .update({ nominee_id: selected })
-        .eq('voter_id', profile.id))
+        .eq('voter_id', profile.id)
+        .eq('tournament_id', effectiveTournamentId))
     } else {
       // First-time vote
       ;({ error } = await supabase.from('leahey_votes')
