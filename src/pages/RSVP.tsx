@@ -178,8 +178,8 @@ export default function RSVP() {
                   {player.status}
                 </div>
                 {isExpanded
-                  ? <ChevronUp size={14} color="rgba(255,255,255,0.4)" />
-                  : <ChevronDown size={14} color="rgba(255,255,255,0.4)" />}
+                  ? <ChevronUp size={14} color="var(--tx3)" />
+                  : <ChevronDown size={14} color="var(--tx3)" />}
               </button>
 
               {isExpanded && (

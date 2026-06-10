@@ -123,7 +123,7 @@ export default function Groups() {
               {grpPlayers.map((p, i) => (
                 <div key={p.id} style={{
                   padding: '10px 18px',
-                  borderBottom: i < grpPlayers.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  borderBottom: i < grpPlayers.length - 1 ? '1px solid var(--bdr)' : 'none',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tx1)' }}>{p.name}</div>
@@ -176,7 +176,7 @@ export default function Groups() {
           {/* Released pairings or locked */}
           {!pairingsReleased && draftPairings.length === 0 && !isAdmin && (
             <div className="glass" style={{ padding: 48, textAlign: 'center' }}>
-              <Lock size={40} color="rgba(255,255,255,0.2)" style={{ margin: '0 auto 16px' }} />
+              <Lock size={40} color="var(--tx4)" style={{ margin: '0 auto 16px' }} />
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--tx3)', letterSpacing: 3 }}>
                 Pairings Not Yet Released
               </div>

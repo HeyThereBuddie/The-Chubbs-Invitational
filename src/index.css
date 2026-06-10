@@ -28,10 +28,10 @@ html[data-theme="light"] {
   --surf2:      rgba(0,0,0,0.07);
   --surf3:      rgba(0,0,0,0.1);
   --tx1:        #1c1207;
-  --tx2:        #5c4832;
-  --tx3:        #8c7354;
-  --tx4:        #a89070;
-  --tx5:        #c4b090;
+  --tx2:        #3a2510;
+  --tx3:        #5a3e20;
+  --tx4:        #7a5530;
+  --tx5:        #8a6538;
   --bdr:        #e5d9c5;
   --bdr2:       #d4c4ac;
   --score-fill: #ffffff;

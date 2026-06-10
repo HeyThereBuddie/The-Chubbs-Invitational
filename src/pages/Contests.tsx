@@ -278,7 +278,7 @@ export default function Contests() {
             style={{
               position: 'absolute', top: 16, right: 16,
               width: 36, height: 36, borderRadius: '50%',
-              background: 'var(--tx5)', border: '1px solid rgba(255,255,255,0.2)',
+              background: 'var(--tx5)', border: '1px solid var(--bdr2)',
               color: 'var(--tx1)', fontSize: 20, lineHeight: 1,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -499,7 +499,7 @@ export default function Contests() {
                         padding: '12px', borderRadius: 12, border: '1px solid',
                         borderColor: isSelected ? '#FCB514' : 'var(--tx5)',
                         background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
-                        color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'rgba(255,255,255,0.8)',
+                        color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
                         cursor: 'pointer',
                         fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
                       }}
@@ -571,7 +571,7 @@ export default function Contests() {
               {jackassFeed.map((ev, i) => (
                 <div key={ev.id} style={{
                   padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
-                  borderBottom: i < jackassFeed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  borderBottom: i < jackassFeed.length - 1 ? '1px solid var(--bdr)' : 'none',
                 }}>
                   <span style={{ fontSize: 16, flexShrink: 0 }}>🤠</span>
                   <div style={{ flex: 1, fontSize: 13, color: 'var(--tx2)' }}>

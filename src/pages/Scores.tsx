@@ -189,7 +189,7 @@ function HoleCard({
               disabled={isSaving || (hasScore && score <= 1)}
               style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--surf2)', border: '1px solid var(--bdr)',
                 color: 'var(--tx1)', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -260,7 +260,7 @@ function HoleCard({
                   style={{
                     padding: '4px 12px', borderRadius: 999,
                     fontSize: 12, fontWeight: 600, border: '1px solid',
-                    background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                    background: active ? 'rgba(252,181,20,0.18)' : 'var(--tx5)',
                     borderColor: active ? '#FCB514' : 'var(--tx5)',
                     color: active ? '#FCB514' : 'var(--tx3)',
                     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -289,7 +289,7 @@ function HoleCard({
                 <button key={n} onClick={() => onSetPutts(n)} style={{
                   width: 32, height: 28, borderRadius: 6,
                   fontSize: 13, fontWeight: 700, border: '1px solid',
-                  background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
+                  background: active ? 'rgba(252,181,20,0.18)' : 'var(--tx5)',
                   borderColor: active ? '#FCB514' : 'var(--tx5)',
                   color: active ? '#FCB514' : 'var(--tx3)',
                   cursor: 'pointer', transition: 'all 0.15s',
@@ -316,9 +316,9 @@ function HoleCard({
                   title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
                   style={{
                     padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: usedHere ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.04)',
+                    background: usedHere ? 'rgba(252,181,20,0.18)' : 'var(--tx5)',
                     border: `1px solid ${usedHere ? 'rgba(252,181,20,0.5)' : 'var(--tx5)'}`,
-                    color: usedHere ? '#FCB514' : usedElsewhere ? 'rgba(255,255,255,0.18)' : 'var(--tx3)',
+                    color: usedHere ? '#FCB514' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
                     cursor: usedElsewhere ? 'not-allowed' : 'pointer',
                     textDecoration: usedElsewhere ? 'line-through' : 'none',
                   }}>
@@ -334,7 +334,7 @@ function HoleCard({
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)' }}>
           <button type="button" onClick={onToggleInfo} style={{
             width: '100%', padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-            background: infoExpanded ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
+            background: infoExpanded ? 'rgba(252,181,20,0.1)' : 'var(--tx5)',
             border: `1px solid ${infoExpanded ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
             color: infoExpanded ? '#FCB514' : 'var(--tx2)',
             fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -672,7 +672,7 @@ export default function Scores() {
                     return (
                       <div key={name} style={{
                         flex: 1, textAlign: 'center', padding: '6px 4px', borderRadius: 8,
-                        background: ok ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)',
+                        background: ok ? 'rgba(34,197,94,0.1)' : 'var(--tx5)',
                         border: `1px solid ${ok ? 'rgba(34,197,94,0.3)' : 'var(--tx5)'}`,
                       }}>
                         <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#22c55e' : 'var(--tx2)' }}>
@@ -710,8 +710,8 @@ export default function Scores() {
             return (
               <div key={p.id} style={{
                 flex: 1, textAlign: 'center', padding: '10px 8px', borderRadius: 10,
-                background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.07)'}`,
+                background: c ? 'rgba(252,181,20,0.1)' : 'var(--tx5)',
+                border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
               }}>
                 <div style={{ fontSize: 20, marginBottom: 4 }}>{c ? '✅' : '🍺'}</div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: c ? '#FCB514' : 'var(--tx2)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -784,7 +784,7 @@ export default function Scores() {
               opacity: isLocked ? 0.38 : 1, transition: 'all 0.15s',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 700, color: isActive ? '#FCB514' : 'rgba(255,255,255,0.8)', lineHeight: 1 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: isActive ? '#FCB514' : 'var(--tx1)', lineHeight: 1 }}>
               {hole}
             </span>
             {isLocked ? (

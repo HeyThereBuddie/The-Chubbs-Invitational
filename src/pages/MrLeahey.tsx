@@ -121,7 +121,7 @@ export default function MrLeahey() {
                 border: '1px solid',
                 borderColor: isSelected ? '#FCB514' : 'var(--tx5)',
                 background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
-                color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'rgba(255,255,255,0.8)',
+                color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
                 cursor: myVote ? 'default' : 'pointer',
                 fontWeight: 600, fontSize: 13,
                 transition: 'all 0.2s',

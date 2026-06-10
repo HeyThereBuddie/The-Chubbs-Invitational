@@ -349,7 +349,7 @@ export default function AccountPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {rows.map(r => (
-                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(252,181,20,0.06)' : 'rgba(255,255,255,0.02)', border: r.key === 'champion' ? '1px solid rgba(252,181,20,0.2)' : '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(252,181,20,0.06)' : 'var(--tx5)', border: r.key === 'champion' ? '1px solid rgba(252,181,20,0.2)' : '1px solid var(--bdr)' }}>
                   <span style={{ fontSize: 18, flexShrink: 0 }}>{r.emoji}</span>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#FCB514' : 'var(--tx1)' }}>
@@ -503,9 +503,9 @@ export default function AccountPage() {
               disabled={pushLoading}
               style={{
                 marginLeft: 'auto', padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 600,
-                background: pushStatus === 'subscribed' ? 'rgba(255,255,255,0.06)' : 'rgba(252,181,20,0.15)',
-                border: `1px solid ${pushStatus === 'subscribed' ? 'rgba(255,255,255,0.12)' : 'rgba(252,181,20,0.4)'}`,
-                color: pushStatus === 'subscribed' ? 'rgba(255,255,255,0.5)' : '#FCB514',
+                background: pushStatus === 'subscribed' ? 'var(--tx5)' : 'rgba(252,181,20,0.15)',
+                border: `1px solid ${pushStatus === 'subscribed' ? 'var(--tx5)' : 'rgba(252,181,20,0.4)'}`,
+                color: pushStatus === 'subscribed' ? 'var(--tx2)' : '#FCB514',
                 cursor: pushLoading ? 'not-allowed' : 'pointer', opacity: pushLoading ? 0.6 : 1, whiteSpace: 'nowrap',
               }}
             >

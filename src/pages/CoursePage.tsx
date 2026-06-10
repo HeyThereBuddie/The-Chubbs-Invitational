@@ -33,7 +33,7 @@ const HOLES: HoleData[] = [
 
 const PAR_COLORS: Record<number, { bg: string; text: string; label: string }> = {
   3: { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e', label: 'Par 3' },
-  4: { bg: 'rgba(255,255,255,0.07)', text: 'var(--tx2)', label: 'Par 4' },
+  4: { bg: 'var(--tx5)', text: 'var(--tx2)', label: 'Par 4' },
   5: { bg: 'rgba(252,181,20,0.15)', text: '#FCB514', label: 'Par 5' },
 }
 
@@ -122,14 +122,14 @@ export default function CoursePage() {
                 <div style={{ display: 'flex', gap: 14, flexShrink: 0 }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                      <Ruler size={11} color="rgba(255,255,255,0.3)" />
+                      <Ruler size={11} color="var(--tx4)" />
                       <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{h.yards}</span>
                     </div>
                     <div style={{ fontSize: 9, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1 }}>yds</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                      <Hash size={11} color="rgba(255,255,255,0.3)" />
+                      <Hash size={11} color="var(--tx4)" />
                       <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)' }}>{h.si}</span>
                     </div>
                     <div style={{ fontSize: 9, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1 }}>SI</div>

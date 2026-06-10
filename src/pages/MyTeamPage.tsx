@@ -93,7 +93,7 @@ function scoreColor(score: number, par: number) {
   const d = score - par
   if (d <= -2) return '#FCB514'
   if (d === -1) return '#22c55e'
-  if (d === 0)  return 'rgba(255,255,255,0.65)'
+  if (d === 0)  return 'var(--tx2)'
   if (d === 1)  return '#f59e0b'
   return '#ef4444'
 }
@@ -295,7 +295,7 @@ export default function MyTeamPage() {
                 <button onClick={saveName} disabled={saving} title="Save" style={{ background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#FCB514', display: 'flex', alignItems: 'center' }}>
                   <Check size={16} />
                 </button>
-                <button onClick={() => setEditingName(false)} title="Cancel" style={{ background: 'var(--surf)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'var(--tx3)', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setEditingName(false)} title="Cancel" style={{ background: 'var(--surf)', border: '1px solid var(--bdr)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'var(--tx3)', display: 'flex', alignItems: 'center' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -522,8 +522,8 @@ export default function MyTeamPage() {
                       return (
                         <div key={p.id} style={{
                           flex: 1, textAlign: 'center', padding: '12px 10px', borderRadius: 12,
-                          background: c ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.07)'}`,
+                          background: c ? 'rgba(252,181,20,0.1)' : 'var(--tx5)',
+                          border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                             <AvatarCircle player={p} size={36} />

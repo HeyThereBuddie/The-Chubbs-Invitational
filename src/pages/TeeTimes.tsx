@@ -253,7 +253,7 @@ export default function TeeTimes() {
                             padding: '12px 14px',
                             borderRadius: 10,
                             border: `1px solid ${isOver ? '#FCB514' : 'var(--tx5)'}`,
-                            background: isOver ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.03)',
+                            background: isOver ? 'rgba(252,181,20,0.1)' : 'var(--tx5)',
                             opacity: isDragging ? 0.35 : 1,
                             cursor: 'grab',
                             display: 'flex', alignItems: 'center', gap: 8,

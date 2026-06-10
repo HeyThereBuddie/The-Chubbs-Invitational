@@ -127,7 +127,7 @@ export default function HallOfFame() {
           <div style={{
             display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22,
             padding: '12px 16px', borderRadius: 12,
-            background: 'rgba(255,255,255,0.02)',
+            background: 'var(--tx5)',
             border: '1px solid var(--bdr)',
           }}>
             {records.map(r => (
@@ -138,7 +138,7 @@ export default function HallOfFame() {
                   fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 2,
                   padding: '6px 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
                   transition: 'all 0.15s',
-                  background: selectedId === r.id ? '#FCB514' : 'rgba(255,255,255,0.05)',
+                  background: selectedId === r.id ? '#FCB514' : 'var(--tx5)',
                   color: selectedId === r.id ? '#0a0800' : 'var(--tx2)',
                   boxShadow: selectedId === r.id ? '0 0 12px rgba(252,181,20,0.35)' : 'none',
                 }}
@@ -194,8 +194,8 @@ export default function HallOfFame() {
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 10,
                             padding: '9px 14px', borderRadius: 10,
-                            background: i === 0 ? 'rgba(252,181,20,0.07)' : i < 3 ? 'rgba(255,255,255,0.03)' : 'transparent',
-                            border: i === 0 ? '1px solid rgba(252,181,20,0.2)' : i < 3 ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
+                            background: i === 0 ? 'rgba(252,181,20,0.07)' : i < 3 ? 'var(--tx5)' : 'transparent',
+                            border: i === 0 ? '1px solid rgba(252,181,20,0.2)' : i < 3 ? '1px solid var(--bdr)' : '1px solid transparent',
                           }}>
                             <span style={{ width: 26, textAlign: 'center', flexShrink: 0, fontSize: i < 3 ? 16 : 13, color: i === 0 ? '#FCB514' : 'var(--tx4)', fontWeight: 700 }}>
                               {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
@@ -228,7 +228,7 @@ export default function HallOfFame() {
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 12 }}>Final Standings</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {([['🏆', champion], ['🥈', runnerUp], ['🥉', third]] as [string, ResultEntry | null][]).filter(([, r]) => r).map(([icon, r]) => (
-                          <div key={(r as ResultEntry).id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: icon === '🏆' ? 'rgba(252,181,20,0.07)' : 'rgba(255,255,255,0.03)', border: icon === '🏆' ? '1px solid rgba(252,181,20,0.2)' : '1px solid rgba(255,255,255,0.05)' }}>
+                          <div key={(r as ResultEntry).id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: icon === '🏆' ? 'rgba(252,181,20,0.07)' : 'var(--tx5)', border: icon === '🏆' ? '1px solid rgba(252,181,20,0.2)' : '1px solid var(--bdr)' }}>
                             <span style={{ fontSize: 18 }}>{icon}</span>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 700, fontSize: 14, color: icon === '🏆' ? '#FCB514' : 'var(--tx1)' }}>{(r as ResultEntry).team_name ?? awardPlayers(r as ResultEntry)}</div>
@@ -254,14 +254,14 @@ export default function HallOfFame() {
                           </div>
                         )}
                         {ctp && (
-                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bdr)' }}>
+                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'var(--tx5)', border: '1px solid var(--bdr)' }}>
                             <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>🎯 Closest to Pin</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{ctp.player1_name ?? '—'}</div>
                             {ctp.detail && <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>{ctp.detail}</div>}
                           </div>
                         )}
                         {ld && (
-                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bdr)' }}>
+                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'var(--tx5)', border: '1px solid var(--bdr)' }}>
                             <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>💥 Longest Drive</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{ld.player1_name ?? '—'}</div>
                             {ld.detail && <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>{ld.detail}</div>}
