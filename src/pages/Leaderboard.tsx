@@ -126,11 +126,43 @@ export default function Leaderboard() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {rows.map((row, i) => {
-            const isLeader = i === 0 && row.thru > 0
-            const gap = i > 0 && rows[0].thru > 0 ? row.toPar - rows[0].toPar : null
+          {(() => {
+            // Compute PGA-style tied positions: same toPar + both started = same pos, skip numbers
+            const posInfo: Array<{ pos: number; tied: boolean }> = []
+            let i = 0
+            while (i < rows.length) {
+              let j = i
+              while (
+                j < rows.length &&
+                rows[j].toPar === rows[i].toPar &&
+                (rows[j].thru > 0) === (rows[i].thru > 0)
+              ) j++
+              const count = j - i
+              const tied = count > 1
+              for (let k = 0; k < count; k++) posInfo.push({ pos: i + 1, tied })
+              i = j
+            }
+            return rows.map((row, i) => {
+              const { pos, tied } = posInfo[i]
+              const isLeader = pos === 1 && row.thru > 0
+              const gap = pos > 1 && rows[0].thru > 0 ? row.toPar - rows[0].toPar : null
 
-            return (
+              const rankIndicator = (() => {
+                const emoji = pos === 1 ? '🏆' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null
+                if (emoji) return (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <span style={{ fontSize: tied ? 26 : 34, lineHeight: 1 }}>{emoji}</span>
+                    {tied && <span style={{ fontFamily: 'Bebas Neue', fontSize: 11, color: pos === 1 ? '#FCB514' : 'var(--tx3)', letterSpacing: 1 }}>T{pos}</span>}
+                  </div>
+                )
+                return (
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: 'var(--tx2)', letterSpacing: 1 }}>
+                    {tied ? 'T' : ''}{pos}
+                  </span>
+                )
+              })()
+
+              return (
               <div key={row.team.id} className="glass animate-fadeUp" style={{
                 padding: '16px 20px',
                 borderColor: isLeader ? 'rgba(252,181,20,0.4)' : undefined,
@@ -138,10 +170,8 @@ export default function Leaderboard() {
               }} >
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 34, width: 42, flexShrink: 0, textAlign: 'center', lineHeight: 1 }}>
-                    {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : (
-                      <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: 'var(--tx2)', letterSpacing: 1 }}>{i + 1}</span>
-                    )}
+                  <span style={{ width: 42, flexShrink: 0, textAlign: 'center', lineHeight: 1, display: 'flex', justifyContent: 'center' }}>
+                    {rankIndicator}
                   </span>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -225,7 +255,8 @@ export default function Leaderboard() {
                 )}
               </div>
             )
-          })}
+          })
+        })()}
         </div>
       )}
 
