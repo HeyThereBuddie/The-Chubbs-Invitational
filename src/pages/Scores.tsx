@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
@@ -377,11 +377,13 @@ export default function Scores() {
   const { isOnline, refreshPendingCount } = useSyncContext()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
-  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  // Initial hole from nav state or URL param (works on first mount)
-  const _navState = location.state as { hole?: number; teamId?: string } | null
-  const _initHole = _navState?.hole ?? parseInt(searchParams.get('hole') ?? '1')
+  // Read jump target written by Leaderboard before navigating here.
+  // sessionStorage is synchronous so this runs during render — no effect timing race.
+  const _jump = (() => {
+    try { return JSON.parse(sessionStorage.getItem('scores-jump') ?? 'null') as { teamId: string; hole: number } | null }
+    catch { return null }
+  })()
 
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
   const [myTeam,           setMyTeam]           = useState<TeamFull | null>(null)
@@ -389,12 +391,15 @@ export default function Scores() {
   const [myChulligans,     setMyChulligans]     = useState<ChulliganRow[]>([])
   const [adminScores,      setAdminScores]      = useState<Record<number, ScoreRow>>({})
   const [adminChulligans,  setAdminChulligans]  = useState<ChulliganRow[]>([])
-  const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
+  const [viewingTeamId, setViewingTeamId] = useState<string | null>(_jump?.teamId ?? null)
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
   const [adminTeamId,   setAdminTeamId]   = useState<string | null>(null)
-  const [selectedHole,  setSelectedHole]  = useState(_initHole >= 1 && _initHole <= 18 ? _initHole : 1)
+  const [selectedHole,  setSelectedHole]  = useState<number>(() => {
+    const h = _jump?.hole ?? parseInt(searchParams.get('hole') ?? '1')
+    return h >= 1 && h <= 18 ? h : 1
+  })
   const [saving,        setSaving]        = useState<number | null>(null)
   const [teamPick,      setTeamPick]      = useState('')
   const [settingTeam,   setSettingTeam]   = useState(false)
@@ -411,19 +416,11 @@ export default function Scores() {
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
-  // Ref flag set synchronously in the mount effect so the "default to my team" effect
-  // (which runs in the same flush) can see it immediately without a stale closure.
-  const deepLinkedRef = useRef(false)
-  // On mount: apply deep-link from leaderboard (navigate state) and clean up URL/history
+  // Clean up sessionStorage entry and legacy URL params on mount
   useEffect(() => {
-    const state = location.state as { hole?: number; teamId?: string } | null
-    if (state?.teamId) {
-      setViewingTeamId(state.teamId)
-      deepLinkedRef.current = true  // visible to subsequent effects in this same flush
-    }
-    if (state?.hole && state.hole >= 1 && state.hole <= 18) setSelectedHole(state.hole)
-    window.history.replaceState({}, '')  // prevent re-applying on back nav
+    sessionStorage.removeItem('scores-jump')
     if (searchParams.get('hole') || searchParams.get('team')) setSearchParams({}, { replace: true })
+    window.history.replaceState({}, '')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
@@ -435,9 +432,9 @@ export default function Scores() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId, isOnline])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
-  // Default to own team only when no deep-link has been applied
+  // Default to own team only when no jump target was stored (viewingTeamId starts null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (myTeamId && !deepLinkedRef.current) setViewingTeamId(myTeamId) }, [myTeamId])
+  useEffect(() => { if (myTeamId && !viewingTeamId) setViewingTeamId(myTeamId) }, [myTeamId])
   useEffect(() => {
     if (!viewingTeamId || viewingTeamId === myTeamId) return
     loadViewTeam(viewingTeamId)
