@@ -92,7 +92,7 @@ export default function RSVP() {
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Player Roster</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+        <p style={{ color: 'var(--tx3)', fontSize: 13 }}>
           {counts.active} active · {counts.waitlist} waitlisted · {counts.dropped} dropped
         </p>
       </div>
@@ -100,13 +100,13 @@ export default function RSVP() {
       {/* Invite response summary */}
       {(responseCounts.yes + responseCounts.no) > 0 && (
         <div className="glass" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase' }}>
             Invite Responses
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <span style={{ fontSize: 13, color: '#22c55e', fontWeight: 700 }}>✅ {responseCounts.yes} In</span>
             <span style={{ fontSize: 13, color: '#ef4444', fontWeight: 700 }}>❌ {responseCounts.no} Out</span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>⏳ {responseCounts.pending} No reply</span>
+            <span style={{ fontSize: 13, color: 'var(--tx3)' }}>⏳ {responseCounts.pending} No reply</span>
           </div>
         </div>
       )}
@@ -134,7 +134,7 @@ export default function RSVP() {
       {/* Player list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.length === 0 && (
-          <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+          <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>
             No {tab} players
           </div>
         )}
@@ -151,8 +151,8 @@ export default function RSVP() {
                 }}
               >
                 <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{player.name}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 15 }}>{player.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
                     HCP {player.handicap ?? '—'} {player.email && `· ${player.email}`}
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export default function RSVP() {
               </button>
 
               {isExpanded && (
-                <div style={{ padding: '0 18px 18px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--bdr)' }}>
                   {/* Status actions */}
                   <div style={{ display: 'flex', gap: 6, marginBottom: 16, paddingTop: 14, flexWrap: 'wrap' }}>
                     {player.status !== 'active' && (
@@ -226,8 +226,8 @@ export default function RSVP() {
                     <div style={{ marginTop: 12 }}>
                       <label style={lblStyle}>Invite Token</label>
                       <div style={{
-                        fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.3)',
-                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                        fontFamily: 'monospace', fontSize: 11, color: 'var(--tx4)',
+                        background: 'var(--surf)', border: '1px solid var(--bdr)',
                         borderRadius: 6, padding: '6px 10px', wordBreak: 'break-all',
                       }}>
                         {player.invite_token}
@@ -245,7 +245,7 @@ export default function RSVP() {
 }
 
 const lblStyle: React.CSSProperties = {
-  fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4,
+  fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4,
 }
 
 function actionBtn(color: string): React.CSSProperties {

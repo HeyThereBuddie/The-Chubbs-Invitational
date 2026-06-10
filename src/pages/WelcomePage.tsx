@@ -83,7 +83,7 @@ export default function WelcomePage() {
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 4, color: '#FCB514', margin: '0 0 8px' }}>
           Welcome, {name}!
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.5 }}>
+        <p style={{ color: 'var(--tx2)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.5 }}>
           You're in. Now add a profile photo so your teammates know who they're up against.
         </p>
 
@@ -94,7 +94,7 @@ export default function WelcomePage() {
             width: 120, height: 120, borderRadius: '50%',
             border: `2px dashed ${preview ? '#FCB514' : 'rgba(252,181,20,0.35)'}`,
             overflow: 'hidden', margin: '0 auto 20px',
-            background: 'rgba(255,255,255,0.04)',
+            background: 'var(--surf)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: uploading ? 'wait' : 'pointer',
             transition: 'border-color 0.2s',
@@ -148,14 +148,14 @@ export default function WelcomePage() {
             disabled={uploading}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'rgba(255,255,255,0.35)', fontSize: 13, padding: '8px',
+              color: 'var(--tx3)', fontSize: 13, padding: '8px',
             }}
           >
             Skip for now
           </button>
         </div>
 
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 20 }}>
+        <p style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 20 }}>
           You can always add or change your photo in Account Settings.
         </p>
       </div>

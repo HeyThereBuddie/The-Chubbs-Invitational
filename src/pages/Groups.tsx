@@ -96,7 +96,7 @@ export default function Groups() {
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Groups & Pairings</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{players.length} confirmed players</p>
+        <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{players.length} confirmed players</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -113,10 +113,10 @@ export default function Groups() {
             { label: 'Group B', subtitle: `High HCP (> ${Math.round(medianHcp)})`, players: groupB, color: '#60a5fa' },
           ].map(({ label, subtitle, players: grpPlayers, color }) => (
             <div key={label} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 700, color, fontSize: 15 }}>{label}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{subtitle}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{subtitle}</div>
                 </div>
                 <div style={{ fontSize: 24, fontWeight: 700, color }}>{grpPlayers.length}</div>
               </div>
@@ -126,8 +126,8 @@ export default function Groups() {
                   borderBottom: i < grpPlayers.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#fff' }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>HCP {p.handicap ?? '—'}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tx1)' }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)' }}>HCP {p.handicap ?? '—'}</div>
                 </div>
               ))}
             </div>
@@ -160,10 +160,10 @@ export default function Groups() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {draftPairings.map((p, i) => (
                   <div key={i} className="glass" style={{ padding: '12px 18px', borderColor: 'rgba(252,181,20,0.2)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', width: 20 }}>{i + 1}</span>
+                    <span style={{ fontSize: 12, color: 'var(--tx3)', width: 20 }}>{i + 1}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 14 }}>{p.name}</div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
+                      <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 2 }}>
                         {p.a.name} (HCP {p.a.handicap}) & {p.b.name} (HCP {p.b.handicap})
                       </div>
                     </div>
@@ -177,10 +177,10 @@ export default function Groups() {
           {!pairingsReleased && draftPairings.length === 0 && !isAdmin && (
             <div className="glass" style={{ padding: 48, textAlign: 'center' }}>
               <Lock size={40} color="rgba(255,255,255,0.2)" style={{ margin: '0 auto 16px' }} />
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'rgba(255,255,255,0.4)', letterSpacing: 3 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--tx3)', letterSpacing: 3 }}>
                 Pairings Not Yet Released
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 8 }}>
+              <p style={{ color: 'var(--tx4)', fontSize: 13, marginTop: 8 }}>
                 The admin will release pairings before the tournament
               </p>
             </div>
@@ -195,10 +195,10 @@ export default function Groups() {
                   </span>
                   <div>
                     <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 14 }}>{p.team_name}</div>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 2 }}>
                       {p.player_a?.name} & {p.player_b?.name}
                     </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>
+                    <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 1 }}>
                       HCP {p.player_a?.handicap ?? '—'} & HCP {p.player_b?.handicap ?? '—'}
                     </div>
                   </div>

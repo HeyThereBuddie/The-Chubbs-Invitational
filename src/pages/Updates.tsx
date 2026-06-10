@@ -67,7 +67,7 @@ export default function Updates() {
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Updates</h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Tournament announcements & news</p>
+          <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Tournament announcements & news</p>
         </div>
         {isAdmin && (
           <button className="btn-gold" onClick={() => setShowForm(!showForm)}>
@@ -88,7 +88,7 @@ export default function Updates() {
               rows={4}
               style={{ resize: 'vertical' }}
             />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'var(--tx2)' }}>
               <input
                 type="checkbox"
                 checked={form.pinned}
@@ -107,7 +107,7 @@ export default function Updates() {
       {/* Updates list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {updates.length === 0 && (
-          <div className="glass" style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+          <div className="glass" style={{ padding: 48, textAlign: 'center', color: 'var(--tx4)' }}>
             No updates yet
           </div>
         )}
@@ -126,12 +126,12 @@ export default function Updates() {
                       📌 Pinned
                     </span>
                   )}
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginLeft: 'auto' }}>
+                  <span style={{ fontSize: 11, color: 'var(--tx4)', marginLeft: 'auto' }}>
                     {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
                   </span>
                 </div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{u.title}</h2>
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>{u.body}</p>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', marginBottom: 8 }}>{u.title}</h2>
+                <p style={{ fontSize: 14, color: 'var(--tx2)', lineHeight: 1.6 }}>{u.body}</p>
               </div>
 
               {isAdmin && (
@@ -139,7 +139,7 @@ export default function Updates() {
                   <button
                     onClick={() => togglePin(u)}
                     title={u.pinned ? 'Unpin' : 'Pin'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: u.pinned ? '#FCB514' : 'rgba(255,255,255,0.3)' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: u.pinned ? '#FCB514' : 'var(--tx4)' }}>
                     {u.pinned ? <PinOff size={15} /> : <Pin size={15} />}
                   </button>
                   <button

@@ -92,13 +92,13 @@ export default function AuthPage() {
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, color: '#FCB514', textShadow: '0 0 20px rgba(252,181,20,0.5)', margin: 0 }}>
             The Chubbs Memorial
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 4 }}>
+          <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
             It's all in the hips
           </p>
         </div>
 
         {/* Tab toggle */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 999, padding: 3, marginBottom: 24 }}>
+        <div style={{ display: 'flex', background: 'var(--surf)', borderRadius: 999, padding: 3, marginBottom: 24 }}>
           {(['login', 'register'] as const).map(m => (
             <button
               key={m}
@@ -106,7 +106,7 @@ export default function AuthPage() {
               style={{
                 flex: 1, padding: '8px', borderRadius: 999, border: 'none',
                 background: mode === m ? 'rgba(252,181,20,0.15)' : 'transparent',
-                color: mode === m ? '#FCB514' : 'rgba(255,255,255,0.5)',
+                color: mode === m ? '#FCB514' : 'var(--tx2)',
                 fontWeight: 600, fontSize: 13, cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
@@ -166,7 +166,7 @@ export default function AuthPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
           <div style={{ flex: 1, height: 1, background: 'rgba(252,181,20,0.1)' }} />
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>or</span>
+          <span style={{ color: 'var(--tx4)', fontSize: 12 }}>or</span>
           <div style={{ flex: 1, height: 1, background: 'rgba(252,181,20,0.1)' }} />
         </div>
 
@@ -175,7 +175,7 @@ export default function AuthPage() {
           Continue with Google
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 24 }}>
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--tx4)', marginTop: 24 }}>
           "You're gonna be a golf legend, Happy." — Chubbs Peterson
         </p>
       </div>

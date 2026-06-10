@@ -191,7 +191,7 @@ export default function LiveFeed() {
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
               Live Feed
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>
               All tournament events
             </div>
           </div>
@@ -233,13 +233,13 @@ export default function LiveFeed() {
         ) : filtered.length === 0 ? (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>⛳</div>
-            <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.35)' }}>
+            <div style={{ fontSize: 15, color: 'var(--tx3)' }}>
               {selectedFilter === 'golf' ? 'No golf events yet'
                 : selectedFilter === 'contests' ? 'No contest entries yet'
                 : selectedFilter === 'jackass' ? 'No votes yet'
                 : 'No events yet'}
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>Events appear here as scores and chulligans are recorded</div>
+            <div style={{ fontSize: 12, color: 'var(--tx4)', marginTop: 6 }}>Events appear here as scores and chulligans are recorded</div>
           </div>
         ) : (
           filtered.map((ev, i) => {
@@ -267,27 +267,27 @@ export default function LiveFeed() {
                         {ev.label}
                       </span>
                       {ev.event_type === 'contest' && ev.label.includes('Vote') ? (
-                        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                          <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.voter_name}</strong>
+                        <span style={{ fontSize: 13, color: 'var(--tx2)' }}>
+                          <strong style={{ color: 'var(--tx1)', fontWeight: 700 }}>{ev.voter_name}</strong>
                           {' voted '}
                           <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
                           {' for jackass'}
                         </span>
                       ) : ev.event_type === 'contest' ? (
                         ev.player_name && (
-                          <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>{ev.player_name}</span>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{ev.player_name}</span>
                         )
                       ) : (
                         <>
-                          <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {ev.team_name || 'Unknown Team'}
                           </span>
                           {ev.player_name && (
-                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                            <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
                               {ev.player_name}
                             </span>
                           )}
-                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, color: 'var(--tx4)', flexShrink: 0 }}>
                             Hole {ev.hole}
                           </span>
                         </>
@@ -298,13 +298,13 @@ export default function LiveFeed() {
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     {ev.score != null && ev.event_type === 'score' && (
                       <div>
-                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
+                        <div style={{ fontSize: 9, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
                         <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
                           {ev.score}
                         </div>
                       </div>
                     )}
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--tx4)' }}>
                       {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                     </div>
                   </div>

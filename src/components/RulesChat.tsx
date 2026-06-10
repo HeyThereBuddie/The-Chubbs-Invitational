@@ -93,7 +93,7 @@ export default function RulesChat() {
           width: isDesktop ? 370 : 'auto',
           height: isDesktop ? 520 : 'min(500px, calc(100dvh - 170px))',
           zIndex: 200,
-          background: 'rgba(10,7,2,0.97)',
+          background: 'var(--panel)',
           border: '1px solid rgba(252,181,20,0.28)',
           borderRadius: 20,
           display: 'flex', flexDirection: 'column',
@@ -115,11 +115,11 @@ export default function RulesChat() {
             }}>⛳</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#FCB514', lineHeight: 1 }}>Rules Assistant</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Powered by Claude · Ask anything</div>
+              <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>Powered by Claude · Ask anything</div>
             </div>
             <button
               onClick={() => setOpen(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 4, display: 'flex', alignItems: 'center' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', padding: 4, display: 'flex', alignItems: 'center' }}
             >
               <X size={18} />
             </button>
@@ -130,7 +130,7 @@ export default function RulesChat() {
 
             {messages.length === 0 && (
               <div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '12px 0 14px', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: 'var(--tx3)', textAlign: 'center', padding: '12px 0 14px', lineHeight: 1.6 }}>
                   Ask me anything about the tournament rules
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -141,7 +141,7 @@ export default function RulesChat() {
                       style={{
                         textAlign: 'left', padding: '9px 13px', borderRadius: 11, fontSize: 13,
                         background: 'rgba(252,181,20,0.07)', border: '1px solid rgba(252,181,20,0.18)',
-                        color: 'rgba(255,255,255,0.6)', cursor: 'pointer', transition: 'background 0.15s',
+                        color: 'var(--tx2)', cursor: 'pointer', transition: 'background 0.15s',
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(252,181,20,0.13)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(252,181,20,0.07)' }}
@@ -162,7 +162,7 @@ export default function RulesChat() {
                   borderBottomLeftRadius:  m.role === 'assistant' ? 4 : 14,
                   fontSize: 13, lineHeight: 1.6,
                   background: m.role === 'user' ? 'rgba(252,181,20,0.15)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${m.role === 'user' ? 'rgba(252,181,20,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  border: `1px solid ${m.role === 'user' ? 'rgba(252,181,20,0.3)' : 'var(--tx5)'}`,
                   color: m.role === 'user' ? '#FCB514' : 'rgba(255,255,255,0.85)',
                   whiteSpace: 'pre-wrap',
                 }}>
@@ -175,7 +175,7 @@ export default function RulesChat() {
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <div style={{
                   padding: '10px 14px', borderRadius: 14, borderBottomLeftRadius: 4,
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--surf2)', border: '1px solid var(--bdr)',
                   display: 'flex', gap: 5, alignItems: 'center',
                 }}>
                   {[0, 1, 2].map(i => (
@@ -194,7 +194,7 @@ export default function RulesChat() {
           {/* Input */}
           <div style={{
             padding: '10px 12px', flexShrink: 0,
-            borderTop: '1px solid rgba(255,255,255,0.06)',
+            borderTop: '1px solid var(--bdr)',
             background: 'rgba(0,0,0,0.35)',
             display: 'flex', gap: 8, alignItems: 'center',
           }}>
@@ -208,8 +208,8 @@ export default function RulesChat() {
               disabled={loading}
               style={{
                 flex: 1, padding: '9px 12px', borderRadius: 10, fontSize: 13,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', outline: 'none',
+                background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--tx1)', outline: 'none',
               }}
             />
             <button
@@ -219,7 +219,7 @@ export default function RulesChat() {
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                 background: input.trim() && !loading ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.04)',
                 border: `1px solid ${input.trim() && !loading ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.07)'}`,
-                color: input.trim() && !loading ? '#FCB514' : 'rgba(255,255,255,0.2)',
+                color: input.trim() && !loading ? '#FCB514' : 'var(--tx4)',
                 cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s, border-color 0.15s',

@@ -253,10 +253,10 @@ export default function Dashboard() {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
         padding: '10px 16px', borderRadius: 12,
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        background: 'var(--surf)',
+        border: '1px solid var(--bdr)',
       }}>
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
+        <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
           📅 Year
         </span>
         <select
@@ -270,7 +270,7 @@ export default function Dashboard() {
           ))}
         </select>
         {completedTournaments.length === 0 && (
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>
+          <span style={{ fontSize: 11, color: 'var(--tx5)', fontStyle: 'italic' }}>
             Past years appear here after archiving
           </span>
         )}
@@ -291,7 +291,7 @@ export default function Dashboard() {
           <span style={{ fontSize: 20 }}>⏳</span>
           <div>
             <div style={{ fontWeight: 700, color: '#f59e0b', fontSize: 14 }}>You're on the Waitlist</div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: 'var(--tx3)', marginTop: 2 }}>
               We'll reach out when a spot opens. Hang tight!
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function Dashboard() {
             <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 20, letterSpacing: isMobile ? 2 : 3, lineHeight: 1 }}>
               The Chubbs Memorial
             </div>
-            <div style={{ display: 'flex', gap: isMobile ? 6 : 10, flexWrap: 'wrap', fontSize: isMobile ? 10 : 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+            <div style={{ display: 'flex', gap: isMobile ? 6 : 10, flexWrap: 'wrap', fontSize: isMobile ? 10 : 11, color: 'var(--tx3)', marginTop: 3 }}>
               <span>⛳ {COURSE_NAME}</span>
               <span>📅 {TOURNAMENT_DATE}</span>
               {!isMobile && <span>🕗 {FIRST_TEE_TIME}</span>}
@@ -323,7 +323,7 @@ export default function Dashboard() {
           </div>
 
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
-            {!isMobile && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 1 }}>Welcome</div>}
+            {!isMobile && <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 1 }}>Welcome</div>}
             <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 19, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
               {profile ? displayName(profile) : 'Player'}
             </div>
@@ -332,7 +332,7 @@ export default function Dashboard() {
 
         {!isMobile && (
           <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
-            <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>💬 "{currentQuote.quote}"</span>
+            <span style={{ color: 'var(--tx3)', fontStyle: 'italic' }}>💬 "{currentQuote.quote}"</span>
             <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
           </div>
         )}
@@ -356,7 +356,7 @@ export default function Dashboard() {
               {defendingChamp.teamName}
             </div>
             {(defendingChamp.player1Name || defendingChamp.player2Name) && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
                 {[defendingChamp.player1Name, defendingChamp.player2Name].filter(Boolean).join(' & ')}
               </div>
             )}
@@ -387,7 +387,7 @@ export default function Dashboard() {
             {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', marginLeft: 'auto', display: 'inline-block' }} />}
           </div>
           {leaders.length === 0 ? (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
               No scores yet — may the best ball win.
             </div>
@@ -395,25 +395,25 @@ export default function Dashboard() {
             leaders.map((row, i) => (
               <div key={row.team.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
-                borderBottom: i < leaders.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                borderBottom: i < leaders.length - 1 ? '1px solid var(--bdr)' : 'none',
                 background: i === 0 ? 'rgba(252,181,20,0.03)' : 'transparent',
               }}>
                 <span style={{ fontSize: 18, width: 26, flexShrink: 0 }}>
-                  {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>{i + 1}</span>}
+                  {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 700 }}>{i + 1}</span>}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#FCB514' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#FCB514' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {row.team.name}
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
                     {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: row.toPar <= 0 ? '#FCB514' : 'rgba(255,255,255,0.8)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx2)' }}>
                     {toPar(Math.round(row.toPar))}
                   </div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>thru {row.thru}</div>
+                  <div style={{ fontSize: 10, color: 'var(--tx3)' }}>thru {row.thru}</div>
                 </div>
               </div>
             ))
@@ -442,7 +442,7 @@ export default function Dashboard() {
           {feed.length === 0 ? (
             <div style={{ padding: '32px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Events appear here as scores and chulligans are recorded</div>
+              <div style={{ fontSize: 14, color: 'var(--tx3)' }}>Events appear here as scores and chulligans are recorded</div>
             </div>
           ) : (
             feed.map((ev, i) => {
@@ -452,13 +452,13 @@ export default function Dashboard() {
               return (
                 <div key={ev.id} style={{
                   padding: '11px 20px',
-                  borderBottom: i < feed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  borderBottom: i < feed.length - 1 ? '1px solid var(--bdr)' : 'none',
                   background: highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div style={{
                       width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
+                      background: highlight ? 'rgba(252,181,20,0.1)' : 'var(--surf)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 18,
                     }}>{ev.emoji}</div>
@@ -468,25 +468,25 @@ export default function Dashboard() {
                           {ev.label}
                         </span>
                         {ev.event_type === 'contest' && ev.label.includes('Vote') ? (
-                          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                            <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.voter_name}</strong>
+                          <span style={{ fontSize: 13, color: 'var(--tx2)' }}>
+                            <strong style={{ color: 'var(--tx1)', fontWeight: 700 }}>{ev.voter_name}</strong>
                             {' voted '}
                             <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
                             {' for jackass'}
                           </span>
                         ) : ev.event_type === 'contest' ? (
                           ev.player_name && (
-                            <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>{ev.player_name}</span>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{ev.player_name}</span>
                           )
                         ) : (
                           <>
-                            <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {ev.team_name || 'Unknown Team'}
                             </span>
                             {ev.player_name && (
-                              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{ev.player_name}</span>
+                              <span style={{ fontSize: 12, color: 'var(--tx3)' }}>{ev.player_name}</span>
                             )}
-                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                            <span style={{ fontSize: 12, color: 'var(--tx3)', flexShrink: 0 }}>
                               Hole {ev.hole}
                             </span>
                           </>
@@ -496,13 +496,13 @@ export default function Dashboard() {
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {ev.score != null && ev.event_type === 'score' && (
                         <div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
+                          <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
                             {ev.score}
                           </div>
                         </div>
                       )}
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>
                         {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                       </div>
                     </div>
@@ -549,8 +549,8 @@ export default function Dashboard() {
             <div style={{ color: '#FCB514', marginBottom: 8, display: 'flex', justifyContent: 'center', opacity: 0.85 }}>
               {typeof icon === 'string' ? <span style={{ fontSize: 18 }}>{icon}</span> : icon}
             </div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--tx1)', lineHeight: 1, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
             <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
           </div>
         ))}
@@ -572,7 +572,7 @@ export default function Dashboard() {
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(252,181,20,0.5)' }}>View all →</span>
         </div>
         {updates.length === 0 ? (
-          <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
+          <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
             No updates yet
           </div>
@@ -580,7 +580,7 @@ export default function Dashboard() {
           updates.map((u, i) => (
             <div key={u.id} style={{
               padding: '14px 20px',
-              borderBottom: i < updates.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              borderBottom: i < updates.length - 1 ? '1px solid var(--bdr)' : 'none',
               borderLeft: u.pinned ? '3px solid #FCB514' : '3px solid transparent',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -589,12 +589,12 @@ export default function Dashboard() {
                     📌 Pinned
                   </span>
                 )}
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginLeft: 'auto' }}>
+                <span style={{ fontSize: 11, color: 'var(--tx4)', marginLeft: 'auto' }}>
                   {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
                 </span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', marginBottom: 4 }}>{u.title}</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.55 }}>{u.body}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', marginBottom: 4 }}>{u.title}</div>
+              <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.55 }}>{u.body}</div>
             </div>
           ))
         )}
@@ -629,7 +629,7 @@ export default function Dashboard() {
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 18, color: '#FCB514', letterSpacing: 2 }}>Chubbs Peterson</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Golf Legend</div>
+              <div style={{ fontSize: 10, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Golf Legend</div>
             </div>
           </div>
 
@@ -638,11 +638,11 @@ export default function Dashboard() {
             <div style={{ fontSize: 10, letterSpacing: 4, color: 'rgba(252,181,20,0.55)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>
               The Legend
             </div>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.75, marginBottom: 16 }}>
+            <p style={{ fontSize: 14, color: 'var(--tx2)', lineHeight: 1.75, marginBottom: 16 }}>
               Chubbs Peterson was a PGA-bound prodigy — the most naturally gifted golfer anyone had ever seen. A one-handed grip, a philosophy built entirely around hip rotation, and a belief in every underdog he ever coached. His career was cut short on the 18th hole by an alligator with a personal vendetta. His legacy lives on in every tap-in, every birdie, and every swing that comes from the hips.
             </p>
             <div style={{
-              fontSize: 13, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic',
+              fontSize: 13, color: 'var(--tx3)', fontStyle: 'italic',
               paddingLeft: 14, borderLeft: '2px solid rgba(252,181,20,0.35)', lineHeight: 1.6,
             }}>
               "I would have been a pro if it wasn't for those damn alligators."

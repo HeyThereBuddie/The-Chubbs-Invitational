@@ -532,7 +532,7 @@ export default function AdminPanel() {
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Admin Panel</h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Manage teams, users, and access codes</p>
+        <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Manage teams, users, and access codes</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -596,8 +596,8 @@ export default function AdminPanel() {
                     display: 'flex', alignItems: 'center', gap: 7,
                     padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
                     background: teamsReset ? 'rgba(252,181,20,0.12)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${teamsReset ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                    color: teamsReset ? '#FCB514' : 'rgba(255,255,255,0.2)',
+                    border: `1px solid ${teamsReset ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
+                    color: teamsReset ? '#FCB514' : 'var(--tx4)',
                     cursor: regenerating || !teamsReset ? 'not-allowed' : 'pointer',
                     opacity: regenerating ? 0.6 : 1,
                   }}
@@ -607,7 +607,7 @@ export default function AdminPanel() {
                 </button>
 
                 {!teamsReset && (
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+                  <span style={{ fontSize: 11, color: 'var(--tx4)', fontStyle: 'italic' }}>
                     Reset teams first to enable regeneration
                   </span>
                 )}
@@ -616,7 +616,7 @@ export default function AdminPanel() {
           })()}
 
           {teams.length === 0 && (
-            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>
               <Users size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.2 }} />
               No teams yet. Create one above.
             </div>
@@ -640,7 +640,7 @@ export default function AdminPanel() {
                     const otherSlot = slot === 'p1_id' ? team.p2_id : team.p1_id
                     return (
                       <div key={slot}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>
+                        <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>
                           Player {i + 1}
                         </label>
                         <select
@@ -675,20 +675,20 @@ export default function AdminPanel() {
             <div key={p.id} className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>{p.name}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 14 }}>{p.name}</span>
                   {p.nickname && (
                     <span style={{ fontSize: 12, color: '#FCB514', background: 'rgba(252,181,20,0.1)', padding: '1px 8px', borderRadius: 999 }}>
                       "{p.nickname}"
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{p.email}</div>
+                <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{p.email}</div>
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
                   background: p.role === 'admin' ? 'rgba(252,181,20,0.15)' : 'rgba(255,255,255,0.06)',
-                  color: p.role === 'admin' ? '#FCB514' : 'rgba(255,255,255,0.5)',
+                  color: p.role === 'admin' ? '#FCB514' : 'var(--tx2)',
                   textTransform: 'uppercase', letterSpacing: 1,
                 }}>
                   {p.role}
@@ -715,7 +715,7 @@ export default function AdminPanel() {
                 {p.nickname && (
                   <button
                     onClick={() => supabase.from('profiles').update({ nickname: null }).eq('id', p.id).then(() => fetchProfiles())}
-                    className="btn-ghost" title="Clear nickname" style={{ padding: '6px 10px', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}
+                    className="btn-ghost" title="Clear nickname" style={{ padding: '6px 10px', fontSize: 11, color: 'var(--tx3)' }}
                   >
                     ✕ nick
                   </button>
@@ -733,14 +733,14 @@ export default function AdminPanel() {
       {tab === 'codes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="glass" style={{ padding: '20px 22px' }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Player Invite Code</div>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Player Invite Code</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: '#FCB514', letterSpacing: 3 }}>{PLAYER_CODE}</div>
               <button onClick={() => copy(PLAYER_CODE, 'player')} className="btn-ghost" style={{ padding: '6px 12px', display: 'flex', gap: 4, alignItems: 'center' }}>
                 {copiedKey === 'player' ? <Check size={13} /> : <Copy size={13} />} Copy
               </button>
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 8 }}>Share this code freely with all players</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 8 }}>Share this code freely with all players</div>
           </div>
 
           <div className="glass" style={{ padding: '20px 22px', borderColor: 'rgba(245,158,11,0.2)' }}>
@@ -782,7 +782,7 @@ export default function AdminPanel() {
 
         const EditRow = ({ label, ec, update }: { label: string; ec: EditCategory; update: (p: Partial<EditCategory>) => void }) => (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {['jackass', 'ctp', 'ld'].some(k => label.toLowerCase().includes(k.slice(0,3))) ? (
                 <>
@@ -809,14 +809,14 @@ export default function AdminPanel() {
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setTestTournamentOpen(true)}
-                style={{ padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}
+                style={{ padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'var(--surf2)', border: '1px solid var(--bdr2)', color: 'var(--tx2)', cursor: 'pointer' }}
               >
                 + Create Test Tournament
               </button>
             </div>
 
             {active.length === 0 && (
-              <div className="glass" style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+              <div className="glass" style={{ padding: '32px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
                 No tournaments archived yet. Use "End Tournament &amp; Archive" below to save your first entry.
               </div>
             )}
@@ -828,15 +828,15 @@ export default function AdminPanel() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: t.status === 'active' ? '#22c55e' : '#FCB514', lineHeight: 1 }}>{t.year}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{t.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)', marginBottom: 4 }}>{t.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1, background: t.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)', color: t.status === 'active' ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1, background: t.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)', color: t.status === 'active' ? '#22c55e' : 'var(--tx2)' }}>
                           {t.status === 'active' ? '● Active' : '🔒 Locked'}
                         </div>
-                        {t.course && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>⛳ {t.course}</div>}
+                        {t.course && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>⛳ {t.course}</div>}
                       </div>
                       {champ && (
-                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>
+                        <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 4 }}>
                           🏆 {champ.team_name ?? champ.player1_name ?? '—'}
                           {champ.score_to_par != null && <span style={{ color: champ.score_to_par < 0 ? '#34d399' : '#f87171', marginLeft: 6 }}>{champ.score_to_par === 0 ? 'E' : champ.score_to_par > 0 ? `+${champ.score_to_par}` : champ.score_to_par}</span>}
                         </div>
@@ -850,15 +850,15 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   {t.final_standings && t.final_standings.length > 0 && (
-                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 8 }}>Full Final Standings</div>
+                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--bdr)' }}>
+                      <div style={{ fontSize: 10, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 8 }}>Full Final Standings</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {(t.final_standings).map((s, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                            <span style={{ width: 20, textAlign: 'center', flexShrink: 0, color: 'rgba(255,255,255,0.3)', fontFamily: 'Bebas Neue' }}>{i + 1}</span>
-                            <span style={{ flex: 1, color: i === 0 ? '#FCB514' : 'rgba(255,255,255,0.65)' }}>{s.teamName} {(s.p1Name || s.p2Name) && <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>— {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</span>}</span>
+                            <span style={{ width: 20, textAlign: 'center', flexShrink: 0, color: 'var(--tx4)', fontFamily: 'Bebas Neue' }}>{i + 1}</span>
+                            <span style={{ flex: 1, color: i === 0 ? '#FCB514' : 'var(--tx2)' }}>{s.teamName} {(s.p1Name || s.p2Name) && <span style={{ color: 'var(--tx3)', fontSize: 11 }}>— {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</span>}</span>
                             <span style={{ fontFamily: 'Bebas Neue', fontSize: 14, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>{s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}</span>
-                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', minWidth: 30, textAlign: 'right' }}>/{s.thru}</span>
+                            <span style={{ fontSize: 11, color: 'var(--tx4)', minWidth: 30, textAlign: 'right' }}>/{s.thru}</span>
                           </div>
                         ))}
                       </div>
@@ -871,15 +871,15 @@ export default function AdminPanel() {
             {/* Deleted years */}
             {deleted.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  🗑️ Deleted Years <span style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 999, padding: '1px 8px', fontSize: 10 }}>{deleted.length}</span>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  🗑️ Deleted Years <span style={{ background: 'var(--surf2)', borderRadius: 999, padding: '1px 8px', fontSize: 10 }}>{deleted.length}</span>
                 </div>
                 {deleted.map(t => (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 8, opacity: 0.7 }}>
-                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'rgba(255,255,255,0.3)', letterSpacing: 2 }}>{t.year}</div>
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bdr)', marginBottom: 8, opacity: 0.7 }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--tx4)', letterSpacing: 2 }}>{t.year}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{t.name}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>
+                      <div style={{ fontSize: 13, color: 'var(--tx2)', fontWeight: 600 }}>{t.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>
                         Removed {t.deleted_at ? new Date(t.deleted_at).toLocaleDateString() : ''}
                       </div>
                     </div>
@@ -911,30 +911,30 @@ export default function AdminPanel() {
 
                   {/* Metadata */}
                   <div style={{ marginBottom: 22 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Tournament Info</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 10 }}>Tournament Info</div>
                     <div style={{ marginBottom: 10 }}>
-                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
+                      <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
                       <input placeholder="e.g. The Chubbs Memorial" value={editingT.name} onChange={e => setEditingT(p => p ? { ...p, name: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       <div style={{ flex: '2 1 200px' }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Course</label>
+                        <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Course</label>
                         <input placeholder="Course name…" value={editingT.course} onChange={e => setEditingT(p => p ? { ...p, course: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ flex: '1 1 140px' }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Date</label>
+                        <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Date</label>
                         <input type="date" value={editingT.date} onChange={e => setEditingT(p => p ? { ...p, date: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                       </div>
                     </div>
                     <div style={{ marginTop: 10 }}>
-                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Notes</label>
+                      <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Notes</label>
                       <input placeholder="Any notes about this year…" value={editingT.notes} onChange={e => setEditingT(p => p ? { ...p, notes: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                     </div>
                   </div>
 
                   {/* Results */}
                   <div style={{ marginBottom: 22 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 12 }}>Results <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.2)' }}>(clear all fields to remove a category)</span></div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 12 }}>Results <span style={{ fontWeight: 400, color: 'var(--tx4)' }}>(clear all fields to remove a category)</span></div>
                     {([['champion', '🏆 Champion'], ['runner_up', '🥈 Runner-Up'], ['third', '🥉 Third Place'], ['jackass', '🤠 Jackass of the Day'], ['ctp', '🎯 Closest to Pin'], ['ld', '💥 Longest Drive']] as [keyof EditingTournament, string][]).map(([cat, label]) => (
                       <EditRow key={cat} label={label} ec={editingT[cat] as EditCategory} update={editKey(cat)} />
                     ))}
@@ -944,7 +944,7 @@ export default function AdminPanel() {
                     <button onClick={saveEditT} disabled={savingEdit} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.6 : 1 }}>
                       {savingEdit ? 'Saving…' : 'Save Changes'}
                     </button>
-                    <button onClick={() => setEditingT(null)} disabled={savingEdit} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => setEditingT(null)} disabled={savingEdit} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -960,11 +960,11 @@ export default function AdminPanel() {
                       ⚠️ This is the active tournament. Removing it will put the app into off-season mode until you create a new one.
                     </p>
                   )}
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 8, lineHeight: 1.6 }}>This will hide <strong style={{ color: '#fff' }}>{deleteModal.name}</strong> from the Hall of Fame.</p>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 24, lineHeight: 1.6 }}>Not permanent — restore it from Deleted Years at any time.</p>
+                  <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 8, lineHeight: 1.6 }}>This will hide <strong style={{ color: 'var(--tx1)' }}>{deleteModal.name}</strong> from the Hall of Fame.</p>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 24, lineHeight: 1.6 }}>Not permanent — restore it from Deleted Years at any time.</p>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button onClick={() => setDeleteModal(d => d ? { ...d, step: 2 } : d)} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', cursor: 'pointer' }}>Yes, remove it</button>
-                    <button onClick={() => setDeleteModal(null)} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => setDeleteModal(null)} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -975,8 +975,8 @@ export default function AdminPanel() {
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Final Confirmation</div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 20, lineHeight: 1.6 }}>
-                    Type <strong style={{ color: '#fff' }}>{deleteModal.year}</strong> to confirm removal from the Hall of Fame.
+                  <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 20, lineHeight: 1.6 }}>
+                    Type <strong style={{ color: 'var(--tx1)' }}>{deleteModal.year}</strong> to confirm removal from the Hall of Fame.
                   </p>
                   <input
                     autoFocus
@@ -995,7 +995,7 @@ export default function AdminPanel() {
                     >
                       {deletingYear ? 'Removing…' : 'Confirm Remove'}
                     </button>
-                    <button onClick={() => { setDeleteModal(null); setDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => { setDeleteModal(null); setDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -1006,11 +1006,11 @@ export default function AdminPanel() {
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Delete Forever?</div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 8, lineHeight: 1.6 }}>
-                    This will <strong style={{ color: '#fff' }}>permanently delete</strong> all data for this tournament — standings, results, scores, and feed events. <strong style={{ color: '#ef4444' }}>This cannot be undone.</strong>
+                  <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 8, lineHeight: 1.6 }}>
+                    This will <strong style={{ color: 'var(--tx1)' }}>permanently delete</strong> all data for this tournament — standings, results, scores, and feed events. <strong style={{ color: '#ef4444' }}>This cannot be undone.</strong>
                   </p>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
-                    Type <strong style={{ color: '#fff' }}>{permDeleteModal.name}</strong> to confirm.
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.6 }}>
+                    Type <strong style={{ color: 'var(--tx1)' }}>{permDeleteModal.name}</strong> to confirm.
                   </p>
                   <input
                     autoFocus
@@ -1029,7 +1029,7 @@ export default function AdminPanel() {
                     >
                       {permDeleting ? 'Deleting…' : 'Delete Forever'}
                     </button>
-                    <button onClick={() => { setPermDeleteModal(null); setPermDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => { setPermDeleteModal(null); setPermDeleteInput('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -1038,15 +1038,15 @@ export default function AdminPanel() {
             {Object.keys(catLabel).length > 0 && null /* suppress unused var */}
 
             {/* ── Current Tournament Actions ───────────────────── */}
-            <div style={{ marginTop: 8, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ marginTop: 8, paddingTop: 24, borderTop: '1px solid var(--bdr)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 16 }}>
                 Current Tournament Actions
               </div>
               {!activeTournamentId && (
                 <div style={{ padding: '28px 24px', borderRadius: 14, border: '1px dashed rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.03)', textAlign: 'center', marginBottom: 16 }}>
                   <div style={{ fontSize: 32, marginBottom: 10 }}>⛳</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>No active tournament</div>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 18, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tx2)', marginBottom: 6 }}>No active tournament</div>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.5 }}>
                     Create a new tournament to start tracking scores, teams, and events.
                   </p>
                   <button
@@ -1068,13 +1068,13 @@ export default function AdminPanel() {
                     <div style={{
                       marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
                       background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
-                      color: laheyVotingOpen ? '#22c55e' : 'rgba(255,255,255,0.4)',
+                      color: laheyVotingOpen ? '#22c55e' : 'var(--tx3)',
                       textTransform: 'uppercase', letterSpacing: 1,
                     }}>
                       {laheyVotingOpen ? '● Open' : '● Closed'}
                     </div>
                   </div>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 18, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.6 }}>
                     Control when players can vote. Reset clears all votes so you can start fresh.
                   </p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1117,10 +1117,10 @@ export default function AdminPanel() {
                     <Archive size={20} color="#FCB514" />
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>End Tournament & Archive</div>
                   </div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 6, lineHeight: 1.6 }}>
                     Saves the final standings, Jackass winner, and contest winners to the <strong style={{ color: '#FCB514' }}>Hall of Fame</strong>, then clears all scores for the next tournament.
                   </p>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 18, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.6 }}>
                     Teams and player accounts are preserved.
                   </p>
                   <button
@@ -1142,10 +1142,10 @@ export default function AdminPanel() {
                     <RotateCcw size={20} color="#ef4444" />
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#ef4444' }}>Reset Tournament</div>
                   </div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 6, lineHeight: 1.6 }}>
-                    Permanently deletes <strong style={{ color: '#fff' }}>all scores and drive selections</strong> for every team.
+                  <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 6, lineHeight: 1.6 }}>
+                    Permanently deletes <strong style={{ color: 'var(--tx1)' }}>all scores and drive selections</strong> for every team.
                   </p>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.6 }}>
                     Teams, player assignments, tee times, and all other data remain untouched.
                   </p>
                   {!resetConfirm ? (
@@ -1163,7 +1163,7 @@ export default function AdminPanel() {
                   ) : (
                     <div style={{ padding: '16px 20px', borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)' }}>
                       <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15, marginBottom: 6 }}>Are you absolutely sure?</div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
+                      <div style={{ fontSize: 13, color: 'var(--tx2)', marginBottom: 16 }}>
                         Every score will be deleted. This cannot be undone.
                       </div>
                       <div style={{ display: 'flex', gap: 10 }}>
@@ -1172,7 +1172,7 @@ export default function AdminPanel() {
                           disabled={resetting}
                           style={{
                             padding: '10px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                            background: '#ef4444', border: 'none', color: '#fff',
+                            background: '#ef4444', border: 'none', color: 'var(--tx1)',
                             cursor: resetting ? 'not-allowed' : 'pointer', opacity: resetting ? 0.6 : 1,
                           }}
                         >
@@ -1182,8 +1182,8 @@ export default function AdminPanel() {
                           onClick={() => setResetConfirm(false)}
                           style={{
                             padding: '10px 24px', borderRadius: 999, fontSize: 14,
-                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                            background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'var(--tx2)', cursor: 'pointer',
                           }}
                         >
                           Cancel
@@ -1202,11 +1202,11 @@ export default function AdminPanel() {
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>New Tournament</div>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Give this tournament a name. It will be set to {new Date().getFullYear()} and go live immediately.
                   </p>
                   <div style={{ marginBottom: 24 }}>
-                    <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
+                    <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
                     <input
                       autoFocus
                       placeholder="e.g. The Chubbs Memorial"
@@ -1224,7 +1224,7 @@ export default function AdminPanel() {
                     >
                       {creatingTournament ? 'Creating…' : 'Create & Go Live'}
                     </button>
-                    <button onClick={() => { setCreateTournamentOpen(false); setCreateTournamentName('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => { setCreateTournamentOpen(false); setCreateTournamentName('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -1238,20 +1238,20 @@ export default function AdminPanel() {
               }}>
                 <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 22, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 22, lineHeight: 1.5 }}>
                     Review the results that will be saved to the Hall of Fame, then confirm to archive and reset.
                   </p>
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Final Standings</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 10 }}>Final Standings</div>
                     {endTournamentPreview.standings.length === 0 ? (
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '10px 0' }}>No scores recorded</div>
+                      <div style={{ fontSize: 13, color: 'var(--tx4)', padding: '10px 0' }}>No scores recorded</div>
                     ) : (
                       endTournamentPreview.standings.slice(0, 3).map((s, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 6, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 6, borderRadius: 10, background: 'var(--surf)', border: '1px solid var(--bdr)' }}>
                           <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{i === 0 ? '🏆' : i === 1 ? '🥈' : '🥉'}</span>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#FCB514' : '#fff' }}>{s.teamName}</div>
-                            {(s.p1Name || s.p2Name) && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</div>}
+                            <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#FCB514' : 'var(--tx1)' }}>{s.teamName}</div>
+                            {(s.p1Name || s.p2Name) && <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</div>}
                           </div>
                           <div style={{ fontFamily: 'Bebas Neue', fontSize: 17, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>
                             {s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}
@@ -1261,21 +1261,21 @@ export default function AdminPanel() {
                     )}
                   </div>
                   <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 6 }}>🤠 Jackass of the Day</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 6 }}>🤠 Jackass of the Day</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#FCB514' }}>
                       {endTournamentPreview.jackassName ?? 'No votes recorded'}
-                      {endTournamentPreview.jackassVotes > 0 && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>({endTournamentPreview.jackassVotes} votes)</span>}
+                      {endTournamentPreview.jackassVotes > 0 && <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 400, marginLeft: 8 }}>({endTournamentPreview.jackassVotes} votes)</span>}
                     </div>
                   </div>
                   <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Contest Winners (optional)</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 10 }}>Contest Winners (optional)</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div>
-                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>🎯 Closest to Pin winner</label>
+                        <label style={{ fontSize: 12, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>🎯 Closest to Pin winner</label>
                         <input type="text" placeholder="Player name..." value={endTournamentPreview.ctpWinner} onChange={e => setEndTournamentPreview(p => p ? { ...p, ctpWinner: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>💥 Longest Drive winner</label>
+                        <label style={{ fontSize: 12, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>💥 Longest Drive winner</label>
                         <input type="text" placeholder="Player name..." value={endTournamentPreview.ldWinner} onChange={e => setEndTournamentPreview(p => p ? { ...p, ldWinner: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                       </div>
                     </div>
@@ -1287,7 +1287,7 @@ export default function AdminPanel() {
                     <button onClick={doEndTournament} disabled={endingTournament} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: endingTournament ? 'not-allowed' : 'pointer', opacity: endingTournament ? 0.6 : 1 }}>
                       {endingTournament ? 'Archiving…' : '🏆 Archive & Reset for Next Year'}
                     </button>
-                    <button onClick={() => { setEndTournamentOpen(false); setEndTournamentPreview(null) }} disabled={endingTournament} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+                    <button onClick={() => { setEndTournamentOpen(false); setEndTournamentPreview(null) }} disabled={endingTournament} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>
                       Cancel
                     </button>
                   </div>
@@ -1298,13 +1298,13 @@ export default function AdminPanel() {
             {/* Create Test Tournament modal */}
             {testTournamentOpen && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid var(--bdr2)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>Create Test Tournament</div>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Creates a completed tournament that appears in the year dropdown. Useful for testing the archive viewer.
                   </p>
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
+                    <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
                     <input
                       autoFocus
                       placeholder="e.g. Test 2023"
@@ -1314,7 +1314,7 @@ export default function AdminPanel() {
                     />
                   </div>
                   <div style={{ marginBottom: 24 }}>
-                    <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Year</label>
+                    <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Year</label>
                     <input
                       type="number"
                       placeholder="e.g. 2023"
@@ -1331,7 +1331,7 @@ export default function AdminPanel() {
                     >
                       {creatingTestTournament ? 'Creating…' : 'Create'}
                     </button>
-                    <button onClick={() => { setTestTournamentOpen(false); setTestTournamentName(''); setTestTournamentYear(String(new Date().getFullYear())) }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => { setTestTournamentOpen(false); setTestTournamentName(''); setTestTournamentYear(String(new Date().getFullYear())) }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -1350,7 +1350,7 @@ export default function AdminPanel() {
               <div style={{ fontSize: 28 }}>📣</div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>Brevo Contact Sync</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: 'var(--tx3)', marginTop: 2 }}>
                   Push all active players to your Brevo audience for email campaigns
                 </div>
               </div>
@@ -1372,15 +1372,15 @@ export default function AdminPanel() {
                 { label: 'With email', value: activePlayers.filter(p => p.email).length },
                 { label: 'With phone', value: activePlayers.filter(p => p.phone).length },
               ].map(({ label, value }) => (
-                <div key={label} style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                <div key={label} style={{ padding: '10px 16px', borderRadius: 10, background: 'var(--surf)', border: '1px solid var(--bdr)', textAlign: 'center' }}>
                   <div style={{ fontSize: 22, fontWeight: 800, color: '#FCB514', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{label}</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 18, lineHeight: 1.7 }}>
-              Syncs <strong style={{ color: 'rgba(255,255,255,0.6)' }}>name</strong>, <strong style={{ color: 'rgba(255,255,255,0.6)' }}>email</strong>, and <strong style={{ color: 'rgba(255,255,255,0.6)' }}>phone</strong> (if set) for every active player.
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.7 }}>
+              Syncs <strong style={{ color: 'var(--tx2)' }}>name</strong>, <strong style={{ color: 'var(--tx2)' }}>email</strong>, and <strong style={{ color: 'var(--tx2)' }}>phone</strong> (if set) for every active player.
               Existing contacts are updated. Safe to run multiple times.
             </div>
 
@@ -1408,14 +1408,14 @@ export default function AdminPanel() {
           </div>
 
           {/* Setup instructions */}
-          <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)', fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8 }}>
+          <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.8 }}>
             <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 10 }}>One-time setup</div>
             <ol style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <li>
-                In Brevo: <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Settings → API Keys</strong> → create a key with Contacts permission.
+                In Brevo: <strong style={{ color: 'var(--tx2)' }}>Settings → API Keys</strong> → create a key with Contacts permission.
               </li>
               <li>
-                In Supabase Dashboard: <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Edge Functions → brevo-sync → Secrets</strong>, add <code style={{ color: '#FCB514', fontSize: 12 }}>BREVO_API_KEY</code>.
+                In Supabase Dashboard: <strong style={{ color: 'var(--tx2)' }}>Edge Functions → brevo-sync → Secrets</strong>, add <code style={{ color: '#FCB514', fontSize: 12 }}>BREVO_API_KEY</code>.
               </li>
               <li>
                 Deploy the function: <code style={{ color: '#FCB514', fontSize: 12 }}>supabase functions deploy brevo-sync</code>

@@ -33,7 +33,7 @@ const HOLES: HoleData[] = [
 
 const PAR_COLORS: Record<number, { bg: string; text: string; label: string }> = {
   3: { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e', label: 'Par 3' },
-  4: { bg: 'rgba(255,255,255,0.07)', text: 'rgba(255,255,255,0.7)', label: 'Par 4' },
+  4: { bg: 'rgba(255,255,255,0.07)', text: 'var(--tx2)', label: 'Par 4' },
   5: { bg: 'rgba(252,181,20,0.15)', text: '#FCB514', label: 'Par 5' },
 }
 
@@ -56,18 +56,18 @@ export default function CoursePage() {
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
               Augusta Pines GC
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>
               Demo Course · Replace with your venue
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: '#FCB514', lineHeight: 1 }}>{totalPar}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Par</div>
+              <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Par</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{totalYards.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Yards</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--tx1)', lineHeight: 1 }}>{totalYards.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Yards</div>
             </div>
           </div>
         </div>
@@ -101,14 +101,14 @@ export default function CoursePage() {
                   background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.2)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1 }}>Hole</div>
+                  <div style={{ fontSize: 8, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1 }}>Hole</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: '#FCB514', lineHeight: 1 }}>{h.hole}</div>
                 </div>
 
                 {/* Name + par badge */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{h.name}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{h.name}</span>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
                       background: pc.bg, color: pc.text,
@@ -123,16 +123,16 @@ export default function CoursePage() {
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
                       <Ruler size={11} color="rgba(255,255,255,0.3)" />
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{h.yards}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{h.yards}</span>
                     </div>
-                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>yds</div>
+                    <div style={{ fontSize: 9, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1 }}>yds</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
                       <Hash size={11} color="rgba(255,255,255,0.3)" />
-                      <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>{h.si}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)' }}>{h.si}</span>
                     </div>
-                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>SI</div>
+                    <div style={{ fontSize: 9, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1 }}>SI</div>
                   </div>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export default function CoursePage() {
                 display: 'flex', alignItems: 'flex-start', gap: 8,
               }}>
                 <Flag size={12} color="#FCB514" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.55 }}>{h.tip}</span>
+                <span style={{ fontSize: 12, color: 'var(--tx2)', lineHeight: 1.55 }}>{h.tip}</span>
               </div>
             </div>
           )

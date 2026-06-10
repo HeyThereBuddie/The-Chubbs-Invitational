@@ -78,8 +78,8 @@ export default function MrLeahey() {
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#FCB514', letterSpacing: 5, margin: '0 0 6px', textShadow: '0 0 24px rgba(252,181,20,0.5)' }}>
           Mr. Leahey Award
         </h1>
-        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Most Spirited Player of the Tournament</div>
-        <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+        <div style={{ color: 'var(--tx2)', fontSize: 14 }}>Most Spirited Player of the Tournament</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--tx4)', fontStyle: 'italic' }}>
           "I am the liquor." — Jim Lahey
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function MrLeahey() {
               Current Front-Runner
             </div>
             <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 17 }}>{frontrunnerPlayer.name}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{frontrunner[1]} vote{frontrunner[1] !== 1 ? 's' : ''}</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{frontrunner[1]} vote{frontrunner[1] !== 1 ? 's' : ''}</div>
           </div>
         </div>
       )}
@@ -119,7 +119,7 @@ export default function MrLeahey() {
                 padding: '12px',
                 borderRadius: 12,
                 border: '1px solid',
-                borderColor: isSelected ? '#FCB514' : 'rgba(255,255,255,0.1)',
+                borderColor: isSelected ? '#FCB514' : 'var(--tx5)',
                 background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
                 color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'rgba(255,255,255,0.8)',
                 cursor: myVote ? 'default' : 'pointer',
@@ -149,7 +149,7 @@ export default function MrLeahey() {
 
       {/* Vote tally */}
       <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 700, color: '#FCB514', fontSize: 14 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#FCB514', fontSize: 14 }}>
           Live Vote Tally
           <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block', marginLeft: 8 }} />
         </div>
@@ -160,14 +160,14 @@ export default function MrLeahey() {
             const count = voteCounts[player.id]
             const pct = Math.round((count / votes.length) * 100)
             return (
-              <div key={player.id} style={{ padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div key={player.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#FCB514' : '#fff' }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#FCB514' : 'var(--tx1)' }}>
                     {i === 0 ? '👑 ' : ''}{player.name}
                   </span>
-                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
+                  <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                <div style={{ height: 6, borderRadius: 999, background: 'var(--tx5)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${(count / maxVotes) * 100}%`,
@@ -180,12 +180,12 @@ export default function MrLeahey() {
             )
           })}
         {votes.length === 0 && (
-          <div style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
             No votes yet — be the first to raise a glass! 🍺
           </div>
         )}
         {votes.length > 0 && (
-          <div style={{ padding: '10px 20px', fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'right' }}>
+          <div style={{ padding: '10px 20px', fontSize: 12, color: 'var(--tx4)', textAlign: 'right' }}>
             {votes.length} total vote{votes.length !== 1 ? 's' : ''}
           </div>
         )}

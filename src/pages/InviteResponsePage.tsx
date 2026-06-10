@@ -72,11 +72,11 @@ export default function InviteResponsePage() {
             <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 32, letterSpacing: 4, color: '#FCB514', marginBottom: 12 }}>
               You're In{name ? `, ${name.split(' ')[0]}` : ''}!
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
+            <p style={{ color: 'var(--tx2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
               Your spot is confirmed. Get your hips loose and your swing ready —
               The Chubbs Memorial is coming in mid-to-late August 2025.
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
               "You're gonna be a golf legend." — Chubbs Peterson
             </p>
           </>
@@ -88,12 +88,12 @@ export default function InviteResponsePage() {
             <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 32, letterSpacing: 4, color: '#FCB514', marginBottom: 12 }}>
               We'll Miss You{name ? `, ${name.split(' ')[0]}` : ''}
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
+            <p style={{ color: 'var(--tx2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
               Totally understood. Your response has been recorded and
               you've been moved to the dropped list. If things change, reach
               out to the organizer to get back in.
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
               "I would have been a pro if it wasn't for those damn alligators." — Chubbs Peterson
             </p>
           </>
@@ -105,13 +105,13 @@ export default function InviteResponsePage() {
             <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 28, letterSpacing: 3, color: '#ef4444', marginBottom: 12 }}>
               Uh Oh
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
+            <p style={{ color: 'var(--tx2)', fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
               Something went wrong with your invite link.
             </p>
             {errorMsg && (
               <p style={{ color: 'rgba(239,68,68,0.7)', fontSize: 12, fontFamily: 'monospace' }}>{errorMsg}</p>
             )}
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 16 }}>
+            <p style={{ color: 'var(--tx4)', fontSize: 13, marginTop: 16 }}>
               Contact the organizer to get a fresh invite link.
             </p>
           </>

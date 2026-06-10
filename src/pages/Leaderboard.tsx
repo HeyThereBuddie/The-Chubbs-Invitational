@@ -92,10 +92,10 @@ export default function Leaderboard() {
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Leaderboard</h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{isCurrentYear ? 'Live standings' : 'Final standings'} • Best Ball Format • Par {COURSE_PAR}</p>
+          <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{isCurrentYear ? 'Live standings' : 'Final standings'} • Best Ball Format • Par {COURSE_PAR}</p>
         </div>
         {isCurrentYear && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--tx3)', fontSize: 12 }}>
             <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
             Live
           </div>
@@ -121,14 +121,14 @@ export default function Leaderboard() {
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 22, width: 32, flexShrink: 0 }}>
-                    {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{i + 1}</span>}
+                    {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 14, color: 'var(--tx3)', fontWeight: 700 }}>{i + 1}</span>}
                   </span>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: isLeader ? '#FCB514' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: isLeader ? '#FCB514' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {row.team.name}
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 1 }}>
                       {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                     </div>
                   </div>
@@ -138,55 +138,55 @@ export default function Leaderboard() {
                       <div style={{ fontSize: 20, fontWeight: 700, color: row.toPar <= 0 ? '#FCB514' : 'rgba(255,255,255,0.9)' }}>
                         {row.thru > 0 ? toPar(row.toPar) : '—'}
                       </div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>TO PAR</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>TO PAR</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{row.gross || '—'}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>GROSS</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>GROSS</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{row.thru}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>THRU</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>THRU</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{row.putts || '—'}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>PUTTS</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>PUTTS</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Gap from leader */}
                 {gap !== null && gap > 0 && row.thru > 0 && (
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 4, marginLeft: 44 }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4, marginLeft: 44 }}>
                     {gap} back
                   </div>
                 )}
 
                 {/* Hole grid: hole numbers on top, score bubbles below */}
                 {row.thru > 0 && (
-                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto', overflowY: 'visible' }}>
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--bdr)', overflowX: 'auto', overflowY: 'visible' }}>
                     <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 'max-content' }}>
                       {/* Hole number row */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
+                        <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
                           Hole:
                         </div>
                         {row.holeScores.map((_, holeIdx) => (
-                          <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>
+                          <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--tx3)' }}>
                             {holeIdx + 1}
                           </div>
                         ))}
                       </div>
                       {/* Score bubble row — padding lets outlines (outline-offset: 3px) render without clipping */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
-                        <div style={{ width: 44, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
+                        <div style={{ width: 44, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
                           Score:
                         </div>
                         {row.holeScores.map((score, holeIdx) => {
                           const par = HOLE_PARS[holeIdx]
                           if (score === null) {
                             return (
-                              <div key={holeIdx} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.08)', flexShrink: 0 }} />
+                              <div key={holeIdx} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--bdr)', flexShrink: 0 }} />
                             )
                           }
                           return (
@@ -212,7 +212,7 @@ export default function Leaderboard() {
       {/* Alligator divider */}
       <div style={{ textAlign: 'center', marginTop: 40, padding: '24px', borderTop: '1px solid rgba(252,181,20,0.1)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🐊</div>
-        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontStyle: 'italic' }}>
+        <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
           "I would have been a pro if it wasn't for those damn alligators."
         </p>
         <p style={{ color: 'rgba(252,181,20,0.4)', fontSize: 11, marginTop: 4 }}>— Chubbs Peterson</p>

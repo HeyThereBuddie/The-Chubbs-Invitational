@@ -206,14 +206,14 @@ export default function AccountPage() {
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4, margin: 0 }}>
           My Account
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginTop: 4 }}>
+        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
           {displayName(profile)} · {profile.email}
         </p>
       </div>
 
       {/* ── Profile Photo ── */}
       <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
           Profile Photo
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -221,7 +221,7 @@ export default function AccountPage() {
             width: 80, height: 80, borderRadius: '50%',
             border: '2px solid rgba(252,181,20,0.35)',
             overflow: 'hidden', flexShrink: 0,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'var(--surf)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
           }}>
@@ -233,7 +233,7 @@ export default function AccountPage() {
                 onError={() => setAvatarPreview(null)}
               />
             ) : (
-              <span style={{ fontSize: 30, color: 'rgba(255,255,255,0.25)', fontFamily: 'Bebas Neue' }}>
+              <span style={{ fontSize: 30, color: 'var(--tx4)', fontFamily: 'Bebas Neue' }}>
                 {displayName(profile).charAt(0).toUpperCase()}
               </span>
             )}
@@ -267,7 +267,7 @@ export default function AccountPage() {
             {(profile.avatar_url || avatarPreview) && !uploadingAvatar && (
               <button
                 onClick={removeAvatar}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 12, padding: 0, textAlign: 'left' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx4)', fontSize: 12, padding: 0, textAlign: 'left' }}
               >
                 Remove photo
               </button>
@@ -278,7 +278,7 @@ export default function AccountPage() {
 
       {/* ── Profile info ── */}
       <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
           Profile
         </div>
 
@@ -286,11 +286,11 @@ export default function AccountPage() {
           <div>
             <label style={labelStyle}>Full Name</label>
             <input value={profile.name} disabled style={{ ...inputStyle, opacity: 0.4, cursor: 'not-allowed' }} />
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>Contact an admin to change your name.</div>
+            <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4 }}>Contact an admin to change your name.</div>
           </div>
 
           <div>
-            <label style={labelStyle}>Nickname <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>(optional)</span></label>
+            <label style={labelStyle}>Nickname <span style={{ color: 'var(--tx4)', fontWeight: 400 }}>(optional)</span></label>
             <input
               type="text"
               placeholder='e.g. "Big Easy", "The Shark"'
@@ -344,7 +344,7 @@ export default function AccountPage() {
         if (!rows.length) return null
         return (
           <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 16 }}>
               Career Highlights
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -352,12 +352,12 @@ export default function AccountPage() {
                 <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(252,181,20,0.06)' : 'rgba(255,255,255,0.02)', border: r.key === 'champion' ? '1px solid rgba(252,181,20,0.2)' : '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ fontSize: 18, flexShrink: 0 }}>{r.emoji}</span>
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#FCB514' : '#fff' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#FCB514' : 'var(--tx1)' }}>
                       {r.label}
                     </span>
-                    {r.years.length > 1 && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginLeft: 8 }}>×{r.years.length}</span>}
+                    {r.years.length > 1 && <span style={{ fontSize: 12, color: 'var(--tx3)', marginLeft: 8 }}>×{r.years.length}</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', textAlign: 'right' }}>
                     {r.years.join(', ')}
                   </div>
                 </div>
@@ -369,7 +369,7 @@ export default function AccountPage() {
 
       {/* ── Email ── */}
       <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
           Email Address
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -381,7 +381,7 @@ export default function AccountPage() {
               onChange={e => setEmailForm({ email: e.target.value })}
               style={inputStyle}
             />
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4 }}>
               A confirmation link will be sent to the new address.
             </div>
           </div>
@@ -399,7 +399,7 @@ export default function AccountPage() {
       {/* ── Tournament RSVP ── */}
       {profile.invite_response && (
         <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 14 }}>
             Tournament RSVP
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -412,11 +412,11 @@ export default function AccountPage() {
                 {profile.invite_response === 'yes' ? 'You\'re In — see you on the course!' : 'You declined this year\'s tournament'}
               </div>
               {profile.invite_response_at && (
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 3 }}>
                   Responded {new Date(profile.invite_response_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </div>
               )}
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--tx4)', marginTop: 6 }}>
                 To change your response, contact the organizer.
               </div>
             </div>
@@ -427,7 +427,7 @@ export default function AccountPage() {
       {/* ── Password ── */}
       {user?.app_metadata?.provider !== 'google' && (
         <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 18 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
             Change Password
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -479,11 +479,11 @@ export default function AccountPage() {
 
       {/* ── Push Notifications ── */}
       <div className="glass" style={{ padding: '24px 26px', marginTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 16 }}>
           Lead Notifications
         </div>
         {pushStatus === 'unsupported' && (
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>Push notifications aren't supported in this browser.</p>
+          <p style={{ fontSize: 13, color: 'var(--tx3)' }}>Push notifications aren't supported in this browser.</p>
         )}
         {pushStatus === 'denied' && (
           <p style={{ fontSize: 13, color: '#ef4444' }}>Notifications are blocked. Enable them in your browser settings, then reload.</p>
@@ -491,10 +491,10 @@ export default function AccountPage() {
         {(pushStatus === 'unsubscribed' || pushStatus === 'subscribed') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)', marginBottom: 4 }}>
                 {pushStatus === 'subscribed' ? '🔔 Enabled' : '🔕 Disabled'}
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              <div style={{ fontSize: 12, color: 'var(--tx3)' }}>
                 Get a notification when a team takes the lead mid-round
               </div>
             </div>
@@ -522,7 +522,7 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 11,
   fontWeight: 600,
-  color: 'rgba(255,255,255,0.45)',
+  color: 'var(--tx3)',
   textTransform: 'uppercase',
   letterSpacing: 1,
   marginBottom: 6,

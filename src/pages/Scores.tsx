@@ -163,9 +163,9 @@ function HoleCard({
             letterSpacing: -0.5,
           }}>{hole}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Par {par}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx1)', lineHeight: 1 }}>Par {par}</span>
             {holeInfo && (
-              <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.6)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx2)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
             )}
           </div>
         </div>
@@ -178,7 +178,7 @@ function HoleCard({
           </div>
         ) : (
           <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.13)', fontWeight: 300, lineHeight: 1 }}>—</span>
+            <span style={{ fontSize: 22, color: 'var(--tx5)', fontWeight: 300, lineHeight: 1 }}>—</span>
           </div>
         )}
 
@@ -189,8 +189,8 @@ function HoleCard({
               disabled={isSaving || (hasScore && score <= 1)}
               style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer',
+                background: 'var(--surf2)', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--tx1)', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             ><Minus size={14} /></button>
@@ -211,8 +211,8 @@ function HoleCard({
                 title="Clear score"
                 style={{
                   width: 24, height: 24, borderRadius: '50%',
-                  background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.25)', cursor: isSaving ? 'not-allowed' : 'pointer',
+                  background: 'transparent', border: '1px solid var(--bdr)',
+                  color: 'var(--tx4)', cursor: isSaving ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 13, lineHeight: 1,
                 }}
@@ -223,7 +223,7 @@ function HoleCard({
         {!readOnly && locked && (
           <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <span style={{ fontSize: 18, opacity: 0.22 }}>🔒</span>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Hole {hole - 1} first</span>
+            <span style={{ fontSize: 9, color: 'var(--tx5)', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Hole {hole - 1} first</span>
           </div>
         )}
       </div>
@@ -233,11 +233,11 @@ function HoleCard({
           {scoreRow?.drive_used_id && (player1 || player2) && (() => {
             const driver = [player1, player2].find(p => p?.id === scoreRow.drive_used_id)
             return driver ? (
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Drive: {displayName(driver)}</span>
+              <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Drive: {displayName(driver)}</span>
             ) : null
           })()}
           {scoreRow?.putts != null && (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Putts: {scoreRow.putts}</span>
+            <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts: {scoreRow.putts}</span>
           )}
         </div>
       )}
@@ -245,10 +245,10 @@ function HoleCard({
       {!readOnly && !locked && hasScore && player1 && player2 && onSetDrive && (
         <div style={{
           marginTop: 10, paddingTop: 10,
-          borderTop: '1px solid rgba(255,255,255,0.05)',
+          borderTop: '1px solid var(--bdr)',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Drive:</span>
+          <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>Drive:</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {[player1, player2].map(p => {
               const active   = driveId === p.id
@@ -261,8 +261,8 @@ function HoleCard({
                     padding: '4px 12px', borderRadius: 999,
                     fontSize: 12, fontWeight: 600, border: '1px solid',
                     background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
-                    borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
-                    color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                    borderColor: active ? '#FCB514' : 'var(--tx5)',
+                    color: active ? '#FCB514' : 'var(--tx3)',
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     opacity: disabled ? 0.3 : 1,
                     transition: 'all 0.15s',
@@ -278,10 +278,10 @@ function HoleCard({
       {!readOnly && !locked && hasScore && onSetPutts && (
         <div style={{
           marginTop: 10, paddingTop: 10,
-          borderTop: '1px solid rgba(255,255,255,0.05)',
+          borderTop: '1px solid var(--bdr)',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>Putts:</span>
+          <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>Putts:</span>
           <div style={{ display: 'flex', gap: 5 }}>
             {[0, 1, 2, 3, 4, 5].map(n => {
               const active = putts === n
@@ -290,8 +290,8 @@ function HoleCard({
                   width: 32, height: 28, borderRadius: 6,
                   fontSize: 13, fontWeight: 700, border: '1px solid',
                   background: active ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.05)',
-                  borderColor: active ? '#FCB514' : 'rgba(255,255,255,0.08)',
-                  color: active ? '#FCB514' : 'rgba(255,255,255,0.45)',
+                  borderColor: active ? '#FCB514' : 'var(--tx5)',
+                  color: active ? '#FCB514' : 'var(--tx3)',
                   cursor: 'pointer', transition: 'all 0.15s',
                 }}>
                   {n}
@@ -303,8 +303,8 @@ function HoleCard({
       )}
 
       {!readOnly && !locked && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>🍺</span>
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>🍺</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {[player1, player2].map(p => {
               const myC = chulligans.find(c => c.player_id === p.id)
@@ -317,8 +317,8 @@ function HoleCard({
                   style={{
                     padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
                     background: usedHere ? 'rgba(252,181,20,0.18)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${usedHere ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                    color: usedHere ? '#FCB514' : usedElsewhere ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.45)',
+                    border: `1px solid ${usedHere ? 'rgba(252,181,20,0.5)' : 'var(--tx5)'}`,
+                    color: usedHere ? '#FCB514' : usedElsewhere ? 'rgba(255,255,255,0.18)' : 'var(--tx3)',
                     cursor: usedElsewhere ? 'not-allowed' : 'pointer',
                     textDecoration: usedElsewhere ? 'line-through' : 'none',
                   }}>
@@ -331,12 +331,12 @@ function HoleCard({
       )}
 
       {(holeInfo?.description || holeInfo?.photo) && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)' }}>
           <button type="button" onClick={onToggleInfo} style={{
             width: '100%', padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
             background: infoExpanded ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${infoExpanded ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.1)'}`,
-            color: infoExpanded ? '#FCB514' : 'rgba(255,255,255,0.6)',
+            border: `1px solid ${infoExpanded ? 'rgba(252,181,20,0.35)' : 'var(--tx5)'}`,
+            color: infoExpanded ? '#FCB514' : 'var(--tx2)',
             fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}>
             <span style={{ fontSize: 15 }}>⛳</span>
@@ -347,7 +347,7 @@ function HoleCard({
       )}
 
       {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
-        <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bdr)' }}>
           {holeInfo.photo && (
             <img
               src={holeInfo.photo}
@@ -357,7 +357,7 @@ function HoleCard({
             />
           )}
           {holeInfo.description && (
-            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+            <div style={{ padding: '10px 12px', background: 'var(--surf)', fontSize: 12, color: 'var(--tx2)', lineHeight: 1.7 }}>
               {holeInfo.description}
             </div>
           )}
@@ -636,7 +636,7 @@ export default function Scores() {
   const pageHeader = (
     <div style={{ marginBottom: 20 }}>
       <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Scores</h1>
-      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Modified Scramble — one score per hole per team &nbsp;<span style={{fontSize:10,opacity:0.4}}>{BUILD}</span></p>
+      <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Modified Scramble — one score per hole per team &nbsp;<span style={{fontSize:10,opacity:0.4}}>{BUILD}</span></p>
     </div>
   )
 
@@ -656,7 +656,7 @@ export default function Scores() {
     ]
     return (
       <div className="glass" style={{ padding: '12px 16px', marginBottom: 12 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
           Drive usage — min 4 each per half
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -665,7 +665,7 @@ export default function Scores() {
             const p2c = countDrives(p2.id, from, to, scoreMap)
             return (
               <div key={label}>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 10, color: 'var(--tx4)', marginBottom: 6 }}>{label}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {[{ name: displayName(p1), count: p1c }, { name: displayName(p2), count: p2c }].map(({ name, count }) => {
                     const ok = count >= 4
@@ -673,12 +673,12 @@ export default function Scores() {
                       <div key={name} style={{
                         flex: 1, textAlign: 'center', padding: '6px 4px', borderRadius: 8,
                         background: ok ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${ok ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                        border: `1px solid ${ok ? 'rgba(34,197,94,0.3)' : 'var(--tx5)'}`,
                       }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#22c55e' : 'rgba(255,255,255,0.7)' }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#22c55e' : 'var(--tx2)' }}>
                           {count}
                         </div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>{name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 1 }}>{name}</div>
                       </div>
                     )
                   })}
@@ -701,7 +701,7 @@ export default function Scores() {
     if (!p1 || !p2) return null
     return (
       <div className="glass" style={{ padding: '12px 16px', marginBottom: 12 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
           🍺 Chulligans — 1 per player per round (must chug)
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -714,10 +714,10 @@ export default function Scores() {
                 border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'rgba(255,255,255,0.07)'}`,
               }}>
                 <div style={{ fontSize: 20, marginBottom: 4 }}>{c ? '✅' : '🍺'}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: c ? '#FCB514' : 'rgba(255,255,255,0.65)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: c ? '#FCB514' : 'var(--tx2)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {displayName(p)}
                 </div>
-                <div style={{ fontSize: 10, color: c ? '#FCB514' : 'rgba(255,255,255,0.25)' }}>
+                <div style={{ fontSize: 10, color: c ? '#FCB514' : 'var(--tx4)' }}>
                   {c ? `Used H${c.hole}` : 'Available'}
                 </div>
               </div>
@@ -735,11 +735,11 @@ export default function Scores() {
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         {pageHeader}
         <div className="glass animate-fadeUp" style={{ padding: 32, textAlign: 'center' }}>
-          <div style={{ margin: '0 auto 16px', width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.06)', borderRadius: '50%' }}>
-            <Users size={24} style={{ color: 'rgba(255,255,255,0.3)' }} />
+          <div style={{ margin: '0 auto 16px', width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surf2)', borderRadius: '50%' }}>
+            <Users size={24} style={{ color: 'var(--tx4)' }} />
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600, marginBottom: 6 }}>You're not assigned to a team yet</p>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>Pick your team to start entering scores</p>
+          <p style={{ color: 'var(--tx2)', fontWeight: 600, marginBottom: 6 }}>You're not assigned to a team yet</p>
+          <p style={{ color: 'var(--tx3)', fontSize: 13, marginBottom: 24 }}>Pick your team to start entering scores</p>
           <select value={teamPick} onChange={e => setTeamPick(e.target.value)} style={{ marginBottom: 16 }}>
             <option value="">— Select your team —</option>
             {allTeams.map(t => (
@@ -778,7 +778,7 @@ export default function Scores() {
           <button key={hole} onClick={() => handleSelectHole(hole)}
             style={{
               minWidth: 38, padding: '6px 4px', borderRadius: 8, flexShrink: 0,
-              border: `1px solid ${isActive ? 'rgba(252,181,20,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${isActive ? 'rgba(252,181,20,0.5)' : 'var(--tx5)'}`,
               background: isActive ? 'rgba(252,181,20,0.12)' : 'transparent',
               cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               opacity: isLocked ? 0.38 : 1, transition: 'all 0.15s',
@@ -794,7 +794,7 @@ export default function Scores() {
                 {diff === 0 ? 'E' : diff! > 0 ? `+${diff}` : `${diff}`}
               </span>
             ) : (
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'inline-block' }} />
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--tx5)', display: 'inline-block' }} />
             )}
           </button>
         )
@@ -834,15 +834,15 @@ export default function Scores() {
           <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{adminTeam.name}</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 2 }}>
                 {[adminTeam.player1 && displayName(adminTeam.player1), adminTeam.player2 && displayName(adminTeam.player2)].filter(Boolean).join(' & ')}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: stats.toPar <= 0 ? '#FCB514' : '#fff' }}>{stats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{stats.putts || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Putts</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: stats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{stats.toParStr}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>To Par</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.gross || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Gross</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.thru}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Thru</div></div>
+              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.putts || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts</div></div>
             </div>
           </div>
         )}
@@ -887,7 +887,7 @@ export default function Scores() {
           )
         })()}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'var(--tx4)', fontSize: 12 }}>
           <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
           Scores sync in real-time to all connected devices
         </div>
@@ -933,27 +933,27 @@ export default function Scores() {
       {displayTeam && (
         <div className="glass animate-fadeUp" style={{ padding: '16px 20px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 4 }}>
               {isViewingMyTeam ? 'Your Team' : 'Viewing'}
             </div>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>{displayTeam.name}</div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 2 }}>
               {[displayTeam.player1 && displayName(displayTeam.player1), displayTeam.player2 && displayName(displayTeam.player2)].filter(Boolean).join(' & ')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: displayStats.toPar <= 0 ? '#FCB514' : '#fff' }}>{displayStats.toParStr}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>To Par</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{displayStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Gross</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{displayStats.thru}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Thru</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{displayStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Putts</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: displayStats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{displayStats.toParStr}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>To Par</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Gross</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.thru}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Thru</div></div>
+            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts</div></div>
           </div>
         </div>
       )}
 
       {!isViewingMyTeam && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 14px', borderRadius: 10, background: 'var(--surf)', border: '1px solid var(--bdr)' }}>
           <span style={{ fontSize: 13 }}>👁</span>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Read-only — you can only edit your own scorecard</span>
+          <span style={{ fontSize: 12, color: 'var(--tx3)' }}>Read-only — you can only edit your own scorecard</span>
         </div>
       )}
 
@@ -1022,7 +1022,7 @@ export default function Scores() {
         )
       })()}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'var(--tx4)', fontSize: 12 }}>
         <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
         Scores sync in real-time to all connected devices
       </div>
