@@ -13,11 +13,11 @@ const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { to: '/hall-of-fame', icon: Star, label: 'Hall of Fame' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/tee-times', icon: Clock, label: 'Tee Times' },
   { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/hall-of-fame', icon: Star, label: 'Hall of Fame' },
   { to: '/account', icon: UserCircle, label: 'My Account' },
 ]
 
@@ -25,11 +25,11 @@ const adminNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { to: '/hall-of-fame', icon: Star, label: 'Hall of Fame' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/tee-times', icon: Clock, label: 'Tee Times' },
   { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/hall-of-fame', icon: Star, label: 'Hall of Fame' },
   { to: '/account', icon: UserCircle, label: 'My Account' },
   { to: '/admin', icon: Shield, label: 'Admin Panel' },
 ]

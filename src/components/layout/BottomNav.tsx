@@ -9,11 +9,11 @@ const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
-  { to: '/hall-of-fame', icon: Star, label: 'HOF' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/hall-of-fame', icon: Star, label: 'HOF' },
   { to: '/account', icon: UserCircle, label: 'Account' },
 ]
 
@@ -21,11 +21,11 @@ const adminNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
-  { to: '/hall-of-fame', icon: Star, label: 'HOF' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'My Team' },
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/hall-of-fame', icon: Star, label: 'HOF' },
   { to: '/account', icon: UserCircle, label: 'Account' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ]
