@@ -127,16 +127,21 @@ export default function Leaderboard() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(() => {
-            // Compute PGA-style tied positions: same toPar + both started = same pos, skip numbers
+            // Two rows are truly tied only if toPar AND putts are equal
+            // (putts only act as tiebreaker when both teams have putts recorded)
+            const areTied = (a: LeaderRow, b: LeaderRow) => {
+              if (a.toPar !== b.toPar) return false
+              if ((a.thru > 0) !== (b.thru > 0)) return false
+              if (a.putts > 0 && b.putts > 0 && a.putts !== b.putts) return false
+              return true
+            }
+
+            // Compute PGA-style positions: skip numbers for each group, T prefix when truly tied
             const posInfo: Array<{ pos: number; tied: boolean }> = []
             let i = 0
             while (i < rows.length) {
               let j = i
-              while (
-                j < rows.length &&
-                rows[j].toPar === rows[i].toPar &&
-                (rows[j].thru > 0) === (rows[i].thru > 0)
-              ) j++
+              while (j < rows.length && areTied(rows[i], rows[j])) j++
               const count = j - i
               const tied = count > 1
               for (let k = 0; k < count; k++) posInfo.push({ pos: i + 1, tied })
@@ -150,9 +155,15 @@ export default function Leaderboard() {
               const rankIndicator = (() => {
                 const emoji = pos === 1 ? '🏆' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null
                 if (emoji) return (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     <span style={{ fontSize: tied ? 26 : 34, lineHeight: 1 }}>{emoji}</span>
-                    {tied && <span style={{ fontFamily: 'Bebas Neue', fontSize: 11, color: pos === 1 ? '#FCB514' : 'var(--tx3)', letterSpacing: 1 }}>T{pos}</span>}
+                    {tied && (
+                      <span style={{
+                        fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 1, lineHeight: 1,
+                        color: pos === 1 ? '#FCB514' : 'var(--tx3)',
+                        width: 42, textAlign: 'center', display: 'block',
+                      }}>T{pos}</span>
+                    )}
                   </div>
                 )
                 return (
