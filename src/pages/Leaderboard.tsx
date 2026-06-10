@@ -194,28 +194,28 @@ export default function Leaderboard() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 20, textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 12, textAlign: 'right', flexShrink: 0 }}>
                     <div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
                         {row.thru > 0 ? toPar(row.toPar) : '—'}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>TO PAR</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>TO PAR</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{back !== null ? back : '—'}</div>
-                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>BACK</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{back !== null ? back : '—'}</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>BACK</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.gross || '—'}</div>
-                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>GROSS</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{row.gross || '—'}</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>GROSS</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.thru}</div>
-                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>THRU</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{row.thru}</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>THRU</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx1)' }}>{row.putts || '—'}</div>
-                      <div style={{ fontSize: 10, color: 'var(--tx4)' }}>PUTTS</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx1)' }}>{row.putts || '—'}</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>PUTTS</div>
                     </div>
                   </div>
                 </div>

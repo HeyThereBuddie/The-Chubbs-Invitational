@@ -972,12 +972,12 @@ export default function Scores() {
                 {[adminTeam.player1 && displayName(adminTeam.player1), adminTeam.player2 && displayName(adminTeam.player2)].filter(Boolean).join(' & ')}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: stats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{stats.toParStr}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>To Par</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.thru > 0 && leaderToPar !== null && stats.toPar - leaderToPar > 0 ? stats.toPar - leaderToPar : '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Back</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.gross || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Gross</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.thru}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Thru</div></div>
-              <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{stats.putts || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts</div></div>
+            <div style={{ display: 'flex', gap: 14, textAlign: 'center' }}>
+              <div><div style={{ fontSize: 16, fontWeight: 800, color: stats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{stats.toParStr}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>To Par</div></div>
+              <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{stats.thru > 0 && leaderToPar !== null && stats.toPar - leaderToPar > 0 ? stats.toPar - leaderToPar : '—'}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Back</div></div>
+              <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{stats.gross || '—'}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Gross</div></div>
+              <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{stats.thru}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Thru</div></div>
+              <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{stats.putts || '—'}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Putts</div></div>
             </div>
           </div>
         )}
@@ -1076,12 +1076,12 @@ export default function Scores() {
               {[displayTeam.player1 && displayName(displayTeam.player1), displayTeam.player2 && displayName(displayTeam.player2)].filter(Boolean).join(' & ')}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: displayStats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{displayStats.toParStr}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>To Par</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.thru > 0 && leaderToPar !== null && displayStats.toPar - leaderToPar > 0 ? displayStats.toPar - leaderToPar : '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Back</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.gross || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Gross</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.thru}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Thru</div></div>
-            <div><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tx1)' }}>{displayStats.putts || '—'}</div><div style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts</div></div>
+          <div style={{ display: 'flex', gap: 14, textAlign: 'center' }}>
+            <div><div style={{ fontSize: 16, fontWeight: 800, color: displayStats.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>{displayStats.toParStr}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>To Par</div></div>
+            <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{displayStats.thru > 0 && leaderToPar !== null && displayStats.toPar - leaderToPar > 0 ? displayStats.toPar - leaderToPar : '—'}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Back</div></div>
+            <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{displayStats.gross || '—'}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Gross</div></div>
+            <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{displayStats.thru}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Thru</div></div>
+            <div><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)' }}>{displayStats.putts || '—'}</div><div style={{ fontSize: 9, color: 'var(--tx3)' }}>Putts</div></div>
           </div>
         </div>
       )}
