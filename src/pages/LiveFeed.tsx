@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
 import { useYear } from '../context/YearContext'
+import { useAuth } from '../context/AuthContext'
+import ReactionBar from '../components/ReactionBar'
+import type { ReactionGroup } from '../components/ReactionBar'
 
 interface FeedEvent {
   id: string
@@ -43,9 +46,25 @@ function isHighlight(ev: FeedEvent) {
 
 type FilterType = 'golf' | 'contests' | 'jackass'
 
+function buildReactionsMap(rows: { event_id: string; player_id: string; emoji: string }[]): Record<string, ReactionGroup[]> {
+  const map: Record<string, ReactionGroup[]> = {}
+  for (const r of rows) {
+    if (!map[r.event_id]) map[r.event_id] = []
+    const group = map[r.event_id].find(g => g.emoji === r.emoji)
+    if (group) {
+      group.playerIds.push(r.player_id)
+    } else {
+      map[r.event_id].push({ emoji: r.emoji, playerIds: [r.player_id] })
+    }
+  }
+  return map
+}
+
 export default function LiveFeed() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { profile } = useAuth()
   const [events, setEvents] = useState<FeedEvent[]>([])
+  const [reactions, setReactions] = useState<Record<string, ReactionGroup[]>>({})
   const [loading, setLoading] = useState(true)
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null)
 
@@ -62,11 +81,61 @@ export default function LiveFeed() {
 
   const fetchEvents = async () => {
     if (!effectiveTournamentId) { setEvents([]); setLoading(false); return }
-    let q = supabase.from('feed_events').select('*').order('created_at', { ascending: false }).limit(200)
-    q = q.eq('tournament_id', effectiveTournamentId)
-    const { data } = await q
-    setEvents((data ?? []) as FeedEvent[])
+
+    const { data: eventsData } = await supabase
+      .from('feed_events')
+      .select('*')
+      .eq('tournament_id', effectiveTournamentId)
+      .order('created_at', { ascending: false })
+      .limit(200)
+
+    const evs = (eventsData ?? []) as FeedEvent[]
+    setEvents(evs)
+
+    if (evs.length > 0) {
+      const { data: reactionsData } = await supabase
+        .from('feed_reactions')
+        .select('event_id, player_id, emoji')
+        .in('event_id', evs.map(e => e.id))
+      setReactions(buildReactionsMap((reactionsData ?? []) as { event_id: string; player_id: string; emoji: string }[]))
+    }
+
     setLoading(false)
+  }
+
+  const handleToggle = async (eventId: string, emoji: string, hasReacted: boolean) => {
+    if (!profile) return
+
+    // Optimistic update
+    setReactions(prev => {
+      const groups = (prev[eventId] ?? []).map(g => ({ ...g, playerIds: [...g.playerIds] }))
+      if (hasReacted) {
+        const idx = groups.findIndex(g => g.emoji === emoji)
+        if (idx >= 0) {
+          groups[idx].playerIds = groups[idx].playerIds.filter(id => id !== profile.id)
+          if (groups[idx].playerIds.length === 0) groups.splice(idx, 1)
+        }
+      } else {
+        const idx = groups.findIndex(g => g.emoji === emoji)
+        if (idx >= 0) {
+          groups[idx].playerIds.push(profile.id)
+        } else {
+          groups.push({ emoji, playerIds: [profile.id] })
+        }
+      }
+      return { ...prev, [eventId]: groups }
+    })
+
+    if (hasReacted) {
+      await supabase.from('feed_reactions')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('player_id', profile.id)
+        .eq('emoji', emoji)
+    } else {
+      await supabase.from('feed_reactions')
+        .insert({ event_id: eventId, player_id: profile.id, emoji })
+    }
   }
 
   useEffect(() => {
@@ -81,6 +150,31 @@ export default function LiveFeed() {
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feed_events' }, () => {
         fetchEvents()
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_reactions' }, payload => {
+        const { event_id, player_id, emoji } = payload.new as { event_id: string; player_id: string; emoji: string }
+        setReactions(prev => {
+          const groups = (prev[event_id] ?? []).map(g => ({ ...g, playerIds: [...g.playerIds] }))
+          const idx = groups.findIndex(g => g.emoji === emoji)
+          if (idx >= 0) {
+            if (!groups[idx].playerIds.includes(player_id)) groups[idx].playerIds.push(player_id)
+          } else {
+            groups.push({ emoji, playerIds: [player_id] })
+          }
+          return { ...prev, [event_id]: groups }
+        })
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feed_reactions' }, payload => {
+        const { event_id, player_id, emoji } = payload.old as { event_id: string; player_id: string; emoji: string }
+        setReactions(prev => {
+          const groups = (prev[event_id] ?? []).map(g => ({ ...g, playerIds: [...g.playerIds] }))
+          const idx = groups.findIndex(g => g.emoji === emoji)
+          if (idx >= 0) {
+            groups[idx].playerIds = groups[idx].playerIds.filter(id => id !== player_id)
+            if (groups[idx].playerIds.length === 0) groups.splice(idx, 1)
+          }
+          return { ...prev, [event_id]: groups }
+        })
       })
       .subscribe()
 
@@ -151,66 +245,79 @@ export default function LiveFeed() {
           filtered.map((ev, i) => {
             const color = eventColor(ev)
             const highlight = isHighlight(ev)
+            const eventReactions = reactions[ev.id] ?? []
             return (
               <div key={ev.id} style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
+                padding: '12px 20px',
                 borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                 background: highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
               }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                  background: highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18,
-                }}>{ev.emoji}</div>
+                {/* Main event row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: highlight ? 'rgba(252,181,20,0.1)' : 'rgba(255,255,255,0.04)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18,
+                  }}>{ev.emoji}</div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-                      {ev.label}
-                    </span>
-                    {ev.event_type === 'contest' && ev.label.includes('Vote') ? (
-                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                        <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.voter_name}</strong>
-                        {' voted '}
-                        <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
-                        {' for jackass'}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                        {ev.label}
                       </span>
-                    ) : ev.event_type === 'contest' ? (
-                      ev.player_name && (
-                        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>{ev.player_name}</span>
-                      )
-                    ) : (
-                      <>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {ev.team_name || 'Unknown Team'}
+                      {ev.event_type === 'contest' && ev.label.includes('Vote') ? (
+                        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                          <strong style={{ color: '#fff', fontWeight: 700 }}>{ev.voter_name}</strong>
+                          {' voted '}
+                          <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
+                          {' for jackass'}
                         </span>
-                        {ev.player_name && (
-                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                            {ev.player_name}
+                      ) : ev.event_type === 'contest' ? (
+                        ev.player_name && (
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>{ev.player_name}</span>
+                        )
+                      ) : (
+                        <>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ev.team_name || 'Unknown Team'}
                           </span>
-                        )}
-                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                          Hole {ev.hole}
-                        </span>
-                      </>
+                          {ev.player_name && (
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                              {ev.player_name}
+                            </span>
+                          )}
+                          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                            Hole {ev.hole}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    {ev.score != null && ev.event_type === 'score' && (
+                      <div>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
+                          {ev.score}
+                        </div>
+                      </div>
                     )}
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
+                      {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  {ev.score != null && ev.event_type === 'score' && (
-                    <div>
-                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>
-                        {ev.score}
-                      </div>
-                    </div>
-                  )}
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>
-                    {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
-                  </div>
-                </div>
+                {/* Reaction bar */}
+                <ReactionBar
+                  eventId={ev.id}
+                  label={ev.label}
+                  reactions={eventReactions}
+                  currentUserId={profile?.id ?? null}
+                  onToggle={handleToggle}
+                />
               </div>
             )
           })
