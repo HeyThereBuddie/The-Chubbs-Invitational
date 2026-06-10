@@ -9,7 +9,6 @@ import Scores from './pages/Scores'
 import Leaderboard from './pages/Leaderboard'
 import TeeTimes from './pages/TeeTimes'
 import Groups from './pages/Groups'
-import RSVP from './pages/RSVP'
 import RSVPLanding from './pages/RSVPLanding'
 import Contests from './pages/Contests'
 import Updates from './pages/Updates'
@@ -60,7 +59,7 @@ function AppRoutes() {
       <Route path="/groups" element={<ProtectedRoute><Layout><Groups /></Layout></ProtectedRoute>} />
       <Route path="/contests" element={<ProtectedRoute><Layout><Contests /></Layout></ProtectedRoute>} />
       <Route path="/updates" element={<ProtectedRoute><Layout><Updates /></Layout></ProtectedRoute>} />
-<Route path="/rsvp" element={<ProtectedRoute adminOnly><Layout><RSVP /></Layout></ProtectedRoute>} />
+<Route path="/rsvp" element={<Navigate to="/admin" replace />} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Layout><AccountPage /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />

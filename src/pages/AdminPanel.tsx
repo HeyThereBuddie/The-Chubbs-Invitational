@@ -5,6 +5,7 @@ import { useYear } from '../context/YearContext'
 import type { Profile, Team } from '../lib/types'
 import { displayName, HOLE_PARS } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
+import RSVPPanel from './RSVP'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -40,7 +41,7 @@ interface THistoryEntry {
 export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'tournament' | 'brevo'>('teams')
+  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'tournament' | 'brevo' | 'rsvp'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamName, setNewTeamName] = useState('')
@@ -541,6 +542,7 @@ export default function AdminPanel() {
           { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
           { id: 'brevo',      label: '📣 Brevo' },
+          { id: 'rsvp',       label: '📋 RSVP' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -1422,6 +1424,9 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* ── RSVP tab ────────────────────────────────────────────── */}
+      {tab === 'rsvp' && <RSVPPanel />}
     </div>
   )
 }
