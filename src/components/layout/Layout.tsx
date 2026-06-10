@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
+import { useTheme } from '../../context/ThemeContext'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import RulesChat from '../RulesChat'
-import { UserCircle } from 'lucide-react'
+import { UserCircle, Sun, Moon } from 'lucide-react'
 import { useYear } from '../../context/YearContext'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
+  const { isDark, toggleTheme } = useTheme()
   const { isCurrentYear, tournaments, viewingTournamentId } = useYear()
   const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
   const viewingYear = viewingTournament?.year ?? null
@@ -29,7 +31,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#FCB514', letterSpacing: 2 }}>
             {viewingTournament?.name ?? viewingYear} — Read Only
           </span>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', flex: 1 }}>
+          <span style={{ fontSize: 12, color: 'var(--tx3)', flex: 1 }}>
             You're viewing a past tournament. No changes can be made.
           </span>
         </div>
@@ -47,7 +49,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           {/* Mobile header */}
           <header style={{
             position: 'sticky', top: 0, zIndex: 50,
-            background: 'rgba(10,7,2,0.97)',
+            background: 'var(--panel)',
             backdropFilter: 'blur(20px)',
             borderBottom: '1px solid rgba(252,181,20,0.14)',
             padding: '10px 18px',
@@ -69,11 +71,18 @@ export default function Layout({ children }: { children: ReactNode }) {
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
                 The Chubbs Memorial
               </div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>
+              <div style={{ fontSize: 9, color: 'var(--tx5)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>
                 Annual Golf Tournament
               </div>
             </div>
-            <Link to="/account" style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', padding: 4, display: 'flex', alignItems: 'center' }}
+            >
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <Link to="/account" style={{ color: 'var(--tx3)', display: 'flex', alignItems: 'center' }}>
               <UserCircle size={22} />
             </Link>
           </header>

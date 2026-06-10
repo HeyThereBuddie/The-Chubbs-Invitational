@@ -1,10 +1,11 @@
 import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { CHUBBS_QUOTES, displayName } from '../../lib/types'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
-  Target, Shield, LogOut, UserCircle, Star
+  Target, Shield, LogOut, UserCircle, Star, Sun, Moon,
 } from 'lucide-react'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
@@ -36,6 +37,7 @@ const adminNav = [
 
 export default function Sidebar() {
   const { isAdmin, profile, signOut } = useAuth()
+  const { isDark, toggleTheme } = useTheme()
   const [quote, setQuote] = useState(CHUBBS_QUOTES[0])
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function Sidebar() {
       minHeight: '100dvh',
       position: 'fixed',
       left: 0, top: 0,
-      background: 'rgba(18,14,6,0.95)',
+      background: 'var(--panel)',
       backdropFilter: 'blur(16px)',
       borderRight: '1px solid rgba(252,181,20,0.12)',
       display: 'flex',
@@ -85,7 +87,7 @@ export default function Sidebar() {
         </div>
         <div style={{
           marginTop: 12,
-          fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: 3,
+          fontSize: 9, color: 'var(--tx5)', letterSpacing: 3,
           textTransform: 'uppercase', textAlign: 'center',
           paddingTop: 10, borderTop: '1px solid rgba(252,181,20,0.08)',
         }}>
@@ -112,7 +114,7 @@ export default function Sidebar() {
               textDecoration: 'none',
               transition: 'all 0.2s',
               background: isActive ? 'rgba(252,181,20,0.12)' : 'transparent',
-              color: isActive ? '#FCB514' : 'rgba(255,255,255,0.55)',
+              color: isActive ? '#FCB514' : 'var(--tx2)',
               borderLeft: isActive ? '2px solid #FCB514' : '2px solid transparent',
             })}
           >
@@ -132,27 +134,34 @@ export default function Sidebar() {
         borderLeft: '3px solid rgba(252,181,20,0.4)',
       }}>
         <div style={{ fontSize: 14, color: 'rgba(252,181,20,0.3)', marginBottom: 4 }}>💬</div>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontStyle: 'italic', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic', lineHeight: 1.5 }}>
           "{quote}"
         </p>
         <p style={{ fontSize: 10, color: 'rgba(252,181,20,0.5)', marginTop: 6, fontWeight: 600 }}>— Chubbs Peterson</p>
       </div>
 
-      {/* User + Sign out */}
+      {/* User + Theme toggle + Sign out */}
       <div style={{
         padding: '12px 16px',
         borderTop: '1px solid rgba(252,181,20,0.1)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center', gap: 6,
       }}>
         <Link to="/account" style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {profile ? displayName(profile) : 'Player'}
           </div>
           <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', textTransform: 'uppercase', letterSpacing: 1 }}>
             {profile?.role ?? 'player'}
           </div>
         </Link>
-        <button onClick={signOut} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4, flexShrink: 0 }} title="Sign out">
+        <button
+          onClick={toggleTheme}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', padding: 4, flexShrink: 0 }}
+        >
+          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button onClick={signOut} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', padding: 4, flexShrink: 0 }} title="Sign out">
           <LogOut size={16} />
         </button>
       </div>

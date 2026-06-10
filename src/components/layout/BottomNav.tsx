@@ -38,7 +38,7 @@ export default function BottomNav() {
     <nav style={{
       position: 'fixed',
       bottom: 0, left: 0, right: 0,
-      background: 'rgba(12,9,3,0.97)',
+      background: 'var(--panel)',
       backdropFilter: 'blur(16px)',
       borderTop: '1px solid rgba(252,181,20,0.12)',
       display: 'flex',
@@ -58,7 +58,7 @@ export default function BottomNav() {
             justifyContent: 'center',
             padding: '8px 2px 6px',
             textDecoration: 'none',
-            color: isActive ? '#FCB514' : 'rgba(255,255,255,0.4)',
+            color: isActive ? '#FCB514' : 'var(--tx3)',
             transition: 'color 0.2s',
             minWidth: 0,
           })}

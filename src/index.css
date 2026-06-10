@@ -1,10 +1,47 @@
 @import "tailwindcss";
 
+/* ── Theme variables ── */
+:root {
+  --bg:         #080808;
+  --panel:      rgba(18,14,6,0.97);
+  --card:       rgba(18,14,6,0.82);
+  --card-strong: rgba(22,16,4,0.9);
+  --surf:       rgba(255,255,255,0.04);
+  --surf2:      rgba(255,255,255,0.07);
+  --surf3:      rgba(255,255,255,0.1);
+  --tx1:        #ffffff;
+  --tx2:        rgba(255,255,255,0.6);
+  --tx3:        rgba(255,255,255,0.4);
+  --tx4:        rgba(255,255,255,0.25);
+  --tx5:        rgba(255,255,255,0.13);
+  --bdr:        rgba(255,255,255,0.09);
+  --bdr2:       rgba(255,255,255,0.14);
+  --score-fill: #0c0a04;
+}
+
+html[data-theme="light"] {
+  --bg:         #f5ede0;
+  --panel:      rgba(252,245,232,0.98);
+  --card:       rgba(255,251,243,0.92);
+  --card-strong: rgba(255,248,235,0.96);
+  --surf:       rgba(0,0,0,0.03);
+  --surf2:      rgba(0,0,0,0.06);
+  --surf3:      rgba(0,0,0,0.09);
+  --tx1:        #1a0f00;
+  --tx2:        rgba(26,15,0,0.65);
+  --tx3:        rgba(26,15,0,0.45);
+  --tx4:        rgba(26,15,0,0.28);
+  --tx5:        rgba(26,15,0,0.15);
+  --bdr:        rgba(0,0,0,0.1);
+  --bdr2:       rgba(0,0,0,0.15);
+  --score-fill: #f5ede0;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background-color: #080808;
-  color: #ffffff;
+  background-color: var(--bg);
+  color: var(--tx1);
   font-family: 'Inter', sans-serif;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -70,7 +107,7 @@ body {
 
 /* ── Glass card ── */
 .glass {
-  background: rgba(18,14,6,0.82);
+  background: var(--card);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(252,181,20,0.16);
@@ -78,7 +115,7 @@ body {
 }
 
 .glass-strong {
-  background: rgba(22,16,4,0.9);
+  background: var(--card-strong);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(252,181,20,0.28);
@@ -107,7 +144,7 @@ body {
     radial-gradient(ellipse 70% 50% at 50% -10%, rgba(252,181,20,0.11) 0%, transparent 65%),
     radial-gradient(ellipse 40% 35% at 5%  95%, rgba(252,181,20,0.05) 0%, transparent 60%),
     radial-gradient(ellipse 40% 35% at 95% 95%, rgba(252,181,20,0.04) 0%, transparent 60%),
-    #080808;
+    var(--bg);
 }
 
 /* ── Buttons ── */
@@ -149,16 +186,16 @@ body {
 
 .btn-ghost {
   background: transparent;
-  color: rgba(255,255,255,0.6);
+  color: var(--tx2);
   border-radius: 999px;
   padding: 8px 16px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--bdr2);
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.btn-ghost:hover { background: var(--surf2); color: var(--tx1); }
 
 /* ── Toast ── */
 .toast {
@@ -168,7 +205,7 @@ body {
   transform: translateX(-50%);
   z-index: 9999;
   padding: 12px 28px;
-  background: rgba(18,14,6,0.95);
+  background: var(--panel);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(252,181,20,0.5);
   border-radius: 999px;
@@ -187,10 +224,10 @@ input[type="number"],
 input[type="time"],
 select,
 textarea {
-  background: rgba(255,255,255,0.04);
+  background: var(--surf);
   border: 1px solid rgba(252,181,20,0.2);
   border-radius: 10px;
-  color: #fff;
+  color: var(--tx1);
   padding: 10px 14px;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
@@ -201,8 +238,8 @@ textarea {
 input:focus, select:focus, textarea:focus {
   border-color: rgba(252,181,20,0.6);
 }
-input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.3); }
-select option { background: #1a1200; }
+input::placeholder, textarea::placeholder { color: var(--tx4); }
+select option { background: var(--bg); color: var(--tx1); }
 
 /* ── Pill tab ── */
 .pill-tab {
@@ -215,14 +252,14 @@ select option { background: #1a1200; }
   transition: all 0.2s;
   white-space: nowrap;
   background: transparent;
-  color: rgba(255,255,255,0.5);
+  color: var(--tx3);
 }
 .pill-tab.active {
   background: rgba(252,181,20,0.15);
   border-color: rgba(252,181,20,0.4);
   color: #FCB514;
 }
-.pill-tab:hover:not(.active) { color: rgba(255,255,255,0.8); }
+.pill-tab:hover:not(.active) { color: var(--tx2); }
 
 /* ── Score bubble ── */
 .score-bubble {
@@ -241,7 +278,7 @@ select option { background: #1a1200; }
   color: #60a5fa;
   outline: 2px solid #60a5fa;
   outline-offset: 3px;
-  box-shadow: 0 0 0 9px #0c0a04, 0 0 0 11px #60a5fa;
+  box-shadow: 0 0 0 9px var(--score-fill), 0 0 0 11px #60a5fa;
 }
 
 /* Eagle — double circle, gold */
@@ -262,7 +299,7 @@ select option { background: #1a1200; }
 
 /* Par — no shape, just the number */
 .score-par {
-  color: rgba(255,255,255,0.85);
+  color: var(--tx1);
 }
 
 /* Bogey — single square, orange */
@@ -288,13 +325,13 @@ select option { background: #1a1200; }
   color: #f87171;
   outline: 2px solid #dc2626;
   outline-offset: 3px;
-  box-shadow: 0 0 0 9px #0c0a04, 0 0 0 11px #dc2626;
+  box-shadow: 0 0 0 9px var(--score-fill), 0 0 0 11px #dc2626;
 }
 
 .score-empty {
   border-radius: 50%;
-  color: rgba(255,255,255,0.2);
-  border: 2px dashed rgba(255,255,255,0.12);
+  color: var(--tx5);
+  border: 2px dashed var(--bdr2);
 }
 
 /* ── Safe area ── */
