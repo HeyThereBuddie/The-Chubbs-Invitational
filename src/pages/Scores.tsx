@@ -411,10 +411,16 @@ export default function Scores() {
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
+  // Ref flag set synchronously in the mount effect so the "default to my team" effect
+  // (which runs in the same flush) can see it immediately without a stale closure.
+  const deepLinkedRef = useRef(false)
   // On mount: apply deep-link from leaderboard (navigate state) and clean up URL/history
   useEffect(() => {
     const state = location.state as { hole?: number; teamId?: string } | null
-    if (state?.teamId) setViewingTeamId(state.teamId)
+    if (state?.teamId) {
+      setViewingTeamId(state.teamId)
+      deepLinkedRef.current = true  // visible to subsequent effects in this same flush
+    }
     if (state?.hole && state.hole >= 1 && state.hole <= 18) setSelectedHole(state.hole)
     window.history.replaceState({}, '')  // prevent re-applying on back nav
     if (searchParams.get('hole') || searchParams.get('team')) setSearchParams({}, { replace: true })
@@ -429,9 +435,9 @@ export default function Scores() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId, isOnline])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
-  // Default to own team only when no team is currently selected (including deep-linked teams)
+  // Default to own team only when no deep-link has been applied
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (myTeamId && !viewingTeamId) setViewingTeamId(myTeamId) }, [myTeamId, viewingTeamId])
+  useEffect(() => { if (myTeamId && !deepLinkedRef.current) setViewingTeamId(myTeamId) }, [myTeamId])
   useEffect(() => {
     if (!viewingTeamId || viewingTeamId === myTeamId) return
     loadViewTeam(viewingTeamId)
