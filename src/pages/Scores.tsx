@@ -383,7 +383,10 @@ export default function Scores() {
   const [myChulligans,     setMyChulligans]     = useState<ChulliganRow[]>([])
   const [adminScores,      setAdminScores]      = useState<Record<number, ScoreRow>>({})
   const [adminChulligans,  setAdminChulligans]  = useState<ChulliganRow[]>([])
-  const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
+  const [viewingTeamId, setViewingTeamId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('team') ?? null
+  })
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
@@ -411,7 +414,7 @@ export default function Scores() {
   const viewingTeamIdRef = useRef<string | null>(null)
   // Clear the ?hole= param from the URL after it's been consumed
   useEffect(() => {
-    if (searchParams.get('hole')) setSearchParams({}, { replace: true })
+    if (searchParams.get('hole') || searchParams.get('team')) setSearchParams({}, { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
