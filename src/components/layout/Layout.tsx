@@ -8,8 +8,9 @@ import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import RulesChat from '../RulesChat'
 import OfflineBanner from '../OfflineBanner'
-import { UserCircle, Sun, Moon } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 import { useYear } from '../../context/YearContext'
+import { useAuth } from '../../context/AuthContext'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
@@ -18,8 +19,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
   const viewingYear = viewingTournament?.year ?? null
 
+  const { profile } = useAuth()
   const handleRefresh = useCallback(() => { window.location.reload() }, [])
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh)
+
+  const avatarInitial = (profile?.nickname || profile?.name || '?')[0].toUpperCase()
 
   return (
     <div className="bg-mesh" style={{ minHeight: '100dvh' }}>
@@ -88,8 +92,24 @@ export default function Layout({ children }: { children: ReactNode }) {
             >
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <Link to="/account" style={{ color: 'var(--tx3)', display: 'flex', alignItems: 'center' }}>
-              <UserCircle size={22} />
+            <Link to="/account" style={{ display: 'flex', alignItems: 'center' }}>
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="account"
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(252,181,20,0.4)' }}
+                />
+              ) : (
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'rgba(252,181,20,0.15)',
+                  border: '1.5px solid rgba(252,181,20,0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, color: '#FCB514',
+                }}>
+                  {avatarInitial}
+                </div>
+              )}
             </Link>
           </header>
           <main style={{ flex: 1, padding: '20px 16px', paddingBottom: 80 }}>
