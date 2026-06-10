@@ -10,7 +10,8 @@ import { useYear } from '../../context/YearContext'
 export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const { isCurrentYear, tournaments, viewingTournamentId } = useYear()
-  const viewingYear = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId)?.year : null
+  const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
+  const viewingYear = viewingTournament?.year ?? null
 
   return (
     <div className="bg-mesh" style={{ minHeight: '100dvh' }}>
@@ -26,7 +27,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         }}>
           <span style={{ fontSize: 14 }}>🔒</span>
           <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#FCB514', letterSpacing: 2 }}>
-            {viewingYear} — Read Only
+            {viewingTournament?.name ?? viewingYear} — Read Only
           </span>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', flex: 1 }}>
             You're viewing a past tournament. No changes can be made.

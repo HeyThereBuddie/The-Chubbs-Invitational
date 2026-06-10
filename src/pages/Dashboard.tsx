@@ -190,9 +190,9 @@ export default function Dashboard() {
           onChange={e => setViewingTournamentId(e.target.value || null)}
           style={{ flex: 1, maxWidth: 220 }}
         >
-          <option value="">Current Year ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
+          <option value="">Current Tournament ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
           {completedTournaments.map(t => (
-            <option key={t.id} value={t.id}>{t.year} — {t.name}</option>
+            <option key={t.id} value={t.id}>{t.name} ({t.year})</option>
           ))}
         </select>
         {completedTournaments.length === 0 && (
@@ -202,7 +202,7 @@ export default function Dashboard() {
         )}
         {!isCurrentYear && viewingTournament && (
           <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', fontWeight: 600 }}>
-            🔒 Viewing {viewingTournament.year}
+            🔒 {viewingTournament.name} ({viewingTournament.year})
           </span>
         )}
       </div>

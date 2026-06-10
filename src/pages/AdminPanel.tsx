@@ -24,7 +24,7 @@ interface EditCategory {
 }
 
 interface EditingTournament {
-  id: string; year: number; course: string; date: string; notes: string
+  id: string; year: number; name: string; course: string; date: string; notes: string
   champion: EditCategory; runner_up: EditCategory; third: EditCategory
   jackass: EditCategory; ctp: EditCategory; ld: EditCategory
 }
@@ -204,6 +204,10 @@ export default function AdminPanel() {
   const [deletingYear, setDeletingYear] = useState(false)
   const [restoringYear, setRestoringYear] = useState<string | null>(null)
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
+  const [testTournamentOpen, setTestTournamentOpen] = useState(false)
+  const [testTournamentName, setTestTournamentName] = useState('')
+  const [testTournamentYear, setTestTournamentYear] = useState('')
+  const [creatingTestTournament, setCreatingTestTournament] = useState(false)
 
   useEffect(() => {
     supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
@@ -406,13 +410,13 @@ export default function AdminPanel() {
       if (!r) return blankCat()
       return { id: r.id, team_name: r.team_name ?? '', player1_name: r.player1_name ?? '', player2_name: r.player2_name ?? '', score_to_par: r.score_to_par != null ? String(r.score_to_par) : '', detail: r.detail ?? '' }
     }
-    setEditingT({ id: t.id, year: t.year, course: t.course ?? '', date: t.date ?? '', notes: t.notes ?? '', champion: findCat('champion'), runner_up: findCat('runner_up'), third: findCat('third'), jackass: findCat('jackass'), ctp: findCat('ctp'), ld: findCat('ld') })
+    setEditingT({ id: t.id, year: t.year, name: t.name ?? '', course: t.course ?? '', date: t.date ?? '', notes: t.notes ?? '', champion: findCat('champion'), runner_up: findCat('runner_up'), third: findCat('third'), jackass: findCat('jackass'), ctp: findCat('ctp'), ld: findCat('ld') })
   }
 
   const saveEditT = async () => {
     if (!editingT) return
     setSavingEdit(true)
-    await supabase.from('tournaments').update({ course: editingT.course.trim() || null, date: editingT.date || null, notes: editingT.notes.trim() || null }).eq('id', editingT.id)
+    await supabase.from('tournaments').update({ name: editingT.name.trim() || 'The Chubbs Memorial', course: editingT.course.trim() || null, date: editingT.date || null, notes: editingT.notes.trim() || null }).eq('id', editingT.id)
     const catMap: Record<string, EditCategory> = { champion: editingT.champion, runner_up: editingT.runner_up, third: editingT.third, jackass: editingT.jackass, ctp: editingT.ctp, ld: editingT.ld }
     for (const [cat, ec] of Object.entries(catMap)) {
       const isEmpty = !ec.player1_name.trim() && !ec.team_name.trim()
@@ -427,7 +431,7 @@ export default function AdminPanel() {
     setSavingEdit(false)
     setEditingT(null)
     fetchTournamentHistory()
-    showToast(`${editingT.year} updated!`)
+    showToast(`${editingT.name || editingT.year} updated!`)
   }
 
   const softDeleteT = async () => {
@@ -448,6 +452,21 @@ export default function AdminPanel() {
     setRestoringYear(null)
     fetchTournamentHistory()
     showToast(`${year} restored to Hall of Fame!`)
+  }
+
+  const createTestTournament = async () => {
+    const name = testTournamentName.trim()
+    const year = parseInt(testTournamentYear)
+    if (!name || isNaN(year)) return
+    setCreatingTestTournament(true)
+    const { error } = await supabase.from('tournaments').insert({ name, year, status: 'completed' })
+    setCreatingTestTournament(false)
+    if (error) { showToast(error.message, 'error'); return }
+    setTestTournamentOpen(false)
+    setTestTournamentName('')
+    setTestTournamentYear('')
+    fetchTournamentHistory()
+    showToast(`"${name}" created! It will appear in the year selector.`)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -995,6 +1014,15 @@ export default function AdminPanel() {
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setTestTournamentOpen(true)}
+                style={{ padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}
+              >
+                + Create Test Tournament
+              </button>
+            </div>
+
             {active.length === 0 && (
               <div className="glass" style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
                 No tournament years recorded. Run "End Tournament &amp; Archive" from the ⚠️ Reset tab to create your first entry.
@@ -1008,6 +1036,7 @@ export default function AdminPanel() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: t.status === 'active' ? '#22c55e' : '#FCB514', lineHeight: 1 }}>{t.year}</div>
                     <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{t.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1, background: t.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)', color: t.status === 'active' ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>
                           {t.status === 'active' ? '● Active' : '🔒 Locked'}
@@ -1080,6 +1109,10 @@ export default function AdminPanel() {
                   {/* Metadata */}
                   <div style={{ marginBottom: 22 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 10 }}>Tournament Info</div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
+                      <input placeholder="e.g. The Chubbs Memorial" value={editingT.name} onChange={e => setEditingT(p => p ? { ...p, name: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                    </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       <div style={{ flex: '2 1 200px' }}>
                         <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Course</label>
@@ -1161,6 +1194,48 @@ export default function AdminPanel() {
             )}
 
             {Object.keys(catLabel).length > 0 && null /* suppress unused var */}
+
+            {/* Create Test Tournament modal */}
+            {testTournamentOpen && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#0d0a02', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>Create Test Tournament</div>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.5 }}>
+                    Creates a completed tournament that appears in the year dropdown. Useful for testing the archive viewer.
+                  </p>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
+                    <input
+                      autoFocus
+                      placeholder="e.g. Test 2023"
+                      value={testTournamentName}
+                      onChange={e => setTestTournamentName(e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: 4 }}>Year</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 2023"
+                      value={testTournamentYear}
+                      onChange={e => setTestTournamentYear(e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={createTestTournament}
+                      disabled={creatingTestTournament || !testTournamentName.trim() || !testTournamentYear}
+                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: creatingTestTournament ? 'not-allowed' : 'pointer', opacity: creatingTestTournament ? 0.6 : 1 }}
+                    >
+                      {creatingTestTournament ? 'Creating…' : 'Create'}
+                    </button>
+                    <button onClick={() => { setTestTournamentOpen(false); setTestTournamentName(''); setTestTournamentYear('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )
       })()}
