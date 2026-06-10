@@ -379,9 +379,8 @@ export default function Scores() {
 
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  // State passed via navigate('/scores', { state: { hole, teamId } }) takes priority over URL params
+  // Initial hole from nav state or URL param (works on first mount)
   const _navState = location.state as { hole?: number; teamId?: string } | null
-  const _initTeam = _navState?.teamId ?? null
   const _initHole = _navState?.hole ?? parseInt(searchParams.get('hole') ?? '1')
 
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
@@ -390,7 +389,7 @@ export default function Scores() {
   const [myChulligans,     setMyChulligans]     = useState<ChulliganRow[]>([])
   const [adminScores,      setAdminScores]      = useState<Record<number, ScoreRow>>({})
   const [adminChulligans,  setAdminChulligans]  = useState<ChulliganRow[]>([])
-  const [viewingTeamId, setViewingTeamId] = useState<string | null>(_initTeam)
+  const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
   const [viewTeam,    setViewTeam]    = useState<TeamFull | null>(null)
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
@@ -412,14 +411,13 @@ export default function Scores() {
 
   const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
-  // Clear any leftover URL params (legacy, from old ?hole=N approach)
+  // On mount: apply deep-link from leaderboard (navigate state) and clean up URL/history
   useEffect(() => {
+    const state = location.state as { hole?: number; teamId?: string } | null
+    if (state?.teamId) setViewingTeamId(state.teamId)
+    if (state?.hole && state.hole >= 1 && state.hole <= 18) setSelectedHole(state.hole)
+    window.history.replaceState({}, '')  // prevent re-applying on back nav
     if (searchParams.get('hole') || searchParams.get('team')) setSearchParams({}, { replace: true })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  // Clear navigation state so back-navigation doesn't re-apply it
-  useEffect(() => {
-    if (_initTeam) window.history.replaceState({}, '')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
@@ -431,9 +429,9 @@ export default function Scores() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId, isOnline])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
-  // Default view to own team on first load, but not when a team was deep-linked via URL
+  // Default to own team only when no team is currently selected (including deep-linked teams)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (myTeamId && !viewingTeamId && !_initTeam) setViewingTeamId(myTeamId) }, [myTeamId])
+  useEffect(() => { if (myTeamId && !viewingTeamId) setViewingTeamId(myTeamId) }, [myTeamId, viewingTeamId])
   useEffect(() => {
     if (!viewingTeamId || viewingTeamId === myTeamId) return
     loadViewTeam(viewingTeamId)
