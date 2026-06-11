@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
-import { enqueue, drainQueue } from '../lib/writeQueue'
+import { enqueue, drainQueue, getPendingCount } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
 import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
@@ -464,28 +464,31 @@ export default function Scores() {
   const loadAllTeams = async () => {
     if (!effectiveTournamentId) { setAllTeams([]); setLeaderToPar(null); return }
 
-    const { data } = await supabase.from('teams')
-      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-      .eq('tournament_id', effectiveTournamentId)
-
-    if (data) {
-      setAllTeams(data)
-      computeLeaderToPar(data)
-      if (isAdmin && isCurrentYear && data.length) {
-        const initial = (myTeamId && data.find((t: TeamFull) => t.id === myTeamId)) ? myTeamId : data[0].id
-        setAdminTeamId(initial)
-      }
-      return
-    }
-
-    // Supabase unavailable (network down or navigator.onLine incorrect on iOS) — fall back to cache
+    // Step 1: Show cached teams immediately (instant, works offline)
     const localTeams = await localDb.teams
       .where('tournament_id').equals(effectiveTournamentId).toArray()
-    setAllTeams(localTeams.map(t => ({
-      ...t,
-      player1: parseJson(t.player1_json) as Player | undefined,
-      player2: parseJson(t.player2_json) as Player | undefined,
-    })) as unknown as TeamFull[])
+    if (localTeams.length > 0) {
+      setAllTeams(localTeams.map(t => ({
+        ...t,
+        player1: parseJson(t.player1_json) as Player | undefined,
+        player2: parseJson(t.player2_json) as Player | undefined,
+      })) as unknown as TeamFull[])
+    }
+
+    // Step 2: Refresh from Supabase in the background
+    try {
+      const { data } = await supabase.from('teams')
+        .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+        .eq('tournament_id', effectiveTournamentId)
+      if (data) {
+        setAllTeams(data)
+        computeLeaderToPar(data)
+        if (isAdmin && isCurrentYear && data.length) {
+          const initial = (myTeamId && data.find((t: TeamFull) => t.id === myTeamId)) ? myTeamId : data[0].id
+          setAdminTeamId(initial)
+        }
+      }
+    } catch { /* offline — cached data already shown */ }
   }
 
   const computeLeaderToPar = async (teams: TeamFull[]) => {
@@ -505,33 +508,15 @@ export default function Scores() {
   }
 
   const loadPlayerData = async (teamId: string) => {
-    const { data: t } = await supabase
-      .from('teams')
-      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-      .eq('id', teamId).single()
-
-    if (t) {
-      setMyTeam(t)
-      const [{ data: scores }, { data: ch }] = await Promise.all([
-        supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-        supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
-      ])
-      const map: Record<number, ScoreRow> = {}
-      for (const s of scores ?? []) map[s.hole] = s
-      setMyScores(map)
-      setMyChulligans((ch ?? []) as ChulliganRow[])
-      return
-    }
-
-    // Supabase unavailable — fall back to IndexedDB cache
+    // Step 1: Show cached data immediately (works offline, zero latency)
     const [localScores, localCh, localTeam] = await Promise.all([
       localDb.scores.where('team_id').equals(teamId).toArray(),
       localDb.chulligans.where('team_id').equals(teamId).toArray(),
       localDb.teams.get(teamId),
     ])
-    const map: Record<number, ScoreRow> = {}
-    for (const s of localScores) map[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
-    setMyScores(map)
+    const cacheMap: Record<number, ScoreRow> = {}
+    for (const s of localScores) cacheMap[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
+    setMyScores(cacheMap)
     setMyChulligans(localCh.map(c => ({ id: c.id, player_id: c.player_id, hole: c.hole })))
     if (localTeam) {
       setMyTeam({
@@ -540,6 +525,29 @@ export default function Scores() {
         player2: parseJson(localTeam.player2_json) as Player | undefined,
       } as unknown as TeamFull)
     }
+
+    // Step 2: Refresh from Supabase in the background
+    try {
+      const { data: t } = await supabase
+        .from('teams')
+        .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+        .eq('id', teamId).single()
+      if (!t) return
+      setMyTeam(t)
+
+      // Only overwrite scores when no pending local writes — prevents wiping offline changes
+      const pendingCount = await getPendingCount()
+      if (pendingCount === 0) {
+        const [{ data: scores }, { data: ch }] = await Promise.all([
+          supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+          supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
+        ])
+        const map: Record<number, ScoreRow> = {}
+        for (const s of scores ?? []) map[s.hole] = s
+        setMyScores(map)
+        setMyChulligans((ch ?? []) as ChulliganRow[])
+      }
+    } catch { /* offline — cached data already shown */ }
   }
 
   const loadAdminScores = async (teamId: string) => {
@@ -554,18 +562,7 @@ export default function Scores() {
   }
 
   const loadViewTeam = async (teamId: string) => {
-    const [{ data: t }, { data: s }] = await Promise.all([
-      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('id', teamId).single(),
-      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-    ])
-    if (t) {
-      setViewTeam(t as unknown as TeamFull)
-      const map: Record<number, ScoreRow> = {}
-      for (const row of s ?? []) map[row.hole] = row
-      setViewScores(map)
-      return
-    }
-    // Supabase unavailable — fall back to cache
+    // Step 1: Show cached data immediately
     const [localTeam, localScores] = await Promise.all([
       localDb.teams.get(teamId),
       localDb.scores.where('team_id').equals(teamId).toArray(),
@@ -577,9 +574,23 @@ export default function Scores() {
         player2: parseJson(localTeam.player2_json) as Player | undefined,
       } as unknown as TeamFull)
     }
-    const map: Record<number, ScoreRow> = {}
-    for (const s of localScores) map[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
-    setViewScores(map)
+    const cacheMap: Record<number, ScoreRow> = {}
+    for (const s of localScores) cacheMap[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
+    setViewScores(cacheMap)
+
+    // Step 2: Refresh from Supabase in the background
+    try {
+      const [{ data: t }, { data: s }] = await Promise.all([
+        supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('id', teamId).single(),
+        supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+      ])
+      if (t) {
+        setViewTeam(t as unknown as TeamFull)
+        const map: Record<number, ScoreRow> = {}
+        for (const row of s ?? []) map[row.hole] = row
+        setViewScores(map)
+      }
+    } catch { /* offline — cached data already shown */ }
   }
 
   // ── Actions ─────────────────────────────────────────────────

@@ -28,24 +28,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string) => {
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      if (data) { setProfile(data); return }
-    } catch { /* offline or network error */ }
-    // Fall back to local cache populated by the last successful sync
+    // Step 1: Read from localDb immediately so the app renders without waiting for network
     const cached = await localDb.profiles.get(userId)
-    setProfile(cached ? (cached as unknown as Profile) : null)
+    if (cached) setProfile(cached as unknown as Profile)
+    setLoading(false)
+
+    // Step 2: Refresh from Supabase in the background (non-blocking)
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      if (data) setProfile(data)
+    } catch { /* offline */ }
   }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id).finally(() => setLoading(false))
+      if (session?.user) fetchProfile(session.user.id)  // setLoading handled inside
       else setLoading(false)
     })
 
