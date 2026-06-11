@@ -7,6 +7,25 @@ import { displayName } from '../lib/types'
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
   || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
 
+const DEFAULT_NOTIF_PREFS: Record<string, boolean> = {
+  lead_change: true, top3_shift: true, hot_streak: true, eagle: true,
+  round_complete: true, team_scores: true, contest_winner: true,
+  alligator: true, choking: true, score_disputed: false,
+}
+
+const NOTIF_TYPES: { key: string; icon: string; label: string; desc: string; adminOnly?: boolean }[] = [
+  { key: 'lead_change',    icon: '🏆', label: 'Lead Change',    desc: 'A team takes the lead' },
+  { key: 'top3_shift',     icon: '📊', label: 'Top 3 Shift',    desc: 'Any position change in the top 3' },
+  { key: 'hot_streak',     icon: '🔥', label: 'Hot Streak',     desc: 'A team birdies 2 holes in a row' },
+  { key: 'eagle',          icon: '🦅', label: 'Eagle or Better', desc: 'Any team scores eagle or albatross' },
+  { key: 'round_complete', icon: '🏁', label: 'Round Complete', desc: 'All teams finish 18 holes' },
+  { key: 'team_scores',    icon: '⛳', label: 'My Team Scores', desc: 'Your team posts a score' },
+  { key: 'contest_winner', icon: '🎯', label: 'Contest Entry',  desc: 'CTP or longest drive entry claimed' },
+  { key: 'alligator',      icon: '🐊', label: 'Alligator Alert', desc: 'A team makes double bogey or worse' },
+  { key: 'choking',        icon: '💀', label: 'Choking Alert',  desc: 'The leader gives up 2+ strokes on a hole' },
+  { key: 'score_disputed', icon: '📋', label: 'Score Edited',   desc: 'An admin edits a posted score', adminOnly: true },
+]
+
 function urlBase64ToUint8Array(base64: string) {
   const pad = '='.repeat((4 - (base64.length % 4)) % 4)
   const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
@@ -16,7 +35,7 @@ function urlBase64ToUint8Array(base64: string) {
 
 
 export default function AccountPage() {
-  const { profile, user, refreshProfile, signOut } = useAuth()
+  const { profile, user, refreshProfile, signOut, isAdmin } = useAuth()
   const { showToast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -34,6 +53,8 @@ export default function AccountPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [pushStatus, setPushStatus] = useState<'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'>('unsubscribed')
   const [pushLoading, setPushLoading] = useState(false)
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(DEFAULT_NOTIF_PREFS)
+  const [prefSaving, setPrefSaving] = useState<string | null>(null)
   const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
 
   useEffect(() => {
@@ -41,11 +62,18 @@ export default function AccountPage() {
       setPushStatus('unsupported'); return
     }
     if (Notification.permission === 'denied') { setPushStatus('denied'); return }
-    navigator.serviceWorker.register('/sw.js').then(async reg => {
+    navigator.serviceWorker.ready.then(async reg => {
       const sub = await reg.pushManager.getSubscription()
-      setPushStatus(sub ? 'subscribed' : 'unsubscribed')
+      if (sub && user) {
+        setPushStatus('subscribed')
+        const { data } = await supabase.from('push_subscriptions')
+          .select('notification_prefs').eq('user_id', user.id).single()
+        if (data?.notification_prefs) setNotifPrefs(data.notification_prefs as Record<string, boolean>)
+      } else {
+        setPushStatus('unsubscribed')
+      }
     })
-  }, [])
+  }, [user])
 
   const subscribePush = async () => {
     setPushLoading(true)
@@ -61,13 +89,27 @@ export default function AccountPage() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
-      await supabase.from('push_subscriptions').upsert({ user_id: user!.id, subscription: sub.toJSON() }, { onConflict: 'user_id' })
+      await supabase.from('push_subscriptions').upsert(
+        { user_id: user!.id, subscription: sub.toJSON(), notification_prefs: DEFAULT_NOTIF_PREFS },
+        { onConflict: 'user_id' }
+      )
+      setNotifPrefs(DEFAULT_NOTIF_PREFS)
       setPushStatus('subscribed')
-      showToast('Lead notifications enabled!')
+      showToast('Notifications enabled!')
     } catch (e) {
       showToast((e as Error).message ?? 'Failed to enable notifications', 'error')
     }
     setPushLoading(false)
+  }
+
+  const togglePref = async (key: string, value: boolean) => {
+    const updated = { ...notifPrefs, [key]: value }
+    setNotifPrefs(updated)
+    setPrefSaving(key)
+    await supabase.from('push_subscriptions')
+      .update({ notification_prefs: updated })
+      .eq('user_id', user!.id)
+    setPrefSaving(null)
   }
 
   const unsubscribePush = async () => {
@@ -482,38 +524,77 @@ export default function AccountPage() {
 
       {/* ── Push Notifications ── */}
       <div className="glass" style={{ padding: '24px 26px', marginTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 16 }}>
-          Lead Notifications
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase' }}>
+            Notifications
+          </div>
+          {(pushStatus === 'subscribed' || pushStatus === 'unsubscribed') && (
+            <button
+              onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+              disabled={pushLoading}
+              style={{
+                padding: '5px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                background: pushStatus === 'subscribed' ? 'var(--surf2)' : 'rgba(252,181,20,0.15)',
+                border: `1px solid ${pushStatus === 'subscribed' ? 'var(--bdr)' : 'rgba(252,181,20,0.4)'}`,
+                color: pushStatus === 'subscribed' ? 'var(--tx2)' : '#FCB514',
+                cursor: pushLoading ? 'not-allowed' : 'pointer', opacity: pushLoading ? 0.6 : 1,
+              }}
+            >
+              {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
+            </button>
+          )}
         </div>
+
         {pushStatus === 'unsupported' && (
           <p style={{ fontSize: 13, color: 'var(--tx3)' }}>Push notifications aren't supported in this browser.</p>
         )}
         {pushStatus === 'denied' && (
           <p style={{ fontSize: 13, color: '#ef4444' }}>Notifications are blocked. Enable them in your browser settings, then reload.</p>
         )}
-        {(pushStatus === 'unsubscribed' || pushStatus === 'subscribed') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)', marginBottom: 4 }}>
-                {pushStatus === 'subscribed' ? '🔔 Enabled' : '🔕 Disabled'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--tx3)' }}>
-                Get a notification when a team takes the lead mid-round
-              </div>
-            </div>
-            <button
-              onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
-              disabled={pushLoading}
-              style={{
-                marginLeft: 'auto', padding: '8px 20px', borderRadius: 999, fontSize: 13, fontWeight: 600,
-                background: pushStatus === 'subscribed' ? 'var(--surf2)' : 'rgba(252,181,20,0.15)',
-                border: `1px solid ${pushStatus === 'subscribed' ? 'var(--bdr)' : 'rgba(252,181,20,0.4)'}`,
-                color: pushStatus === 'subscribed' ? 'var(--tx2)' : '#FCB514',
-                cursor: pushLoading ? 'not-allowed' : 'pointer', opacity: pushLoading ? 0.6 : 1, whiteSpace: 'nowrap',
-              }}
-            >
-              {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
-            </button>
+        {pushStatus === 'unsubscribed' && (
+          <p style={{ fontSize: 13, color: 'var(--tx3)' }}>Turn on notifications to get alerts during the round.</p>
+        )}
+
+        {pushStatus === 'subscribed' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {NOTIF_TYPES.filter(t => !t.adminOnly || isAdmin).map((t, i, arr) => {
+              const on = notifPrefs[t.key] !== false
+              const saving = prefSaving === t.key
+              return (
+                <div
+                  key={t.key}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 0',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--bdr)' : 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{t.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx1)' }}>{t.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>{t.desc}</div>
+                  </div>
+                  <button
+                    onClick={() => !saving && togglePref(t.key, !on)}
+                    style={{
+                      flexShrink: 0, width: 44, height: 26, borderRadius: 999,
+                      background: on ? 'rgba(252,181,20,0.2)' : 'var(--surf2)',
+                      border: `1.5px solid ${on ? 'rgba(252,181,20,0.5)' : 'var(--bdr)'}`,
+                      cursor: saving ? 'wait' : 'pointer',
+                      position: 'relative', transition: 'background 0.2s, border-color 0.2s',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 3, left: on ? 20 : 3,
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: on ? '#FCB514' : 'var(--tx4)',
+                      transition: 'left 0.2s, background 0.2s',
+                      display: 'block',
+                    }} />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

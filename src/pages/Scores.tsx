@@ -91,10 +91,11 @@ function isHoleComplete(scoreRow: ScoreRow | undefined, twoPlayers: boolean): bo
   return true
 }
 
-async function pingLeadCheck() {
+async function pingLeadCheck(payload?: { team_id: string; hole: number; score: number; is_admin_edit?: boolean }) {
   const { data: { session } } = await supabase.auth.getSession()
   supabase.functions.invoke('notify-lead-change', {
     headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+    body: payload,
   }).catch(() => { /* fire and forget */ })
 }
 
@@ -574,7 +575,7 @@ export default function Scores() {
       if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
     setSaving(null)
-    pingLeadCheck()
+    pingLeadCheck({ team_id: myTeamId!, hole, score: next })
     logFeedEvent('score', myTeamId, myTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
   }
 
@@ -593,7 +594,7 @@ export default function Scores() {
       if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
     setSaving(null)
-    pingLeadCheck()
+    pingLeadCheck({ team_id: adminTeamId, hole, score: next, is_admin_edit: !!existing?.id })
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
     logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
   }

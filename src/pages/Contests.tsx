@@ -224,6 +224,11 @@ export default function Contests() {
     else {
       showToast('Entry submitted! 🎯')
       const player = contestPlayers.find(p => p.id === form.player_id)
+      const { data: { session } } = await supabase.auth.getSession()
+      supabase.functions.invoke('notify-contest', {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+        body: { player_name: player ? displayName(player) : null, team_name: myTeamName, contest_type: tab },
+      }).catch(() => {})
       await supabase.from('feed_events').insert({
         event_type: 'contest',
         team_name: myTeamName,
