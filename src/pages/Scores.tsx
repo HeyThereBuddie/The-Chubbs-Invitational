@@ -508,12 +508,22 @@ export default function Scores() {
   const loadPlayerData = async (teamId: string) => {
     if (!isOnline) {
       // Offline: load from IndexedDB cache
-      const localScores = await localDb.scores.where('team_id').equals(teamId).toArray()
+      const [localScores, localCh, localTeam] = await Promise.all([
+        localDb.scores.where('team_id').equals(teamId).toArray(),
+        localDb.chulligans.where('team_id').equals(teamId).toArray(),
+        localDb.teams.get(teamId),
+      ])
       const map: Record<number, ScoreRow> = {}
       for (const s of localScores) map[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
       setMyScores(map)
-      const localCh = await localDb.chulligans.where('team_id').equals(teamId).toArray()
       setMyChulligans(localCh.map(c => ({ id: c.id, player_id: c.player_id, hole: c.hole })))
+      if (localTeam) {
+        setMyTeam({
+          ...localTeam,
+          player1: parseJson(localTeam.player1_json) as Player | undefined,
+          player2: parseJson(localTeam.player2_json) as Player | undefined,
+        } as unknown as TeamFull)
+      }
       return
     }
 

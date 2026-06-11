@@ -19,6 +19,15 @@ interface YearContextValue {
   refreshTournaments: () => void
 }
 
+const CACHE_KEY = 'chubbs-tournaments-v1'
+
+function readCache(): TournamentOption[] {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    return raw ? (JSON.parse(raw) as TournamentOption[]) : []
+  } catch { return [] }
+}
+
 const YearContext = createContext<YearContextValue>({
   tournaments: [],
   activeTournamentId: null,
@@ -31,24 +40,30 @@ const YearContext = createContext<YearContextValue>({
 })
 
 export function YearProvider({ children }: { children: ReactNode }) {
-  const [tournaments, setTournaments] = useState<TournamentOption[]>([])
-  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null)
-  const [viewingTournamentId, setViewingTournamentId] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
+  const cachedList = readCache()
+  const cachedActive = cachedList.find(t => t.status === 'active')?.id ?? null
 
-  const loadTournaments = () => {
-    supabase
-      .from('tournaments')
-      .select('id, year, name, status')
-      .is('deleted_at', null)
-      .order('year', { ascending: false })
-      .then(({ data }) => {
-        const list = (data ?? []) as TournamentOption[]
+  const [tournaments, setTournaments] = useState<TournamentOption[]>(cachedList)
+  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(cachedActive)
+  const [viewingTournamentId, setViewingTournamentId] = useState<string | null>(null)
+  const [ready, setReady] = useState(cachedList.length > 0)
+
+  const loadTournaments = async () => {
+    try {
+      const { data } = await supabase
+        .from('tournaments')
+        .select('id, year, name, status')
+        .is('deleted_at', null)
+        .order('year', { ascending: false })
+      if (data) {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+        const list = data as TournamentOption[]
         setTournaments(list)
         const active = list.find(t => t.status === 'active')
         setActiveTournamentId(active?.id ?? null)
-        setReady(true)
-      })
+      }
+    } catch { /* offline — keep cached values */ }
+    setReady(true)
   }
 
   useEffect(() => { loadTournaments() }, [])

@@ -71,7 +71,8 @@ export default function Contests() {
         .subscribe()
       return () => { supabase.removeChannel(sub) }
     }
-  }, [tab])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, effectiveTournamentId])
 
   useEffect(() => {
     if (profile && votes.length > 0) {
