@@ -130,7 +130,7 @@ export default function AuthPage() {
             )}
             {mode === 'register' && (
               <input
-                type="text" placeholder='Nickname (optional, e.g. "Big Easy")'
+                type="text" placeholder='Nickname (e.g. "Kage", "Toe", "Goof")'
                 value={form.nickname} onChange={e => set('nickname', e.target.value)}
                 maxLength={30}
               />
