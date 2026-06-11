@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
-import { localDb } from '../lib/localDb'
+import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
 import type { Team, Player } from '../lib/types'
@@ -463,6 +463,19 @@ export default function Scores() {
 
   const loadAllTeams = async () => {
     if (!effectiveTournamentId) { setAllTeams([]); setLeaderToPar(null); return }
+
+    if (!isOnline) {
+      const localTeams = await localDb.teams
+        .where('tournament_id').equals(effectiveTournamentId).toArray()
+      const teams = localTeams.map(t => ({
+        ...t,
+        player1: parseJson(t.player1_json) as Player | undefined,
+        player2: parseJson(t.player2_json) as Player | undefined,
+      })) as unknown as TeamFull[]
+      setAllTeams(teams)
+      return
+    }
+
     let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
     q = q.eq('tournament_id', effectiveTournamentId)
     const { data } = await q

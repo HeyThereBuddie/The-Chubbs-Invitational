@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { localDb } from '../lib/localDb'
 import type { Profile } from '../lib/types'
 
 interface AuthContextValue {
@@ -27,12 +28,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setProfile(data ?? null)
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      if (data) { setProfile(data); return }
+    } catch { /* offline or network error */ }
+    // Fall back to local cache populated by the last successful sync
+    const cached = await localDb.profiles.get(userId)
+    setProfile(cached ? (cached as unknown as Profile) : null)
   }
 
   useEffect(() => {
