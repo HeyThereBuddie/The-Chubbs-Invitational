@@ -1180,14 +1180,16 @@ export default function Scores() {
       />
 
       {/* Drive counter + chulligans only for own team */}
-      {isViewingMyTeam && <DriveCounter scoreMap={myScores} p1={myTeam?.player1} p2={myTeam?.player2} />}
-      {isViewingMyTeam && <ChulliganDashboard p1={myTeam?.player1} p2={myTeam?.player2} chulligans={myChulligans} />}
+      {isViewingMyTeam && <DriveCounter scoreMap={myScores} p1={myTeam?.player1 ?? allTeams.find(t => t.id === myTeamId)?.player1} p2={myTeam?.player2 ?? allTeams.find(t => t.id === myTeamId)?.player2} />}
+      {isViewingMyTeam && <ChulliganDashboard p1={myTeam?.player1 ?? allTeams.find(t => t.id === myTeamId)?.player1} p2={myTeam?.player2 ?? allTeams.find(t => t.id === myTeamId)?.player2} chulligans={myChulligans} />}
 
       {(() => {
         const hole = selectedHole
         if (isViewingMyTeam) {
-          const mp1 = myTeam?.player1
-          const mp2 = myTeam?.player2
+          // Fall back to allTeams if myTeam hasn't resolved yet (timing or fresh offline open)
+          const effectiveMyTeam = myTeam ?? allTeams.find(t => t.id === myTeamId) ?? null
+          const mp1 = effectiveMyTeam?.player1
+          const mp2 = effectiveMyTeam?.player2
           const twoPlayers = !!(mp1 && mp2)
           const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
           const hFrom = hole <= 9 ? 1 : 10
