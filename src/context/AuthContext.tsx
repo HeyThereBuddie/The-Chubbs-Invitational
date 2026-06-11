@@ -21,6 +21,19 @@ const AuthContext = createContext<AuthContextValue>({
   refreshProfile: async () => {},
 })
 
+// Extract user ID from Supabase's stored session without any network call.
+// Works even when the access token has expired — critical for offline app startup.
+function getStoredUserId(): string | null {
+  try {
+    const url = import.meta.env.VITE_SUPABASE_URL as string
+    const ref = new URL(url).hostname.split('.')[0]
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    return (data?.user?.id as string) ?? null
+  } catch { return null }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -33,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (cached) setProfile(cached as unknown as Profile)
     setLoading(false)
 
-    // Step 2: Refresh from Supabase in the background (non-blocking)
+    // Step 2: Refresh from Supabase in the background
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
       if (data) setProfile(data)
@@ -41,21 +54,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)  // setLoading handled inside
-      else setLoading(false)
-    })
+    // Fast path: read user ID from stored session (synchronous, zero network).
+    // If token is expired and we're offline, getSession() would hang — this bypasses that.
+    const cachedUserId = getStoredUserId()
+    if (cachedUserId) {
+      fetchProfile(cachedUserId)  // sets loading=false after localDb read
+    }
+
+    // Auth session — runs in background. May hang on spotty connections if token needs refresh.
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session?.user) fetchProfile(session.user.id)
+        else if (!cachedUserId) setLoading(false)
+      })
+      .catch(() => {
+        // Token refresh failed offline — profile already shown from cache
+        if (!cachedUserId) setLoading(false)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
-      else setProfile(null)
+      // Do NOT clear profile on auth state changes — only explicit signOut() does that.
+      // This prevents the app from flashing to login when token refresh fails offline.
     })
 
     return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const signOut = async () => {
