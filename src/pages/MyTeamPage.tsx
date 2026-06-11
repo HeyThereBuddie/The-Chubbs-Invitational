@@ -2,7 +2,6 @@ import { useEffect, useState, useRef, memo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
-import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { displayName, HOLE_PARS } from '../lib/types'
 import type { Team, Player } from '../lib/types'
@@ -49,7 +48,6 @@ function scoreColor(score: number, par: number) {
 export default function MyTeamPage() {
   const { profile } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
-  const { isOnline } = useSyncContext()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? null) : null
 
   const [allTeams,      setAllTeams]      = useState<TeamFull[]>([])
@@ -70,59 +68,29 @@ export default function MyTeamPage() {
   // Load all teams for the tab bar
   useEffect(() => {
     if (!effectiveTournamentId) { setAllTeams([]); setLoading(false); return }
-    if (!isOnline) {
-      localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray().then(localTeams => {
-        const teams = localTeams.map(t => ({
-          ...t,
-          player1: parseJson(t.player1_json) as Player | undefined,
-          player2: parseJson(t.player2_json) as Player | undefined,
-        })) as unknown as TeamFull[]
+    supabase.from('teams')
+      .select('*, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
+      .eq('tournament_id', effectiveTournamentId)
+      .then(async ({ data }) => {
+        const teams: TeamFull[] = data
+          ? (data as unknown as TeamFull[])
+          : (await localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray()).map(t => ({
+              ...t,
+              player1: parseJson(t.player1_json) as Player | undefined,
+              player2: parseJson(t.player2_json) as Player | undefined,
+            })) as unknown as TeamFull[]
         setAllTeams(teams)
         const defaultId = myTeamId ?? (teams[0]?.id ?? null)
         setViewingTeamId(defaultId)
         if (!defaultId) setLoading(false)
       })
-      return
-    }
-    let q = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
-    q = q.eq('tournament_id', effectiveTournamentId)
-    q.then(({ data }) => {
-        if (data) {
-          const teams = data as unknown as TeamFull[]
-          setAllTeams(teams)
-          // Default: own team first, else first team
-          const defaultId = myTeamId ?? (teams[0]?.id ?? null)
-          setViewingTeamId(defaultId)
-        } else {
-          setLoading(false)
-        }
-      })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTournamentId, isOnline])
+  }, [effectiveTournamentId])
 
   // Load full data whenever selected team changes
   useEffect(() => {
     if (!viewingTeamId) return
     setLoading(true)
-    if (!isOnline) {
-      Promise.all([
-        localDb.teams.get(viewingTeamId),
-        localDb.scores.where('team_id').equals(viewingTeamId).toArray(),
-        localDb.chulligans.where('team_id').equals(viewingTeamId).toArray(),
-      ]).then(([localTeam, localScores, localCh]) => {
-        if (localTeam) {
-          setTeam({
-            ...localTeam,
-            player1: parseJson(localTeam.player1_json) as Player | undefined,
-            player2: parseJson(localTeam.player2_json) as Player | undefined,
-          } as unknown as TeamFull)
-        }
-        setScores((localScores ?? []) as ScoreRow[])
-        setChulligans((localCh ?? []) as ChulliganRow[])
-        setLoading(false)
-      })
-      return
-    }
     Promise.all([
       supabase
         .from('teams')
@@ -133,13 +101,31 @@ export default function MyTeamPage() {
         .single(),
       supabase.from('scores').select('hole, score, putts, drive_used_id').eq('team_id', viewingTeamId),
       supabase.from('chulligans').select('id, player_id, hole').eq('team_id', viewingTeamId),
-    ]).then(([{ data: t }, { data: s }, { data: ch }]) => {
-      setTeam(t as unknown as TeamFull)
-      setScores((s ?? []) as ScoreRow[])
-      setChulligans((ch ?? []) as ChulliganRow[])
+    ]).then(async ([{ data: t }, { data: s }, { data: ch }]) => {
+      if (t) {
+        setTeam(t as unknown as TeamFull)
+        setScores((s ?? []) as ScoreRow[])
+        setChulligans((ch ?? []) as ChulliganRow[])
+      } else {
+        // Supabase unavailable — fall back to local cache
+        const [localTeam, localScores, localCh] = await Promise.all([
+          localDb.teams.get(viewingTeamId),
+          localDb.scores.where('team_id').equals(viewingTeamId).toArray(),
+          localDb.chulligans.where('team_id').equals(viewingTeamId).toArray(),
+        ])
+        if (localTeam) {
+          setTeam({
+            ...localTeam,
+            player1: parseJson(localTeam.player1_json) as Player | undefined,
+            player2: parseJson(localTeam.player2_json) as Player | undefined,
+          } as unknown as TeamFull)
+        }
+        setScores((localScores ?? []) as ScoreRow[])
+        setChulligans((localCh ?? []) as ChulliganRow[])
+      }
       setLoading(false)
     })
-  }, [viewingTeamId, isOnline])
+  }, [viewingTeamId])
 
   // Real-time: reload current team's data on any change
   useEffect(() => {

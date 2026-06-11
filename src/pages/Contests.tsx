@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
-import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { enqueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload, UpsertLeaheyVotePayload } from '../lib/writeQueue'
@@ -26,7 +25,6 @@ export default function Contests() {
   const { profile } = useAuth()
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
-  const { isOnline } = useSyncContext()
   const [tab, setTab] = useState<ContestType>('ctp')
 
   // CTP / LD state
@@ -93,70 +91,52 @@ export default function Contests() {
   const fetchContestData = async () => {
     if (!effectiveTournamentId) { setEntries([]); return }
 
-    if (!isOnline) {
-      const localEntries = await localDb.contest_entries
-        .where('tournament_id').equals(effectiveTournamentId)
-        .toArray()
-      const filtered = localEntries.filter(e => e.type === tab)
-        .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      setEntries(filtered.map(e => ({
-        ...e,
-        player: parseJson<Player>(e.player_json),
-      } as unknown as ContestEntry & { player?: Player })))
+    const { data: entriesData } = await supabase
+      .from('contest_entries').select('*, player:profiles(*)')
+      .eq('type', tab).eq('tournament_id', effectiveTournamentId)
+      .order('created_at', { ascending: false })
 
+    if (entriesData !== null) {
+      setEntries(entriesData)
       if (profile?.team_id) {
-        const localProfiles = await localDb.profiles.toArray()
-        const localTeams = await localDb.teams.toArray()
-        const myTeam = localTeams.find(t => t.id === profile.team_id)
-        if (myTeam) {
-          setMyTeamName(myTeam.name)
-          const p1 = parseJson<Player>(myTeam.player1_json)
-          const p2 = parseJson<Player>(myTeam.player2_json)
-          setContestPlayers([p1, p2].filter(Boolean) as Player[])
-        } else {
-          setContestPlayers(localProfiles as Player[])
-        }
+        const { data: teamData } = await supabase
+          .from('teams')
+          .select('name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+          .eq('id', profile.team_id).single()
+        const td = teamData as unknown as { name?: string; player1?: Player; player2?: Player }
+        setMyTeamName(td?.name ?? '')
+        setContestPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
       } else {
-        const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
-        setContestPlayers(localProfiles as Player[])
+        const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
+        setContestPlayers(data ?? [])
       }
       return
     }
 
-    let q = supabase.from('contest_entries').select('*, player:profiles(*)').eq('type', tab).order('created_at', { ascending: false })
-    q = q.eq('tournament_id', effectiveTournamentId)
-    const { data: entriesData } = await q
-    setEntries(entriesData ?? [])
+    // Supabase unavailable — fall back to local cache
+    const localEntries = await localDb.contest_entries
+      .where('tournament_id').equals(effectiveTournamentId).toArray()
+    setEntries(localEntries.filter(e => e.type === tab)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map(e => ({ ...e, player: parseJson<Player>(e.player_json) } as unknown as ContestEntry & { player?: Player })))
 
-    // Only show the current user and their teammate in the player dropdown
     if (profile?.team_id) {
-      const { data: teamData } = await supabase
-        .from('teams')
-        .select('name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-        .eq('id', profile.team_id)
-        .single()
-      const td = teamData as unknown as { name?: string; player1?: Player; player2?: Player }
-      setMyTeamName(td?.name ?? '')
-      setContestPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
+      const localTeam = await localDb.teams.get(profile.team_id)
+      if (localTeam) {
+        setMyTeamName(localTeam.name)
+        const p1 = parseJson<Player>(localTeam.player1_json)
+        const p2 = parseJson<Player>(localTeam.player2_json)
+        setContestPlayers([p1, p2].filter(Boolean) as Player[])
+      } else {
+        setContestPlayers((await localDb.profiles.toArray()) as Player[])
+      }
     } else {
-      const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
-      setContestPlayers(data ?? [])
+      setContestPlayers((await localDb.profiles.where('status').equals('active').toArray()) as Player[])
     }
   }
 
   const fetchJackassFeed = async () => {
-    if (!isOnline) {
-      if (!effectiveTournamentId) { setJackassFeed([]); return }
-      const localEvents = await localDb.feed_events
-        .where('tournament_id').equals(effectiveTournamentId)
-        .toArray()
-      const filtered = localEvents
-        .filter(e => e.event_type === 'contest' && (e.label === 'Jackass Vote' || e.label === 'Vote Changed'))
-        .sort((a, b) => b.created_at.localeCompare(a.created_at))
-        .slice(0, 20)
-      setJackassFeed(filtered as JackassFeedEvent[])
-      return
-    }
+    if (!effectiveTournamentId) { setJackassFeed([]); return }
     const { data } = await supabase
       .from('feed_events')
       .select('id, voter_name, player_name, label, created_at')
@@ -164,31 +144,39 @@ export default function Contests() {
       .in('label', ['Jackass Vote', 'Vote Changed'])
       .order('created_at', { ascending: false })
       .limit(20)
-    setJackassFeed((data ?? []) as JackassFeedEvent[])
+    if (data !== null) { setJackassFeed(data as JackassFeedEvent[]); return }
+    // Supabase unavailable — fall back to local cache
+    const localEvents = await localDb.feed_events.where('tournament_id').equals(effectiveTournamentId).toArray()
+    setJackassFeed(localEvents
+      .filter(e => e.event_type === 'contest' && (e.label === 'Jackass Vote' || e.label === 'Vote Changed'))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, 20) as JackassFeedEvent[])
   }
 
   const fetchLaheyData = async () => {
     if (!effectiveTournamentId) { setLaheyPlayers([]); setVotes([]); return }
 
-    if (!isOnline) {
-      const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
-      const localVotes = await localDb.leahey_votes.where('tournament_id').equals(effectiveTournamentId).toArray()
-      setLaheyPlayers(localProfiles as Player[])
-      setVotes(localVotes as LeaheyVote[])
-      setVotingOpen(false)
+    const [playersRes, votesRes, settingsRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('status', 'active').order('name'),
+      supabase.from('leahey_votes').select('*').eq('tournament_id', effectiveTournamentId),
+      supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single(),
+    ])
+
+    if (playersRes.data !== null) {
+      setLaheyPlayers(playersRes.data)
+      setVotes(votesRes.data ?? [])
+      setVotingOpen(isCurrentYear ? (settingsRes.data?.lahey_voting_open ?? false) : false)
       return
     }
 
-    let votesQ = supabase.from('leahey_votes').select('*')
-    votesQ = votesQ.eq('tournament_id', effectiveTournamentId)
-    const [playersRes, votesRes, settingsRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('status', 'active').order('name'),
-      votesQ,
-      supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single(),
+    // Supabase unavailable — fall back to local cache
+    const [localProfiles, localVotes] = await Promise.all([
+      localDb.profiles.where('status').equals('active').toArray(),
+      localDb.leahey_votes.where('tournament_id').equals(effectiveTournamentId).toArray(),
     ])
-    setLaheyPlayers(playersRes.data ?? [])
-    setVotes(votesRes.data ?? [])
-    setVotingOpen(isCurrentYear ? (settingsRes.data?.lahey_voting_open ?? false) : false)
+    setLaheyPlayers(localProfiles as Player[])
+    setVotes(localVotes as LeaheyVote[])
+    setVotingOpen(false)
   }
 
   const submitContest = async (e: React.FormEvent) => {
@@ -254,65 +242,51 @@ export default function Contests() {
     const nominee = laheyPlayers.find(p => p.id === selected)
     const isChange = !!myVote
 
-    if (!isOnline) {
-      // Queue vote and feed event for later sync
-      await enqueue('upsert_leahey_vote', {
-        voter_id: profile.id,
-        nominee_id: selected,
-        tournament_id: effectiveTournamentId,
-      } satisfies UpsertLeaheyVotePayload, { voter_id: profile.id, tournament_id: effectiveTournamentId })
-
-      const feedId = crypto.randomUUID()
-      await enqueue('log_feed_event', {
-        id: feedId,
-        event_type: 'contest',
-        team_id: null,
-        team_name: '',
-        voter_name: displayName(profile),
-        player_name: nominee ? displayName(nominee) : null,
-        hole: 0,
-        score: null,
-        label: isChange ? 'Vote Changed' : 'Jackass Vote',
-        emoji: '🤠',
-        tournament_id: effectiveTournamentId,
-      } satisfies LogFeedEventPayload, { id: feedId })
-
-      // Optimistic local state update
-      const fakeVote: LeaheyVote = { id: `offline-vote-${profile.id}`, voter_id: profile.id, nominee_id: selected, created_at: new Date().toISOString() }
-      setVotes(prev => [...prev.filter(v => v.voter_id !== profile.id), fakeVote])
-      setMyVote(selected)
-      setCasting(false)
-      showToast(isChange ? 'Vote queued — will sync when online 🔄' : 'Vote queued — will sync when online 🤠')
-      return
-    }
-
-    let error
+    // Try Supabase first; queue on any network failure
+    let voteError
     if (isChange) {
-      ;({ error } = await supabase.from('leahey_votes')
+      ;({ error: voteError } = await supabase.from('leahey_votes')
         .update({ nominee_id: selected })
         .eq('voter_id', profile.id)
         .eq('tournament_id', effectiveTournamentId))
     } else {
-      ;({ error } = await supabase.from('leahey_votes')
+      ;({ error: voteError } = await supabase.from('leahey_votes')
         .insert({ voter_id: profile.id, nominee_id: selected, ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }) }))
     }
-    setCasting(false)
-    if (error) showToast(error.message, 'error')
-    else {
+
+    if (!voteError) {
       showToast(isChange ? 'Vote changed! 🔄 A new jackass rises.' : 'Vote cast! 🤠 Stay out of my way!')
       await supabase.from('feed_events').insert({
-        event_type: 'contest',
-        team_name: '',
+        event_type: 'contest', team_name: '',
         voter_name: profile ? displayName(profile) : '',
         player_name: nominee ? displayName(nominee) : null,
-        hole: 0,
-        score: null,
+        hole: 0, score: null,
         label: isChange ? 'Vote Changed' : 'Jackass Vote',
         emoji: '🤠',
         ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
       })
+      setCasting(false)
       fetchLaheyData()
+      return
     }
+
+    // Supabase unavailable — queue for later sync
+    await enqueue('upsert_leahey_vote', {
+      voter_id: profile.id, nominee_id: selected, tournament_id: effectiveTournamentId,
+    } satisfies UpsertLeaheyVotePayload, { voter_id: profile.id, tournament_id: effectiveTournamentId })
+    const feedId = crypto.randomUUID()
+    await enqueue('log_feed_event', {
+      id: feedId, event_type: 'contest', team_id: null, team_name: '',
+      voter_name: displayName(profile), player_name: nominee ? displayName(nominee) : null,
+      hole: 0, score: null,
+      label: isChange ? 'Vote Changed' : 'Jackass Vote', emoji: '🤠',
+      tournament_id: effectiveTournamentId,
+    } satisfies LogFeedEventPayload, { id: feedId })
+    const fakeVote: LeaheyVote = { id: `offline-vote-${profile.id}`, voter_id: profile.id, nominee_id: selected, created_at: new Date().toISOString() }
+    setVotes(prev => [...prev.filter(v => v.voter_id !== profile.id), fakeVote])
+    setMyVote(selected)
+    setCasting(false)
+    showToast(isChange ? 'Vote queued — will sync when online 🔄' : 'Vote queued — will sync when online 🤠')
   }
 
   // ── Lahey vote tally helpers ─────────────────────────────────
