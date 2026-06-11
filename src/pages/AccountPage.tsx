@@ -7,6 +7,13 @@ import { displayName } from '../lib/types'
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
   || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
 
+function urlBase64ToUint8Array(base64: string) {
+  const pad = '='.repeat((4 - (base64.length % 4)) % 4)
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(b64)
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+}
+
 
 export default function AccountPage() {
   const { profile, user, refreshProfile, signOut } = useAuth()
@@ -51,7 +58,7 @@ export default function AccountPage() {
       if (permission !== 'granted') { setPushStatus('denied'); return }
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: VAPID_PUBLIC_KEY,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
       await supabase.from('push_subscriptions').upsert({ user_id: user!.id, subscription: sub.toJSON() }, { onConflict: 'user_id' })
       setPushStatus('subscribed')
