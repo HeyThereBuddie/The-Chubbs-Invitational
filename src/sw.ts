@@ -16,6 +16,20 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(data.title ?? 'Chubbs Memorial', opts))
 })
 
+// Background Sync: retry pending writes when connectivity is restored
+// Chrome/Android only — Safari ignores this event gracefully
+self.addEventListener('sync', event => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const syncEvent = event as any
+  if (syncEvent.tag === 'drain-write-queue') {
+    syncEvent.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(c => c.postMessage({ type: 'SW_SYNC_QUEUE' }))
+      })
+    )
+  }
+})
+
 self.addEventListener('notificationclick', event => {
   event.notification.close()
   event.waitUntil(

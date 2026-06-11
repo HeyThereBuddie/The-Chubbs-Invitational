@@ -75,6 +75,18 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Listen for Background Sync messages from the service worker (Chrome/Android)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'SW_SYNC_QUEUE' && effectiveTournamentId) {
+        runSync(effectiveTournamentId)
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [effectiveTournamentId, runSync])
+
   return (
     <SyncContext.Provider value={{ isOnline, isSyncing, lastSynced, pendingCount, refreshPendingCount }}>
       {children}

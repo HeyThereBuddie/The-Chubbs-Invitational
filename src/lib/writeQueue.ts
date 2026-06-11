@@ -2,25 +2,48 @@ import { localDb } from './localDb'
 import { supabase } from './supabase'
 
 // Payload types for each operation
-export type SetScorePayload    = { team_id: string; hole: number; score: number }
-export type SetDrivePayload    = { team_id: string; hole: number; drive_used_id: string | null }
-export type SetPuttsPayload    = { team_id: string; hole: number; putts: number | null }
-export type DeleteScorePayload = { team_id: string; hole: number }
+export type SetScorePayload     = { team_id: string; hole: number; score: number }
+export type SetDrivePayload     = { team_id: string; hole: number; drive_used_id: string | null }
+export type SetPuttsPayload     = { team_id: string; hole: number; putts: number | null }
+export type DeleteScorePayload  = { team_id: string; hole: number }
 export type SetChulliganPayload = { team_id: string; player_id: string; hole: number; present: boolean }
+export type LogFeedEventPayload = {
+  id: string
+  event_type: string
+  team_id: string | null
+  team_name: string
+  player_name: string | null
+  voter_name: string | null
+  hole: number
+  score: number | null
+  label: string
+  emoji: string
+  tournament_id: string | null
+}
+export type UpsertLeaheyVotePayload = {
+  voter_id: string
+  nominee_id: string
+  tournament_id: string | null
+}
 
-type OpPayload = SetScorePayload | SetDrivePayload | SetPuttsPayload | DeleteScorePayload | SetChulliganPayload
+type OpPayload =
+  | SetScorePayload | SetDrivePayload | SetPuttsPayload
+  | DeleteScorePayload | SetChulliganPayload
+  | LogFeedEventPayload | UpsertLeaheyVotePayload
+
+// Prevent concurrent drains from running the same write twice
+let draining = false
 
 /**
  * Add a write to the queue. Deduplicates: removes any existing pending write
  * with the same op_type + conflict_key before adding the new one (LWW).
  */
 export async function enqueue(
-  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan',
+  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan' | 'log_feed_event' | 'upsert_leahey_vote',
   payload: OpPayload,
   conflict_key: Record<string, unknown>,
 ): Promise<void> {
   const keyStr = JSON.stringify(conflict_key)
-  // Remove older writes for the same operation + key (keep only latest = LWW)
   await localDb.pending_writes
     .where('op_type').equals(op_type)
     .filter(w => w.conflict_key === keyStr && w.status === 'pending')
@@ -32,6 +55,15 @@ export async function enqueue(
     client_ts: new Date().toISOString(),
     status: 'pending',
   })
+  // Register Background Sync so the browser retries even after the tab closes
+  // (Chrome/Android only — progressive enhancement, Safari silently ignores)
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (reg as any).sync.register('drain-write-queue')
+    } catch { /* not supported on this browser */ }
+  }
 }
 
 /**
@@ -39,38 +71,44 @@ export async function enqueue(
  * Returns counts of succeeded and failed operations.
  */
 export async function drainQueue(): Promise<{ succeeded: number; failed: number }> {
-  const pending = await localDb.pending_writes
-    .where('status').equals('pending')
-    .sortBy('client_ts')
+  if (draining) return { succeeded: 0, failed: 0 }
+  draining = true
 
   let succeeded = 0
   let failed = 0
 
-  for (const write of pending) {
-    try {
-      await executeWrite(write.op_type, JSON.parse(write.payload))
-      await localDb.pending_writes.delete(write.id!)
-      succeeded++
-    } catch (err) {
-      console.error('[writeQueue] failed to sync:', write.op_type, err)
-      // After 3 failures mark as failed so it doesn't block forever
-      if ((write.retries ?? 0) >= 2) {
-        await localDb.pending_writes.update(write.id!, { status: 'failed' })
-      } else {
-        await localDb.pending_writes.update(write.id!, { retries: (write.retries ?? 0) + 1 })
+  try {
+    const pending = await localDb.pending_writes
+      .where('status').equals('pending')
+      .sortBy('client_ts')
+
+    for (const write of pending) {
+      try {
+        await executeWrite(write.op_type, JSON.parse(write.payload))
+        await localDb.pending_writes.delete(write.id!)
+        succeeded++
+      } catch (err) {
+        console.error('[writeQueue] failed to sync:', write.op_type, err)
+        if ((write.retries ?? 0) >= 2) {
+          await localDb.pending_writes.update(write.id!, { status: 'failed' })
+        } else {
+          await localDb.pending_writes.update(write.id!, { retries: (write.retries ?? 0) + 1 })
+        }
+        failed++
       }
-      failed++
     }
+  } finally {
+    draining = false
   }
 
   return { succeeded, failed }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function executeWrite(op_type: string, payload: any): Promise<void> {
   switch (op_type) {
     case 'set_score': {
       const { team_id, hole, score } = payload as SetScorePayload
-      // Check if score row exists for this team+hole
       const { data: existing } = await supabase
         .from('scores').select('id').eq('team_id', team_id).eq('hole', hole).maybeSingle()
       if (existing?.id) {
@@ -115,7 +153,6 @@ async function executeWrite(op_type: string, payload: any): Promise<void> {
     case 'set_chulligan': {
       const { team_id, player_id, hole, present } = payload as SetChulliganPayload
       if (present) {
-        // Delete any existing chulligan for this player then insert
         await supabase.from('chulligans').delete().eq('team_id', team_id).eq('player_id', player_id)
         const { error } = await supabase.from('chulligans').insert({ team_id, player_id, hole })
         if (error) throw error
@@ -123,6 +160,32 @@ async function executeWrite(op_type: string, payload: any): Promise<void> {
         const { error } = await supabase.from('chulligans').delete().eq('team_id', team_id).eq('player_id', player_id)
         if (error) throw error
       }
+      break
+    }
+    case 'log_feed_event': {
+      const p = payload as LogFeedEventPayload
+      const { error } = await supabase.from('feed_events').upsert({
+        id: p.id,
+        event_type: p.event_type,
+        team_id: p.team_id ?? null,
+        team_name: p.team_name,
+        player_name: p.player_name,
+        voter_name: p.voter_name,
+        hole: p.hole,
+        score: p.score,
+        label: p.label,
+        emoji: p.emoji,
+        ...(p.tournament_id ? { tournament_id: p.tournament_id } : {}),
+      }, { onConflict: 'id' })
+      if (error) throw error
+      break
+    }
+    case 'upsert_leahey_vote': {
+      const { voter_id, nominee_id, tournament_id } = payload as UpsertLeaheyVotePayload
+      // Delete any existing vote then insert — handles both new votes and changes idempotently
+      await supabase.from('leahey_votes').delete().eq('voter_id', voter_id).eq('tournament_id', tournament_id)
+      const { error } = await supabase.from('leahey_votes').insert({ voter_id, nominee_id, tournament_id })
+      if (error) throw error
       break
     }
     default:

@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb } from '../lib/localDb'
-import { enqueue } from '../lib/writeQueue'
+import { enqueue, drainQueue } from '../lib/writeQueue'
+import type { LogFeedEventPayload } from '../lib/writeQueue'
 import type { Team, Player } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Minus, Plus, Users } from 'lucide-react'
@@ -547,36 +548,47 @@ export default function Scores() {
     if (!myTeamId) return
     const cur  = myScores[hole]?.score ?? HOLE_PARS[hole - 1]
     const next = Math.max(1, cur + delta)
-    setSaving(hole)
     const existing = myScores[hole]
+    const isNew = !existing?.id || String(existing.id).startsWith('offline-')
+    const scoreId = isNew ? `offline-${myTeamId}-${hole}` : existing!.id
 
-    if (!isOnline) {
-      // Optimistic local update
-      const fakeId = existing?.id ?? `offline-${myTeamId}-${hole}`
-      setMyScores(prev => ({ ...prev, [hole]: { id: fakeId, hole, score: next, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
-      // Also update local IndexedDB cache
-      if (existing?.id && !String(existing.id).startsWith('offline-')) {
-        await localDb.scores.update(existing.id, { score: next })
-      } else {
-        await localDb.scores.put({ id: fakeId, team_id: myTeamId, hole, score: next, drive_used_id: null, putts: null, updated_at: new Date().toISOString() })
-      }
-      await enqueue('set_score', { team_id: myTeamId, hole, score: next }, { team_id: myTeamId, hole })
-      await refreshPendingCount()
-      setSaving(null)
-      return
-    }
+    // Optimistic update
+    setSaving(hole)
+    setMyScores(prev => ({ ...prev, [hole]: { id: scoreId, hole, score: next, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
 
-    if (existing?.id) {
-      await supabase.from('scores').update({ score: next }).eq('id', existing.id)
-      setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], score: next } }))
+    // Write to local cache
+    if (isNew) {
+      await localDb.scores.put({ id: scoreId, team_id: myTeamId, hole, score: next, drive_used_id: existing?.drive_used_id ?? null, putts: existing?.putts ?? null, updated_at: new Date().toISOString() })
     } else {
-      const { data } = await supabase.from('scores')
-        .insert({ team_id: myTeamId, hole, score: next }).select('id, drive_used_id, putts').single()
-      if (data) setMyScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
+      await localDb.scores.update(scoreId, { score: next })
     }
+
+    // Queue the score write (LWW dedup: rapid taps keep only the latest)
+    await enqueue('set_score', { team_id: myTeamId, hole, score: next }, { team_id: myTeamId, hole })
+
+    // Queue the feed event (same conflict key ensures only the final score is posted)
+    const feedInfo = scoreFeedInfo(next, hole)
+    await enqueue('log_feed_event', {
+      id: crypto.randomUUID(),
+      event_type: 'score',
+      team_id: myTeamId ?? null,
+      team_name: myTeam?.name ?? '',
+      player_name: null,
+      voter_name: null,
+      hole,
+      score: next,
+      label: feedInfo.label,
+      emoji: feedInfo.emoji,
+      tournament_id: effectiveTournamentId ?? null,
+    } satisfies LogFeedEventPayload, { team_id: myTeamId, hole, ev: 'score' })
+
     setSaving(null)
-    pingLeadCheck({ team_id: myTeamId!, hole, score: next })
-    logFeedEvent('score', myTeamId, myTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
+
+    // Drain immediately if online; notify function is fire-and-forget after sync
+    if (navigator.onLine) {
+      drainQueue().then(() => pingLeadCheck({ team_id: myTeamId!, hole, score: next })).catch(() => {})
+    }
+    await refreshPendingCount()
   }
 
   const adjustAdminScore = async (hole: number, delta: number) => {
@@ -604,18 +616,13 @@ export default function Scores() {
     if (!existing?.id) return
     const newId = existing.drive_used_id === playerId ? null : playerId
 
-    if (!isOnline) {
-      setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
-      if (!String(existing.id).startsWith('offline-')) {
-        await localDb.scores.update(existing.id, { drive_used_id: newId })
-      }
-      await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
-      await refreshPendingCount()
-      return
-    }
-
-    await supabase.from('scores').update({ drive_used_id: newId }).eq('id', existing.id)
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
+    if (!String(existing.id).startsWith('offline-')) {
+      await localDb.scores.update(existing.id, { drive_used_id: newId })
+    }
+    await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
+    if (navigator.onLine) drainQueue().catch(() => {})
+    await refreshPendingCount()
   }
 
   const setAdminDrive = async (hole: number, playerId: string) => {
@@ -631,20 +638,39 @@ export default function Scores() {
     if (!existing?.id) return
     const newPutts = existing.putts === putts ? null : putts
 
-    if (!isOnline) {
-      setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
-      if (!String(existing.id).startsWith('offline-')) {
-        await localDb.scores.update(existing.id, { putts: newPutts })
-      }
-      await enqueue('set_putts', { team_id: myTeamId!, hole, putts: newPutts }, { team_id: myTeamId!, hole })
-      await refreshPendingCount()
-      return
+    setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
+    if (!String(existing.id).startsWith('offline-')) {
+      await localDb.scores.update(existing.id, { putts: newPutts })
+    }
+    await enqueue('set_putts', { team_id: myTeamId!, hole, putts: newPutts }, { team_id: myTeamId!, hole })
+
+    // Queue/replace the putt feed event; cancel it if putts dropped below 3
+    const puttFeedKey = { team_id: myTeamId!, hole, ev: 'putt' }
+    if (newPutts != null && newPutts >= 3) {
+      const info = puttFeedInfo(newPutts)
+      await enqueue('log_feed_event', {
+        id: crypto.randomUUID(),
+        event_type: 'putt',
+        team_id: myTeamId ?? null,
+        team_name: myTeam?.name ?? '',
+        player_name: null,
+        voter_name: null,
+        hole,
+        score: null,
+        label: info.label,
+        emoji: info.emoji,
+        tournament_id: effectiveTournamentId ?? null,
+      } satisfies LogFeedEventPayload, puttFeedKey)
+    } else {
+      // Remove any queued putt feed event for this hole (user deselected or chose < 3)
+      await localDb.pending_writes
+        .where('op_type').equals('log_feed_event')
+        .filter(w => w.conflict_key === JSON.stringify(puttFeedKey) && w.status === 'pending')
+        .delete()
     }
 
-    await supabase.from('scores').update({ putts: newPutts }).eq('id', existing.id)
-    setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
-    if (newPutts != null && newPutts >= 3)
-      logFeedEvent('putt', myTeamId!, myTeam?.name ?? '', hole, null, null, newPutts, effectiveTournamentId)
+    if (navigator.onLine) drainQueue().catch(() => {})
+    await refreshPendingCount()
   }
 
   const setAdminPutts = async (hole: number, putts: number) => {
@@ -663,21 +689,34 @@ export default function Scores() {
     const existing = myScores[hole]
     if (!existing?.id) return
 
-    if (!isOnline) {
-      setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
-      if (!String(existing.id).startsWith('offline-')) {
-        await localDb.scores.delete(existing.id)
-        await enqueue('delete_score', { team_id: myTeamId!, hole }, { team_id: myTeamId!, hole })
-        await refreshPendingCount()
-      } else {
-        // Was never synced — just remove from local cache, no need to queue a delete
-        await localDb.scores.delete(existing.id)
-      }
-      return
+    setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
+    await localDb.scores.delete(existing.id)
+
+    // Cancel any queued feed events for this hole
+    for (const evKey of [
+      JSON.stringify({ team_id: myTeamId!, hole, ev: 'score' }),
+      JSON.stringify({ team_id: myTeamId!, hole, ev: 'putt' }),
+    ]) {
+      await localDb.pending_writes
+        .where('op_type').equals('log_feed_event')
+        .filter(w => w.conflict_key === evKey && w.status === 'pending')
+        .delete()
     }
 
-    await supabase.from('scores').delete().eq('id', existing.id)
-    setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
+    if (!String(existing.id).startsWith('offline-')) {
+      // Row exists in Supabase — queue a delete
+      await enqueue('delete_score', { team_id: myTeamId!, hole }, { team_id: myTeamId!, hole })
+      if (navigator.onLine) drainQueue().catch(() => {})
+    } else {
+      // Row was never synced — just remove related queued writes
+      for (const opType of ['set_score', 'set_drive', 'set_putts'] as const) {
+        await localDb.pending_writes
+          .where('op_type').equals(opType)
+          .filter(w => w.conflict_key === JSON.stringify({ team_id: myTeamId!, hole }) && w.status === 'pending')
+          .delete()
+      }
+    }
+    await refreshPendingCount()
   }
 
   const resetAdminScore = async (hole: number) => {
@@ -699,54 +738,54 @@ export default function Scores() {
     const player = [team?.player1, team?.player2].find(p => p?.id === playerId)
     const teamName = team?.name ?? ''
     const playerName = player ? displayName(player) : ''
+    const fakeId = `offline-ch-${teamId}-${playerId}`
+    const chulFeedKey = { team_id: teamId, player_id: playerId, ev: 'chulligan' }
 
-    if (!isOnline) {
-      if (existing) {
-        if (existing.hole === hole) {
-          // Remove chulligan
-          setter(chulligans.filter(c => c.id !== existing.id))
-          await localDb.chulligans.delete(existing.id)
-          await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: false }, { team_id: teamId, player_id: playerId })
-        } else {
-          // Move chulligan to new hole
-          const fakeId = `offline-ch-${teamId}-${playerId}`
-          setter([...chulligans.filter(c => c.id !== existing.id), { id: fakeId, player_id: playerId, hole }])
-          await localDb.chulligans.delete(existing.id)
-          await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
-          await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
-        }
-      } else {
-        const fakeId = `offline-ch-${teamId}-${playerId}`
-        setter([...chulligans, { id: fakeId, player_id: playerId, hole }])
-        await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
-        await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
-      }
-      await refreshPendingCount()
-      return
+    const queueFeedEvent = async () => {
+      await enqueue('log_feed_event', {
+        id: crypto.randomUUID(),
+        event_type: 'chulligan',
+        team_id: teamId,
+        team_name: teamName,
+        player_name: playerName,
+        voter_name: null,
+        hole,
+        score: null,
+        label: 'Chulligan',
+        emoji: '🍺',
+        tournament_id: effectiveTournamentId ?? null,
+      } satisfies LogFeedEventPayload, chulFeedKey)
     }
 
     if (existing) {
-      await supabase.from('chulligans').delete().eq('id', existing.id)
       if (existing.hole === hole) {
+        // Removing chulligan
         setter(chulligans.filter(c => c.id !== existing.id))
+        await localDb.chulligans.delete(existing.id)
+        // Cancel any queued chulligan feed event for this player
+        await localDb.pending_writes
+          .where('op_type').equals('log_feed_event')
+          .filter(w => w.conflict_key === JSON.stringify(chulFeedKey) && w.status === 'pending')
+          .delete()
+        await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: false }, { team_id: teamId, player_id: playerId })
       } else {
-        const { data } = await supabase.from('chulligans')
-          .insert({ team_id: teamId, player_id: playerId, hole })
-          .select('id, player_id, hole').single()
-        if (data) {
-          setter([...chulligans.filter(c => c.id !== existing.id), data as ChulliganRow])
-          logFeedEvent('chulligan', teamId, teamName, hole, null, playerName, undefined, effectiveTournamentId)
-        }
+        // Moving chulligan to a new hole
+        setter([...chulligans.filter(c => c.id !== existing.id), { id: fakeId, player_id: playerId, hole }])
+        await localDb.chulligans.delete(existing.id)
+        await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
+        await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
+        await queueFeedEvent()
       }
     } else {
-      const { data } = await supabase.from('chulligans')
-        .insert({ team_id: teamId, player_id: playerId, hole })
-        .select('id, player_id, hole').single()
-      if (data) {
-        setter([...chulligans, data as ChulliganRow])
-        logFeedEvent('chulligan', teamId, teamName, hole, null, playerName, undefined, effectiveTournamentId)
-      }
+      // Adding new chulligan
+      setter([...chulligans, { id: fakeId, player_id: playerId, hole }])
+      await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
+      await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
+      await queueFeedEvent()
     }
+
+    if (navigator.onLine) drainQueue().catch(() => {})
+    await refreshPendingCount()
   }
 
   const countDrives = (pid: string | null, from: number, to: number, scoreMap: Record<number, ScoreRow>) => {

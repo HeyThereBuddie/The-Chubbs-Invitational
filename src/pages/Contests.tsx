@@ -5,6 +5,8 @@ import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
+import { enqueue } from '../lib/writeQueue'
+import type { LogFeedEventPayload, UpsertLeaheyVotePayload } from '../lib/writeQueue'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Camera, Target, Upload } from 'lucide-react'
@@ -248,23 +250,55 @@ export default function Contests() {
   const castVote = async () => {
     if (!selected || !profile || selected === myVote) return
     setCasting(true)
+    const nominee = laheyPlayers.find(p => p.id === selected)
+    const isChange = !!myVote
+
+    if (!isOnline) {
+      // Queue vote and feed event for later sync
+      await enqueue('upsert_leahey_vote', {
+        voter_id: profile.id,
+        nominee_id: selected,
+        tournament_id: effectiveTournamentId,
+      } satisfies UpsertLeaheyVotePayload, { voter_id: profile.id, tournament_id: effectiveTournamentId })
+
+      const feedId = crypto.randomUUID()
+      await enqueue('log_feed_event', {
+        id: feedId,
+        event_type: 'contest',
+        team_id: null,
+        team_name: '',
+        voter_name: displayName(profile),
+        player_name: nominee ? displayName(nominee) : null,
+        hole: 0,
+        score: null,
+        label: isChange ? 'Vote Changed' : 'Jackass Vote',
+        emoji: '🤠',
+        tournament_id: effectiveTournamentId,
+      } satisfies LogFeedEventPayload, { id: feedId })
+
+      // Optimistic local state update
+      const fakeVote: LeaheyVote = { id: `offline-vote-${profile.id}`, voter_id: profile.id, nominee_id: selected, created_at: new Date().toISOString() }
+      setVotes(prev => [...prev.filter(v => v.voter_id !== profile.id), fakeVote])
+      setMyVote(selected)
+      setCasting(false)
+      showToast(isChange ? 'Vote queued — will sync when online 🔄' : 'Vote queued — will sync when online 🤠')
+      return
+    }
+
     let error
-    if (myVote) {
-      // Change existing vote
+    if (isChange) {
       ;({ error } = await supabase.from('leahey_votes')
         .update({ nominee_id: selected })
         .eq('voter_id', profile.id)
         .eq('tournament_id', effectiveTournamentId))
     } else {
-      // First-time vote
       ;({ error } = await supabase.from('leahey_votes')
         .insert({ voter_id: profile.id, nominee_id: selected, ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }) }))
     }
     setCasting(false)
     if (error) showToast(error.message, 'error')
     else {
-      showToast(myVote ? 'Vote changed! 🔄 A new jackass rises.' : 'Vote cast! 🤠 Stay out of my way!')
-      const nominee = laheyPlayers.find(p => p.id === selected)
+      showToast(isChange ? 'Vote changed! 🔄 A new jackass rises.' : 'Vote cast! 🤠 Stay out of my way!')
       await supabase.from('feed_events').insert({
         event_type: 'contest',
         team_name: '',
@@ -272,7 +306,7 @@ export default function Contests() {
         player_name: nominee ? displayName(nominee) : null,
         hole: 0,
         score: null,
-        label: myVote ? 'Vote Changed' : 'Jackass Vote',
+        label: isChange ? 'Vote Changed' : 'Jackass Vote',
         emoji: '🤠',
         ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
       })
