@@ -78,9 +78,12 @@ serve(async (req) => {
 
     const push = async (recipients: PushSub[], title: string, body: string) => {
       if (!recipients.length) return
-      await Promise.allSettled(
+      console.log(`[notify] sending "${title}" to ${recipients.length} recipient(s)`)
+      const results = await Promise.allSettled(
         recipients.map(s => webpush.sendNotification(s.subscription, JSON.stringify({ title, body })))
       )
+      const failed = results.filter(r => r.status === 'rejected')
+      if (failed.length) console.error(`[notify] ${failed.length} failed:`, failed.map(r => (r as PromiseRejectedResult).reason?.message))
     }
 
     const updates: Record<string, unknown> = {}
@@ -175,7 +178,7 @@ serve(async (req) => {
       await supabase.from('tournament_settings').update(updates).eq('id', 1)
     }
 
-    console.log(`[notify] leader=${leader?.name ?? 'none'} subs=${subs.length}`)
+    console.log(`[notify] done — leader=${leader?.name ?? 'none'} subs=${subs.length} payload=${JSON.stringify(payload)}`)
   } catch (e) {
     console.error('[notify] error:', (e as Error).message)
   }
