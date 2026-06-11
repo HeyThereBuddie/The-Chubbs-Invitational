@@ -48,14 +48,15 @@ export default function AccountPage() {
   }, [])
 
   const subscribePush = async () => {
-    if (!VAPID_PUBLIC_KEY) {
-      showToast('Push notifications not configured (missing VAPID key)', 'error'); return
-    }
     setPushLoading(true)
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js')
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') { setPushStatus('denied'); return }
+      // Use .ready to ensure the SW is fully active before subscribing
+      const reg = await navigator.serviceWorker.ready
+      // Clear any stale subscription (different key causes the P-256 error)
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) await existing.unsubscribe()
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
