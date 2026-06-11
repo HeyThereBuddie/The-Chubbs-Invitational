@@ -210,6 +210,7 @@ export default function LiveFeed() {
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
       <div className="glass" style={{ padding: '20px 24px', marginBottom: 20, borderRadius: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>⚡</span>
           <div>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
               Live Feed
@@ -224,7 +225,7 @@ export default function LiveFeed() {
               <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
             </div>
           ) : (
-            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'rgba(252,181,20,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' }}>Archived</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'rgba(252,181,20,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' }}>🔒 Archived</span>
           )}
         </div>
       </div>
@@ -233,9 +234,9 @@ export default function LiveFeed() {
         <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
           {([
             { id: null,       label: 'All' },
-            { id: 'golf',     label: 'Golf' },
-            { id: 'contests', label: 'Contests' },
-            { id: 'jackass',  label: 'Jackass Award' },
+            { id: 'golf',     label: '⛳ Golf' },
+            { id: 'contests', label: '🎯 Contests' },
+            { id: 'jackass',  label: '🤠 Jackass Award' },
           ] as const).map(({ id, label }) => (
             <button
               key={String(id)}
@@ -255,6 +256,7 @@ export default function LiveFeed() {
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⛳</div>
             <div style={{ fontSize: 15, color: 'var(--tx3)' }}>
               {selectedFilter === 'golf' ? 'No golf events yet'
                 : selectedFilter === 'contests' ? 'No contest entries yet'
@@ -277,9 +279,11 @@ export default function LiveFeed() {
                 {/* Main event row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{
-                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    background: color, marginTop: 2,
-                  }} />
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: highlight ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18,
+                  }}>{ev.emoji}</div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
