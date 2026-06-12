@@ -171,15 +171,28 @@ export default function HappysPlace() {
       const res = await fetch(photo.photo_url)
       const blob = await res.blob()
       const ext = photo.photo_url.split('.').pop()?.split('?')[0] ?? 'jpg'
+      const filename = `happys-place-${tournamentYear}-${photo.id.slice(0, 8)}.${ext}`
+      const file = new File([blob], filename, { type: blob.type })
+
+      // Use native share sheet on mobile (iOS → "Save Image" → camera roll)
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Happy\'s Place' })
+        return
+      }
+
+      // Desktop fallback: trigger browser download
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `happys-place-${tournamentYear}-${photo.id.slice(0, 8)}.${ext}`
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    } catch { showToast('Download failed', 'error') }
+    } catch (err) {
+      // AbortError = user cancelled the share sheet — not an error
+      if ((err as Error).name !== 'AbortError') showToast('Download failed', 'error')
+    }
   }
 
   const downloadAll = async () => {
