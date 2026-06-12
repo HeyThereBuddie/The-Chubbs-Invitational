@@ -609,7 +609,7 @@ export default function Contests() {
                       style={{
                         padding: '12px', borderRadius: 12, border: '1px solid',
                         borderColor: isSelected ? '#FCB514' : 'var(--bdr)',
-                        background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
+                        background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'var(--surf)',
                         color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
                         cursor: 'pointer',
                         fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
