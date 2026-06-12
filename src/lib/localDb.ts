@@ -109,7 +109,7 @@ export interface SyncMeta {
 
 export interface PendingWrite {
   id?: number           // auto-increment primary key
-  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan' | 'log_feed_event' | 'upsert_leahey_vote'
+  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan' | 'log_feed_event' | 'upsert_leahey_vote' | 'submit_contest_entry'
   payload: string       // JSON string of the operation data
   conflict_key: string  // JSON string used for deduplication e.g. '{"team_id":"x","hole":5}'
   client_ts: string     // ISO timestamp — used for LWW ordering

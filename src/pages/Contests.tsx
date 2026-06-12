@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { localDb, parseJson } from '../lib/localDb'
-import { enqueue } from '../lib/writeQueue'
-import type { LogFeedEventPayload, UpsertLeaheyVotePayload } from '../lib/writeQueue'
+import { enqueue, drainQueue } from '../lib/writeQueue'
+import type { LogFeedEventPayload, UpsertLeaheyVotePayload, SubmitContestEntryPayload } from '../lib/writeQueue'
+import { useSyncContext } from '../context/SyncContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Camera, Target, Upload } from 'lucide-react'
@@ -25,6 +26,7 @@ export default function Contests() {
   const { profile } = useAuth()
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { refreshPendingCount } = useSyncContext()
   const [tab, setTab] = useState<ContestType>('ctp')
 
   // CTP / LD state
@@ -91,48 +93,51 @@ export default function Contests() {
   const fetchContestData = async () => {
     if (!effectiveTournamentId) { setEntries([]); return }
 
-    const { data: entriesData } = await supabase
-      .from('contest_entries').select('*, player:profiles(*)')
-      .eq('type', tab).eq('tournament_id', effectiveTournamentId)
-      .order('created_at', { ascending: false })
-
-    if (entriesData !== null) {
-      setEntries(entriesData)
-      if (profile?.team_id) {
-        const { data: teamData } = await supabase
-          .from('teams')
-          .select('name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-          .eq('id', profile.team_id).single()
-        const td = teamData as unknown as { name?: string; player1?: Player; player2?: Player }
-        setMyTeamName(td?.name ?? '')
-        setContestPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
-      } else {
-        const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
-        setContestPlayers(data ?? [])
-      }
-      return
-    }
-
-    // Supabase unavailable — fall back to local cache
+    // Step 1: Show cached data immediately — fast, works offline
     const localEntries = await localDb.contest_entries
       .where('tournament_id').equals(effectiveTournamentId).toArray()
-    setEntries(localEntries.filter(e => e.type === tab)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .map(e => ({ ...e, player: parseJson<Player>(e.player_json) } as unknown as ContestEntry & { player?: Player })))
-
+    if (localEntries.length > 0) {
+      setEntries(localEntries.filter(e => e.type === tab)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .map(e => ({ ...e, player: parseJson<Player>(e.player_json) } as unknown as ContestEntry & { player?: Player })))
+    }
     if (profile?.team_id) {
       const localTeam = await localDb.teams.get(profile.team_id)
       if (localTeam) {
         setMyTeamName(localTeam.name)
         const p1 = parseJson<Player>(localTeam.player1_json)
         const p2 = parseJson<Player>(localTeam.player2_json)
-        setContestPlayers([p1, p2].filter(Boolean) as Player[])
-      } else {
-        setContestPlayers((await localDb.profiles.toArray()) as Player[])
+        const players = [p1, p2].filter(Boolean) as Player[]
+        if (players.length > 0) setContestPlayers(players)
       }
     } else {
-      setContestPlayers((await localDb.profiles.where('status').equals('active').toArray()) as Player[])
+      const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
+      if (localProfiles.length > 0) setContestPlayers(localProfiles as Player[])
     }
+
+    // Step 2: Refresh from Supabase in background
+    try {
+      const { data: entriesData } = await supabase
+        .from('contest_entries').select('*, player:profiles(*)')
+        .eq('type', tab).eq('tournament_id', effectiveTournamentId)
+        .order('created_at', { ascending: false })
+
+      if (entriesData !== null) {
+        setEntries(entriesData)
+        if (profile?.team_id) {
+          const { data: teamData } = await supabase
+            .from('teams')
+            .select('name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+            .eq('id', profile.team_id).single()
+          const td = teamData as unknown as { name?: string; player1?: Player; player2?: Player }
+          setMyTeamName(td?.name ?? '')
+          setContestPlayers([td?.player1, td?.player2].filter(Boolean) as Player[])
+        } else {
+          const { data } = await supabase.from('profiles').select('*').eq('status', 'active').order('name')
+          setContestPlayers(data ?? [])
+        }
+      }
+    } catch { /* offline — cached data already shown */ }
   }
 
   const fetchJackassFeed = async () => {
@@ -184,8 +189,53 @@ export default function Contests() {
     if (!form.player_id) { showToast('Select a player', 'error'); return }
 
     setSubmitting(true)
-    let photo_url: string | null = null
+    const player = contestPlayers.find(p => p.id === form.player_id)
+    const entryId = crypto.randomUUID()
+    const now = new Date().toISOString()
 
+    // Offline path — queue for later sync
+    if (!navigator.onLine) {
+      if (photo) showToast('Photos can\'t be uploaded offline — entry saved without photo', 'error')
+
+      await localDb.contest_entries
+        .where('type').equals(tab)
+        .filter(e => e.player_id === form.player_id)
+        .delete()
+      await localDb.contest_entries.put({
+        id: entryId, type: tab, player_id: form.player_id,
+        hole: 1, distance: null, photo_url: null,
+        created_at: now, tournament_id: effectiveTournamentId ?? '',
+        player_json: player ? JSON.stringify(player) : null,
+      })
+      await enqueue('submit_contest_entry', {
+        id: entryId, type: tab as 'ctp' | 'ld', player_id: form.player_id,
+        tournament_id: effectiveTournamentId,
+      } satisfies SubmitContestEntryPayload, { type: tab, player_id: form.player_id })
+      await enqueue('log_feed_event', {
+        id: crypto.randomUUID(), event_type: 'contest',
+        team_id: null, team_name: myTeamName,
+        player_name: player ? displayName(player) : null,
+        voter_name: null, hole: 0, score: null,
+        label: tab === 'ctp' ? 'CTP Entry' : 'LD Entry',
+        emoji: tab === 'ctp' ? '🎯' : '💥',
+        tournament_id: effectiveTournamentId ?? null,
+      } satisfies LogFeedEventPayload, { type: tab, player_id: form.player_id, ev: 'contest' })
+
+      setEntries(prev => {
+        const filtered = prev.filter(e => !(e.type === tab && e.player_id === form.player_id))
+        const newEntry = { id: entryId, type: tab, player_id: form.player_id, hole: 1, distance: '', photo_url: null, created_at: now, player } as unknown as ContestEntry & { player?: Player }
+        return [newEntry, ...filtered]
+      })
+      setForm({ player_id: '' })
+      setPhoto(null)
+      setSubmitting(false)
+      await refreshPendingCount()
+      showToast(`Entry saved — will sync when online ${tab === 'ctp' ? '🎯' : '💥'}`)
+      return
+    }
+
+    // Online path
+    let photo_url: string | null = null
     if (photo) {
       const ext = photo.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
@@ -195,41 +245,32 @@ export default function Contests() {
       photo_url = urlData.publicUrl
     }
 
-    // Replace any existing entry for this player + contest type
-    await supabase.from('contest_entries')
-      .delete()
-      .eq('type', tab)
-      .eq('player_id', form.player_id)
-
+    await supabase.from('contest_entries').delete().eq('type', tab).eq('player_id', form.player_id)
     const { error } = await supabase.from('contest_entries').insert({
-      type: tab,
-      player_id: form.player_id,
-      hole: 1,
-      distance: '',
-      photo_url,
+      type: tab, player_id: form.player_id,
+      hole: 1, distance: '', photo_url,
       ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
     })
 
     setSubmitting(false)
-    if (error) showToast(error.message, 'error')
-    else {
-      showToast('Entry submitted! 🎯')
-      const player = contestPlayers.find(p => p.id === form.player_id)
+    if (error) {
+      showToast(error.message, 'error')
+    } else {
+      showToast(`Entry submitted! ${tab === 'ctp' ? '🎯' : '💥'}`)
       const { data: { session } } = await supabase.auth.getSession()
       supabase.functions.invoke('notify-contest', {
         headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
         body: { player_name: player ? displayName(player) : null, team_name: myTeamName, contest_type: tab },
       }).catch(() => {})
       await supabase.from('feed_events').insert({
-        event_type: 'contest',
-        team_name: myTeamName,
+        event_type: 'contest', team_name: myTeamName,
         player_name: player ? displayName(player) : null,
-        hole: 0,
-        score: null,
+        hole: 0, score: null,
         label: tab === 'ctp' ? 'CTP Entry' : 'LD Entry',
         emoji: tab === 'ctp' ? '🎯' : '💥',
         ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
       })
+      drainQueue().catch(() => {})
       setForm({ player_id: '' })
       setPhoto(null)
       fetchContestData()

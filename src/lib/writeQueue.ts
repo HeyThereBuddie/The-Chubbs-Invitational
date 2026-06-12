@@ -25,11 +25,18 @@ export type UpsertLeaheyVotePayload = {
   nominee_id: string
   tournament_id: string | null
 }
+export type SubmitContestEntryPayload = {
+  id: string
+  type: 'ctp' | 'ld'
+  player_id: string
+  tournament_id: string | null
+}
 
 type OpPayload =
   | SetScorePayload | SetDrivePayload | SetPuttsPayload
   | DeleteScorePayload | SetChulliganPayload
   | LogFeedEventPayload | UpsertLeaheyVotePayload
+  | SubmitContestEntryPayload
 
 // Prevent concurrent drains from running the same write twice
 let draining = false
@@ -39,7 +46,7 @@ let draining = false
  * with the same op_type + conflict_key before adding the new one (LWW).
  */
 export async function enqueue(
-  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan' | 'log_feed_event' | 'upsert_leahey_vote',
+  op_type: 'set_score' | 'set_drive' | 'set_putts' | 'delete_score' | 'set_chulligan' | 'log_feed_event' | 'upsert_leahey_vote' | 'submit_contest_entry',
   payload: OpPayload,
   conflict_key: Record<string, unknown>,
 ): Promise<void> {
@@ -181,6 +188,17 @@ async function executeWrite(op_type: string, payload: any): Promise<void> {
       // Delete any existing vote then insert — handles both new votes and changes idempotently
       await supabase.from('leahey_votes').delete().eq('voter_id', voter_id).eq('tournament_id', tournament_id)
       const { error } = await supabase.from('leahey_votes').insert({ voter_id, nominee_id, tournament_id })
+      if (error) throw error
+      break
+    }
+    case 'submit_contest_entry': {
+      const { id, type, player_id, tournament_id } = payload as SubmitContestEntryPayload
+      // LWW: remove any existing entry for this player + type before inserting
+      await supabase.from('contest_entries').delete().eq('type', type).eq('player_id', player_id)
+      const { error } = await supabase.from('contest_entries').insert({
+        id, type, player_id, hole: 1, distance: '',
+        ...(tournament_id ? { tournament_id } : {}),
+      })
       if (error) throw error
       break
     }
