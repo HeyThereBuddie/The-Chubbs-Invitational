@@ -554,7 +554,7 @@ export default function Contests() {
           <div className="animate-fadeUp" style={{
             marginBottom: 16, borderRadius: 12, overflow: 'hidden',
             border: '1px solid rgba(252,181,20,0.22)',
-            background: 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)',
+            background: 'var(--surf)',
           }}>
             <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 26, flexShrink: 0 }}>🤠</span>
@@ -567,7 +567,7 @@ export default function Contests() {
                 </div>
               </div>
             </div>
-            <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
+            <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(252,181,20,0.05)', fontSize: 11 }}>
               <span style={{ color: 'var(--tx4)', fontStyle: 'italic' }}>💬 "Just stay out of my way... or you'll pay."</span>
               <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— Shooter McGavin</span>
             </div>
