@@ -527,6 +527,10 @@ export default function AdminPanel() {
     const name = createTournamentName.trim()
     if (!name) return
     setCreatingTournament(true)
+
+    // Demote any existing active tournament before creating the new one
+    await supabase.from('tournaments').update({ status: 'completed' }).eq('status', 'active')
+
     const { data, error } = await supabase
       .from('tournaments')
       .insert({ name, year: new Date().getFullYear(), status: 'active' })
