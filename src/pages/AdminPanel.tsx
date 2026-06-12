@@ -41,7 +41,8 @@ interface THistoryEntry {
 export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
-  const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'tournament' | 'brevo' | 'rsvp'>('teams')
+  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo'>('teams')
+  const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
   const [newTeamP1, setNewTeamP1] = useState('')
@@ -614,11 +615,10 @@ export default function AdminPanel() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
           { id: 'teams',      label: '⛳ Teams' },
-          { id: 'users',      label: '👥 Users' },
+          { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
           { id: 'brevo',      label: '📣 Brevo' },
-          { id: 'rsvp',       label: '📋 Player Management' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -763,63 +763,81 @@ export default function AdminPanel() {
       )}
 
       {/* ── Users tab ───────────────────────────────────────────── */}
-      {tab === 'users' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {profiles.map(p => (
-            <div key={p.id} className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 14 }}>{p.name}</span>
-                  {p.nickname && (
-                    <span style={{ fontSize: 12, color: '#D4A53A', background: 'rgba(212,165,58,0.1)', padding: '1px 8px', borderRadius: 999 }}>
-                      "{p.nickname}"
-                    </span>
-                  )}
+      {tab === 'players' && (
+        <div>
+          {/* Sub-tabs */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+            <button onClick={() => setPlayerSubTab('roster')} className={`pill-tab ${playerSubTab === 'roster' ? 'active' : ''}`}>
+              🏆 Tournament Roster
+            </button>
+            <button onClick={() => setPlayerSubTab('users')} className={`pill-tab ${playerSubTab === 'users' ? 'active' : ''}`}>
+              👤 Users
+            </button>
+          </div>
+
+          {/* Tournament Roster */}
+          {playerSubTab === 'roster' && <RSVPPanel />}
+
+          {/* Users */}
+          {playerSubTab === 'users' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {profiles.map(p => (
+                <div key={p.id} className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 14 }}>{p.name}</span>
+                      {p.nickname && (
+                        <span style={{ fontSize: 12, color: '#D4A53A', background: 'rgba(212,165,58,0.1)', padding: '1px 8px', borderRadius: 999 }}>
+                          "{p.nickname}"
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{p.email}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <div style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                      background: p.role === 'admin' ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
+                      color: p.role === 'admin' ? '#D4A53A' : 'var(--tx2)',
+                      textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      {p.role}
+                    </div>
+                    <div style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                      background: p.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)',
+                      color: p.status === 'active' ? '#22c55e' : '#ef4444',
+                      textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      {p.status === 'active' ? 'Active' : 'Deactivated'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {p.role === 'player' ? (
+                      <button onClick={() => promoteUser(p.id)} className="btn-ghost" title="Promote to admin" style={{ padding: '6px 10px' }}>
+                        <Shield size={13} color="#D4A53A" />
+                      </button>
+                    ) : (
+                      <button onClick={() => demoteUser(p.id)} className="btn-ghost" title="Demote to player" style={{ padding: '6px 10px' }}>
+                        <ShieldOff size={13} color="var(--tx3)" />
+                      </button>
+                    )}
+                    {p.nickname && (
+                      <button
+                        onClick={() => supabase.from('profiles').update({ nickname: null }).eq('id', p.id).then(() => fetchProfiles())}
+                        className="btn-ghost" title="Clear nickname" style={{ padding: '6px 10px', fontSize: 11, color: 'var(--tx3)' }}
+                      >
+                        ✕ nick
+                      </button>
+                    )}
+                    <button onClick={() => removeUser(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px', color: 'rgba(239,68,68,0.6)' }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{p.email}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  background: p.role === 'admin' ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
-                  color: p.role === 'admin' ? '#D4A53A' : 'var(--tx2)',
-                  textTransform: 'uppercase', letterSpacing: 1,
-                }}>
-                  {p.role}
-                </div>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  background: p.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)',
-                  color: p.status === 'active' ? '#22c55e' : '#ef4444',
-                  textTransform: 'uppercase', letterSpacing: 1,
-                }}>
-                  {p.status === 'active' ? 'Active' : 'Deactivated'}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {p.role === 'player' ? (
-                  <button onClick={() => promoteUser(p.id)} className="btn-ghost" title="Promote to admin" style={{ padding: '6px 10px' }}>
-                    <Shield size={13} color="#D4A53A" />
-                  </button>
-                ) : (
-                  <button onClick={() => demoteUser(p.id)} className="btn-ghost" title="Demote to player" style={{ padding: '6px 10px' }}>
-                    <ShieldOff size={13} color="var(--tx3)" />
-                  </button>
-                )}
-                {p.nickname && (
-                  <button
-                    onClick={() => supabase.from('profiles').update({ nickname: null }).eq('id', p.id).then(() => fetchProfiles())}
-                    className="btn-ghost" title="Clear nickname" style={{ padding: '6px 10px', fontSize: 11, color: 'var(--tx3)' }}
-                  >
-                    ✕ nick
-                  </button>
-                )}
-                <button onClick={() => removeUser(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px', color: 'rgba(239,68,68,0.6)' }}>
-                  <Trash2 size={13} />
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -1554,8 +1572,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ── RSVP tab ────────────────────────────────────────────── */}
-      {tab === 'rsvp' && <RSVPPanel />}
     </div>
   )
 }
