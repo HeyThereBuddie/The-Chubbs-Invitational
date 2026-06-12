@@ -177,6 +177,7 @@ export default function HappysPlace() {
       // Use native share sheet on mobile (iOS → "Save Image" → camera roll)
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: 'Happy\'s Place' })
+        showToast('Image saved 📸')
         return
       }
 
@@ -189,6 +190,7 @@ export default function HappysPlace() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      showToast('Image saved 📸')
     } catch (err) {
       // AbortError = user cancelled the share sheet — not an error
       if ((err as Error).name !== 'AbortError') showToast('Download failed', 'error')
