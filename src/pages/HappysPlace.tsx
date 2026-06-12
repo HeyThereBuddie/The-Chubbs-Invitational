@@ -9,6 +9,7 @@ import type { LocalPhoto } from '../lib/localDb'
 import { Camera, Upload, X, ChevronLeft, ChevronRight, Trash2, Download } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { displayName } from '../lib/types'
+import { SkeletonPhotoCard } from '../components/Skeleton'
 
 interface PhotoItem extends LocalPhoto {
   uploader?: { name: string | null; nickname: string | null; avatar_url: string | null }
@@ -447,11 +448,15 @@ export default function HappysPlace() {
         </div>
       )}
 
-      {/* ── Loading ── */}
+      {/* ── Skeleton grid ── */}
       {loading && photos.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--tx4)' }}>
-          <div className="animate-spin" style={{ width: 36, height: 36, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%', margin: '0 auto 16px' }} />
-          Loading the wall…
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[0, 1, 2].map(i => <SkeletonPhotoCard key={i} />)}
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[3, 4, 5].map(i => <SkeletonPhotoCard key={i} />)}
+          </div>
         </div>
       )}
 
