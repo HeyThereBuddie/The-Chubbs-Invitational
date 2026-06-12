@@ -36,6 +36,9 @@ export async function syncAll(tournamentId: string): Promise<void> {
       .order('generated_at', { ascending: false }),
   ])
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profilesByIdMap = new Map((profiles ?? []).map((p: any) => [p.id, p]))
+
   await localDb.transaction('rw', [
     localDb.teams, localDb.profiles, localDb.scores, localDb.chulligans,
     localDb.tee_times, localDb.contest_entries, localDb.leahey_votes,
@@ -46,8 +49,12 @@ export async function syncAll(tournamentId: string): Promise<void> {
       await localDb.teams.bulkPut(teams.map((t: any) => ({
         id: t.id, name: t.name, tournament_id: t.tournament_id,
         p1_id: t.p1_id ?? null, p2_id: t.p2_id ?? null,
-        player1_json: t.player1 ? JSON.stringify(t.player1) : null,
-        player2_json: t.player2 ? JSON.stringify(t.player2) : null,
+        player1_json: t.player1
+          ? JSON.stringify(t.player1)
+          : (t.p1_id && profilesByIdMap.has(t.p1_id) ? JSON.stringify(profilesByIdMap.get(t.p1_id)) : null),
+        player2_json: t.player2
+          ? JSON.stringify(t.player2)
+          : (t.p2_id && profilesByIdMap.has(t.p2_id) ? JSON.stringify(profilesByIdMap.get(t.p2_id)) : null),
       })))
     }
     if (profiles?.length) await localDb.profiles.bulkPut(profiles)

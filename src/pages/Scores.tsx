@@ -468,10 +468,13 @@ export default function Scores() {
     const localTeams = await localDb.teams
       .where('tournament_id').equals(effectiveTournamentId).toArray()
     if (localTeams.length > 0) {
+      // Build a profile map so we can fill in player data even if player_json is null
+      const localProfiles = await localDb.profiles.toArray()
+      const profMap = new Map(localProfiles.map(p => [p.id, p]))
       setAllTeams(localTeams.map(t => ({
         ...t,
-        player1: parseJson(t.player1_json) as Player | undefined,
-        player2: parseJson(t.player2_json) as Player | undefined,
+        player1: ((parseJson(t.player1_json) as Player | undefined) ?? (t.p1_id ? profMap.get(t.p1_id) as unknown as Player : undefined)),
+        player2: ((parseJson(t.player2_json) as Player | undefined) ?? (t.p2_id ? profMap.get(t.p2_id) as unknown as Player : undefined)),
       })) as unknown as TeamFull[])
     }
 
@@ -481,7 +484,15 @@ export default function Scores() {
         .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
         .eq('tournament_id', effectiveTournamentId)
       if (data) {
-        setAllTeams(data)
+        // Preserve cached player data if Supabase join returned null (spotty connection)
+        setAllTeams(prev => {
+          const prevMap = new Map(prev.map((t: TeamFull) => [t.id, t]))
+          return (data as TeamFull[]).map(t => ({
+            ...t,
+            player1: t.player1 ?? prevMap.get(t.id)?.player1,
+            player2: t.player2 ?? prevMap.get(t.id)?.player2,
+          }))
+        })
         computeLeaderToPar(data)
         if (isAdmin && isCurrentYear && data.length) {
           const initial = (myTeamId && data.find((t: TeamFull) => t.id === myTeamId)) ? myTeamId : data[0].id
@@ -519,11 +530,11 @@ export default function Scores() {
     setMyScores(cacheMap)
     setMyChulligans(localCh.map(c => ({ id: c.id, player_id: c.player_id, hole: c.hole })))
     if (localTeam) {
-      setMyTeam({
-        ...localTeam,
-        player1: parseJson(localTeam.player1_json) as Player | undefined,
-        player2: parseJson(localTeam.player2_json) as Player | undefined,
-      } as unknown as TeamFull)
+      let p1 = parseJson(localTeam.player1_json) as Player | undefined
+      let p2 = parseJson(localTeam.player2_json) as Player | undefined
+      if (!p1 && localTeam.p1_id) { const r = await localDb.profiles.get(localTeam.p1_id); if (r) p1 = r as unknown as Player }
+      if (!p2 && localTeam.p2_id) { const r = await localDb.profiles.get(localTeam.p2_id); if (r) p2 = r as unknown as Player }
+      setMyTeam({ ...localTeam, player1: p1, player2: p2 } as unknown as TeamFull)
     }
 
     // Step 2: Refresh from Supabase in the background
@@ -533,7 +544,8 @@ export default function Scores() {
         .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
         .eq('id', teamId).single()
       if (!t) return
-      setMyTeam(t)
+      // Preserve cached player data if Supabase join returned null (spotty connection)
+      setMyTeam(prev => ({ ...t, player1: t.player1 ?? prev?.player1, player2: t.player2 ?? prev?.player2 } as TeamFull))
 
       // Only overwrite scores when no pending local writes — prevents wiping offline changes
       const pendingCount = await getPendingCount()
@@ -568,11 +580,11 @@ export default function Scores() {
       localDb.scores.where('team_id').equals(teamId).toArray(),
     ])
     if (localTeam) {
-      setViewTeam({
-        ...localTeam,
-        player1: parseJson(localTeam.player1_json) as Player | undefined,
-        player2: parseJson(localTeam.player2_json) as Player | undefined,
-      } as unknown as TeamFull)
+      let p1 = parseJson(localTeam.player1_json) as Player | undefined
+      let p2 = parseJson(localTeam.player2_json) as Player | undefined
+      if (!p1 && localTeam.p1_id) { const r = await localDb.profiles.get(localTeam.p1_id); if (r) p1 = r as unknown as Player }
+      if (!p2 && localTeam.p2_id) { const r = await localDb.profiles.get(localTeam.p2_id); if (r) p2 = r as unknown as Player }
+      setViewTeam({ ...localTeam, player1: p1, player2: p2 } as unknown as TeamFull)
     }
     const cacheMap: Record<number, ScoreRow> = {}
     for (const s of localScores) cacheMap[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
@@ -585,7 +597,8 @@ export default function Scores() {
         supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
       ])
       if (t) {
-        setViewTeam(t as unknown as TeamFull)
+        // Preserve cached player data if Supabase join returned null (spotty connection)
+        setViewTeam(prev => ({ ...t, player1: t.player1 ?? prev?.player1, player2: t.player2 ?? prev?.player2 } as unknown as TeamFull))
         const map: Record<number, ScoreRow> = {}
         for (const row of s ?? []) map[row.hole] = row
         setViewScores(map)
