@@ -385,19 +385,23 @@ export default function AdminPanel() {
 
       if (rows.length > 0) await supabase.from('tournament_results').insert(rows)
 
-      // Snapshot active players before archiving so next year's RSVP can show "↩ Returning" badges
-      const { data: activePlayers } = await supabase
-        .from('profiles')
-        .select('id, name, nickname, role')
-        .eq('status', 'active')
-        .neq('role', 'admin')
-
-      // Mark completed + save full standings + participant snapshot
+      // Mark completed + save full standings (critical — must succeed)
       await supabase.from('tournaments').update({
         status: 'completed',
         final_standings: standings,
-        participants_json: activePlayers ?? [],
       }).eq('id', activeTournament.id)
+
+      // Snapshot active players (best-effort — requires migration 031 to be applied)
+      try {
+        const { data: activePlayers } = await supabase
+          .from('profiles')
+          .select('id, name, nickname, role')
+          .eq('status', 'active')
+          .neq('role', 'admin')
+        await supabase.from('tournaments').update({
+          participants_json: activePlayers ?? [],
+        }).eq('id', activeTournament.id)
+      } catch { /* migration not yet applied — skip participants snapshot */ }
 
       // Clear player team assignments
       await supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000')
