@@ -32,11 +32,13 @@ export default function BottomSheetPicker({
   const selected = options.find(o => o.value === value)
 
   const close = () => {
+    navigator.vibrate?.(5)
     setExiting(true)
     setTimeout(() => { setOpen(false); setExiting(false); setQuery('') }, 220)
   }
 
   const pick = (val: string) => {
+    navigator.vibrate?.(8)
     onChange(val)
     close()
   }
@@ -66,7 +68,7 @@ export default function BottomSheetPicker({
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => { if (!disabled) setOpen(true) }}
+        onClick={() => { if (!disabled) { navigator.vibrate?.(8); setOpen(true) } }}
         disabled={disabled}
         style={{
           width: '100%',

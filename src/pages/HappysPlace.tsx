@@ -160,6 +160,7 @@ export default function HappysPlace() {
     }
     setPhotos(prev => [newPhoto, ...prev])
 
+    navigator.vibrate?.([10, 150, 10])
     showToast('Shot posted! 📸')
     setShowUpload(false)
     clearFile()
@@ -168,6 +169,7 @@ export default function HappysPlace() {
   }
 
   const downloadPhoto = async (photo: PhotoItem) => {
+    navigator.vibrate?.(8)
     try {
       const res = await fetch(photo.photo_url)
       const blob = await res.blob()
@@ -232,6 +234,7 @@ export default function HappysPlace() {
 
   const deletePhoto = async (id: string) => {
     if (!confirm('Delete this photo?')) return
+    navigator.vibrate?.([8, 100, 8, 100, 8])
     await supabase.from('photos').delete().eq('id', id)
     await localDb.photos.delete(id)
     setPhotos(prev => prev.filter(p => p.id !== id))
@@ -287,13 +290,13 @@ export default function HappysPlace() {
 
           {/* Prev / Next */}
           {lightboxIdx > 0 && (
-            <button onClick={e => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1) }}
+            <button onClick={e => { e.stopPropagation(); navigator.vibrate?.(6); setLightboxIdx(lightboxIdx - 1) }}
               style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 44, height: 44, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ChevronLeft size={22} />
             </button>
           )}
           {lightboxIdx < photos.length - 1 && (
-            <button onClick={e => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1) }}
+            <button onClick={e => { e.stopPropagation(); navigator.vibrate?.(6); setLightboxIdx(lightboxIdx + 1) }}
               style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 44, height: 44, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ChevronRight size={22} />
             </button>
@@ -424,7 +427,7 @@ export default function HappysPlace() {
       {isCurrentYear && (
         <button
           className="btn-gold"
-          onClick={() => setShowUpload(true)}
+          onClick={() => { navigator.vibrate?.(8); setShowUpload(true) }}
           style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: '14px', marginBottom: 20 }}
         >
           <Camera size={18} /> Add Your Shot
@@ -484,18 +487,19 @@ export default function HappysPlace() {
           {[col1, col2].map((col, ci) => (
             <div key={ci} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {col.map(photo => {
-                const globalIdx = ci === 0 ? photos.indexOf(photo) : photos.indexOf(photo)
+                const globalIdx = photos.indexOf(photo)
                 const uploaderName = photo.uploader
                   ? displayName(photo.uploader as { name: string; nickname: string | null })
                   : 'Unknown'
                 const initials = avatarInitials(photo.uploader?.name ?? null, photo.uploader?.nickname ?? null)
                 const canDelete = isAdmin || (isCurrentYear && photo.uploader_id === profile?.id)
+                const staggerDelay = `${Math.min(globalIdx * 55, 600)}ms`
 
                 return (
                   <div
                     key={photo.id}
                     className="animate-fadeUp"
-                    onClick={() => setLightboxIdx(globalIdx)}
+                    onClick={() => { navigator.vibrate?.(8); setLightboxIdx(globalIdx) }}
                     style={{
                       borderRadius: 12,
                       overflow: 'hidden',
@@ -504,6 +508,7 @@ export default function HappysPlace() {
                       cursor: 'zoom-in',
                       position: 'relative',
                       transition: 'transform 0.15s, border-color 0.15s',
+                      animationDelay: staggerDelay,
                     }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(252,181,20,0.5)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1.01)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bdr)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}

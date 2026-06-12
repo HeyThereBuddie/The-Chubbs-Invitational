@@ -146,11 +146,42 @@ body {
 .animate-float     { animation: float 4s ease-in-out infinite; }
 .animate-glow-pulse { animation: pulseGlow 3s ease-in-out infinite; }
 
+/* ── Nav icon pop (plays once on activate) ── */
+@keyframes navIconPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.28); }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.nav-icon-pop { animation: navIconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ── Spring bounce-in for success ── */
+@keyframes bounceIn {
+  0%   { transform: scale(0.82); opacity: 0; }
+  55%  { transform: scale(1.07); opacity: 1; }
+  80%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.animate-bounce-in { animation: bounceIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ── Shake for errors ── */
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-3px); }
+  80%       { transform: translateX(3px); }
+}
+.animate-shake { animation: shakeX 0.35s ease both; }
+
 .delay-100 { animation-delay: 0.1s; }
 .delay-200 { animation-delay: 0.2s; }
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+.delay-700 { animation-delay: 0.7s; }
+.delay-800 { animation-delay: 0.8s; }
 
 /* ── Glass card ── */
 .glass {
@@ -305,6 +336,7 @@ select option { background: var(--bg); color: var(--tx1); }
   background: rgba(252,181,20,0.15);
   border-color: rgba(252,181,20,0.4);
   color: #FCB514;
+  transform: scale(1.03);
 }
 .pill-tab:hover:not(.active) { color: var(--tx2); }
 

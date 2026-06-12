@@ -179,6 +179,7 @@ export default function Leaderboard() {
                 padding: '16px 20px',
                 borderColor: isLeader ? 'rgba(252,181,20,0.4)' : undefined,
                 boxShadow: isLeader ? '0 0 20px rgba(252,181,20,0.1)' : undefined,
+                animationDelay: `${Math.min(i * 60, 480)}ms`,
               }} >
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

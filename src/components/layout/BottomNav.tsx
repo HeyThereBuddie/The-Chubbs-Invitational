@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
@@ -34,6 +34,7 @@ const adminNav = [
 
 export default function BottomNav() {
   const { isAdmin } = useAuth()
+  const location = useLocation()
   const navItems = isAdmin ? adminNav : playerNav
 
   return (
@@ -52,6 +53,7 @@ export default function BottomNav() {
           key={to}
           to={to}
           end={to === '/'}
+          onClick={() => navigator.vibrate?.(8)}
           style={{
             flex: 1,
             display: 'flex',
@@ -65,17 +67,20 @@ export default function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 40,
-                height: 26,
-                borderRadius: 999,
-                background: isActive ? 'rgba(252,181,20,0.18)' : 'transparent',
-                transition: 'background 0.2s',
-                marginBottom: 2,
-              }}>
+              <div
+                key={isActive ? location.key : to}
+                className={isActive ? 'nav-icon-pop' : ''}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 40,
+                  height: 26,
+                  borderRadius: 999,
+                  background: isActive ? 'rgba(252,181,20,0.18)' : 'transparent',
+                  transition: 'background 0.2s',
+                  marginBottom: 2,
+                }}>
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#FCB514' : 'var(--tx3)'} />
               </div>
               <span style={{

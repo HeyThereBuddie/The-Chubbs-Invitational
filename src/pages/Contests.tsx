@@ -235,6 +235,7 @@ export default function Contests() {
       setPhoto(null)
       setSubmitting(false)
       await refreshPendingCount()
+      navigator.vibrate?.([10, 150, 10])
       showToast(`Entry saved — will sync when online ${tab === 'ctp' ? '🎯' : '💥'}`)
       return
     }
@@ -259,8 +260,10 @@ export default function Contests() {
 
     setSubmitting(false)
     if (error) {
+      navigator.vibrate?.([20, 100, 20])
       showToast(error.message, 'error')
     } else {
+      navigator.vibrate?.([10, 150, 10])
       showToast(`Entry submitted! ${tab === 'ctp' ? '🎯' : '💥'}`)
       const { data: { session } } = await supabase.auth.getSession()
       supabase.functions.invoke('notify-contest', {
@@ -301,6 +304,7 @@ export default function Contests() {
     }
 
     if (!voteError) {
+      navigator.vibrate?.([10, 150, 10])
       showToast(isChange ? 'Vote changed! 🔄 A new jackass rises.' : 'Vote cast! 🤠 Stay out of my way!')
       await supabase.from('feed_events').insert({
         event_type: 'contest', team_name: '',
@@ -332,6 +336,7 @@ export default function Contests() {
     setVotes(prev => [...prev.filter(v => v.voter_id !== profile.id), fakeVote])
     setMyVote(selected)
     setCasting(false)
+    navigator.vibrate?.([10, 150, 10])
     showToast(isChange ? 'Vote queued — will sync when online 🔄' : 'Vote queued — will sync when online 🤠')
   }
 
@@ -407,9 +412,9 @@ export default function Contests() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button onClick={() => setTab('ctp')} className={`pill-tab ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
-        <button onClick={() => setTab('ld')}  className={`pill-tab ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
-        <button onClick={() => setTab('lahey')} className={`pill-tab ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
+        <button onClick={() => { navigator.vibrate?.(8); setTab('ctp') }} className={`pill-tab ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
+        <button onClick={() => { navigator.vibrate?.(8); setTab('ld') }}  className={`pill-tab ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
+        <button onClick={() => { navigator.vibrate?.(8); setTab('lahey') }} className={`pill-tab ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
       </div>
 
       {/* ── CTP / LD ─────────────────────────────────────────────── */}
@@ -614,7 +619,7 @@ export default function Contests() {
                   return (
                     <button
                       key={player.id}
-                      onClick={() => setSelected(player.id)}
+                      onClick={() => { navigator.vibrate?.(8); setSelected(player.id) }}
                       style={{
                         padding: '12px', borderRadius: 12, border: '1px solid',
                         borderColor: isSelected ? '#FCB514' : 'var(--bdr)',
