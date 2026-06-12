@@ -541,10 +541,10 @@ export default function AdminPanel() {
     setCreateTournamentOpen(false)
     setCreateTournamentName('')
 
-    // Move all active non-admin players to waitlist — roster starts fresh each year
+    // Deactivate all active non-admin players — roster starts fresh each year
     const { data: movedPlayers } = await supabase
       .from('profiles')
-      .update({ status: 'waitlist' })
+      .update({ status: 'dropped' })
       .eq('status', 'active')
       .neq('role', 'admin')
       .select('id')
@@ -553,7 +553,7 @@ export default function AdminPanel() {
     fetchTeams(data.id)
     fetchTournamentHistory()
     refreshTournaments()
-    showToast(`"${name}" is live! ${movedCount > 0 ? `${movedCount} player${movedCount !== 1 ? 's' : ''} moved to waitlist.` : ''} 🏆`)
+    showToast(`"${name}" is live! ${movedCount > 0 ? `${movedCount} player${movedCount !== 1 ? 's' : ''} deactivated.` : ''} 🏆`)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
@@ -594,7 +594,7 @@ export default function AdminPanel() {
           { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
           { id: 'brevo',      label: '📣 Brevo' },
-          { id: 'rsvp',       label: '📋 RSVP' },
+          { id: 'rsvp',       label: '📋 Player Management' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -747,11 +747,11 @@ export default function AdminPanel() {
                 </div>
                 <div style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  background: p.status === 'active' ? 'rgba(34,197,94,0.12)' : p.status === 'waitlist' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.1)',
-                  color: p.status === 'active' ? '#22c55e' : p.status === 'waitlist' ? '#f59e0b' : '#ef4444',
+                  background: p.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)',
+                  color: p.status === 'active' ? '#22c55e' : '#ef4444',
                   textTransform: 'uppercase', letterSpacing: 1,
                 }}>
-                  {p.status ?? 'active'}
+                  {p.status === 'active' ? 'Active' : 'Deactivated'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>

@@ -4,15 +4,14 @@ import { useToast } from '../context/ToastContext'
 import type { Profile } from '../lib/types'
 import { ChevronDown, ChevronUp, Download } from 'lucide-react'
 
-type StatusTab = 'active' | 'waitlist' | 'dropped'
+type StatusTab = 'active' | 'deactivated'
 
 const STATUS_TABS: { id: StatusTab; label: string; emoji: string }[] = [
-  { id: 'active',   label: 'Active',   emoji: '✅' },
-  { id: 'waitlist', label: 'Waitlist', emoji: '⏳' },
-  { id: 'dropped',  label: 'Dropped',  emoji: '❌' },
+  { id: 'active',      label: 'Active',      emoji: '✅' },
+  { id: 'deactivated', label: 'Deactivated', emoji: '🚫' },
 ]
 
-const statusColor = { active: '#22c55e', waitlist: '#f59e0b', dropped: '#ef4444' }
+const statusColor = { active: '#22c55e', deactivated: '#ef4444' }
 
 const responseLabel: Record<string, { icon: string; color: string; text: string }> = {
   yes:  { icon: '✅', color: '#22c55e', text: 'Confirmed In' },
@@ -66,13 +65,9 @@ export default function RSVP() {
     else fetchPlayers()
   }
 
-  const setStatus = async (id: string, status: 'active' | 'waitlist' | 'dropped') => {
+  const setStatus = async (id: string, status: 'active' | 'dropped') => {
     await updatePlayer(id, { status })
-    showToast(
-      status === 'active'   ? 'Player activated!'   :
-      status === 'waitlist' ? 'Moved to waitlist'   :
-      'Player dropped'
-    )
+    showToast(status === 'active' ? 'Player activated!' : 'Player deactivated')
   }
 
   const toggleSelect = (id: string) => {
@@ -94,17 +89,17 @@ export default function RSVP() {
     showToast(`${ids.length} player${ids.length !== 1 ? 's' : ''} activated`)
   }
 
-  const resetRoster = async () => {
+  const removeAllActive = async () => {
     setResetting(true)
-    await supabase.from('profiles').update({ status: 'waitlist' }).eq('status', 'active').neq('role', 'admin')
+    await supabase.from('profiles').update({ status: 'dropped' }).eq('status', 'active').neq('role', 'admin')
     setResetConfirm(false)
     await fetchPlayers()
     setResetting(false)
-    showToast('Roster reset — all players moved to waitlist')
+    showToast('All active players deactivated')
   }
 
   const exportBrevoCSV = () => {
-    const exportable = players.filter(p => p.status === 'active' || p.status === 'waitlist')
+    const exportable = players.filter(p => p.status === 'active')
     const rows = [
       ['EMAIL', 'FIRSTNAME', 'LASTNAME', 'INVITE_TOKEN', 'STATUS'],
       ...exportable.map(p => {
@@ -122,29 +117,31 @@ export default function RSVP() {
     a.download = 'chubbs-memorial-brevo.csv'
     a.click()
     URL.revokeObjectURL(url)
-    showToast(`Exported ${exportable.length} players for Brevo`)
+    showToast(`Exported ${exportable.length} active players for Brevo`)
   }
 
   const counts = {
-    active:   players.filter(p => p.status === 'active').length,
-    waitlist: players.filter(p => p.status === 'waitlist').length,
-    dropped:  players.filter(p => p.status === 'dropped').length,
+    active:      players.filter(p => p.status === 'active').length,
+    deactivated: players.filter(p => p.status === 'dropped' || p.status === 'waitlist').length,
   }
 
   const responseCounts = {
     yes:     players.filter(p => p.invite_response === 'yes').length,
     no:      players.filter(p => p.invite_response === 'no').length,
-    pending: players.filter(p => p.status !== 'dropped' && !p.invite_response).length,
+    pending: players.filter(p => p.status === 'active' && !p.invite_response).length,
   }
 
-  const filtered = players.filter(p => p.status === tab)
+  // 'deactivated' tab shows both 'dropped' and legacy 'waitlist' DB rows
+  const filtered = tab === 'deactivated'
+    ? players.filter(p => p.status === 'dropped' || p.status === 'waitlist')
+    : players.filter(p => p.status === tab)
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Player Roster</h1>
         <p style={{ color: 'var(--tx3)', fontSize: 13 }}>
-          {counts.active} active · {counts.waitlist} waitlisted · {counts.dropped} dropped
+          {counts.active} active · {counts.deactivated} deactivated
         </p>
       </div>
 
@@ -182,8 +179,8 @@ export default function RSVP() {
         </button>
       </div>
 
-      {/* Waitlist bulk-select toolbar */}
-      {tab === 'waitlist' && (
+      {/* Deactivated tab bulk-select toolbar */}
+      {tab === 'deactivated' && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             onClick={() => {
@@ -231,11 +228,12 @@ export default function RSVP() {
           const resp = player.invite_response ? responseLabel[player.invite_response] : null
           const isReturning = returningIds.has(player.id)
           const isChecked = selected.has(player.id)
+          const isDeactivated = player.status === 'dropped' || player.status === 'waitlist'
           return (
             <div key={player.id} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                {/* Checkbox for waitlist tab */}
-                {tab === 'waitlist' && (
+                {/* Checkbox for deactivated tab */}
+                {tab === 'deactivated' && (
                   <div
                     onClick={() => toggleSelect(player.id)}
                     style={{
@@ -259,15 +257,15 @@ export default function RSVP() {
                   onClick={() => setExpanded(isExpanded ? null : player.id)}
                   style={{
                     flex: 1, background: 'none', border: 'none', cursor: 'pointer',
-                    padding: tab === 'waitlist' ? '14px 18px 14px 4px' : '14px 18px',
+                    padding: tab === 'deactivated' ? '14px 18px 14px 4px' : '14px 18px',
                     display: 'flex', alignItems: 'center', gap: 12,
                   }}
                 >
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 15 }}>{player.name}</span>
-                      {/* "↩ Returning" badge for waitlisted players who played last year */}
-                      {tab === 'waitlist' && isReturning && (
+                      {/* "↩ Returning" badge for deactivated players who played last year */}
+                      {tab === 'deactivated' && isReturning && (
                         <span style={{
                           fontSize: 10, fontWeight: 700, color: '#D4A53A',
                           background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.35)',
@@ -296,11 +294,11 @@ export default function RSVP() {
 
                   <div style={{
                     fontSize: 11, fontWeight: 700,
-                    color: statusColor[player.status as keyof typeof statusColor],
-                    background: `${statusColor[player.status as keyof typeof statusColor]}20`,
+                    color: isDeactivated ? statusColor.deactivated : statusColor.active,
+                    background: `${isDeactivated ? statusColor.deactivated : statusColor.active}20`,
                     padding: '4px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1,
                   }}>
-                    {player.status}
+                    {isDeactivated ? 'Deactivated' : 'Active'}
                   </div>
                   {isExpanded
                     ? <ChevronUp size={14} color="var(--tx3)" />
@@ -312,14 +310,11 @@ export default function RSVP() {
                 <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--bdr)' }}>
                   {/* Status actions */}
                   <div style={{ display: 'flex', gap: 6, marginBottom: 16, paddingTop: 14, flexWrap: 'wrap' }}>
-                    {player.status !== 'active' && (
+                    {isDeactivated && (
                       <button onClick={() => setStatus(player.id, 'active')} style={actionBtn('#22c55e')}>✅ Activate</button>
                     )}
-                    {player.status !== 'waitlist' && (
-                      <button onClick={() => setStatus(player.id, 'waitlist')} style={actionBtn('#f59e0b')}>⏳ Waitlist</button>
-                    )}
-                    {player.status !== 'dropped' && (
-                      <button onClick={() => setStatus(player.id, 'dropped')} style={actionBtn('#ef4444')}>❌ Drop</button>
+                    {!isDeactivated && (
+                      <button onClick={() => setStatus(player.id, 'dropped')} style={actionBtn('#ef4444')}>🚫 Deactivate</button>
                     )}
                   </div>
 
@@ -367,12 +362,12 @@ export default function RSVP() {
         })}
       </div>
 
-      {/* Reset Roster danger zone */}
+      {/* Remove All Active Players — danger zone */}
       {tab === 'active' && counts.active > 0 && (
         <div style={{ marginTop: 32, padding: '20px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.05)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>Reset Roster</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>Remove All Active Players</div>
           <p style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14 }}>
-            Moves all active players back to waitlist. Use this at the start of a new season to hand-pick this year's lineup.
+            Deactivates all active players (admins excluded). Use this to start fresh at the beginning of a new season.
           </p>
           {!resetConfirm ? (
             <button
@@ -383,20 +378,20 @@ export default function RSVP() {
                 color: '#ef4444', cursor: 'pointer',
               }}
             >
-              Reset Roster ({counts.active} players)
+              Remove All Active Players ({counts.active})
             </button>
           ) : (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13, color: 'var(--tx2)' }}>Move {counts.active} players to waitlist?</span>
+              <span style={{ fontSize: 13, color: 'var(--tx2)' }}>Deactivate all {counts.active} active players?</span>
               <button
-                onClick={resetRoster}
+                onClick={removeAllActive}
                 disabled={resetting}
                 style={{
                   padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
                   background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer',
                 }}
               >
-                {resetting ? 'Resetting…' : 'Yes, Reset'}
+                {resetting ? 'Removing…' : 'Yes, Remove All'}
               </button>
               <button
                 onClick={() => setResetConfirm(false)}
