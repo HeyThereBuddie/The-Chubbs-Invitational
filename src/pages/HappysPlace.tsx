@@ -275,8 +275,8 @@ export default function HappysPlace() {
             )}
             <button
               onClick={e => { e.stopPropagation(); downloadPhoto(lightboxPhoto) }}
-              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Save photo"
+              style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: 40, height: 40, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Save to camera roll"
             >
               <Download size={16} />
             </button>
@@ -508,16 +508,25 @@ export default function HappysPlace() {
                       style={{ width: '100%', display: 'block', objectFit: 'cover' }}
                     />
 
-                    {/* Delete button */}
-                    {canDelete && (
+                    {/* Action buttons */}
+                    <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4 }}>
                       <button
-                        onClick={e => { e.stopPropagation(); deletePhoto(photo.id) }}
-                        style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}
-                        title="Delete"
+                        onClick={e => { e.stopPropagation(); downloadPhoto(photo) }}
+                        style={{ background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}
+                        title="Save to camera roll"
                       >
-                        <Trash2 size={12} />
+                        <Download size={12} />
                       </button>
-                    )}
+                      {canDelete && (
+                        <button
+                          onClick={e => { e.stopPropagation(); deletePhoto(photo.id) }}
+                          style={{ background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}
+                          title="Delete"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
 
                     {/* Bottom bar */}
                     <div style={{ padding: '8px 10px' }}>
