@@ -66,8 +66,16 @@ export default function RSVP() {
   }
 
   const setStatus = async (id: string, status: 'active' | 'dropped') => {
+    if (status === 'dropped') {
+      const player = players.find(p => p.id === id)
+      if (player?.team_id) {
+        // Clear team_id for both players on this team, then delete it
+        await supabase.from('profiles').update({ team_id: null }).eq('team_id', player.team_id)
+        await supabase.from('teams').delete().eq('id', player.team_id)
+      }
+    }
     await updatePlayer(id, { status })
-    showToast(status === 'active' ? 'Player activated!' : 'Player deactivated')
+    showToast(status === 'active' ? 'Player activated!' : 'Player deactivated — team removed')
   }
 
   const toggleSelect = (id: string) => {
@@ -91,11 +99,19 @@ export default function RSVP() {
 
   const removeAllActive = async () => {
     setResetting(true)
+    // Collect all teams that active players belong to and delete them
+    const teamIds = [...new Set(
+      players.filter(p => p.status === 'active' && p.team_id).map(p => p.team_id!)
+    )]
+    if (teamIds.length > 0) {
+      await supabase.from('profiles').update({ team_id: null }).in('team_id', teamIds)
+      await supabase.from('teams').delete().in('id', teamIds)
+    }
     await supabase.from('profiles').update({ status: 'dropped' }).eq('status', 'active').neq('role', 'admin')
     setResetConfirm(false)
     await fetchPlayers()
     setResetting(false)
-    showToast('All active players deactivated')
+    showToast(`All active players deactivated${teamIds.length > 0 ? ` — ${teamIds.length} team${teamIds.length !== 1 ? 's' : ''} removed` : ''}`)
   }
 
   const exportBrevoCSV = () => {
