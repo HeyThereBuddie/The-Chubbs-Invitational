@@ -181,7 +181,7 @@ export default function Dashboard() {
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
         const thru = teamScores.length
         const toPar = gross - (thru * (COURSE_PAR / 18))
-        return { team: team as Team & { player1?: Player; player2?: Player }, gross, thru, toPar }
+        return { team: team as unknown as Team & { player1?: Player; player2?: Player }, gross, thru, toPar }
       })
       cachedRows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
       setLeaders(cachedRows.slice(0, 5))
