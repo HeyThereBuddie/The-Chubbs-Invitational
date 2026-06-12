@@ -2,39 +2,39 @@
 
 /* ── Theme variables ── */
 :root {
-  --bg:         #080808;
-  --panel:      rgba(18,14,6,0.97);
-  --card:       rgba(18,14,6,0.82);
-  --card-strong: rgba(22,16,4,0.9);
-  --surf:       rgba(255,255,255,0.04);
-  --surf2:      rgba(255,255,255,0.07);
-  --surf3:      rgba(255,255,255,0.1);
-  --tx1:        #ffffff;
-  --tx2:        rgba(255,255,255,0.6);
-  --tx3:        rgba(255,255,255,0.4);
-  --tx4:        rgba(255,255,255,0.25);
-  --tx5:        rgba(255,255,255,0.13);
-  --bdr:        rgba(255,255,255,0.09);
-  --bdr2:       rgba(255,255,255,0.14);
-  --score-fill: #0c0a04;
+  --bg:          #070707;
+  --panel:       rgba(22,17,7,0.98);
+  --card:        rgba(26,20,8,0.90);
+  --card-strong: rgba(32,25,10,0.94);
+  --surf:        rgba(255,255,255,0.04);
+  --surf2:       rgba(255,255,255,0.07);
+  --surf3:       rgba(255,255,255,0.11);
+  --tx1:         #f8f5ef;
+  --tx2:         rgba(248,245,239,0.65);
+  --tx3:         rgba(248,245,239,0.42);
+  --tx4:         rgba(248,245,239,0.26);
+  --tx5:         rgba(248,245,239,0.13);
+  --bdr:         rgba(255,255,255,0.11);
+  --bdr2:        rgba(255,255,255,0.18);
+  --score-fill:  #18140a;
 }
 
 html[data-theme="light"] {
-  --bg:         #fafaf7;
-  --panel:      #ffffff;
-  --card:       #ffffff;
+  --bg:          #f4f1e8;
+  --panel:       #f9f7ef;
+  --card:        #ffffff;
   --card-strong: #ffffff;
-  --surf:       rgba(0,0,0,0.04);
-  --surf2:      rgba(0,0,0,0.07);
-  --surf3:      rgba(0,0,0,0.1);
-  --tx1:        #1c1207;
-  --tx2:        #3a2510;
-  --tx3:        #5a3e20;
-  --tx4:        #7a5530;
-  --tx5:        #8a6538;
-  --bdr:        #e5d9c5;
-  --bdr2:       #d4c4ac;
-  --score-fill: #ffffff;
+  --surf:        rgba(0,0,0,0.035);
+  --surf2:       rgba(0,0,0,0.06);
+  --surf3:       rgba(0,0,0,0.095);
+  --tx1:         #1c1207;
+  --tx2:         #2e1e0c;
+  --tx3:         #4e3820;
+  --tx4:         #7a5a30;
+  --tx5:         #9e7848;
+  --bdr:         #ddd0b8;
+  --bdr2:        #c9b898;
+  --score-fill:  #ffffff;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -188,16 +188,18 @@ body {
   background: var(--card);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(252,181,20,0.16);
+  border: 1px solid rgba(252,181,20,0.20);
   border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
 }
 
 .glass-strong {
   background: var(--card-strong);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(252,181,20,0.28);
+  border: 1px solid rgba(252,181,20,0.30);
   border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
 /* ── Gold glow text ── */
@@ -219,9 +221,9 @@ body {
 /* ── Background mesh ── */
 .bg-mesh {
   background:
-    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(252,181,20,0.11) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 35% at 5%  95%, rgba(252,181,20,0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 35% at 95% 95%, rgba(252,181,20,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(252,181,20,0.13) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 5%  95%, rgba(252,181,20,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 35% at 95% 95%, rgba(252,181,20,0.05) 0%, transparent 60%),
     var(--bg);
 }
 
@@ -419,13 +421,13 @@ select option { background: var(--bg); color: var(--tx1); }
 
 /* ── Light mode card overrides ── */
 html[data-theme="light"] .glass {
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 18px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1);
   border-color: var(--bdr);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 html[data-theme="light"] .glass-strong {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 28px rgba(0,0,0,0.12), 0 1px 5px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,1);
   border-color: var(--bdr2);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
