@@ -26,14 +26,14 @@ interface EditCategory {
 }
 
 interface EditingTournament {
-  id: string; year: number; name: string; course: string; date: string; notes: string
+  id: string; year: number; name: string; course: string; date: string; notes: string; player_cap: string
   champion: EditCategory; runner_up: EditCategory; third: EditCategory
   jackass: EditCategory; ctp: EditCategory; ld: EditCategory
 }
 
 interface THistoryEntry {
   id: string; year: number; name: string; date: string | null; course: string | null
-  status: string; notes: string | null; deleted_at: string | null
+  status: string; notes: string | null; deleted_at: string | null; player_cap: number | null
   final_standings: StandingEntry[] | null
   results: Array<{ id: string; category: string; team_name: string | null; player1_name: string | null; player2_name: string | null; score_to_par: number | null; detail: string | null }>
 }
@@ -216,6 +216,7 @@ export default function AdminPanel() {
   const [creatingTestTournament, setCreatingTestTournament] = useState(false)
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false)
   const [createTournamentName, setCreateTournamentName] = useState('')
+  const [createTournamentCap, setCreateTournamentCap] = useState('')
   const [creatingTournament, setCreatingTournament] = useState(false)
 
   useEffect(() => {
@@ -439,13 +440,15 @@ export default function AdminPanel() {
       if (!r) return blankCat()
       return { id: r.id, team_name: r.team_name ?? '', player1_name: r.player1_name ?? '', player2_name: r.player2_name ?? '', score_to_par: r.score_to_par != null ? String(r.score_to_par) : '', detail: r.detail ?? '' }
     }
-    setEditingT({ id: t.id, year: t.year, name: t.name ?? '', course: t.course ?? '', date: t.date ?? '', notes: t.notes ?? '', champion: findCat('champion'), runner_up: findCat('runner_up'), third: findCat('third'), jackass: findCat('jackass'), ctp: findCat('ctp'), ld: findCat('ld') })
+    setEditingT({ id: t.id, year: t.year, name: t.name ?? '', course: t.course ?? '', date: t.date ?? '', notes: t.notes ?? '', player_cap: t.player_cap != null ? String(t.player_cap) : '', champion: findCat('champion'), runner_up: findCat('runner_up'), third: findCat('third'), jackass: findCat('jackass'), ctp: findCat('ctp'), ld: findCat('ld') })
   }
 
   const saveEditT = async () => {
     if (!editingT) return
     setSavingEdit(true)
-    await supabase.from('tournaments').update({ name: editingT.name.trim() || 'The Chubbs Memorial', course: editingT.course.trim() || null, date: editingT.date || null, notes: editingT.notes.trim() || null }).eq('id', editingT.id)
+    const capNum = parseInt(editingT.player_cap)
+    const player_cap = editingT.player_cap && !isNaN(capNum) && capNum >= 2 && capNum % 2 === 0 ? capNum : null
+    await supabase.from('tournaments').update({ name: editingT.name.trim() || 'The Chubbs Memorial', course: editingT.course.trim() || null, date: editingT.date || null, notes: editingT.notes.trim() || null, player_cap }).eq('id', editingT.id)
     const catMap: Record<string, EditCategory> = { champion: editingT.champion, runner_up: editingT.runner_up, third: editingT.third, jackass: editingT.jackass, ctp: editingT.ctp, ld: editingT.ld }
     for (const [cat, ec] of Object.entries(catMap)) {
       const isEmpty = !ec.player1_name.trim() && !ec.team_name.trim()
@@ -531,15 +534,19 @@ export default function AdminPanel() {
     // Demote any existing active tournament before creating the new one
     await supabase.from('tournaments').update({ status: 'completed' }).eq('status', 'active')
 
+    const capNum = parseInt(createTournamentCap)
+    const player_cap = createTournamentCap && !isNaN(capNum) && capNum >= 2 && capNum % 2 === 0 ? capNum : null
+
     const { data, error } = await supabase
       .from('tournaments')
-      .insert({ name, year: new Date().getFullYear(), status: 'active' })
+      .insert({ name, year: new Date().getFullYear(), status: 'active', player_cap })
       .select().single()
     setCreatingTournament(false)
     if (error) { showToast(error.message, 'error'); return }
     setActiveTournamentId(data.id)
     setCreateTournamentOpen(false)
     setCreateTournamentName('')
+    setCreateTournamentCap('')
 
     // Deactivate all active non-admin players — roster starts fresh each year
     const { data: movedPlayers } = await supabase
@@ -886,6 +893,7 @@ export default function AdminPanel() {
                           {t.status === 'active' ? '● Active' : '🔒 Locked'}
                         </div>
                         {t.course && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>⛳ {t.course}</div>}
+                        {t.player_cap && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>👥 {t.player_cap} player cap</div>}
                       </div>
                       {champ && (
                         <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 4 }}>
@@ -981,9 +989,23 @@ export default function AdminPanel() {
                         <input type="date" value={editingT.date} onChange={e => setEditingT(p => p ? { ...p, date: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
                       </div>
                     </div>
-                    <div style={{ marginTop: 10 }}>
-                      <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Notes</label>
-                      <input placeholder="Any notes about this year…" value={editingT.notes} onChange={e => setEditingT(p => p ? { ...p, notes: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                    <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: '2 1 200px' }}>
+                        <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Notes</label>
+                        <input placeholder="Any notes about this year…" value={editingT.notes} onChange={e => setEditingT(p => p ? { ...p, notes: e.target.value } : p)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                      <div style={{ flex: '1 1 120px' }}>
+                        <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Player Cap <span style={{ color: 'var(--tx4)' }}>(even #)</span></label>
+                        <input
+                          type="number" placeholder="e.g. 20" min={2} step={2}
+                          value={editingT.player_cap}
+                          onChange={e => setEditingT(p => p ? { ...p, player_cap: e.target.value } : p)}
+                          style={{ width: '100%', boxSizing: 'border-box', borderColor: editingT.player_cap && parseInt(editingT.player_cap) % 2 !== 0 ? '#ef4444' : undefined }}
+                        />
+                        {editingT.player_cap && parseInt(editingT.player_cap) % 2 !== 0 && (
+                          <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>Must be even (teams of 2)</div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1260,7 +1282,7 @@ export default function AdminPanel() {
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Give this tournament a name. It will be set to {new Date().getFullYear()} and go live immediately.
                   </p>
-                  <div style={{ marginBottom: 24 }}>
+                  <div style={{ marginBottom: 16 }}>
                     <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Tournament Name</label>
                     <input
                       autoFocus
@@ -1271,15 +1293,32 @@ export default function AdminPanel() {
                       style={{ width: '100%', boxSizing: 'border-box' }}
                     />
                   </div>
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>
+                      Player Cap <span style={{ color: 'var(--tx4)' }}>(even number — teams of 2)</span>
+                    </label>
+                    <input
+                      type="number" placeholder="e.g. 20" min={2} step={2}
+                      value={createTournamentCap}
+                      onChange={e => setCreateTournamentCap(e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box', borderColor: createTournamentCap && parseInt(createTournamentCap) % 2 !== 0 ? '#ef4444' : undefined }}
+                    />
+                    {createTournamentCap && parseInt(createTournamentCap) % 2 !== 0 && (
+                      <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>Must be an even number (teams of 2)</div>
+                    )}
+                    {!createTournamentCap && (
+                      <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 4 }}>Leave blank for no cap</div>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button
                       onClick={createNewTournament}
-                      disabled={creatingTournament || !createTournamentName.trim()}
+                      disabled={creatingTournament || !createTournamentName.trim() || (!!createTournamentCap && parseInt(createTournamentCap) % 2 !== 0)}
                       style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#D4A53A', border: 'none', color: '#0a0800', cursor: creatingTournament ? 'not-allowed' : 'pointer', opacity: creatingTournament ? 0.6 : 1 }}
                     >
                       {creatingTournament ? 'Creating…' : 'Create & Go Live'}
                     </button>
-                    <button onClick={() => { setCreateTournamentOpen(false); setCreateTournamentName('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => { setCreateTournamentOpen(false); setCreateTournamentName(''); setCreateTournamentCap('') }} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
                   </div>
                 </div>
               </div>

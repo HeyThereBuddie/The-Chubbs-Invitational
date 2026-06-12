@@ -27,17 +27,31 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    const playerCode   = import.meta.env.VITE_PLAYER_CODE
-    const adminCode    = import.meta.env.VITE_ADMIN_CODE
-    const waitlistCode = import.meta.env.VITE_WAITLIST_CODE
+    const playerCode = import.meta.env.VITE_PLAYER_CODE
+    const adminCode  = import.meta.env.VITE_ADMIN_CODE
     const code = form.code.trim().toUpperCase()
 
     let role   = ''
     let status = 'active'
-    if      (code === adminCode)    { role = 'admin';  status = 'active' }
-    else if (code === playerCode)   { role = 'player'; status = 'waitlist' }
-    else if (code === waitlistCode) { role = 'player'; status = 'waitlist' }
+    if      (code === adminCode)  { role = 'admin';  status = 'active' }
+    else if (code === playerCode) { role = 'player'; status = 'active' }
     else { showToast('Invalid invite code', 'error'); return }
+
+    // Enforce player cap for non-admin registrations
+    if (role === 'player') {
+      const { data: tournament } = await supabase
+        .from('tournaments').select('player_cap').eq('status', 'active').limit(1).single()
+      const cap = tournament?.player_cap
+      if (cap) {
+        const { count } = await supabase
+          .from('profiles').select('id', { count: 'exact', head: true })
+          .eq('status', 'active').neq('role', 'admin')
+        if ((count ?? 0) >= cap) {
+          showToast('Maximum players reached. Please contact the admin.', 'error')
+          return
+        }
+      }
+    }
 
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({
@@ -61,10 +75,7 @@ export default function AuthPage() {
 
     setLoading(false)
     if (error) showToast(error.message, 'error')
-    else if (status === 'waitlist') showToast("You're on the waitlist! We'll reach out when a spot opens.")
-    else {
-      if (data.user) sessionStorage.setItem('chubbs-new-reg', data.user.id)
-    }
+    else if (data.user) sessionStorage.setItem('chubbs-new-reg', data.user.id)
   }
 
   const handleGoogle = async () => {
