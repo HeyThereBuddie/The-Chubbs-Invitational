@@ -44,7 +44,8 @@ export default function AdminPanel() {
   const [tab, setTab] = useState<'teams' | 'users' | 'codes' | 'tournament' | 'brevo' | 'rsvp'>('teams')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
-  const [newTeamName, setNewTeamName] = useState('')
+  const [newTeamP1, setNewTeamP1] = useState('')
+  const [newTeamP2, setNewTeamP2] = useState('')
   const [creating, setCreating] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
@@ -79,14 +80,26 @@ export default function AdminPanel() {
   // ── Team management ──────────────────────────────────────────
 
   const createTeam = async () => {
-    if (!newTeamName.trim()) return
+    if (!newTeamP1 || !newTeamP2 || newTeamP1 === newTeamP2) return
     setCreating(true)
-    const payload: Record<string, unknown> = { name: newTeamName.trim() }
+    const name = `Team ${teams.length + 1}`
+    const payload: Record<string, unknown> = { name, p1_id: newTeamP1, p2_id: newTeamP2 }
     if (activeTournamentId) payload.tournament_id = activeTournamentId
-    const { error } = await supabase.from('teams').insert(payload)
+    const { data: teamData, error } = await supabase.from('teams').insert(payload).select().single()
+    if (error) { showToast(error.message, 'error'); setCreating(false); return }
+    // Assign team_id and activate deactivated players
+    const p1 = profiles.find(p => p.id === newTeamP1)
+    const p2 = profiles.find(p => p.id === newTeamP2)
+    await Promise.all([
+      supabase.from('profiles').update({ team_id: teamData.id, ...(p1?.status !== 'active' ? { status: 'active' } : {}) }).eq('id', newTeamP1),
+      supabase.from('profiles').update({ team_id: teamData.id, ...(p2?.status !== 'active' ? { status: 'active' } : {}) }).eq('id', newTeamP2),
+    ])
     setCreating(false)
-    if (error) showToast(error.message, 'error')
-    else { showToast('Team created!'); setNewTeamName(''); fetchTeams() }
+    setNewTeamP1('')
+    setNewTeamP2('')
+    showToast('Team created!')
+    fetchTeams()
+    fetchProfiles()
   }
 
   const assignPlayer = async (
@@ -106,9 +119,12 @@ export default function AdminPanel() {
       await supabase.from('profiles').update({ team_id: null }).eq('id', oldId)
     }
 
-    // Set new player's team_id
+    // Set new player's team_id; activate them if deactivated
     if (newId) {
-      await supabase.from('profiles').update({ team_id: team.id }).eq('id', newId)
+      const player = profiles.find(p => p.id === newId)
+      const updates: Record<string, unknown> = { team_id: team.id }
+      if (player && player.status !== 'active') updates.status = 'active'
+      await supabase.from('profiles').update(updates).eq('id', newId)
     }
 
     fetchTeams()
@@ -564,6 +580,7 @@ export default function AdminPanel() {
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
+  const allPlayers    = profiles.filter(p => p.role !== 'admin')
 
   // ── Brevo sync ────────────────────────────────────────────
   const [brevoSyncing, setBrevoSyncing] = useState(false)
@@ -611,17 +628,35 @@ export default function AdminPanel() {
       {tab === 'teams' && (
         <div>
           {/* Create team */}
-          <div className="glass" style={{ padding: '18px 20px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder="New team name..."
-              value={newTeamName}
-              onChange={e => setNewTeamName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && createTeam()}
-              style={{ flex: 1 }}
-            />
-            <button className="btn-gold" onClick={createTeam} disabled={creating || !newTeamName.trim()}>
-              <Plus size={14} /> Create Team
+          <div className="glass" style={{ padding: '18px 20px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 12 }}>
+              Create Team
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              {([['Player 1', newTeamP1, setNewTeamP1, newTeamP2] as const, ['Player 2', newTeamP2, setNewTeamP2, newTeamP1] as const]).map(([label, val, setter, other]) => (
+                <div key={label}>
+                  <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>{label}</label>
+                  <select value={val} onChange={e => setter(e.target.value)}>
+                    <option value="">— Select player —</option>
+                    {allPlayers.map(p => {
+                      const isDeactivated = p.status !== 'active'
+                      return (
+                        <option key={p.id} value={p.id} disabled={p.id === other}>
+                          {displayName(p)}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}{isDeactivated ? ' ⚫ Deactivated' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <button
+              className="btn-gold"
+              onClick={createTeam}
+              disabled={creating || !newTeamP1 || !newTeamP2 || newTeamP1 === newTeamP2}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              <Plus size={14} /> {creating ? 'Creating…' : 'Create Team'}
             </button>
           </div>
 
@@ -707,13 +742,13 @@ export default function AdminPanel() {
                           onChange={e => assignPlayer(team, slot, e.target.value)}
                         >
                           <option value="">— Unassigned —</option>
-                          {activePlayers.map(p => (
+                          {allPlayers.map(p => (
                             <option
                               key={p.id}
                               value={p.id}
                               disabled={p.id === otherSlot}
                             >
-                              {displayName(p)}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}
+                              {displayName(p)}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}{p.status !== 'active' ? ' ⚫ Deactivated' : ''}
                             </option>
                           ))}
                         </select>
