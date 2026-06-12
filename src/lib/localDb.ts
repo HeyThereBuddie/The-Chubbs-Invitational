@@ -102,6 +102,16 @@ export interface LocalPairing {
   player_b_json: string | null
 }
 
+export interface LocalPhoto {
+  id: string
+  uploader_id: string
+  photo_url: string
+  caption: string | null
+  tournament_id: string | null
+  created_at: string
+  uploader_json: string | null
+}
+
 export interface SyncMeta {
   key: string
   value: string
@@ -128,6 +138,7 @@ class ChubbsLocalDB extends Dexie {
   feed_events!: Table<LocalFeedEvent>
   feed_reactions!: Table<LocalFeedReaction>
   pairings!: Table<LocalPairing>
+  photos!: Table<LocalPhoto>
   sync_meta!: Table<SyncMeta>
   pending_writes!: Table<PendingWrite>
 
@@ -161,6 +172,23 @@ class ChubbsLocalDB extends Dexie {
       pending_writes:  '++id, op_type, status, client_ts',
     }).upgrade(() => {
       // No data migration needed — just adding the new pending_writes table
+    })
+    this.version(3).stores({
+      teams:           'id, tournament_id',
+      profiles:        'id, status',
+      scores:          'id, team_id',
+      chulligans:      'id, team_id, player_id',
+      tee_times:       'id',
+      contest_entries: 'id, type, tournament_id',
+      leahey_votes:    'id, voter_id, tournament_id',
+      feed_events:     'id, tournament_id, event_type',
+      feed_reactions:  'id, event_id',
+      pairings:        'id',
+      photos:          'id, tournament_id, uploader_id',
+      sync_meta:       'key',
+      pending_writes:  '++id, op_type, status, client_ts',
+    }).upgrade(() => {
+      // Adding photos table
     })
   }
 }

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
-  Target, Shield, UserCircle, Star
+  Target, Shield, UserCircle, Star, Images
 } from 'lucide-react'
 
 const playerNav = [
@@ -14,6 +14,7 @@ const playerNav = [
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/hall-of-fame', icon: Star, label: 'HOF' },
+  { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/account', icon: UserCircle, label: 'Account' },
 ]
 
@@ -26,6 +27,7 @@ const adminNav = [
   { to: '/tee-times', icon: Clock, label: 'Tees' },
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/hall-of-fame', icon: Star, label: 'HOF' },
+  { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/account', icon: UserCircle, label: 'Account' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ]
