@@ -634,16 +634,21 @@ export default function Scores() {
     const isNew = !existing?.id || String(existing.id).startsWith('offline-')
     const scoreId = isNew ? `offline-${myTeamId}-${hole}` : existing!.id
 
-    // Optimistic update
     setSaving(hole)
-    setMyScores(prev => ({ ...prev, [hole]: { id: scoreId, hole, score: next, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
 
-    // Write to local cache
-    if (isNew) {
-      await localDb.scores.put({ id: scoreId, team_id: myTeamId, hole, score: next, drive_used_id: existing?.drive_used_id ?? null, putts: existing?.putts ?? null, updated_at: new Date().toISOString() })
-    } else {
-      await localDb.scores.update(scoreId, { score: next })
-    }
+    // Write to local cache FIRST — prevents concurrent loadPlayerData from reading stale IndexedDB
+    await localDb.scores.put({
+      id: scoreId,
+      team_id: myTeamId,
+      hole,
+      score: next,
+      drive_used_id: existing?.drive_used_id ?? null,
+      putts: existing?.putts ?? null,
+      updated_at: new Date().toISOString(),
+    })
+
+    // Optimistic update — localDb is already correct so any concurrent read returns the right value
+    setMyScores(prev => ({ ...prev, [hole]: { id: scoreId, hole, score: next, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
 
     // Queue the score write (LWW dedup: rapid taps keep only the latest)
     await enqueue('set_score', { team_id: myTeamId, hole, score: next }, { team_id: myTeamId, hole })
@@ -698,10 +703,9 @@ export default function Scores() {
     if (!existing?.id) return
     const newId = existing.drive_used_id === playerId ? null : playerId
 
+    // Write localDb first so any concurrent read picks up the new value
+    await localDb.scores.update(existing.id, { drive_used_id: newId })
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
-    if (!String(existing.id).startsWith('offline-')) {
-      await localDb.scores.update(existing.id, { drive_used_id: newId })
-    }
     await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
     if (navigator.onLine) drainQueue().catch(() => {})
     await refreshPendingCount()
@@ -720,10 +724,9 @@ export default function Scores() {
     if (!existing?.id) return
     const newPutts = existing.putts === putts ? null : putts
 
+    // Write localDb first so any concurrent read picks up the new value
+    await localDb.scores.update(existing.id, { putts: newPutts })
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
-    if (!String(existing.id).startsWith('offline-')) {
-      await localDb.scores.update(existing.id, { putts: newPutts })
-    }
     await enqueue('set_putts', { team_id: myTeamId!, hole, putts: newPutts }, { team_id: myTeamId!, hole })
 
     // Queue/replace the putt feed event; cancel it if putts dropped below 3
