@@ -276,10 +276,13 @@ export default function AdminPanel() {
     if (activeTournamentId) teamsQ = teamsQ.eq('tournament_id', activeTournamentId)
     let votesQ = supabase.from('leahey_votes').select('nominee_id')
     if (activeTournamentId) votesQ = votesQ.eq('tournament_id', activeTournamentId)
-    const [teamsRes, scoresRes, votesRes] = await Promise.all([
+    let contestQ = supabase.from('contest_entries').select('type, player:profiles(name, nickname)').in('type', ['ctp', 'ld']).order('created_at', { ascending: false })
+    if (activeTournamentId) contestQ = contestQ.eq('tournament_id', activeTournamentId)
+    const [teamsRes, scoresRes, votesRes, contestRes] = await Promise.all([
       teamsQ,
       supabase.from('scores').select('team_id, hole, score'),
       votesQ,
+      contestQ,
     ])
 
     const teams = (teamsRes.data ?? []) as unknown as (Team & { player1?: Profile; player2?: Profile })[]
@@ -322,7 +325,15 @@ export default function AdminPanel() {
       jackassVotes = voteCounts[jackassId]
     }
 
-    setEndTournamentPreview({ standings, jackassName, jackassId, jackassVotes, ctpWinner: '', ldWinner: '' })
+    // Latest submission per type is the winner (last person to move the stick)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const entries = (contestRes.data ?? []) as any[]
+    const ctpEntry = entries.find(e => e.type === 'ctp')
+    const ldEntry  = entries.find(e => e.type === 'ld')
+    const ctpWinner = ctpEntry?.player ? displayName(ctpEntry.player as Profile) : ''
+    const ldWinner  = ldEntry?.player  ? displayName(ldEntry.player  as Profile) : ''
+
+    setEndTournamentPreview({ standings, jackassName, jackassId, jackassVotes, ctpWinner, ldWinner })
     setEndTournamentOpen(true)
   }
 
