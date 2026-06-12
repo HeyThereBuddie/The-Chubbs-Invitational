@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import JSZip from 'jszip'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { localDb, parseJson } from '../lib/localDb'
 import type { LocalPhoto } from '../lib/localDb'
-import { Camera, Upload, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Camera, Upload, X, ChevronLeft, ChevronRight, Trash2, Download } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { displayName } from '../lib/types'
 
@@ -30,7 +31,8 @@ function avatarInitials(name: string | null, nickname: string | null): string {
 export default function HappysPlace() {
   const { profile, isAdmin } = useAuth()
   const { showToast } = useToast()
-  const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { effectiveTournamentId, isCurrentYear, tournaments } = useYear()
+  const tournamentYear = tournaments.find(t => t.id === effectiveTournamentId)?.year ?? new Date().getFullYear()
 
   const [photos, setPhotos]               = useState<PhotoItem[]>([])
   const [loading, setLoading]             = useState(true)
@@ -41,6 +43,7 @@ export default function HappysPlace() {
   const [uploading, setUploading]         = useState(false)
   const [lightboxIdx, setLightboxIdx]     = useState<number | null>(null)
   const [newCount, setNewCount]           = useState(0)
+  const [downloading, setDownloading]     = useState(false)
   const [quote]                           = useState(() => HAPPY_QUOTES[Math.floor(Math.random() * HAPPY_QUOTES.length)])
 
   const fileRef   = useRef<HTMLInputElement>(null)
@@ -163,6 +166,54 @@ export default function HappysPlace() {
     setUploading(false)
   }
 
+  const downloadPhoto = async (photo: PhotoItem) => {
+    try {
+      const res = await fetch(photo.photo_url)
+      const blob = await res.blob()
+      const ext = photo.photo_url.split('.').pop()?.split('?')[0] ?? 'jpg'
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `happys-place-${tournamentYear}-${photo.id.slice(0, 8)}.${ext}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch { showToast('Download failed', 'error') }
+  }
+
+  const downloadAll = async () => {
+    if (photos.length === 0) return
+    setDownloading(true)
+    showToast(`Bundling ${photos.length} photo${photos.length !== 1 ? 's' : ''}… hang tight 📦`)
+    try {
+      const zip = new JSZip()
+      const folder = zip.folder(`happys-place-${tournamentYear}`)!
+      await Promise.all(photos.map(async (photo, i) => {
+        try {
+          const res = await fetch(photo.photo_url)
+          const blob = await res.blob()
+          const ext = photo.photo_url.split('.').pop()?.split('?')[0] ?? 'jpg'
+          const uploader = photo.uploader
+            ? displayName(photo.uploader as { name: string; nickname: string | null })
+            : 'unknown'
+          folder.file(`${String(i + 1).padStart(3, '0')}-${uploader}.${ext}`, blob)
+        } catch { /* skip any photo that fails to fetch */ }
+      }))
+      const content = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(content)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `happys-place-${tournamentYear}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      showToast(`${photos.length} photos downloaded! 🎳`)
+    } catch { showToast('Download failed', 'error') }
+    setDownloading(false)
+  }
+
   const deletePhoto = async (id: string) => {
     if (!confirm('Delete this photo?')) return
     await supabase.from('photos').delete().eq('id', id)
@@ -173,7 +224,7 @@ export default function HappysPlace() {
   }
 
   const lightboxPhoto = lightboxIdx !== null ? photos[lightboxIdx] : null
-  const canDeleteLightbox = lightboxPhoto && (lightboxPhoto.uploader_id === profile?.id || isAdmin)
+  const canDeleteLightbox = lightboxPhoto && (isAdmin || (isCurrentYear && lightboxPhoto.uploader_id === profile?.id))
 
   // Split into two columns for masonry layout
   const col1 = photos.filter((_, i) => i % 2 === 0)
@@ -199,15 +250,24 @@ export default function HappysPlace() {
             style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >×</button>
 
-          {/* Delete */}
-          {canDeleteLightbox && (
+          {/* Delete + Download row (top-left) */}
+          <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', gap: 8 }}>
+            {canDeleteLightbox && (
+              <button
+                onClick={e => { e.stopPropagation(); deletePhoto(lightboxPhoto.id) }}
+                style={{ background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '50%', width: 40, height: 40, color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
             <button
-              onClick={e => { e.stopPropagation(); deletePhoto(lightboxPhoto.id) }}
-              style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '50%', width: 40, height: 40, color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={e => { e.stopPropagation(); downloadPhoto(lightboxPhoto) }}
+              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Save photo"
             >
-              <Trash2 size={16} />
+              <Download size={16} />
             </button>
-          )}
+          </div>
 
           {/* Prev / Next */}
           {lightboxIdx > 0 && (
@@ -355,11 +415,21 @@ export default function HappysPlace() {
         </button>
       )}
 
-      {/* ── Photo count ── */}
+      {/* ── Photo count + Download All ── */}
       {photos.length > 0 && (
-        <p style={{ fontSize: 12, color: 'var(--tx4)', marginBottom: 12, textAlign: 'right' }}>
-          {photos.length} photo{photos.length !== 1 ? 's' : ''} on the wall
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--tx4)', margin: 0 }}>
+            {photos.length} photo{photos.length !== 1 ? 's' : ''} on the wall
+          </p>
+          <button
+            onClick={downloadAll}
+            disabled={downloading}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)', fontSize: 12, fontWeight: 600, cursor: downloading ? 'not-allowed' : 'pointer', opacity: downloading ? 0.6 : 1 }}
+          >
+            <Download size={13} />
+            {downloading ? 'Bundling…' : `Save All (${tournamentYear})`}
+          </button>
+        </div>
       )}
 
       {/* ── Loading ── */}
@@ -399,7 +469,7 @@ export default function HappysPlace() {
                   ? displayName(photo.uploader as { name: string; nickname: string | null })
                   : 'Unknown'
                 const initials = avatarInitials(photo.uploader?.name ?? null, photo.uploader?.nickname ?? null)
-                const canDelete = photo.uploader_id === profile?.id || isAdmin
+                const canDelete = isAdmin || (isCurrentYear && photo.uploader_id === profile?.id)
 
                 return (
                   <div
