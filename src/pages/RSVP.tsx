@@ -26,15 +26,38 @@ function fmt(iso: string | null) {
 
 export default function RSVP() {
   const { showToast } = useToast()
-  const [players,  setPlayers]  = useState<Profile[]>([])
-  const [tab,      setTab]      = useState<StatusTab>('active')
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [players,      setPlayers]      = useState<Profile[]>([])
+  const [tab,          setTab]          = useState<StatusTab>('active')
+  const [expanded,     setExpanded]     = useState<string | null>(null)
+  const [selected,     setSelected]     = useState<Set<string>>(new Set())
+  const [activating,   setActivating]   = useState(false)
+  const [resetting,    setResetting]    = useState(false)
+  const [resetConfirm, setResetConfirm] = useState(false)
+  const [returningIds, setReturningIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => { fetchPlayers() }, [])
+  useEffect(() => {
+    fetchPlayers()
+    fetchReturning()
+  }, [])
 
   const fetchPlayers = async () => {
     const { data } = await supabase.from('profiles').select('*').order('name')
     setPlayers(data ?? [])
+  }
+
+  const fetchReturning = async () => {
+    const { data } = await supabase
+      .from('tournaments')
+      .select('participants_json')
+      .eq('status', 'completed')
+      .not('participants_json', 'is', null)
+      .order('year', { ascending: false })
+      .limit(1)
+      .single()
+    if (data?.participants_json) {
+      const ids = new Set((data.participants_json as { id: string }[]).map(p => p.id))
+      setReturningIds(ids)
+    }
   }
 
   const updatePlayer = async (id: string, updates: Partial<Profile>) => {
@@ -50,6 +73,34 @@ export default function RSVP() {
       status === 'waitlist' ? 'Moved to waitlist'   :
       'Player dropped'
     )
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const activateSelected = async () => {
+    const ids = [...selected]
+    if (!ids.length) return
+    setActivating(true)
+    await supabase.from('profiles').update({ status: 'active' }).in('id', ids)
+    setSelected(new Set())
+    await fetchPlayers()
+    setActivating(false)
+    showToast(`${ids.length} player${ids.length !== 1 ? 's' : ''} activated`)
+  }
+
+  const resetRoster = async () => {
+    setResetting(true)
+    await supabase.from('profiles').update({ status: 'waitlist' }).eq('status', 'active').neq('role', 'admin')
+    setResetConfirm(false)
+    await fetchPlayers()
+    setResetting(false)
+    showToast('Roster reset — all players moved to waitlist')
   }
 
   const exportBrevoCSV = () => {
@@ -114,7 +165,7 @@ export default function RSVP() {
       {/* Status tabs + export */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {STATUS_TABS.map(({ id, label, emoji }) => (
-          <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>
+          <button key={id} onClick={() => { setTab(id); setSelected(new Set()) }} className={`pill-tab ${tab === id ? 'active' : ''}`}>
             {emoji} {label} ({counts[id]})
           </button>
         ))}
@@ -131,6 +182,43 @@ export default function RSVP() {
         </button>
       </div>
 
+      {/* Waitlist bulk-select toolbar */}
+      {tab === 'waitlist' && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => {
+              if (selected.size === filtered.length) {
+                setSelected(new Set())
+              } else {
+                setSelected(new Set(filtered.map(p => p.id)))
+              }
+            }}
+            style={{
+              padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+              background: 'var(--surf2)', border: '1px solid var(--bdr2)',
+              color: 'var(--tx2)', cursor: 'pointer',
+            }}
+          >
+            {selected.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
+          </button>
+          {selected.size > 0 && (
+            <button
+              onClick={activateSelected}
+              disabled={activating}
+              className="btn-gold"
+              style={{ padding: '6px 18px', fontSize: 13 }}
+            >
+              {activating ? 'Activating…' : `✅ Activate Selected (${selected.size})`}
+            </button>
+          )}
+          {returningIds.size > 0 && selected.size === 0 && (
+            <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
+              ↩ {filtered.filter(p => returningIds.has(p.id)).length} returning from last year
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Player list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.length === 0 && (
@@ -141,46 +229,84 @@ export default function RSVP() {
         {filtered.map(player => {
           const isExpanded = expanded === player.id
           const resp = player.invite_response ? responseLabel[player.invite_response] : null
+          const isReturning = returningIds.has(player.id)
+          const isChecked = selected.has(player.id)
           return (
             <div key={player.id} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-              <button
-                onClick={() => setExpanded(isExpanded ? null : player.id)}
-                style={{
-                  width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12,
-                }}
-              >
-                <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 15 }}>{player.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
-                    HCP {player.handicap ?? '—'} {player.email && `· ${player.email}`}
-                  </div>
-                </div>
-
-                {/* Invite response badge */}
-                {resp && (
-                  <div style={{
-                    fontSize: 11, fontWeight: 700, color: resp.color,
-                    background: `${resp.color}18`,
-                    padding: '3px 8px', borderRadius: 999,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {resp.icon} {resp.text}{player.invite_response_at ? ` · ${fmt(player.invite_response_at)}` : ''}
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {/* Checkbox for waitlist tab */}
+                {tab === 'waitlist' && (
+                  <div
+                    onClick={() => toggleSelect(player.id)}
+                    style={{
+                      width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', flexShrink: 0, alignSelf: 'stretch',
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: 5,
+                      border: `2px solid ${isChecked ? '#D4A53A' : 'var(--bdr2)'}`,
+                      background: isChecked ? 'rgba(212,165,58,0.2)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}>
+                      {isChecked && <span style={{ fontSize: 11, color: '#D4A53A', lineHeight: 1 }}>✓</span>}
+                    </div>
                   </div>
                 )}
 
-                <div style={{
-                  fontSize: 11, fontWeight: 700,
-                  color: statusColor[player.status as keyof typeof statusColor],
-                  background: `${statusColor[player.status as keyof typeof statusColor]}20`,
-                  padding: '4px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1,
-                }}>
-                  {player.status}
-                </div>
-                {isExpanded
-                  ? <ChevronUp size={14} color="var(--tx3)" />
-                  : <ChevronDown size={14} color="var(--tx3)" />}
-              </button>
+                <button
+                  onClick={() => setExpanded(isExpanded ? null : player.id)}
+                  style={{
+                    flex: 1, background: 'none', border: 'none', cursor: 'pointer',
+                    padding: tab === 'waitlist' ? '14px 18px 14px 4px' : '14px 18px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 15 }}>{player.name}</span>
+                      {/* "↩ Returning" badge for waitlisted players who played last year */}
+                      {tab === 'waitlist' && isReturning && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, color: '#D4A53A',
+                          background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.35)',
+                          padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap',
+                        }}>
+                          ↩ Returning
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
+                      HCP {player.handicap ?? '—'} {player.email && `· ${player.email}`}
+                    </div>
+                  </div>
+
+                  {/* Invite response badge */}
+                  {resp && (
+                    <div style={{
+                      fontSize: 11, fontWeight: 700, color: resp.color,
+                      background: `${resp.color}18`,
+                      padding: '3px 8px', borderRadius: 999,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {resp.icon} {resp.text}{player.invite_response_at ? ` · ${fmt(player.invite_response_at)}` : ''}
+                    </div>
+                  )}
+
+                  <div style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: statusColor[player.status as keyof typeof statusColor],
+                    background: `${statusColor[player.status as keyof typeof statusColor]}20`,
+                    padding: '4px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 1,
+                  }}>
+                    {player.status}
+                  </div>
+                  {isExpanded
+                    ? <ChevronUp size={14} color="var(--tx3)" />
+                    : <ChevronDown size={14} color="var(--tx3)" />}
+                </button>
+              </div>
 
               {isExpanded && (
                 <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--bdr)' }}>
@@ -240,6 +366,52 @@ export default function RSVP() {
           )
         })}
       </div>
+
+      {/* Reset Roster danger zone */}
+      {tab === 'active' && counts.active > 0 && (
+        <div style={{ marginTop: 32, padding: '20px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.05)' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>Reset Roster</div>
+          <p style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14 }}>
+            Moves all active players back to waitlist. Use this at the start of a new season to hand-pick this year's lineup.
+          </p>
+          {!resetConfirm ? (
+            <button
+              onClick={() => setResetConfirm(true)}
+              style={{
+                padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                background: 'transparent', border: '1px solid rgba(239,68,68,0.5)',
+                color: '#ef4444', cursor: 'pointer',
+              }}
+            >
+              Reset Roster ({counts.active} players)
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, color: 'var(--tx2)' }}>Move {counts.active} players to waitlist?</span>
+              <button
+                onClick={resetRoster}
+                disabled={resetting}
+                style={{
+                  padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
+                  background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer',
+                }}
+              >
+                {resetting ? 'Resetting…' : 'Yes, Reset'}
+              </button>
+              <button
+                onClick={() => setResetConfirm(false)}
+                style={{
+                  padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                  background: 'transparent', border: '1px solid var(--bdr2)',
+                  color: 'var(--tx2)', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

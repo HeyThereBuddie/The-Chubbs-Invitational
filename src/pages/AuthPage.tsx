@@ -35,7 +35,7 @@ export default function AuthPage() {
     let role   = ''
     let status = 'active'
     if      (code === adminCode)    { role = 'admin';  status = 'active' }
-    else if (code === playerCode)   { role = 'player'; status = 'active' }
+    else if (code === playerCode)   { role = 'player'; status = 'waitlist' }
     else if (code === waitlistCode) { role = 'player'; status = 'waitlist' }
     else { showToast('Invalid invite code', 'error'); return }
 

@@ -385,8 +385,19 @@ export default function AdminPanel() {
 
       if (rows.length > 0) await supabase.from('tournament_results').insert(rows)
 
-      // Mark completed + save full standings snapshot
-      await supabase.from('tournaments').update({ status: 'completed', final_standings: standings }).eq('id', activeTournament.id)
+      // Snapshot active players before archiving so next year's RSVP can show "↩ Returning" badges
+      const { data: activePlayers } = await supabase
+        .from('profiles')
+        .select('id, name, nickname, role')
+        .eq('status', 'active')
+        .neq('role', 'admin')
+
+      // Mark completed + save full standings + participant snapshot
+      await supabase.from('tournaments').update({
+        status: 'completed',
+        final_standings: standings,
+        participants_json: activePlayers ?? [],
+      }).eq('id', activeTournament.id)
 
       // Clear player team assignments
       await supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000')
@@ -521,10 +532,20 @@ export default function AdminPanel() {
     setActiveTournamentId(data.id)
     setCreateTournamentOpen(false)
     setCreateTournamentName('')
+
+    // Move all active non-admin players to waitlist — roster starts fresh each year
+    const { data: movedPlayers } = await supabase
+      .from('profiles')
+      .update({ status: 'waitlist' })
+      .eq('status', 'active')
+      .neq('role', 'admin')
+      .select('id')
+    const movedCount = movedPlayers?.length ?? 0
+
     fetchTeams(data.id)
     fetchTournamentHistory()
     refreshTournaments()
-    showToast(`"${name}" is live! 🏆`)
+    showToast(`"${name}" is live! ${movedCount > 0 ? `${movedCount} player${movedCount !== 1 ? 's' : ''} moved to waitlist.` : ''} 🏆`)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
