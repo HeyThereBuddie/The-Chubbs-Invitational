@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { localDb, parseJson } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
@@ -117,12 +118,25 @@ export default function Dashboard() {
 
   const fetchFeed = async () => {
     if (!effectiveTournamentId) { setFeed([]); return }
-    const { data: eventsData } = await supabase
-      .from('feed_events').select('*')
-      .eq('tournament_id', effectiveTournamentId)
-      .order('created_at', { ascending: false }).limit(7)
-    const evs = (eventsData ?? []) as FeedEvent[]
-    setFeed(evs)
+
+    // Step 1: Show cached feed immediately
+    const localFeed = await localDb.feed_events
+      .where('tournament_id').equals(effectiveTournamentId).toArray()
+    if (localFeed.length > 0) {
+      const sorted = [...localFeed]
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 7)
+      setFeed(sorted as unknown as FeedEvent[])
+    }
+
+    // Step 2: Refresh from Supabase in background
+    try {
+      const { data: eventsData } = await supabase
+        .from('feed_events').select('*')
+        .eq('tournament_id', effectiveTournamentId)
+        .order('created_at', { ascending: false }).limit(7)
+      if (eventsData) setFeed(eventsData as FeedEvent[])
+    } catch { /* offline — cached feed already shown */ }
   }
 
   const fetchFeedRef = useRef(fetchFeed)
@@ -147,30 +161,55 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     if (!effectiveTournamentId) { setLeaders([]); setTeamCount(0); return }
-    let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-    teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
-    const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
-      teamsQ,
-      supabase.from('scores').select('*'),
-      supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
-      supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
+
+    // Step 1: Show cached data immediately (works offline)
+    const [localTeams, localScores, localProfiles] = await Promise.all([
+      localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray(),
+      localDb.scores.toArray(),
+      localDb.profiles.where('status').equals('active').toArray(),
     ])
+    if (localTeams.length > 0) {
+      const cachedTeams = localTeams.map(t => ({
+        ...t,
+        player1: parseJson(t.player1_json) as Player | undefined,
+        player2: parseJson(t.player2_json) as Player | undefined,
+      }))
+      setTeamCount(cachedTeams.length)
+      setPlayerCount(localProfiles.length)
+      const cachedRows: LeaderRow[] = cachedTeams.map(team => {
+        const teamScores = localScores.filter(s => s.team_id === team.id)
+        const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
+        const thru = teamScores.length
+        const toPar = gross - (thru * (COURSE_PAR / 18))
+        return { team: team as Team & { player1?: Player; player2?: Player }, gross, thru, toPar }
+      })
+      cachedRows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
+      setLeaders(cachedRows.slice(0, 5))
+    }
 
-    const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
-    const scores: Score[] = scoresRes.data ?? []
-    setPlayerCount(playersRes.count ?? 0)
-    setTeamCount(teams.length)
-    setUpdates(updatesRes.data ?? [])
-
-    const rows: LeaderRow[] = teams.map(team => {
-      const teamScores = scores.filter(s => s.team_id === team.id)
-      const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
-      const thru = teamScores.length
-      const toPar = gross - (thru * (COURSE_PAR / 18))
-      return { team, gross, thru, toPar }
-    })
-    rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
-    setLeaders(rows.slice(0, 5))
+    // Step 2: Refresh from Supabase in background
+    try {
+      const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
+        supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('tournament_id', effectiveTournamentId),
+        supabase.from('scores').select('*'),
+        supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
+        supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
+      ])
+      const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
+      const scores: Score[] = scoresRes.data ?? []
+      setPlayerCount(playersRes.count ?? 0)
+      setTeamCount(teams.length)
+      setUpdates(updatesRes.data ?? [])
+      const rows: LeaderRow[] = teams.map(team => {
+        const teamScores = scores.filter(s => s.team_id === team.id)
+        const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
+        const thru = teamScores.length
+        const toPar = gross - (thru * (COURSE_PAR / 18))
+        return { team, gross, thru, toPar }
+      })
+      rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
+      setLeaders(rows.slice(0, 5))
+    } catch { /* offline — cached data already shown */ }
   }
 
   const toPar = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
