@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
 import { COURSE_PAR, displayName } from '../lib/types'
 import { useYear } from '../context/YearContext'
+import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 
@@ -121,8 +122,8 @@ export default function Leaderboard() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-          <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {Array.from({ length: 8 }).map((_, i) => <SkeletonLeaderRow key={i} />)}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
