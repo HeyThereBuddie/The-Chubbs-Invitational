@@ -462,6 +462,18 @@ export default function AdminPanel() {
     showToast(`"${name}" removed. Restore it from Deleted Years anytime.`)
   }
 
+  const activateT = async (id: string, year: number) => {
+    // Demote any currently active tournament to completed first
+    if (activeTournamentId) {
+      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', activeTournamentId)
+    }
+    await supabase.from('tournaments').update({ status: 'active' }).eq('id', id)
+    setActiveTournamentId(id)
+    fetchTournamentHistory()
+    refreshTournaments()
+    showToast(`${year} is now the active tournament!`)
+  }
+
   const restoreT = async (id: string, year: number) => {
     setRestoringYear(id)
     await supabase.from('tournaments').update({ deleted_at: null }).eq('id', id)
@@ -853,8 +865,11 @@ export default function AdminPanel() {
                         </div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button onClick={() => openEditT(t)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(212,165,58,0.1)', border: '1px solid rgba(212,165,58,0.3)', color: '#D4A53A', cursor: 'pointer' }}>Edit</button>
+                      {t.status !== 'active' && (
+                        <button onClick={() => activateT(t.id, t.year)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', cursor: 'pointer' }}>Set Active</button>
+                      )}
                       {t.status !== 'active' && (
                         <button onClick={() => setDeleteModal({ id: t.id, year: t.year, name: t.name, isActive: false, step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
                       )}

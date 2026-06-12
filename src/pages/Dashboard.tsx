@@ -215,7 +215,7 @@ export default function Dashboard() {
   const toPar = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
   const currentQuote = ALL_QUOTES[quoteIdx]
 
-  const completedTournaments = tournaments.filter(t => t.status === 'completed')
+  const otherTournaments = tournaments.filter(t => t.id !== activeTournamentId)
   const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
 
   return (
@@ -237,11 +237,11 @@ export default function Dashboard() {
           style={{ flex: 1, maxWidth: 220 }}
         >
           <option value="">Current Tournament ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
-          {completedTournaments.map(t => (
+          {otherTournaments.map(t => (
             <option key={t.id} value={t.id}>{t.name} ({t.year})</option>
           ))}
         </select>
-        {completedTournaments.length === 0 && (
+        {otherTournaments.length === 0 && (
           <span style={{ fontSize: 11, color: 'var(--tx5)', fontStyle: 'italic' }}>
             Past years appear here after archiving
           </span>
