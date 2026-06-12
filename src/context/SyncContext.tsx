@@ -36,6 +36,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     if (!navigator.onLine) return
     setIsSyncing(true)
     try {
+      // Reset any writes that were previously marked 'failed' so they get retried
+      await localDb.pending_writes.where('status').equals('failed').modify({ status: 'pending', retries: 0 })
       await drainQueue()
       await syncAll(tournamentId)
       syncedForRef.current = tournamentId

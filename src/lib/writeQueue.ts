@@ -46,7 +46,7 @@ export async function enqueue(
   const keyStr = JSON.stringify(conflict_key)
   await localDb.pending_writes
     .where('op_type').equals(op_type)
-    .filter(w => w.conflict_key === keyStr && w.status === 'pending')
+    .filter(w => w.conflict_key === keyStr)
     .delete()
   await localDb.pending_writes.add({
     op_type,
@@ -89,11 +89,7 @@ export async function drainQueue(): Promise<{ succeeded: number; failed: number 
         succeeded++
       } catch (err) {
         console.error('[writeQueue] failed to sync:', write.op_type, err)
-        if ((write.retries ?? 0) >= 2) {
-          await localDb.pending_writes.update(write.id!, { status: 'failed' })
-        } else {
-          await localDb.pending_writes.update(write.id!, { retries: (write.retries ?? 0) + 1 })
-        }
+        await localDb.pending_writes.update(write.id!, { retries: (write.retries ?? 0) + 1 })
         failed++
       }
     }
@@ -194,5 +190,5 @@ async function executeWrite(op_type: string, payload: any): Promise<void> {
 }
 
 export async function getPendingCount(): Promise<number> {
-  return localDb.pending_writes.where('status').equals('pending').count()
+  return localDb.pending_writes.count()
 }
