@@ -917,7 +917,7 @@ export default function AdminPanel() {
             {/* Edit modal */}
             {editingT && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 20 }}>Edit {editingT.year}</div>
 
                   {/* Metadata */}
@@ -964,7 +964,7 @@ export default function AdminPanel() {
             {/* Delete modal — step 1 */}
             {deleteModal?.step === 1 && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Remove "{deleteModal.name}"?</div>
                   {deleteModal.isActive && (
                     <p style={{ fontSize: 13, color: '#f59e0b', marginBottom: 10, lineHeight: 1.6, padding: '8px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
@@ -984,7 +984,7 @@ export default function AdminPanel() {
             {/* Delete modal — step 2 */}
             {deleteModal?.step === 2 && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Final Confirmation</div>
                   <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 20, lineHeight: 1.6 }}>
                     Type <strong style={{ color: 'var(--tx1)' }}>{deleteModal.year}</strong> to confirm removal from the Hall of Fame.
@@ -1015,7 +1015,7 @@ export default function AdminPanel() {
             {/* Permanent delete modal */}
             {permDeleteModal && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 440 }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444', marginBottom: 12 }}>Delete Forever?</div>
                   <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 8, lineHeight: 1.6 }}>
                     This will <strong style={{ color: 'var(--tx1)' }}>permanently delete</strong> all data for this tournament — standings, results, scores, and feed events. <strong style={{ color: '#ef4444' }}>This cannot be undone.</strong>
@@ -1211,7 +1211,7 @@ export default function AdminPanel() {
             {/* Create Tournament modal */}
             {createTournamentOpen && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(252,181,20,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>New Tournament</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Give this tournament a name. It will be set to {new Date().getFullYear()} and go live immediately.
@@ -1247,7 +1247,7 @@ export default function AdminPanel() {
                 position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
                 zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
               }}>
-                <div style={{ background: '#0d0a02', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 22, lineHeight: 1.5 }}>
                     Review the results that will be saved to the Hall of Fame, then confirm to archive and reset.
@@ -1309,7 +1309,7 @@ export default function AdminPanel() {
             {/* Create Test Tournament modal */}
             {testTournamentOpen && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: '#0d0a02', border: '1px solid var(--bdr2)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+                <div style={{ background: 'var(--panel)', border: '1px solid var(--bdr2)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>Create Test Tournament</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Creates a completed tournament that appears in the year dropdown. Useful for testing the archive viewer.
