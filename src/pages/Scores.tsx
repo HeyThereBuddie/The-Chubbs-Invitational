@@ -1044,7 +1044,7 @@ export default function Scores() {
             style={{
               minWidth: 38, padding: '6px 4px', borderRadius: 8, flexShrink: 0,
               border: `1px solid ${isActive ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
-              background: isActive ? 'rgba(212,165,58,0.12)' : 'transparent',
+              background: isActive ? 'rgba(212,165,58,0.12)' : 'var(--surf)',
               cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               opacity: isLocked ? 0.38 : 1, transition: 'all 0.15s',
             }}
