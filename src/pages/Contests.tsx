@@ -6,8 +6,6 @@ import { useYear } from '../context/YearContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload, UpsertLeaheyVotePayload, SubmitContestEntryPayload } from '../lib/writeQueue'
-import BottomSheetPicker from '../components/BottomSheetPicker'
-import { SkeletonContestRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
@@ -37,7 +35,6 @@ export default function Contests() {
   const [form,           setForm]           = useState({ player_id: '' })
   const [photo,          setPhoto]          = useState<File | null>(null)
   const [myTeamName,     setMyTeamName]     = useState('')
-  const [loading,        setLoading]        = useState(true)
   const [submitting,     setSubmitting]     = useState(false)
   const [photoErr,       setPhotoErr]       = useState(false)
   const [lightbox,       setLightbox]       = useState<string | null>(null)
@@ -117,8 +114,6 @@ export default function Contests() {
       const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
       if (localProfiles.length > 0) setContestPlayers(localProfiles as Player[])
     }
-
-    setLoading(false)
 
     // Step 2: Refresh from Supabase in background
     try {
@@ -423,14 +418,11 @@ export default function Contests() {
             </div>
             <form onSubmit={submitContest}>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 6 }}>Player *</label>
-                <BottomSheetPicker
-                  options={contestPlayers.map(p => ({ value: p.id, label: displayName(p) }))}
-                  value={form.player_id}
-                  onChange={val => setForm(f => ({ ...f, player_id: val }))}
-                  placeholder="Select player"
-                  searchable={contestPlayers.length > 6}
-                />
+                <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>Player *</label>
+                <select value={form.player_id} onChange={e => setForm(f => ({ ...f, player_id: e.target.value }))}>
+                  <option value="">Select player</option>
+                  {contestPlayers.map(p => <option key={p.id} value={p.id}>{displayName(p)}</option>)}
+                </select>
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 6 }}>
@@ -477,8 +469,7 @@ export default function Contests() {
           </div>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {loading && entries.length === 0 && Array.from({ length: 3 }).map((_, i) => <SkeletonContestRow key={i} />)}
-            {!loading && entries.length === 0 && (
+            {entries.length === 0 && (
               <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>
                 No entries yet — be the first!
               </div>

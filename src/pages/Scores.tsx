@@ -179,7 +179,7 @@ function HoleCard({
         <div style={{ flex: 1 }} />
 
         {hasScore ? (
-          <div key={score} className={`score-bubble ${cls} score-digit-pop`} style={{ width: 56, height: 56, fontSize: 26 }}>
+          <div className={`score-bubble ${cls}`} style={{ width: 56, height: 56, fontSize: 26 }}>
             {score}
           </div>
         ) : (
@@ -193,27 +193,23 @@ function HoleCard({
             <button
               onClick={onMinus}
               disabled={isSaving || (hasScore && score <= 1)}
-              className="score-btn"
               style={{
-                width: 44, height: 44, borderRadius: '50%',
+                width: 36, height: 36, borderRadius: '50%',
                 background: 'var(--surf2)', border: '1px solid var(--bdr)',
                 color: 'var(--tx1)', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
               }}
-            ><Minus size={16} /></button>
+            ><Minus size={14} /></button>
             <button
               onClick={onPlus}
               disabled={isSaving}
-              className="score-btn"
               style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: 'rgba(252,181,20,0.18)', border: '1px solid rgba(252,181,20,0.4)',
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)',
                 color: '#FCB514', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(252,181,20,0.15)',
               }}
-            ><Plus size={16} /></button>
+            ><Plus size={14} /></button>
             {hasScore && onReset && (
               <button
                 onClick={onReset}
@@ -632,7 +628,6 @@ export default function Scores() {
 
   const adjustMyScore = async (hole: number, delta: number) => {
     if (!myTeamId) return
-    navigator.vibrate?.(8)
     const cur  = myScores[hole]?.score ?? HOLE_PARS[hole - 1]
     const next = Math.max(1, cur + delta)
     const existing = myScores[hole]
@@ -685,7 +680,6 @@ export default function Scores() {
 
   const adjustAdminScore = async (hole: number, delta: number) => {
     if (!adminTeamId) return
-    navigator.vibrate?.(8)
     const cur  = adminScores[hole]?.score ?? HOLE_PARS[hole - 1]
     const next = Math.max(1, cur + delta)
     setSaving(hole)

@@ -91,53 +91,6 @@ body {
   100% { background-position: 0 100%; }
 }
 
-/* ── Skeleton shimmer ── */
-@keyframes skeletonShimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
-}
-.skeleton {
-  border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    var(--surf2) 25%,
-    var(--surf3) 50%,
-    var(--surf2) 75%
-  );
-  background-size: 800px 100%;
-  animation: skeletonShimmer 1.4s ease-in-out infinite;
-}
-
-/* ── Score button press ── */
-.score-btn {
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
-  user-select: none;
-}
-.score-btn:active {
-  transform: scale(0.82) !important;
-}
-
-/* ── Score digit pop ── */
-@keyframes digitPop {
-  0%   { transform: scale(1.4); opacity: 0.6; }
-  60%  { transform: scale(0.95); }
-  100% { transform: scale(1);   opacity: 1; }
-}
-.score-digit-pop { animation: digitPop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-
-/* ── Bottom sheet ── */
-@keyframes sheetSlideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-@keyframes sheetSlideDown {
-  from { transform: translateY(0); }
-  to   { transform: translateY(100%); }
-}
-.sheet-enter { animation: sheetSlideUp   0.28s cubic-bezier(0.32, 0.72, 0, 1) both; }
-.sheet-exit  { animation: sheetSlideDown 0.22s cubic-bezier(0.32, 0.72, 0, 1) both; }
-
 .animate-fadeUp    { animation: fadeUp 0.4s ease both; }
 .animate-slideDown { animation: slideDown 0.3s ease both; }
 .animate-wiggle    { animation: wiggle 2s ease-in-out infinite; }
