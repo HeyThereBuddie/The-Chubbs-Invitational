@@ -110,12 +110,12 @@ export default function Leaderboard() {
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Leaderboard</h1>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Leaderboard</h1>
           <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{isCurrentYear ? 'Live standings' : 'Final standings'} • Best Ball Format • Par {COURSE_PAR}</p>
         </div>
         {isCurrentYear && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--tx3)', fontSize: 12 }}>
-            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
+            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block' }} />
             Live
           </div>
         )}
@@ -161,7 +161,7 @@ export default function Leaderboard() {
                     {tied && (
                       <span style={{
                         fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 1, lineHeight: 1,
-                        color: pos === 1 ? '#FCB514' : 'var(--tx3)',
+                        color: pos === 1 ? '#D4A53A' : 'var(--tx3)',
                         width: 42, textAlign: 'center', display: 'block',
                       }}>T{pos}</span>
                     )}
@@ -177,8 +177,8 @@ export default function Leaderboard() {
               return (
               <div key={row.team.id} className="glass animate-fadeUp" style={{
                 padding: '16px 20px',
-                borderColor: isLeader ? 'rgba(252,181,20,0.4)' : undefined,
-                boxShadow: isLeader ? '0 0 20px rgba(252,181,20,0.1)' : undefined,
+                borderColor: isLeader ? 'rgba(212,165,58,0.4)' : undefined,
+                boxShadow: isLeader ? '0 0 20px rgba(212,165,58,0.1)' : undefined,
                 animationDelay: `${Math.min(i * 60, 480)}ms`,
               }} >
                 {/* Main row */}
@@ -202,7 +202,7 @@ export default function Leaderboard() {
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: isLeader ? '#FCB514' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: isLeader ? '#D4A53A' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {row.team.name}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 1 }}>
@@ -212,7 +212,7 @@ export default function Leaderboard() {
 
                   <div style={{ display: 'flex', gap: 16, textAlign: 'right', flexShrink: 0 }}>
                     <div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx1)' }}>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: row.toPar <= 0 ? '#D4A53A' : 'var(--tx1)' }}>
                         {row.thru > 0 ? toPar(row.toPar) : '—'}
                       </div>
                       <div style={{ fontSize: 9, color: 'var(--tx4)' }}>TO PAR</div>
@@ -283,12 +283,12 @@ export default function Leaderboard() {
       )}
 
       {/* Alligator divider */}
-      <div style={{ textAlign: 'center', marginTop: 40, padding: '24px', borderTop: '1px solid rgba(252,181,20,0.1)' }}>
+      <div style={{ textAlign: 'center', marginTop: 40, padding: '24px', borderTop: '1px solid rgba(212,165,58,0.1)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🐊</div>
         <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
           "I would have been a pro if it wasn't for those damn alligators."
         </p>
-        <p style={{ color: 'rgba(252,181,20,0.4)', fontSize: 11, marginTop: 4 }}>— Chubbs Peterson</p>
+        <p style={{ color: 'rgba(212,165,58,0.4)', fontSize: 11, marginTop: 4 }}>— Chubbs Peterson</p>
       </div>
     </div>
   )

@@ -34,7 +34,7 @@ const HOLES: HoleData[] = [
 const PAR_COLORS: Record<number, { bg: string; text: string; label: string }> = {
   3: { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e', label: 'Par 3' },
   4: { bg: 'var(--tx5)', text: 'var(--tx2)', label: 'Par 4' },
-  5: { bg: 'rgba(252,181,20,0.15)', text: '#FCB514', label: 'Par 5' },
+  5: { bg: 'rgba(212,165,58,0.15)', text: '#D4A53A', label: 'Par 5' },
 }
 
 type Nine = 'front' | 'back' | 'all'
@@ -53,7 +53,7 @@ export default function CoursePage() {
       <div className="glass" style={{ padding: '20px 24px', marginBottom: 20, borderRadius: 16 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
               Augusta Pines GC
             </div>
             <div style={{ fontSize: 12, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>
@@ -62,7 +62,7 @@ export default function CoursePage() {
           </div>
           <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#FCB514', lineHeight: 1 }}>{totalPar}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#D4A53A', lineHeight: 1 }}>{totalPar}</div>
               <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Par</div>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -98,11 +98,11 @@ export default function CoursePage() {
                 {/* Hole number */}
                 <div style={{
                   width: 42, height: 42, borderRadius: 10, flexShrink: 0,
-                  background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.2)',
+                  background: 'rgba(212,165,58,0.08)', border: '1px solid rgba(212,165,58,0.2)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <div style={{ fontSize: 8, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1 }}>Hole</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#FCB514', lineHeight: 1 }}>{h.hole}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#D4A53A', lineHeight: 1 }}>{h.hole}</div>
                 </div>
 
                 {/* Name + par badge */}
@@ -142,11 +142,11 @@ export default function CoursePage() {
                 margin: '0 16px 14px',
                 padding: '8px 12px',
                 borderRadius: 8,
-                background: 'rgba(252,181,20,0.05)',
-                borderLeft: '2px solid rgba(252,181,20,0.25)',
+                background: 'rgba(212,165,58,0.05)',
+                borderLeft: '2px solid rgba(212,165,58,0.25)',
                 display: 'flex', alignItems: 'flex-start', gap: 8,
               }}>
-                <Flag size={12} color="#FCB514" style={{ flexShrink: 0, marginTop: 2 }} />
+                <Flag size={12} color="#D4A53A" style={{ flexShrink: 0, marginTop: 2 }} />
                 <span style={{ fontSize: 12, color: 'var(--tx2)', lineHeight: 1.55 }}>{h.tip}</span>
               </div>
             </div>

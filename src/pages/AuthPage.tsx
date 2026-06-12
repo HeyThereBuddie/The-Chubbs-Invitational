@@ -77,7 +77,7 @@ export default function AuthPage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(252,181,20,0.1) 0%, transparent 70%), #080808',
+      background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(212,165,58,0.1) 0%, transparent 70%), #080808',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px',
     }}>
@@ -86,13 +86,13 @@ export default function AuthPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div className="animate-wiggle" style={{
             width: 80, height: 80, borderRadius: '50%',
-            border: '3px solid #FCB514',
-            boxShadow: '0 0 20px rgba(252,181,20,0.5)',
+            border: '3px solid #D4A53A',
+            boxShadow: '0 0 20px rgba(212,165,58,0.5)',
             overflow: 'hidden', margin: '0 auto 16px',
           }}>
             <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, color: '#FCB514', textShadow: '0 0 20px rgba(252,181,20,0.5)', margin: 0 }}>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, color: '#D4A53A', textShadow: '0 0 20px rgba(212,165,58,0.5)', margin: 0 }}>
             The Chubbs Memorial
           </h1>
           <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
@@ -108,8 +108,8 @@ export default function AuthPage() {
               onClick={() => setMode(m)}
               style={{
                 flex: 1, padding: '8px', borderRadius: 999, border: 'none',
-                background: mode === m ? 'rgba(252,181,20,0.15)' : 'transparent',
-                color: mode === m ? '#FCB514' : 'var(--tx2)',
+                background: mode === m ? 'rgba(212,165,58,0.15)' : 'transparent',
+                color: mode === m ? '#D4A53A' : 'var(--tx2)',
                 fontWeight: 600, fontSize: 13, cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
@@ -193,9 +193,9 @@ export default function AuthPage() {
                 {kissMsg && (
                   <div style={{
                     padding: '10px 14px', borderRadius: 10,
-                    background: 'rgba(252,181,20,0.08)',
-                    border: '1px solid rgba(252,181,20,0.25)',
-                    fontSize: 13, color: '#FCB514', fontStyle: 'italic', lineHeight: 1.5,
+                    background: 'rgba(212,165,58,0.08)',
+                    border: '1px solid rgba(212,165,58,0.25)',
+                    fontSize: 13, color: '#D4A53A', fontStyle: 'italic', lineHeight: 1.5,
                   }}>
                     🏌️ {kissMsg}
                   </div>
@@ -211,9 +211,9 @@ export default function AuthPage() {
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(252,181,20,0.1)' }} />
+          <div style={{ flex: 1, height: 1, background: 'rgba(212,165,58,0.1)' }} />
           <span style={{ color: 'var(--tx4)', fontSize: 12 }}>or</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(252,181,20,0.1)' }} />
+          <div style={{ flex: 1, height: 1, background: 'rgba(212,165,58,0.1)' }} />
         </div>
 
         <button onClick={handleGoogle} className="btn-outline" style={{ width: '100%', justifyContent: 'center' }}>

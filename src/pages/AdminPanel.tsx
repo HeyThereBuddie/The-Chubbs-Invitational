@@ -542,7 +542,7 @@ export default function AdminPanel() {
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Admin Panel</h1>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Admin Panel</h1>
         <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Manage teams, users, and access codes</p>
       </div>
 
@@ -606,9 +606,9 @@ export default function AdminPanel() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 7,
                     padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                    background: teamsReset ? 'rgba(252,181,20,0.12)' : 'var(--surf2)',
-                    border: `1px solid ${teamsReset ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
-                    color: teamsReset ? '#FCB514' : 'var(--tx4)',
+                    background: teamsReset ? 'rgba(212,165,58,0.12)' : 'var(--surf2)',
+                    border: `1px solid ${teamsReset ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
+                    color: teamsReset ? '#D4A53A' : 'var(--tx4)',
                     cursor: regenerating || !teamsReset ? 'not-allowed' : 'pointer',
                     opacity: regenerating ? 0.6 : 1,
                   }}
@@ -637,7 +637,7 @@ export default function AdminPanel() {
             {teams.map(team => (
               <div key={team.id} className="glass" style={{ padding: '16px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 15, flex: 1 }}>{team.name}</div>
+                  <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 15, flex: 1 }}>{team.name}</div>
                   <button
                     onClick={() => deleteTeam(team)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: '4px' }}>
@@ -688,7 +688,7 @@ export default function AdminPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 14 }}>{p.name}</span>
                   {p.nickname && (
-                    <span style={{ fontSize: 12, color: '#FCB514', background: 'rgba(252,181,20,0.1)', padding: '1px 8px', borderRadius: 999 }}>
+                    <span style={{ fontSize: 12, color: '#D4A53A', background: 'rgba(212,165,58,0.1)', padding: '1px 8px', borderRadius: 999 }}>
                       "{p.nickname}"
                     </span>
                   )}
@@ -698,8 +698,8 @@ export default function AdminPanel() {
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  background: p.role === 'admin' ? 'rgba(252,181,20,0.15)' : 'var(--surf2)',
-                  color: p.role === 'admin' ? '#FCB514' : 'var(--tx2)',
+                  background: p.role === 'admin' ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
+                  color: p.role === 'admin' ? '#D4A53A' : 'var(--tx2)',
                   textTransform: 'uppercase', letterSpacing: 1,
                 }}>
                   {p.role}
@@ -716,7 +716,7 @@ export default function AdminPanel() {
               <div style={{ display: 'flex', gap: 6 }}>
                 {p.role === 'player' ? (
                   <button onClick={() => promoteUser(p.id)} className="btn-ghost" title="Promote to admin" style={{ padding: '6px 10px' }}>
-                    <Shield size={13} color="#FCB514" />
+                    <Shield size={13} color="#D4A53A" />
                   </button>
                 ) : (
                   <button onClick={() => demoteUser(p.id)} className="btn-ghost" title="Demote to player" style={{ padding: '6px 10px' }}>
@@ -746,7 +746,7 @@ export default function AdminPanel() {
           <div className="glass" style={{ padding: '20px 22px' }}>
             <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Player Invite Code</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: '#FCB514', letterSpacing: 3 }}>{PLAYER_CODE}</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: '#D4A53A', letterSpacing: 3 }}>{PLAYER_CODE}</div>
               <button onClick={() => copy(PLAYER_CODE, 'player')} className="btn-ghost" style={{ padding: '6px 12px', display: 'flex', gap: 4, alignItems: 'center' }}>
                 {copiedKey === 'player' ? <Check size={13} /> : <Copy size={13} />} Copy
               </button>
@@ -835,9 +835,9 @@ export default function AdminPanel() {
             {active.map(t => {
               const champ = t.results.find(r => r.category === 'champion')
               return (
-                <div key={t.id} className="glass" style={{ padding: '18px 22px', border: t.status === 'active' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(252,181,20,0.2)' }}>
+                <div key={t.id} className="glass" style={{ padding: '18px 22px', border: t.status === 'active' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(212,165,58,0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: t.status === 'active' ? '#22c55e' : '#FCB514', lineHeight: 1 }}>{t.year}</div>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: t.status === 'active' ? '#22c55e' : '#D4A53A', lineHeight: 1 }}>{t.year}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)', marginBottom: 4 }}>{t.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -854,7 +854,7 @@ export default function AdminPanel() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => openEditT(t)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(252,181,20,0.1)', border: '1px solid rgba(252,181,20,0.3)', color: '#FCB514', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => openEditT(t)} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(212,165,58,0.1)', border: '1px solid rgba(212,165,58,0.3)', color: '#D4A53A', cursor: 'pointer' }}>Edit</button>
                       {t.status !== 'active' && (
                         <button onClick={() => setDeleteModal({ id: t.id, year: t.year, name: t.name, isActive: false, step: 1 })} style={{ padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
                       )}
@@ -867,8 +867,8 @@ export default function AdminPanel() {
                         {(t.final_standings).map((s, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
                             <span style={{ width: 20, textAlign: 'center', flexShrink: 0, color: 'var(--tx4)', fontFamily: 'Bebas Neue' }}>{i + 1}</span>
-                            <span style={{ flex: 1, color: i === 0 ? '#FCB514' : 'var(--tx2)' }}>{s.teamName} {(s.p1Name || s.p2Name) && <span style={{ color: 'var(--tx3)', fontSize: 11 }}>— {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</span>}</span>
-                            <span style={{ fontFamily: 'Bebas Neue', fontSize: 14, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>{s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}</span>
+                            <span style={{ flex: 1, color: i === 0 ? '#D4A53A' : 'var(--tx2)' }}>{s.teamName} {(s.p1Name || s.p2Name) && <span style={{ color: 'var(--tx3)', fontSize: 11 }}>— {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</span>}</span>
+                            <span style={{ fontFamily: 'Bebas Neue', fontSize: 14, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#D4A53A' }}>{s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}</span>
                             <span style={{ fontSize: 11, color: 'var(--tx4)', minWidth: 30, textAlign: 'right' }}>/{s.thru}</span>
                           </div>
                         ))}
@@ -917,8 +917,8 @@ export default function AdminPanel() {
             {/* Edit modal */}
             {editingT && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: 'var(--panel)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
-                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 20 }}>Edit {editingT.year}</div>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(212,165,58,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#D4A53A', letterSpacing: 3, marginBottom: 20 }}>Edit {editingT.year}</div>
 
                   {/* Metadata */}
                   <div style={{ marginBottom: 22 }}>
@@ -952,7 +952,7 @@ export default function AdminPanel() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={saveEditT} disabled={savingEdit} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.6 : 1 }}>
+                    <button onClick={saveEditT} disabled={savingEdit} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#D4A53A', border: 'none', color: '#0a0800', cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.6 : 1 }}>
                       {savingEdit ? 'Saving…' : 'Save Changes'}
                     </button>
                     <button onClick={() => setEditingT(null)} disabled={savingEdit} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)', cursor: 'pointer' }}>Cancel</button>
@@ -1054,7 +1054,7 @@ export default function AdminPanel() {
                 Current Tournament Actions
               </div>
               {!activeTournamentId && (
-                <div style={{ padding: '28px 24px', borderRadius: 14, border: '1px dashed rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.03)', textAlign: 'center', marginBottom: 16 }}>
+                <div style={{ padding: '28px 24px', borderRadius: 14, border: '1px dashed rgba(212,165,58,0.3)', background: 'rgba(212,165,58,0.03)', textAlign: 'center', marginBottom: 16 }}>
                   <div style={{ fontSize: 32, marginBottom: 10 }}>⛳</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tx2)', marginBottom: 6 }}>No active tournament</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.5 }}>
@@ -1062,7 +1062,7 @@ export default function AdminPanel() {
                   </p>
                   <button
                     onClick={() => setCreateTournamentOpen(true)}
-                    style={{ padding: '12px 28px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: 'pointer' }}
+                    style={{ padding: '12px 28px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#D4A53A', border: 'none', color: '#0a0800', cursor: 'pointer' }}
                   >
                     + Create Tournament
                   </button>
@@ -1072,10 +1072,10 @@ export default function AdminPanel() {
               {activeTournamentId && (<>
 
                 {/* Jackass voting */}
-                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.25)', background: 'rgba(252,181,20,0.04)' }}>
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(212,165,58,0.25)', background: 'rgba(212,165,58,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <span style={{ fontSize: 20 }}>🤠</span>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>Jackass of the Day</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#D4A53A' }}>Jackass of the Day</div>
                     <div style={{
                       marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
                       background: laheyVotingOpen ? 'rgba(34,197,94,0.15)' : 'var(--surf2)',
@@ -1123,13 +1123,13 @@ export default function AdminPanel() {
                 </div>
 
                 {/* End Tournament & Archive */}
-                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(252,181,20,0.3)', background: 'rgba(252,181,20,0.04)' }}>
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(212,165,58,0.3)', background: 'rgba(212,165,58,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <Archive size={20} color="#FCB514" />
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#FCB514' }}>End Tournament & Archive</div>
+                    <Archive size={20} color="#D4A53A" />
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#D4A53A' }}>End Tournament & Archive</div>
                   </div>
                   <p style={{ fontSize: 14, color: 'var(--tx2)', marginBottom: 6, lineHeight: 1.6 }}>
-                    Saves the final standings, Jackass winner, and contest winners to the <strong style={{ color: '#FCB514' }}>Hall of Fame</strong>, then clears all scores for the next tournament.
+                    Saves the final standings, Jackass winner, and contest winners to the <strong style={{ color: '#D4A53A' }}>Hall of Fame</strong>, then clears all scores for the next tournament.
                   </p>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.6 }}>
                     Teams and player accounts are preserved.
@@ -1139,8 +1139,8 @@ export default function AdminPanel() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '12px 28px', borderRadius: 999, fontSize: 15, fontWeight: 700,
-                      background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.5)',
-                      color: '#FCB514', cursor: 'pointer',
+                      background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.5)',
+                      color: '#D4A53A', cursor: 'pointer',
                     }}
                   >
                     <Archive size={15} /> Archive Results & Reset
@@ -1211,8 +1211,8 @@ export default function AdminPanel() {
             {/* Create Tournament modal */}
             {createTournamentOpen && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ background: 'var(--panel)', border: '1px solid rgba(252,181,20,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
-                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>New Tournament</div>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(212,165,58,0.35)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#D4A53A', letterSpacing: 3, marginBottom: 6 }}>New Tournament</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Give this tournament a name. It will be set to {new Date().getFullYear()} and go live immediately.
                   </p>
@@ -1231,7 +1231,7 @@ export default function AdminPanel() {
                     <button
                       onClick={createNewTournament}
                       disabled={creatingTournament || !createTournamentName.trim()}
-                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: creatingTournament ? 'not-allowed' : 'pointer', opacity: creatingTournament ? 0.6 : 1 }}
+                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#D4A53A', border: 'none', color: '#0a0800', cursor: creatingTournament ? 'not-allowed' : 'pointer', opacity: creatingTournament ? 0.6 : 1 }}
                     >
                       {creatingTournament ? 'Creating…' : 'Create & Go Live'}
                     </button>
@@ -1247,8 +1247,8 @@ export default function AdminPanel() {
                 position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
                 zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
               }}>
-                <div style={{ background: 'var(--panel)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
-                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
+                <div style={{ background: 'var(--panel)', border: '1px solid rgba(212,165,58,0.3)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#D4A53A', letterSpacing: 3, marginBottom: 6 }}>End of Year Summary</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 22, lineHeight: 1.5 }}>
                     Review the results that will be saved to the Hall of Fame, then confirm to archive and reset.
                   </p>
@@ -1261,19 +1261,19 @@ export default function AdminPanel() {
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 6, borderRadius: 10, background: 'var(--surf)', border: '1px solid var(--bdr)' }}>
                           <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{i === 0 ? '🏆' : i === 1 ? '🥈' : '🥉'}</span>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#FCB514' : 'var(--tx1)' }}>{s.teamName}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? '#D4A53A' : 'var(--tx1)' }}>{s.teamName}</div>
                             {(s.p1Name || s.p2Name) && <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}</div>}
                           </div>
-                          <div style={{ fontFamily: 'Bebas Neue', fontSize: 17, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#FCB514' }}>
+                          <div style={{ fontFamily: 'Bebas Neue', fontSize: 17, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#D4A53A' }}>
                             {s.toPar === 0 ? 'E' : s.toPar > 0 ? `+${s.toPar}` : s.toPar}
                           </div>
                         </div>
                       ))
                     )}
                   </div>
-                  <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)' }}>
+                  <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(212,165,58,0.04)', border: '1px solid rgba(212,165,58,0.15)' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 6 }}>🤠 Jackass of the Day</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#FCB514' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#D4A53A' }}>
                       {endTournamentPreview.jackassName ?? 'No votes recorded'}
                       {endTournamentPreview.jackassVotes > 0 && <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 400, marginLeft: 8 }}>({endTournamentPreview.jackassVotes} votes)</span>}
                     </div>
@@ -1295,7 +1295,7 @@ export default function AdminPanel() {
                     ⚠️ After archiving, all scores, chulligans, contest entries, votes, and feed events will be permanently cleared.
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={doEndTournament} disabled={endingTournament} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: endingTournament ? 'not-allowed' : 'pointer', opacity: endingTournament ? 0.6 : 1 }}>
+                    <button onClick={doEndTournament} disabled={endingTournament} style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#D4A53A', border: 'none', color: '#0a0800', cursor: endingTournament ? 'not-allowed' : 'pointer', opacity: endingTournament ? 0.6 : 1 }}>
                       {endingTournament ? 'Archiving…' : '🏆 Archive & Reset for Next Year'}
                     </button>
                     <button onClick={() => { setEndTournamentOpen(false); setEndTournamentPreview(null) }} disabled={endingTournament} style={{ padding: '12px 20px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)', cursor: 'pointer' }}>
@@ -1310,7 +1310,7 @@ export default function AdminPanel() {
             {testTournamentOpen && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div style={{ background: 'var(--panel)', border: '1px solid var(--bdr2)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420 }}>
-                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, marginBottom: 6 }}>Create Test Tournament</div>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, marginBottom: 6 }}>Create Test Tournament</div>
                   <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.5 }}>
                     Creates a completed tournament that appears in the year dropdown. Useful for testing the archive viewer.
                   </p>
@@ -1338,7 +1338,7 @@ export default function AdminPanel() {
                     <button
                       onClick={createTestTournament}
                       disabled={creatingTestTournament || !testTournamentName.trim() || !testTournamentYear}
-                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#FCB514', border: 'none', color: '#0a0800', cursor: creatingTestTournament ? 'not-allowed' : 'pointer', opacity: creatingTestTournament ? 0.6 : 1 }}
+                      style={{ flex: 1, padding: '12px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700, background: '#D4A53A', border: 'none', color: '#0a0800', cursor: creatingTestTournament ? 'not-allowed' : 'pointer', opacity: creatingTestTournament ? 0.6 : 1 }}
                     >
                       {creatingTestTournament ? 'Creating…' : 'Create'}
                     </button>
@@ -1360,7 +1360,7 @@ export default function AdminPanel() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ fontSize: 28 }}>📣</div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#FCB514' }}>Brevo Contact Sync</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#D4A53A' }}>Brevo Contact Sync</div>
                 <div style={{ fontSize: 13, color: 'var(--tx3)', marginTop: 2 }}>
                   Push all active players to your Brevo audience for email campaigns
                 </div>
@@ -1384,7 +1384,7 @@ export default function AdminPanel() {
                 { label: 'With phone', value: activePlayers.filter(p => p.phone).length },
               ].map(({ label, value }) => (
                 <div key={label} style={{ padding: '10px 16px', borderRadius: 10, background: 'var(--surf)', border: '1px solid var(--bdr)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#FCB514', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#D4A53A', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
                   <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{label}</div>
                 </div>
               ))}
@@ -1402,8 +1402,8 @@ export default function AdminPanel() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
-                  background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.4)',
-                  color: '#FCB514', cursor: brevoSyncing ? 'not-allowed' : 'pointer',
+                  background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.4)',
+                  color: '#D4A53A', cursor: brevoSyncing ? 'not-allowed' : 'pointer',
                   opacity: brevoSyncing ? 0.6 : 1,
                 }}
               >
@@ -1419,17 +1419,17 @@ export default function AdminPanel() {
           </div>
 
           {/* Setup instructions */}
-          <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(252,181,20,0.04)', border: '1px solid rgba(252,181,20,0.15)', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.8 }}>
-            <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 10 }}>One-time setup</div>
+          <div style={{ padding: '18px 20px', borderRadius: 12, background: 'rgba(212,165,58,0.04)', border: '1px solid rgba(212,165,58,0.15)', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.8 }}>
+            <div style={{ fontWeight: 700, color: '#D4A53A', marginBottom: 10 }}>One-time setup</div>
             <ol style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <li>
                 In Brevo: <strong style={{ color: 'var(--tx2)' }}>Settings → API Keys</strong> → create a key with Contacts permission.
               </li>
               <li>
-                In Supabase Dashboard: <strong style={{ color: 'var(--tx2)' }}>Edge Functions → brevo-sync → Secrets</strong>, add <code style={{ color: '#FCB514', fontSize: 12 }}>BREVO_API_KEY</code>.
+                In Supabase Dashboard: <strong style={{ color: 'var(--tx2)' }}>Edge Functions → brevo-sync → Secrets</strong>, add <code style={{ color: '#D4A53A', fontSize: 12 }}>BREVO_API_KEY</code>.
               </li>
               <li>
-                Deploy the function: <code style={{ color: '#FCB514', fontSize: 12 }}>supabase functions deploy brevo-sync</code>
+                Deploy the function: <code style={{ color: '#D4A53A', fontSize: 12 }}>supabase functions deploy brevo-sync</code>
               </li>
             </ol>
           </div>

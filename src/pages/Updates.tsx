@@ -66,7 +66,7 @@ export default function Updates() {
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Updates</h1>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Updates</h1>
           <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Tournament announcements & news</p>
         </div>
         {isAdmin && (
@@ -93,7 +93,7 @@ export default function Updates() {
                 type="checkbox"
                 checked={form.pinned}
                 onChange={e => setForm(f => ({ ...f, pinned: e.target.checked }))}
-                style={{ width: 16, height: 16, accentColor: '#FCB514' }}
+                style={{ width: 16, height: 16, accentColor: '#D4A53A' }}
               />
               📌 Pin this update
             </label>
@@ -115,14 +115,14 @@ export default function Updates() {
           <div key={u.id} className="glass animate-fadeUp" style={{
             padding: '20px 22px',
             animationDelay: `${i * 0.05}s`,
-            borderColor: u.pinned ? 'rgba(252,181,20,0.4)' : undefined,
-            boxShadow: u.pinned ? '0 0 16px rgba(252,181,20,0.08)' : undefined,
+            borderColor: u.pinned ? 'rgba(212,165,58,0.4)' : undefined,
+            boxShadow: u.pinned ? '0 0 16px rgba(212,165,58,0.08)' : undefined,
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   {u.pinned && (
-                    <span style={{ fontSize: 10, color: '#FCB514', background: 'rgba(252,181,20,0.15)', padding: '2px 8px', borderRadius: 999, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: 10, color: '#D4A53A', background: 'rgba(212,165,58,0.15)', padding: '2px 8px', borderRadius: 999, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
                       📌 Pinned
                     </span>
                   )}
@@ -139,7 +139,7 @@ export default function Updates() {
                   <button
                     onClick={() => togglePin(u)}
                     title={u.pinned ? 'Unpin' : 'Pin'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: u.pinned ? '#FCB514' : 'var(--tx4)' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: u.pinned ? '#D4A53A' : 'var(--tx4)' }}>
                     {u.pinned ? <PinOff size={15} /> : <Pin size={15} />}
                   </button>
                   <button

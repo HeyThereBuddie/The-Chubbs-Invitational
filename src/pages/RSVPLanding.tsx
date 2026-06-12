@@ -41,7 +41,7 @@ export default function RSVPLanding() {
 
   if (loading) return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+      <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
     </div>
   )
 
@@ -49,7 +49,7 @@ export default function RSVPLanding() {
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div className="glass" style={{ maxWidth: 400, padding: 40, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🤷</div>
-        <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3 }}>Player Not Found</h2>
+        <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#D4A53A', letterSpacing: 3 }}>Player Not Found</h2>
         <p style={{ color: 'var(--tx3)', marginTop: 8 }}>Check your invite link and try again.</p>
       </div>
     </div>
@@ -58,7 +58,7 @@ export default function RSVPLanding() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(252,181,20,0.1) 0%, transparent 70%), #080808',
+      background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(212,165,58,0.1) 0%, transparent 70%), #080808',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px',
     }}>
@@ -67,13 +67,13 @@ export default function RSVPLanding() {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
             width: 80, height: 80, borderRadius: '50%',
-            border: '3px solid #FCB514',
-            boxShadow: '0 0 20px rgba(252,181,20,0.5)',
+            border: '3px solid #D4A53A',
+            boxShadow: '0 0 20px rgba(212,165,58,0.5)',
             overflow: 'hidden', margin: '0 auto 16px',
           }}>
             <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#FCB514', letterSpacing: 3, margin: 0 }}>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#D4A53A', letterSpacing: 3, margin: 0 }}>
             The Chubbs Memorial
           </h1>
           <div style={{ color: 'var(--tx2)', fontSize: 13, marginTop: 4 }}>
@@ -84,7 +84,7 @@ export default function RSVPLanding() {
         {submitted ? (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⛳</div>
-            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 3 }}>
+            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#D4A53A', letterSpacing: 3 }}>
               Profile Updated!
             </h2>
             <p style={{ color: 'var(--tx2)', marginTop: 8, fontSize: 14 }}>

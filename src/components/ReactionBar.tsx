@@ -60,10 +60,10 @@ export default function ReactionBar({ eventId, label, reactions, currentUserId, 
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               padding: '2px 8px', borderRadius: 20,
-              background: mine ? 'rgba(252,181,20,0.15)' : 'var(--surf2)',
-              border: `1px solid ${mine ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
+              background: mine ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
+              border: `1px solid ${mine ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
               cursor: canReact ? 'pointer' : 'default',
-              fontSize: 13, color: mine ? '#FCB514' : 'var(--tx2)',
+              fontSize: 13, color: mine ? '#D4A53A' : 'var(--tx2)',
               fontWeight: mine ? 700 : 400,
               transition: 'background 0.12s, border-color 0.12s',
             }}
@@ -81,10 +81,10 @@ export default function ReactionBar({ eventId, label, reactions, currentUserId, 
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 26, height: 22, padding: 0, borderRadius: 20,
-            background: pickerOpen ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
-            border: `1px solid ${pickerOpen ? 'rgba(252,181,20,0.3)' : 'var(--bdr)'}`,
+            background: pickerOpen ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
+            border: `1px solid ${pickerOpen ? 'rgba(212,165,58,0.3)' : 'var(--bdr)'}`,
             cursor: 'pointer', fontSize: 15, lineHeight: 1,
-            color: pickerOpen ? '#FCB514' : 'var(--tx3)',
+            color: pickerOpen ? '#D4A53A' : 'var(--tx3)',
             transition: 'background 0.12s, border-color 0.12s',
           }}
         >

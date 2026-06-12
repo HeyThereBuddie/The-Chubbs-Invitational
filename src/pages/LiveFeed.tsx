@@ -28,7 +28,7 @@ const SCORE_COLORS: Record<string, string> = {
 }
 
 function eventColor(ev: FeedEvent) {
-  if (ev.event_type === 'contest') return '#FCB514'
+  if (ev.event_type === 'contest') return '#D4A53A'
   if (ev.event_type === 'chulligan') return '#f59e0b'
   if (ev.event_type === 'putt') {
     if (ev.label === '3-Putt') return '#fb923c'
@@ -115,7 +115,7 @@ export default function LiveFeed() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 20 }}>⚡</span>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
               Live Feed
             </div>
             <div style={{ fontSize: 11, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>
@@ -128,7 +128,7 @@ export default function LiveFeed() {
               <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
             </div>
           ) : (
-            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'rgba(252,181,20,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' }}>🔒 Archived</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'rgba(212,165,58,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' }}>🔒 Archived</span>
           )}
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function LiveFeed() {
       <div className="glass" style={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>
         {loading ? (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
-            <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%', margin: '0 auto' }} />
+            <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%', margin: '0 auto' }} />
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: '48px 20px', textAlign: 'center' }}>
@@ -176,13 +176,13 @@ export default function LiveFeed() {
               <div key={ev.id} style={{
                 padding: '12px 20px',
                 borderBottom: i < filtered.length - 1 ? '1px solid var(--bdr)' : 'none',
-                background: highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
+                background: highlight ? 'rgba(212,165,58,0.02)' : 'transparent',
               }}>
                 {/* Main event row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                    background: highlight ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
+                    background: highlight ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 18,
                   }}>{ev.emoji}</div>
@@ -196,7 +196,7 @@ export default function LiveFeed() {
                         <span style={{ fontSize: 13, color: 'var(--tx2)' }}>
                           <strong style={{ color: 'var(--tx1)', fontWeight: 700 }}>{ev.voter_name}</strong>
                           {' voted '}
-                          <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
+                          <strong style={{ color: '#D4A53A', fontWeight: 700 }}>{ev.player_name}</strong>
                           {' for jackass'}
                         </span>
                       ) : ev.event_type === 'contest' ? (

@@ -145,7 +145,7 @@ export default function TeeTimes() {
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Tee Times</h1>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Tee Times</h1>
           <p style={{ color: 'var(--tx3)', fontSize: 13 }}>
             {foursomes.length > 0
               ? `${foursomes.length} foursomes • First tee: ${formatTime(firstTime ?? '')}`
@@ -182,14 +182,14 @@ export default function TeeTimes() {
             <div key={fs.tee_time}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <div style={{
-                  background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.4)',
+                  background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.4)',
                   borderRadius: 999, padding: '4px 14px',
-                  fontSize: 14, fontWeight: 700, color: '#FCB514',
+                  fontSize: 14, fontWeight: 700, color: '#D4A53A',
                 }}>
                   {formatTime(fs.tee_time)}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Hole {fs.starting_hole}</div>
-                <div style={{ flex: 1, height: 1, background: 'rgba(252,181,20,0.1)' }} />
+                <div style={{ flex: 1, height: 1, background: 'rgba(212,165,58,0.1)' }} />
                 <div style={{ fontSize: 11, color: 'var(--tx4)', fontWeight: 700, letterSpacing: 1 }}>
                   FOURSOME {i + 1}
                 </div>
@@ -224,7 +224,7 @@ export default function TeeTimes() {
             <p style={{ fontSize: 13, color: 'var(--tx3)' }}>
               Drag a team to swap it with another or drop it into an open slot.
             </p>
-            {saving && <span style={{ fontSize: 12, color: '#FCB514' }}>Saving…</span>}
+            {saving && <span style={{ fontSize: 12, color: '#D4A53A' }}>Saving…</span>}
           </div>
 
           {foursomes.length === 0 && (
@@ -238,9 +238,9 @@ export default function TeeTimes() {
               <div key={fs.tee_time} className="glass" style={{ padding: '16px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <div style={{
-                    background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.4)',
+                    background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.4)',
                     borderRadius: 999, padding: '3px 12px',
-                    fontSize: 13, fontWeight: 700, color: '#FCB514',
+                    fontSize: 13, fontWeight: 700, color: '#D4A53A',
                   }}>
                     {formatTime(fs.tee_time)}
                   </div>
@@ -275,8 +275,8 @@ export default function TeeTimes() {
                           style={{
                             padding: '12px 14px',
                             borderRadius: 10,
-                            border: `1px solid ${isOver ? '#FCB514' : 'var(--bdr)'}`,
-                            background: isOver ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
+                            border: `1px solid ${isOver ? '#D4A53A' : 'var(--bdr)'}`,
+                            background: isOver ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
                             opacity: isDragging ? 0.35 : 1,
                             cursor: 'grab',
                             display: 'flex', alignItems: 'center', gap: 8,
@@ -316,10 +316,10 @@ export default function TeeTimes() {
                         style={{
                           padding: '12px 14px', minHeight: 60,
                           borderRadius: 10,
-                          border: `1px dashed ${isOver ? '#FCB514' : 'var(--bdr)'}`,
-                          background: isOver ? 'rgba(252,181,20,0.07)' : 'transparent',
+                          border: `1px dashed ${isOver ? '#D4A53A' : 'var(--bdr)'}`,
+                          background: isOver ? 'rgba(212,165,58,0.07)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: isOver ? '#FCB514' : 'var(--tx5)',
+                          color: isOver ? '#D4A53A' : 'var(--tx5)',
                           fontSize: 12, fontWeight: isOver ? 600 : 400,
                           transition: 'all 0.15s',
                         }}
@@ -339,8 +339,8 @@ export default function TeeTimes() {
       {tab === 'auto' && isAdmin && (
         <div className="glass" style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <Shuffle size={18} color="#FCB514" />
-            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, margin: 0 }}>
+            <Shuffle size={18} color="#D4A53A" />
+            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, margin: 0 }}>
               Randomize Foursomes
             </h2>
           </div>
@@ -378,7 +378,7 @@ export default function TeeTimes() {
                     display: 'flex', alignItems: 'center', gap: 14,
                     padding: '9px 0', borderBottom: '1px solid var(--bdr)', fontSize: 13,
                   }}>
-                    <span style={{ color: '#FCB514', fontWeight: 700, width: 80, flexShrink: 0 }}>{display}</span>
+                    <span style={{ color: '#D4A53A', fontWeight: 700, width: 80, flexShrink: 0 }}>{display}</span>
                     <span style={{ color: 'var(--tx3)' }}>
                       Foursome {i + 1}{isLast ? ' · twosome (odd team count)' : ' · 2 teams'}
                     </span>

@@ -248,7 +248,7 @@ export default function AccountPage() {
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4, margin: 0 }}>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4, margin: 0 }}>
           My Account
         </h1>
         <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
@@ -264,7 +264,7 @@ export default function AccountPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{
             width: 80, height: 80, borderRadius: '50%',
-            border: '2px solid rgba(252,181,20,0.35)',
+            border: '2px solid rgba(212,165,58,0.35)',
             overflow: 'hidden', flexShrink: 0,
             background: 'var(--surf)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -288,7 +288,7 @@ export default function AccountPage() {
                 background: 'rgba(0,0,0,0.55)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <div className="animate-spin" style={{ width: 24, height: 24, border: '2px solid rgba(252,181,20,0.3)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+                <div className="animate-spin" style={{ width: 24, height: 24, border: '2px solid rgba(212,165,58,0.3)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
               </div>
             )}
           </div>
@@ -394,10 +394,10 @@ export default function AccountPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {rows.map(r => (
-                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(252,181,20,0.06)' : 'var(--surf2)', border: r.key === 'champion' ? '1px solid rgba(252,181,20,0.2)' : '1px solid var(--bdr)' }}>
+                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(212,165,58,0.06)' : 'var(--surf2)', border: r.key === 'champion' ? '1px solid rgba(212,165,58,0.2)' : '1px solid var(--bdr)' }}>
                   <span style={{ fontSize: 18, flexShrink: 0 }}>{r.emoji}</span>
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#FCB514' : 'var(--tx1)' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#D4A53A' : 'var(--tx1)' }}>
                       {r.label}
                     </span>
                     {r.years.length > 1 && <span style={{ fontSize: 12, color: 'var(--tx3)', marginLeft: 8 }}>×{r.years.length}</span>}
@@ -534,9 +534,9 @@ export default function AccountPage() {
               disabled={pushLoading}
               style={{
                 padding: '5px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                background: pushStatus === 'subscribed' ? 'var(--surf2)' : 'rgba(252,181,20,0.15)',
-                border: `1px solid ${pushStatus === 'subscribed' ? 'var(--bdr)' : 'rgba(252,181,20,0.4)'}`,
-                color: pushStatus === 'subscribed' ? 'var(--tx2)' : '#FCB514',
+                background: pushStatus === 'subscribed' ? 'var(--surf2)' : 'rgba(212,165,58,0.15)',
+                border: `1px solid ${pushStatus === 'subscribed' ? 'var(--bdr)' : 'rgba(212,165,58,0.4)'}`,
+                color: pushStatus === 'subscribed' ? 'var(--tx2)' : '#D4A53A',
                 cursor: pushLoading ? 'not-allowed' : 'pointer', opacity: pushLoading ? 0.6 : 1,
               }}
             >
@@ -578,8 +578,8 @@ export default function AccountPage() {
                     onClick={() => !saving && togglePref(t.key, !on)}
                     style={{
                       flexShrink: 0, width: 44, height: 26, borderRadius: 999,
-                      background: on ? 'rgba(252,181,20,0.2)' : 'var(--surf2)',
-                      border: `1.5px solid ${on ? 'rgba(252,181,20,0.5)' : 'var(--bdr)'}`,
+                      background: on ? 'rgba(212,165,58,0.2)' : 'var(--surf2)',
+                      border: `1.5px solid ${on ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
                       cursor: saving ? 'wait' : 'pointer',
                       position: 'relative', transition: 'background 0.2s, border-color 0.2s',
                     }}
@@ -587,7 +587,7 @@ export default function AccountPage() {
                     <span style={{
                       position: 'absolute', top: 3, left: on ? 20 : 3,
                       width: 18, height: 18, borderRadius: '50%',
-                      background: on ? '#FCB514' : 'var(--tx4)',
+                      background: on ? '#D4A53A' : 'var(--tx4)',
                       transition: 'left 0.2s, background 0.2s',
                       display: 'block',
                     }} />

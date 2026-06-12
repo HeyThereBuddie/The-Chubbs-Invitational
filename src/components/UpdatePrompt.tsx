@@ -22,7 +22,7 @@ export default function UpdatePrompt() {
       gap: 10,
       padding: '10px 16px',
       background: 'var(--panel)',
-      border: '1px solid rgba(252,181,20,0.5)',
+      border: '1px solid rgba(212,165,58,0.5)',
       borderRadius: 999,
       boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
       backdropFilter: 'blur(16px)',
@@ -32,7 +32,7 @@ export default function UpdatePrompt() {
       <button
         onClick={() => updateServiceWorker(true)}
         style={{
-          background: 'linear-gradient(135deg, #FCB514, #e0a010)',
+          background: 'linear-gradient(135deg, #D4A53A, #e0a010)',
           color: '#080808',
           fontWeight: 700,
           fontSize: 12,

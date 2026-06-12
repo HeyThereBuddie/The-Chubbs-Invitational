@@ -28,7 +28,7 @@ import HappysPlace from './pages/HappysPlace'
 function Spinner() {
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="animate-spin" style={{ width: 40, height: 40, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+      <div className="animate-spin" style={{ width: 40, height: 40, border: '3px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
     </div>
   )
 }

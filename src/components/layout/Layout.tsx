@@ -31,14 +31,14 @@ export default function Layout({ children }: { children: ReactNode }) {
       {!isCurrentYear && (
         <div style={{
           position: 'sticky', top: 0, zIndex: 200,
-          background: 'rgba(252,181,20,0.12)',
-          borderBottom: '1px solid rgba(252,181,20,0.35)',
+          background: 'rgba(212,165,58,0.12)',
+          borderBottom: '1px solid rgba(212,165,58,0.35)',
           backdropFilter: 'blur(12px)',
           padding: '8px 20px',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <span style={{ fontSize: 14 }}>🔒</span>
-          <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#FCB514', letterSpacing: 2 }}>
+          <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#D4A53A', letterSpacing: 2 }}>
             {viewingTournament?.name ?? viewingYear} — Read Only
           </span>
           <span style={{ fontSize: 12, color: 'var(--tx3)', flex: 1 }}>
@@ -61,14 +61,14 @@ export default function Layout({ children }: { children: ReactNode }) {
             position: 'sticky', top: 0, zIndex: 50,
             background: 'var(--panel)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(252,181,20,0.14)',
+            borderBottom: '1px solid rgba(212,165,58,0.14)',
             padding: '10px 18px',
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
             <div style={{
               width: 34, height: 34, borderRadius: '50%',
-              border: '2px solid #FCB514',
-              boxShadow: '0 0 10px rgba(252,181,20,0.45)',
+              border: '2px solid #D4A53A',
+              boxShadow: '0 0 10px rgba(212,165,58,0.45)',
               overflow: 'hidden', flexShrink: 0,
             }}>
               <img
@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
                 The Chubbs Memorial
               </div>
               <div style={{ fontSize: 9, color: 'var(--tx5)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>
@@ -97,15 +97,15 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <img
                   src={profile.avatar_url}
                   alt="account"
-                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(252,181,20,0.4)' }}
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(212,165,58,0.4)' }}
                 />
               ) : (
                 <div style={{
                   width: 28, height: 28, borderRadius: '50%',
-                  background: 'rgba(252,181,20,0.15)',
-                  border: '1.5px solid rgba(252,181,20,0.4)',
+                  background: 'rgba(212,165,58,0.15)',
+                  border: '1.5px solid rgba(212,165,58,0.4)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, color: '#FCB514',
+                  fontSize: 13, fontWeight: 700, color: '#D4A53A',
                 }}>
                   {avatarInitial}
                 </div>
@@ -123,8 +123,8 @@ export default function Layout({ children }: { children: ReactNode }) {
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
-                border: '2.5px solid rgba(252,181,20,0.25)',
-                borderTopColor: '#FCB514',
+                border: '2.5px solid rgba(212,165,58,0.25)',
+                borderTopColor: '#D4A53A',
                 opacity: isRefreshing ? 1 : Math.min(pullDistance / 72, 1),
                 animation: isRefreshing ? 'spinAnim 0.7s linear infinite' : 'none',
                 transform: isRefreshing ? 'none' : `rotate(${(pullDistance / 72) * 240}deg)`,

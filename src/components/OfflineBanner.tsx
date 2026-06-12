@@ -21,18 +21,18 @@ export default function OfflineBanner() {
       gap: 8,
       padding: '8px 16px',
       borderRadius: 999,
-      background: isSyncingOrPending ? 'rgba(252,181,20,0.15)' : 'rgba(239,68,68,0.15)',
-      border: `1px solid ${isSyncingOrPending ? 'rgba(252,181,20,0.4)' : 'rgba(239,68,68,0.4)'}`,
+      background: isSyncingOrPending ? 'rgba(212,165,58,0.15)' : 'rgba(239,68,68,0.15)',
+      border: `1px solid ${isSyncingOrPending ? 'rgba(212,165,58,0.4)' : 'rgba(239,68,68,0.4)'}`,
       backdropFilter: 'blur(12px)',
       whiteSpace: 'nowrap',
       boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
     }}>
       <div style={{
         width: 7, height: 7, borderRadius: '50%',
-        background: isSyncingOrPending ? '#FCB514' : '#ef4444',
+        background: isSyncingOrPending ? '#D4A53A' : '#ef4444',
         animation: isSyncing ? 'pulseDot 1s ease-in-out infinite' : undefined,
       }} />
-      <span style={{ fontSize: 12, fontWeight: 600, color: isSyncingOrPending ? '#FCB514' : '#ef4444' }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: isSyncingOrPending ? '#D4A53A' : '#ef4444' }}>
         {isSyncing
           ? 'Syncing…'
           : isOnline && pendingCount > 0

@@ -69,11 +69,11 @@ export default function RulesChat() {
           style={{
             position: 'fixed', bottom: btnBottom, right: btnRight, zIndex: 200,
             width: 52, height: 52, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #FCB514 0%, #e09900 100%)',
+            background: 'linear-gradient(135deg, #D4A53A 0%, #e09900 100%)',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 22,
-            boxShadow: '0 4px 20px rgba(252,181,20,0.45), 0 2px 8px rgba(0,0,0,0.4)',
+            boxShadow: '0 4px 20px rgba(212,165,58,0.45), 0 2px 8px rgba(0,0,0,0.4)',
             transition: 'transform 0.15s, box-shadow 0.15s',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)' }}
@@ -94,27 +94,27 @@ export default function RulesChat() {
           height: isDesktop ? 520 : 'min(500px, calc(100dvh - 170px))',
           zIndex: 200,
           background: 'var(--panel)',
-          border: '1px solid rgba(252,181,20,0.28)',
+          border: '1px solid rgba(212,165,58,0.28)',
           borderRadius: 20,
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          boxShadow: '0 8px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(252,181,20,0.08)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(212,165,58,0.08)',
         }}>
 
           {/* Header */}
           <div style={{
             padding: '13px 16px',
-            background: 'linear-gradient(135deg, rgba(252,181,20,0.12), rgba(252,181,20,0.05))',
-            borderBottom: '1px solid rgba(252,181,20,0.12)',
+            background: 'linear-gradient(135deg, rgba(212,165,58,0.12), rgba(212,165,58,0.05))',
+            borderBottom: '1px solid rgba(212,165,58,0.12)',
             display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
           }}>
             <div style={{
               width: 34, height: 34, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #FCB514, #e09900)',
+              background: 'linear-gradient(135deg, #D4A53A, #e09900)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
             }}>⛳</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#FCB514', lineHeight: 1 }}>Rules Assistant</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A', lineHeight: 1 }}>Rules Assistant</div>
               <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>Powered by Claude · Ask anything</div>
             </div>
             <button
@@ -140,11 +140,11 @@ export default function RulesChat() {
                       onClick={() => send(q)}
                       style={{
                         textAlign: 'left', padding: '9px 13px', borderRadius: 11, fontSize: 13,
-                        background: 'rgba(252,181,20,0.07)', border: '1px solid rgba(252,181,20,0.18)',
+                        background: 'rgba(212,165,58,0.07)', border: '1px solid rgba(212,165,58,0.18)',
                         color: 'var(--tx2)', cursor: 'pointer', transition: 'background 0.15s',
                       }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(252,181,20,0.13)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(252,181,20,0.07)' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(212,165,58,0.13)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(212,165,58,0.07)' }}
                     >
                       {q}
                     </button>
@@ -161,9 +161,9 @@ export default function RulesChat() {
                   borderBottomRightRadius: m.role === 'user' ? 4 : 14,
                   borderBottomLeftRadius:  m.role === 'assistant' ? 4 : 14,
                   fontSize: 13, lineHeight: 1.6,
-                  background: m.role === 'user' ? 'rgba(252,181,20,0.15)' : 'var(--surf2)',
-                  border: `1px solid ${m.role === 'user' ? 'rgba(252,181,20,0.3)' : 'var(--bdr)'}`,
-                  color: m.role === 'user' ? '#FCB514' : 'var(--tx1)',
+                  background: m.role === 'user' ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
+                  border: `1px solid ${m.role === 'user' ? 'rgba(212,165,58,0.3)' : 'var(--bdr)'}`,
+                  color: m.role === 'user' ? '#D4A53A' : 'var(--tx1)',
                   whiteSpace: 'pre-wrap',
                 }}>
                   {m.content}
@@ -181,7 +181,7 @@ export default function RulesChat() {
                   {[0, 1, 2].map(i => (
                     <div key={i} style={{
                       width: 6, height: 6, borderRadius: '50%',
-                      background: 'rgba(252,181,20,0.6)',
+                      background: 'rgba(212,165,58,0.6)',
                       animation: `rca-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
                     }} />
                   ))}
@@ -217,9 +217,9 @@ export default function RulesChat() {
               disabled={!input.trim() || loading}
               style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: input.trim() && !loading ? 'rgba(252,181,20,0.18)' : 'var(--surf2)',
-                border: `1px solid ${input.trim() && !loading ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
-                color: input.trim() && !loading ? '#FCB514' : 'var(--tx4)',
+                background: input.trim() && !loading ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
+                border: `1px solid ${input.trim() && !loading ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
+                color: input.trim() && !loading ? '#D4A53A' : 'var(--tx4)',
                 cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s, border-color 0.15s',

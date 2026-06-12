@@ -33,11 +33,11 @@ function calcStats(scores: ScoreRow[]) {
 }
 
 function toParStr(n: number)   { return n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}` }
-function toParColor(n: number) { return n < 0 ? '#22c55e' : n > 0 ? '#ef4444' : '#FCB514' }
+function toParColor(n: number) { return n < 0 ? '#22c55e' : n > 0 ? '#ef4444' : '#D4A53A' }
 
 function scoreColor(score: number, par: number) {
   const d = score - par
-  if (d <= -2) return '#FCB514'
+  if (d <= -2) return '#D4A53A'
   if (d === -1) return '#22c55e'
   if (d === 0)  return 'var(--tx2)'
   if (d === 1)  return '#f59e0b'
@@ -215,7 +215,7 @@ export default function MyTeamPage() {
   ]
 
   const breakdown = [
-    { label: '🦅 Eagle',  count: stats.eagles,  color: '#FCB514' },
+    { label: '🦅 Eagle',  count: stats.eagles,  color: '#D4A53A' },
     { label: '🐦 Birdie', count: stats.birdies,  color: '#22c55e' },
     { label: 'Par',        count: stats.pars,     color: 'var(--tx2)' },
     { label: 'Bogey',      count: stats.bogeys,   color: '#f59e0b' },
@@ -250,7 +250,7 @@ export default function MyTeamPage() {
       {/* ── Loading ── */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-          <div className="animate-spin" style={{ width: 36, height: 36, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+          <div className="animate-spin" style={{ width: 36, height: 36, border: '3px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
         </div>
       ) : !team ? null : (
         <>
@@ -274,12 +274,12 @@ export default function MyTeamPage() {
                   maxLength={50}
                   autoFocus
                   style={{
-                    fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: '#FCB514',
-                    background: 'rgba(252,181,20,0.07)', border: '1px solid rgba(252,181,20,0.4)',
+                    fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: '#D4A53A',
+                    background: 'rgba(212,165,58,0.07)', border: '1px solid rgba(212,165,58,0.4)',
                     borderRadius: 8, padding: '4px 12px', outline: 'none', minWidth: 0, flex: 1,
                   }}
                 />
-                <button onClick={saveName} disabled={saving} title="Save" style={{ background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#FCB514', display: 'flex', alignItems: 'center' }}>
+                <button onClick={saveName} disabled={saving} title="Save" style={{ background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#D4A53A', display: 'flex', alignItems: 'center' }}>
                   <Check size={16} />
                 </button>
                 <button onClick={() => setEditingName(false)} title="Cancel" style={{ background: 'var(--surf)', border: '1px solid var(--bdr)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'var(--tx3)', display: 'flex', alignItems: 'center' }}>
@@ -291,14 +291,14 @@ export default function MyTeamPage() {
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginRight: 4 }}>
                   {isOwnTeam ? 'Your Team' : 'Viewing'}
                 </div>
-                <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4, margin: 0 }}>
+                <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4, margin: 0 }}>
                   {team.name}
                 </h1>
                 {isOwnTeam && (
                   <button
                     onClick={() => { setNameInput(team.name); setEditingName(true) }}
                     title="Rename team"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(252,181,20,0.35)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(212,165,58,0.35)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
                   >
                     <Pencil size={14} />
                   </button>
@@ -475,7 +475,7 @@ export default function MyTeamPage() {
                                   {displayName(p)}
                                 </div>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                                  <div style={{ fontSize: 16, fontWeight: 700, color: ok ? '#22c55e' : c > 0 ? '#FCB514' : 'var(--tx4)', minWidth: 20, textAlign: 'right' }}>{c}</div>
+                                  <div style={{ fontSize: 16, fontWeight: 700, color: ok ? '#22c55e' : c > 0 ? '#D4A53A' : 'var(--tx4)', minWidth: 20, textAlign: 'right' }}>{c}</div>
                                   {ok && <span style={{ fontSize: 10, color: '#22c55e' }}>✓</span>}
                                 </div>
                               </div>
@@ -500,8 +500,8 @@ export default function MyTeamPage() {
                       return (
                         <div key={p.id} style={{
                           flex: 1, textAlign: 'center', padding: '12px 10px', borderRadius: 12,
-                          background: c ? 'rgba(252,181,20,0.1)' : 'var(--surf2)',
-                          border: `1px solid ${c ? 'rgba(252,181,20,0.35)' : 'var(--bdr)'}`,
+                          background: c ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
+                          border: `1px solid ${c ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                             <AvatarCircle player={p} size={36} />
@@ -510,7 +510,7 @@ export default function MyTeamPage() {
                             {displayName(p)}
                           </div>
                           <div style={{ fontSize: 22, marginBottom: 4 }}>{c ? '✅' : '🍺'}</div>
-                          <div style={{ fontSize: 11, color: c ? '#FCB514' : 'var(--tx4)', fontWeight: 600 }}>
+                          <div style={{ fontSize: 11, color: c ? '#D4A53A' : 'var(--tx4)', fontWeight: 600 }}>
                             {c ? `Used H${c.hole}` : 'Available'}
                           </div>
                         </div>
@@ -558,10 +558,10 @@ const AvatarCircle = memo(function AvatarCircle({ player, size }: { player: Play
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      border: '2px solid rgba(252,181,20,0.4)',
+      border: '2px solid rgba(212,165,58,0.4)',
       overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: hasPhoto ? '#111' : 'linear-gradient(135deg, rgba(252,181,20,0.3), rgba(252,181,20,0.1))',
-      fontSize: size * 0.4, fontWeight: 800, color: '#FCB514',
+      background: hasPhoto ? '#111' : 'linear-gradient(135deg, rgba(212,165,58,0.3), rgba(212,165,58,0.1))',
+      fontSize: size * 0.4, fontWeight: 800, color: '#D4A53A',
       fontFamily: 'Bebas Neue', letterSpacing: 1,
     }}>
       {hasPhoto ? (
@@ -579,7 +579,7 @@ const AvatarCircle = memo(function AvatarCircle({ player, size }: { player: Play
 function StatChip({ label, value }: { label: string; value: number }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: '#FCB514', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: '#D4A53A', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
       <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
     </div>
   )

@@ -407,7 +407,7 @@ export default function Contests() {
         </div>
       )}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Contests</h1>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Contests</h1>
         <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
       </div>
 
@@ -422,7 +422,7 @@ export default function Contests() {
         <>
 
           {isCurrentYear && <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
-            <div style={{ fontWeight: 700, color: '#FCB514', marginBottom: 14, fontSize: 14 }}>
+            <div style={{ fontWeight: 700, color: '#D4A53A', marginBottom: 14, fontSize: 14 }}>
               <Target size={14} style={{ display: 'inline', marginRight: 6 }} />
               Submit Entry
             </div>
@@ -491,7 +491,7 @@ export default function Contests() {
             {entries.map((entry, i) => (
               <div key={entry.id} className="glass animate-fadeUp" style={{
                 padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
-                borderColor: i === 0 ? 'rgba(252,181,20,0.3)' : undefined,
+                borderColor: i === 0 ? 'rgba(212,165,58,0.3)' : undefined,
               }}>
                 <div style={{ fontSize: 20, width: 28, textAlign: 'center' }}>
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
@@ -505,7 +505,7 @@ export default function Contests() {
                 {entry.photo_url && (
                   <div onClick={() => setLightbox(entry.photo_url!)} style={{ flexShrink: 0, cursor: 'zoom-in' }}>
                     <img src={entry.photo_url} alt=""
-                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: `1px solid ${i === 0 ? 'rgba(252,181,20,0.4)' : 'var(--bdr)'}`, display: 'block' }} />
+                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: `1px solid ${i === 0 ? 'rgba(212,165,58,0.4)' : 'var(--bdr)'}`, display: 'block' }} />
                   </div>
                 )}
               </div>
@@ -514,7 +514,7 @@ export default function Contests() {
 
           {/* Leader photo — shown at bottom */}
           {leader && (
-            <div className="glass animate-fadeUp" style={{ marginTop: 16, borderColor: 'rgba(252,181,20,0.4)', background: 'rgba(252,181,20,0.05)', overflow: 'hidden' }}>
+            <div className="glass animate-fadeUp" style={{ marginTop: 16, borderColor: 'rgba(212,165,58,0.4)', background: 'rgba(212,165,58,0.05)', overflow: 'hidden' }}>
               {leader.photo_url && !photoErr ? (
                 <div
                   style={{ position: 'relative', height: 460, overflow: 'hidden', cursor: 'zoom-in' }}
@@ -532,10 +532,10 @@ export default function Contests() {
                   }} />
                   <div style={{
                     position: 'absolute', top: 12, left: 14,
-                    background: 'rgba(252,181,20,0.18)', backdropFilter: 'blur(6px)',
-                    border: '1px solid rgba(252,181,20,0.4)', borderRadius: 999,
+                    background: 'rgba(212,165,58,0.18)', backdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(212,165,58,0.4)', borderRadius: 999,
                     padding: '4px 12px', fontSize: 11, fontWeight: 700,
-                    color: '#FCB514', letterSpacing: 1, textTransform: 'uppercase',
+                    color: '#D4A53A', letterSpacing: 1, textTransform: 'uppercase',
                   }}>
                     {tab === 'ctp' ? '🎯' : '💥'} Current Leader's Shot
                   </div>
@@ -543,7 +543,7 @@ export default function Contests() {
                     <div style={{ fontWeight: 800, color: 'var(--tx1)', fontSize: 20, textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>
                       {leader.player && displayName(leader.player)}
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(252,181,20,0.8)', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'rgba(212,165,58,0.8)', marginTop: 2 }}>
                       {formatDistanceToNow(new Date(leader.created_at), { addSuffix: true })}
                     </div>
                   </div>
@@ -552,8 +552,8 @@ export default function Contests() {
                 <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
                   <span style={{ fontSize: 28 }}>{tab === 'ctp' ? '🎯' : '💥'}</span>
                   <div>
-                    <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
-                    <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Leader</div>
+                    <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 16 }}>{leader.player && displayName(leader.player)}</div>
                   </div>
                 </div>
               )}
@@ -567,13 +567,13 @@ export default function Contests() {
         <>
           <div className="animate-fadeUp" style={{
             marginBottom: 16, borderRadius: 12, overflow: 'hidden',
-            border: '1px solid rgba(252,181,20,0.22)',
+            border: '1px solid rgba(212,165,58,0.22)',
             background: 'var(--surf)',
           }}>
             <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 26, flexShrink: 0 }}>🤠</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3, lineHeight: 1 }}>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
                   Jackass of the Day
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 3 }}>
@@ -581,18 +581,18 @@ export default function Contests() {
                 </div>
               </div>
             </div>
-            <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(252,181,20,0.05)', fontSize: 11 }}>
+            <div style={{ borderTop: '1px solid rgba(212,165,58,0.08)', padding: '5px 18px', background: 'rgba(212,165,58,0.05)', fontSize: 11 }}>
               <span style={{ color: 'var(--tx4)', fontStyle: 'italic' }}>💬 "Just stay out of my way... or you'll pay."</span>
-              <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— Shooter McGavin</span>
+              <span style={{ color: 'rgba(212,165,58,0.4)', marginLeft: 6 }}>— Shooter McGavin</span>
             </div>
           </div>
 
           {frontrunnerPlayer && (
-            <div className="glass animate-fadeUp" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, borderColor: 'rgba(252,181,20,0.3)' }}>
+            <div className="glass animate-fadeUp" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, borderColor: 'rgba(212,165,58,0.3)' }}>
               <span style={{ fontSize: 28 }}>👑</span>
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Front-Runner</div>
-                <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 16 }}>{displayName(frontrunnerPlayer)}</div>
+                <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Front-Runner</div>
+                <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 16 }}>{displayName(frontrunnerPlayer)}</div>
                 <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{frontrunnerEntry[1]} vote{frontrunnerEntry[1] !== 1 ? 's' : ''}</div>
               </div>
             </div>
@@ -607,7 +607,7 @@ export default function Contests() {
           ) : (
             <>
               {myVote && (
-                <div style={{ background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(252,181,20,0.8)' }}>
+                <div style={{ background: 'rgba(212,165,58,0.08)', border: '1px solid rgba(212,165,58,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(212,165,58,0.8)' }}>
                   ✅ Your current vote: <strong>{displayName(laheyPlayers.find(p => p.id === myVote)!)}</strong> — select a different player to change it.
                 </div>
               )}
@@ -622,9 +622,9 @@ export default function Contests() {
                       onClick={() => { navigator.vibrate?.(8); setSelected(player.id) }}
                       style={{
                         padding: '12px', borderRadius: 12, border: '1px solid',
-                        borderColor: isSelected ? '#FCB514' : 'var(--bdr)',
-                        background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'var(--surf)',
-                        color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
+                        borderColor: isSelected ? '#D4A53A' : 'var(--bdr)',
+                        background: isSelected ? 'rgba(212,165,58,0.15)' : isMyVote ? 'rgba(212,165,58,0.08)' : 'var(--surf)',
+                        color: isSelected ? '#D4A53A' : isMyVote ? 'rgba(212,165,58,0.7)' : 'var(--tx1)',
                         cursor: 'pointer',
                         fontWeight: 600, fontSize: 13, transition: 'all 0.2s', textAlign: 'center',
                       }}
@@ -647,9 +647,9 @@ export default function Contests() {
           )}
 
           <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#FCB514', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
               Live Vote Tally
-              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
+              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block' }} />
             </div>
             {laheyPlayers
               .filter(p => voteCounts[p.id] > 0)
@@ -660,7 +660,7 @@ export default function Contests() {
                 return (
                   <div key={player.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#FCB514' : 'var(--tx1)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#D4A53A' : 'var(--tx1)' }}>
                         {i === 0 ? '👑 ' : ''}{displayName(player)}
                       </span>
                       <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
@@ -669,7 +669,7 @@ export default function Contests() {
                       <div style={{
                         height: '100%', borderRadius: 999, transition: 'width 0.5s ease',
                         width: `${(count / maxVotes) * 100}%`,
-                        background: i === 0 ? 'linear-gradient(90deg, #FCB514, #e0a010)' : 'rgba(252,181,20,0.4)',
+                        background: i === 0 ? 'linear-gradient(90deg, #D4A53A, #e0a010)' : 'rgba(212,165,58,0.4)',
                       }} />
                     </div>
                   </div>
@@ -689,9 +689,9 @@ export default function Contests() {
 
           {jackassFeed.length > 0 && (
             <div className="glass" style={{ padding: 0, overflow: 'hidden', marginTop: 16 }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#FCB514', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                 Vote Activity
-                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block' }} />
+                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block' }} />
               </div>
               {jackassFeed.map((ev, i) => (
                 <div key={ev.id} style={{
@@ -704,13 +704,13 @@ export default function Contests() {
                       <>
                         <strong style={{ color: 'var(--tx1)' }}>{ev.voter_name}</strong>
                         {' changed their vote to '}
-                        <strong style={{ color: '#FCB514' }}>{ev.player_name}</strong>
+                        <strong style={{ color: '#D4A53A' }}>{ev.player_name}</strong>
                       </>
                     ) : (
                       <>
                         <strong style={{ color: 'var(--tx1)' }}>{ev.voter_name}</strong>
                         {' voted '}
-                        <strong style={{ color: '#FCB514' }}>{ev.player_name}</strong>
+                        <strong style={{ color: '#D4A53A' }}>{ev.player_name}</strong>
                         {' for jackass'}
                       </>
                     )}

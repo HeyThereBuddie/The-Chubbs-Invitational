@@ -35,7 +35,7 @@ const SCORE_COLORS: Record<string, string> = {
 }
 
 function eventColor(ev: FeedEvent) {
-  if (ev.event_type === 'contest') return '#FCB514'
+  if (ev.event_type === 'contest') return '#D4A53A'
   if (ev.event_type === 'chulligan') return '#f59e0b'
   if (ev.event_type === 'putt') {
     if (ev.label === '3-Putt') return '#fb923c'
@@ -247,7 +247,7 @@ export default function Dashboard() {
           </span>
         )}
         {!isCurrentYear && viewingTournament && (
-          <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', fontWeight: 600 }}>
+          <span style={{ fontSize: 11, color: 'rgba(212,165,58,0.6)', fontWeight: 600 }}>
             🔒 {viewingTournament.name} ({viewingTournament.year})
           </span>
         )}
@@ -273,14 +273,14 @@ export default function Dashboard() {
       {/* ── Compact Hero ─────────────────────────────────────── */}
       <div className="animate-fadeUp" style={{
         marginBottom: 14, borderRadius: 12, overflow: 'hidden',
-        border: '1px solid rgba(252,181,20,0.22)',
+        border: '1px solid rgba(212,165,58,0.22)',
         background: isDark
           ? 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)'
           : 'linear-gradient(135deg, #fffbef 0%, #fff8e1 50%, #fffbef 100%)',
       }}>
         <div style={{ padding: isMobile ? '8px 12px' : '12px 18px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
           {!isMobile && (
-            <div className="animate-glow-pulse" style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid rgba(252,181,20,0.6)', overflow: 'hidden', flexShrink: 0 }}>
+            <div className="animate-glow-pulse" style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid rgba(212,165,58,0.6)', overflow: 'hidden', flexShrink: 0 }}>
               <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
@@ -298,16 +298,16 @@ export default function Dashboard() {
 
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
             {!isMobile && <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 1 }}>Welcome</div>}
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 19, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 19, color: '#D4A53A', letterSpacing: 2, lineHeight: 1 }}>
               {profile ? displayName(profile) : 'Player'}
             </div>
           </div>
         </div>
 
         {!isMobile && (
-          <div style={{ borderTop: '1px solid rgba(252,181,20,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
+          <div style={{ borderTop: '1px solid rgba(212,165,58,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
             <span style={{ color: 'var(--tx3)', fontStyle: 'italic' }}>💬 "{currentQuote.quote}"</span>
-            <span style={{ color: 'rgba(252,181,20,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
+            <span style={{ color: 'rgba(212,165,58,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
           </div>
         )}
       </div>
@@ -316,17 +316,17 @@ export default function Dashboard() {
       {defendingChamp && (
         <div className="animate-fadeUp" style={{
           marginBottom: 14, borderRadius: 12,
-          border: '1px solid rgba(252,181,20,0.2)',
-          background: 'linear-gradient(135deg, rgba(252,181,20,0.06) 0%, rgba(12,8,0,0.0) 100%)',
+          border: '1px solid rgba(212,165,58,0.2)',
+          background: 'linear-gradient(135deg, rgba(212,165,58,0.06) 0%, rgba(12,8,0,0.0) 100%)',
           padding: isMobile ? '10px 14px' : '12px 18px',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>🏆</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(252,181,20,0.55)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(212,165,58,0.55)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
               {defendingChamp.year} Defending Champions
             </div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, color: '#D4A53A', letterSpacing: 2, lineHeight: 1 }}>
               {defendingChamp.teamName}
             </div>
             {(defendingChamp.player1Name || defendingChamp.player2Name) && (
@@ -338,7 +338,7 @@ export default function Dashboard() {
           {defendingChamp.toPar != null && (
             <div style={{
               fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, flexShrink: 0,
-              color: defendingChamp.toPar < 0 ? '#34d399' : defendingChamp.toPar > 0 ? '#f87171' : '#FCB514',
+              color: defendingChamp.toPar < 0 ? '#34d399' : defendingChamp.toPar > 0 ? '#f87171' : '#D4A53A',
             }}>
               {defendingChamp.toPar === 0 ? 'E' : defendingChamp.toPar > 0 ? `+${defendingChamp.toPar}` : defendingChamp.toPar}
             </div>
@@ -353,12 +353,12 @@ export default function Dashboard() {
         <div className="glass animate-fadeUp delay-100" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
             padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            borderBottom: '1px solid rgba(252,181,20,0.1)',
-            background: 'rgba(252,181,20,0.04)',
+            borderBottom: '1px solid rgba(212,165,58,0.1)',
+            background: 'rgba(212,165,58,0.04)',
           }}>
-            <Trophy size={15} color="#FCB514" />
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>{isCurrentYear ? 'Live Leaderboard' : 'Final Standings'}</span>
-            {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', marginLeft: 'auto', display: 'inline-block' }} />}
+            <Trophy size={15} color="#D4A53A" />
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>{isCurrentYear ? 'Live Leaderboard' : 'Final Standings'}</span>
+            {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', marginLeft: 'auto', display: 'inline-block' }} />}
           </div>
           {leaders.length === 0 ? (
             <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
@@ -370,13 +370,13 @@ export default function Dashboard() {
               <div key={row.team.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
                 borderBottom: i < leaders.length - 1 ? '1px solid var(--bdr)' : 'none',
-                background: i === 0 ? 'rgba(252,181,20,0.03)' : 'transparent',
+                background: i === 0 ? 'rgba(212,165,58,0.03)' : 'transparent',
               }}>
                 <span style={{ fontSize: 18, width: 26, flexShrink: 0 }}>
                   {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 700 }}>{i + 1}</span>}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#FCB514' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#D4A53A' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {row.team.name}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
@@ -384,7 +384,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: row.toPar <= 0 ? '#FCB514' : 'var(--tx2)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: row.toPar <= 0 ? '#D4A53A' : 'var(--tx2)' }}>
                     {toPar(Math.round(row.toPar))}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--tx3)' }}>thru {row.thru}</div>
@@ -402,13 +402,13 @@ export default function Dashboard() {
         >
           <div style={{
             padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            borderBottom: '1px solid rgba(252,181,20,0.1)',
-            background: 'rgba(252,181,20,0.04)',
+            borderBottom: '1px solid rgba(212,165,58,0.1)',
+            background: 'rgba(212,165,58,0.04)',
           }}>
             <span style={{ fontSize: 15 }}>⚡</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Live Feed</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Live Feed</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.5)' }}>View all →</span>
+              <span style={{ fontSize: 11, color: 'rgba(212,165,58,0.5)' }}>View all →</span>
               <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
               <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
             </div>
@@ -426,12 +426,12 @@ export default function Dashboard() {
                 <div key={ev.id} style={{
                   padding: '11px 20px',
                   borderBottom: i < feed.length - 1 ? '1px solid var(--bdr)' : 'none',
-                  background: highlight ? 'rgba(252,181,20,0.02)' : 'transparent',
+                  background: highlight ? 'rgba(212,165,58,0.02)' : 'transparent',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div style={{
                       width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: highlight ? 'rgba(252,181,20,0.1)' : 'var(--surf)',
+                      background: highlight ? 'rgba(212,165,58,0.1)' : 'var(--surf)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 18,
                     }}>{ev.emoji}</div>
@@ -444,7 +444,7 @@ export default function Dashboard() {
                           <span style={{ fontSize: 13, color: 'var(--tx2)' }}>
                             <strong style={{ color: 'var(--tx1)', fontWeight: 700 }}>{ev.voter_name}</strong>
                             {' voted '}
-                            <strong style={{ color: '#FCB514', fontWeight: 700 }}>{ev.player_name}</strong>
+                            <strong style={{ color: '#D4A53A', fontWeight: 700 }}>{ev.player_name}</strong>
                             {' for jackass'}
                           </span>
                         ) : ev.event_type === 'contest' ? (
@@ -507,14 +507,14 @@ export default function Dashboard() {
         ].map(({ label, value, icon, sub }) => (
           <div key={label} className="glass" style={{
             padding: '18px 16px', textAlign: 'center',
-            borderColor: label === 'Leader' && leaders[0] ? 'rgba(252,181,20,0.3)' : undefined,
+            borderColor: label === 'Leader' && leaders[0] ? 'rgba(212,165,58,0.3)' : undefined,
           }}>
-            <div style={{ color: '#FCB514', marginBottom: 8, display: 'flex', justifyContent: 'center', opacity: 0.85 }}>
+            <div style={{ color: '#D4A53A', marginBottom: 8, display: 'flex', justifyContent: 'center', opacity: 0.85 }}>
               {typeof icon === 'string' ? <span style={{ fontSize: 18 }}>{icon}</span> : icon}
             </div>
             <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--tx1)', lineHeight: 1, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
             <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
-            <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
+            <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.6)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
           </div>
         ))}
       </div>
@@ -527,12 +527,12 @@ export default function Dashboard() {
       >
         <div style={{
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-          borderBottom: '1px solid rgba(252,181,20,0.1)',
-          background: 'rgba(252,181,20,0.04)',
+          borderBottom: '1px solid rgba(212,165,58,0.1)',
+          background: 'rgba(212,165,58,0.04)',
         }}>
-          <Pin size={15} color="#FCB514" />
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#FCB514' }}>Updates</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(252,181,20,0.5)' }}>View all →</span>
+          <Pin size={15} color="#D4A53A" />
+          <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Updates</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(212,165,58,0.5)' }}>View all →</span>
         </div>
         {updates.length === 0 ? (
           <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
@@ -544,11 +544,11 @@ export default function Dashboard() {
             <div key={u.id} style={{
               padding: '14px 20px',
               borderBottom: i < updates.length - 1 ? '1px solid var(--bdr)' : 'none',
-              borderLeft: u.pinned ? '3px solid #FCB514' : '3px solid transparent',
+              borderLeft: u.pinned ? '3px solid #D4A53A' : '3px solid transparent',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 {u.pinned && (
-                  <span style={{ fontSize: 10, color: '#FCB514', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  <span style={{ fontSize: 10, color: '#D4A53A', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
                     📌 Pinned
                   </span>
                 )}
@@ -566,7 +566,7 @@ export default function Dashboard() {
       {/* ── Chubbs Legacy card ────────────────────────────────── */}
       <div className="glass animate-fadeUp delay-400" style={{
         padding: 0, overflow: 'hidden',
-        borderColor: 'rgba(252,181,20,0.2)',
+        borderColor: 'rgba(212,165,58,0.2)',
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
 
@@ -576,13 +576,13 @@ export default function Dashboard() {
             background: 'linear-gradient(160deg, #130e02 0%, #1e1500 100%)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '28px 24px', gap: 12,
-            borderRight: '1px solid rgba(252,181,20,0.12)',
+            borderRight: '1px solid rgba(212,165,58,0.12)',
           }}>
             <div style={{
               width: 110, height: 110, borderRadius: '50%',
-              border: '2px solid rgba(252,181,20,0.5)',
+              border: '2px solid rgba(212,165,58,0.5)',
               overflow: 'hidden',
-              boxShadow: '0 0 30px rgba(252,181,20,0.15)',
+              boxShadow: '0 0 30px rgba(212,165,58,0.15)',
             }}>
               <img
                 src={CHUBBS_IMG}
@@ -591,14 +591,14 @@ export default function Dashboard() {
               />
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 18, color: '#FCB514', letterSpacing: 2 }}>Chubbs Peterson</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 18, color: '#D4A53A', letterSpacing: 2 }}>Chubbs Peterson</div>
               <div style={{ fontSize: 10, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Golf Legend</div>
             </div>
           </div>
 
           {/* Text panel */}
           <div style={{ flex: 1, padding: '28px 28px', minWidth: 220 }}>
-            <div style={{ fontSize: 10, letterSpacing: 4, color: 'rgba(252,181,20,0.55)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, letterSpacing: 4, color: 'rgba(212,165,58,0.55)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>
               The Legend
             </div>
             <p style={{ fontSize: 14, color: 'var(--tx2)', lineHeight: 1.75, marginBottom: 16 }}>
@@ -606,7 +606,7 @@ export default function Dashboard() {
             </p>
             <div style={{
               fontSize: 13, color: 'var(--tx3)', fontStyle: 'italic',
-              paddingLeft: 14, borderLeft: '2px solid rgba(252,181,20,0.35)', lineHeight: 1.6,
+              paddingLeft: 14, borderLeft: '2px solid rgba(212,165,58,0.35)', lineHeight: 1.6,
             }}>
               "I would have been a pro if it wasn't for those damn alligators."
             </div>
@@ -615,7 +615,7 @@ export default function Dashboard() {
 
         {/* Footer */}
         <div style={{
-          borderTop: '1px solid rgba(252,181,20,0.08)',
+          borderTop: '1px solid rgba(212,165,58,0.08)',
           padding: '12px 24px',
           background: 'rgba(0,0,0,0.2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,

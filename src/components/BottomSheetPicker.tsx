@@ -164,7 +164,7 @@ export default function BottomSheetPicker({
                       alignItems: 'center',
                       gap: 12,
                       padding: '14px 20px',
-                      background: isSelected ? 'rgba(252,181,20,0.1)' : 'transparent',
+                      background: isSelected ? 'rgba(212,165,58,0.1)' : 'transparent',
                       border: 'none',
                       cursor: 'pointer',
                       textAlign: 'left',
@@ -175,17 +175,17 @@ export default function BottomSheetPicker({
                     {/* Initial avatar */}
                     <div style={{
                       width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                      background: isSelected ? 'rgba(252,181,20,0.2)' : 'var(--surf2)',
-                      border: `1px solid ${isSelected ? 'rgba(252,181,20,0.4)' : 'var(--bdr)'}`,
+                      background: isSelected ? 'rgba(212,165,58,0.2)' : 'var(--surf2)',
+                      border: `1px solid ${isSelected ? 'rgba(212,165,58,0.4)' : 'var(--bdr)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 14, fontWeight: 700,
-                      color: isSelected ? '#FCB514' : 'var(--tx3)',
+                      color: isSelected ? '#D4A53A' : 'var(--tx3)',
                     }}>
                       {opt.label.slice(0, 1).toUpperCase()}
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: isSelected ? 700 : 500, color: isSelected ? '#FCB514' : 'var(--tx1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: 15, fontWeight: isSelected ? 700 : 500, color: isSelected ? '#D4A53A' : 'var(--tx1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {opt.label}
                       </div>
                       {opt.detail && (
@@ -193,7 +193,7 @@ export default function BottomSheetPicker({
                       )}
                     </div>
 
-                    {isSelected && <Check size={18} color="#FCB514" style={{ flexShrink: 0 }} />}
+                    {isSelected && <Check size={18} color="#D4A53A" style={{ flexShrink: 0 }} />}
                   </button>
                 )
               })}

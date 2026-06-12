@@ -337,10 +337,10 @@ export default function HappysPlace() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 500, background: 'var(--panel)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: '20px 20px calc(20px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid rgba(252,181,20,0.2)' }}
+            style={{ width: '100%', maxWidth: 500, background: 'var(--panel)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: '20px 20px calc(20px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid rgba(212,165,58,0.2)' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#FCB514', letterSpacing: 3 }}>Add Your Shot</span>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3 }}>Add Your Shot</span>
               <button onClick={() => { if (!uploading) { setShowUpload(false); clearFile(); setCaption('') } }}
                 style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 20 }}>
                 <X size={20} />
@@ -399,7 +399,7 @@ export default function HappysPlace() {
       {/* ── Header ── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#FCB514', letterSpacing: 5, margin: 0 }}>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 5, margin: 0 }}>
             Happy's Place
           </h1>
           <span style={{ fontSize: 24 }}>🎳</span>
@@ -407,8 +407,8 @@ export default function HappysPlace() {
         <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 2, marginBottom: 10 }}>
           Your shots. Your glory. Your complete disasters.
         </p>
-        <div style={{ background: 'rgba(252,181,20,0.06)', border: '1px solid rgba(252,181,20,0.18)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontStyle: 'italic' }}>
-          <span style={{ color: 'rgba(252,181,20,0.7)' }}>"{quote.q}"</span>
+        <div style={{ background: 'rgba(212,165,58,0.06)', border: '1px solid rgba(212,165,58,0.18)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontStyle: 'italic' }}>
+          <span style={{ color: 'rgba(212,165,58,0.7)' }}>"{quote.q}"</span>
           <span style={{ color: 'var(--tx4)', marginLeft: 6 }}>— {quote.by}</span>
         </div>
       </div>
@@ -417,7 +417,7 @@ export default function HappysPlace() {
       {newCount > 0 && (
         <button
           onClick={() => { setNewCount(0); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-          style={{ width: '100%', marginBottom: 12, padding: '10px', background: 'rgba(252,181,20,0.15)', border: '1px solid rgba(252,181,20,0.4)', borderRadius: 10, color: '#FCB514', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+          style={{ width: '100%', marginBottom: 12, padding: '10px', background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.4)', borderRadius: 10, color: '#D4A53A', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
         >
           🆕 {newCount} new photo{newCount !== 1 ? 's' : ''} — tap to refresh
         </button>
@@ -467,7 +467,7 @@ export default function HappysPlace() {
       {!loading && photos.length === 0 && (
         <div className="glass animate-fadeUp" style={{ padding: '48px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>⛳</div>
-          <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#FCB514', letterSpacing: 3, marginBottom: 8 }}>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#D4A53A', letterSpacing: 3, marginBottom: 8 }}>
             The Wall Is Empty
           </div>
           <p style={{ color: 'var(--tx3)', fontSize: 14, lineHeight: 1.6, maxWidth: 280, margin: '0 auto 20px' }}>
@@ -510,7 +510,7 @@ export default function HappysPlace() {
                       transition: 'transform 0.15s, border-color 0.15s',
                       animationDelay: staggerDelay,
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(252,181,20,0.5)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1.01)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212,165,58,0.5)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1.01)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bdr)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
                   >
                     <img
@@ -548,7 +548,7 @@ export default function HappysPlace() {
                         </p>
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(252,181,20,0.25)', border: '1px solid rgba(252,181,20,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#FCB514', flexShrink: 0 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(212,165,58,0.25)', border: '1px solid rgba(212,165,58,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#D4A53A', flexShrink: 0 }}>
                           {initials}
                         </div>
                         <div style={{ minWidth: 0 }}>

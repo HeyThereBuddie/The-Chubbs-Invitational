@@ -25,7 +25,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <div
           key={t.id}
           className="toast animate-slideDown"
-          style={{ color: t.type === 'error' ? '#ef4444' : '#FCB514' }}
+          style={{ color: t.type === 'error' ? '#ef4444' : '#D4A53A' }}
         >
           {t.msg}
         </div>

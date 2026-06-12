@@ -43,7 +43,7 @@ export default function BottomNav() {
       bottom: 0, left: 0, right: 0,
       background: 'var(--panel)',
       backdropFilter: 'blur(16px)',
-      borderTop: '1px solid rgba(252,181,20,0.12)',
+      borderTop: '1px solid rgba(212,165,58,0.12)',
       display: 'flex',
       zIndex: 100,
       paddingBottom: 'env(safe-area-inset-bottom, 8px)',
@@ -77,17 +77,17 @@ export default function BottomNav() {
                   width: 40,
                   height: 26,
                   borderRadius: 999,
-                  background: isActive ? 'rgba(252,181,20,0.18)' : 'transparent',
+                  background: isActive ? 'rgba(212,165,58,0.18)' : 'transparent',
                   transition: 'background 0.2s',
                   marginBottom: 2,
                 }}>
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#FCB514' : 'var(--tx3)'} />
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#D4A53A' : 'var(--tx3)'} />
               </div>
               <span style={{
                 fontSize: 10,
                 fontWeight: isActive ? 700 : 500,
                 letterSpacing: 0.3,
-                color: isActive ? '#FCB514' : 'var(--tx3)',
+                color: isActive ? '#D4A53A' : 'var(--tx3)',
                 transition: 'color 0.2s',
               }}>
                 {label}

@@ -91,7 +91,7 @@ export default function RSVP() {
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#FCB514', letterSpacing: 4 }}>Player Roster</h1>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Player Roster</h1>
         <p style={{ color: 'var(--tx3)', fontSize: 13 }}>
           {counts.active} active · {counts.waitlist} waitlisted · {counts.dropped} dropped
         </p>
@@ -123,8 +123,8 @@ export default function RSVP() {
           style={{
             marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', borderRadius: 999,
-            background: 'rgba(252,181,20,0.1)', border: '1px solid rgba(252,181,20,0.3)',
-            color: '#FCB514', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            background: 'rgba(212,165,58,0.1)', border: '1px solid rgba(212,165,58,0.3)',
+            color: '#D4A53A', fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}
         >
           <Download size={12} /> Export for Brevo

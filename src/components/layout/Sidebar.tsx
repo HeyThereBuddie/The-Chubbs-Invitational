@@ -57,7 +57,7 @@ export default function Sidebar() {
       left: 0, top: 0,
       background: 'var(--panel)',
       backdropFilter: 'blur(16px)',
-      borderRight: '1px solid rgba(252,181,20,0.12)',
+      borderRight: '1px solid rgba(212,165,58,0.12)',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 100,
@@ -65,22 +65,22 @@ export default function Sidebar() {
       {/* Logo */}
       <div style={{
         padding: '20px',
-        borderBottom: '1px solid rgba(252,181,20,0.1)',
-        background: 'linear-gradient(180deg, rgba(252,181,20,0.06) 0%, transparent 100%)',
+        borderBottom: '1px solid rgba(212,165,58,0.1)',
+        background: 'linear-gradient(180deg, rgba(212,165,58,0.06) 0%, transparent 100%)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div className="animate-glow-pulse" style={{
             width: 52, height: 52, borderRadius: '50%',
-            border: '2px solid #FCB514',
+            border: '2px solid #D4A53A',
             overflow: 'hidden', flexShrink: 0,
           }}>
             <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 19, color: '#FCB514', letterSpacing: 2, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 19, color: '#D4A53A', letterSpacing: 2, lineHeight: 1 }}>
               The Chubbs
             </div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: 'rgba(252,181,20,0.55)', letterSpacing: 2 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: 'rgba(212,165,58,0.55)', letterSpacing: 2 }}>
               Memorial
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function Sidebar() {
           marginTop: 12,
           fontSize: 9, color: 'var(--tx5)', letterSpacing: 3,
           textTransform: 'uppercase', textAlign: 'center',
-          paddingTop: 10, borderTop: '1px solid rgba(252,181,20,0.08)',
+          paddingTop: 10, borderTop: '1px solid rgba(212,165,58,0.08)',
         }}>
           Annual Golf Tournament
         </div>
@@ -113,9 +113,9 @@ export default function Sidebar() {
               fontWeight: 600,
               textDecoration: 'none',
               transition: 'all 0.2s',
-              background: isActive ? 'rgba(252,181,20,0.12)' : 'transparent',
-              color: isActive ? '#FCB514' : 'var(--tx2)',
-              borderLeft: isActive ? '2px solid #FCB514' : '2px solid transparent',
+              background: isActive ? 'rgba(212,165,58,0.12)' : 'transparent',
+              color: isActive ? '#D4A53A' : 'var(--tx2)',
+              borderLeft: isActive ? '2px solid #D4A53A' : '2px solid transparent',
             })}
           >
             <Icon size={16} />
@@ -128,29 +128,29 @@ export default function Sidebar() {
       <div style={{
         padding: '12px 16px',
         margin: '0 12px 8px',
-        background: 'linear-gradient(135deg, rgba(252,181,20,0.05) 0%, rgba(252,181,20,0.02) 100%)',
+        background: 'linear-gradient(135deg, rgba(212,165,58,0.05) 0%, rgba(212,165,58,0.02) 100%)',
         borderRadius: 12,
-        border: '1px solid rgba(252,181,20,0.12)',
-        borderLeft: '3px solid rgba(252,181,20,0.4)',
+        border: '1px solid rgba(212,165,58,0.12)',
+        borderLeft: '3px solid rgba(212,165,58,0.4)',
       }}>
-        <div style={{ fontSize: 14, color: 'rgba(252,181,20,0.3)', marginBottom: 4 }}>💬</div>
+        <div style={{ fontSize: 14, color: 'rgba(212,165,58,0.3)', marginBottom: 4 }}>💬</div>
         <p style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic', lineHeight: 1.5 }}>
           "{quote}"
         </p>
-        <p style={{ fontSize: 10, color: 'rgba(252,181,20,0.5)', marginTop: 6, fontWeight: 600 }}>— Chubbs Peterson</p>
+        <p style={{ fontSize: 10, color: 'rgba(212,165,58,0.5)', marginTop: 6, fontWeight: 600 }}>— Chubbs Peterson</p>
       </div>
 
       {/* User + Theme toggle + Sign out */}
       <div style={{
         padding: '12px 16px',
-        borderTop: '1px solid rgba(252,181,20,0.1)',
+        borderTop: '1px solid rgba(212,165,58,0.1)',
         display: 'flex', alignItems: 'center', gap: 6,
       }}>
         <Link to="/account" style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {profile ? displayName(profile) : 'Player'}
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.6)', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.6)', textTransform: 'uppercase', letterSpacing: 1 }}>
             {profile?.role ?? 'player'}
           </div>
         </Link>

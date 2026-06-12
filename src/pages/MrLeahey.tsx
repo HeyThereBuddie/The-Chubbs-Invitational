@@ -72,10 +72,10 @@ export default function MrLeahey() {
         marginBottom: 24,
         textAlign: 'center',
         background: 'linear-gradient(135deg, rgba(18,14,6,0.95) 0%, rgba(40,20,0,0.9) 100%)',
-        borderColor: 'rgba(252,181,20,0.3)',
+        borderColor: 'rgba(212,165,58,0.3)',
       }}>
         <div style={{ fontSize: 52, marginBottom: 12 }}>🍺</div>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#FCB514', letterSpacing: 5, margin: '0 0 6px', textShadow: '0 0 24px rgba(252,181,20,0.5)' }}>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 5, margin: '0 0 6px', textShadow: '0 0 24px rgba(212,165,58,0.5)' }}>
           Mr. Leahey Award
         </h1>
         <div style={{ color: 'var(--tx2)', fontSize: 14 }}>Most Spirited Player of the Tournament</div>
@@ -86,13 +86,13 @@ export default function MrLeahey() {
 
       {/* Frontrunner */}
       {frontrunnerPlayer && frontrunner[1] > 0 && (
-        <div className="glass animate-fadeUp delay-100" style={{ padding: '16px 22px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, borderColor: 'rgba(252,181,20,0.3)' }}>
+        <div className="glass animate-fadeUp delay-100" style={{ padding: '16px 22px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, borderColor: 'rgba(212,165,58,0.3)' }}>
           <span style={{ fontSize: 28 }}>👑</span>
           <div>
-            <div style={{ fontSize: 11, color: 'rgba(252,181,20,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+            <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
               Current Front-Runner
             </div>
-            <div style={{ fontWeight: 700, color: '#FCB514', fontSize: 17 }}>{frontrunnerPlayer.name}</div>
+            <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 17 }}>{frontrunnerPlayer.name}</div>
             <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{frontrunner[1]} vote{frontrunner[1] !== 1 ? 's' : ''}</div>
           </div>
         </div>
@@ -100,7 +100,7 @@ export default function MrLeahey() {
 
       {/* Already voted notice */}
       {myVote && (
-        <div style={{ background: 'rgba(252,181,20,0.08)', border: '1px solid rgba(252,181,20,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(252,181,20,0.8)' }}>
+        <div style={{ background: 'rgba(212,165,58,0.08)', border: '1px solid rgba(212,165,58,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'rgba(212,165,58,0.8)' }}>
           ✅ You've already cast your vote. Live results below.
         </div>
       )}
@@ -119,9 +119,9 @@ export default function MrLeahey() {
                 padding: '12px',
                 borderRadius: 12,
                 border: '1px solid',
-                borderColor: isSelected ? '#FCB514' : 'var(--bdr)',
-                background: isSelected ? 'rgba(252,181,20,0.15)' : isMyVote ? 'rgba(252,181,20,0.08)' : 'rgba(18,14,6,0.8)',
-                color: isSelected ? '#FCB514' : isMyVote ? 'rgba(252,181,20,0.7)' : 'var(--tx1)',
+                borderColor: isSelected ? '#D4A53A' : 'var(--bdr)',
+                background: isSelected ? 'rgba(212,165,58,0.15)' : isMyVote ? 'rgba(212,165,58,0.08)' : 'rgba(18,14,6,0.8)',
+                color: isSelected ? '#D4A53A' : isMyVote ? 'rgba(212,165,58,0.7)' : 'var(--tx1)',
                 cursor: myVote ? 'default' : 'pointer',
                 fontWeight: 600, fontSize: 13,
                 transition: 'all 0.2s',
@@ -149,9 +149,9 @@ export default function MrLeahey() {
 
       {/* Vote tally */}
       <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#FCB514', fontSize: 14 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14 }}>
           Live Vote Tally
-          <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#FCB514', display: 'inline-block', marginLeft: 8 }} />
+          <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block', marginLeft: 8 }} />
         </div>
         {players
           .filter(p => voteCounts[p.id] > 0)
@@ -162,7 +162,7 @@ export default function MrLeahey() {
             return (
               <div key={player.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#FCB514' : 'var(--tx1)' }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#D4A53A' : 'var(--tx1)' }}>
                     {i === 0 ? '👑 ' : ''}{player.name}
                   </span>
                   <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
@@ -171,7 +171,7 @@ export default function MrLeahey() {
                   <div style={{
                     height: '100%',
                     width: `${(count / maxVotes) * 100}%`,
-                    background: i === 0 ? 'linear-gradient(90deg, #FCB514, #e0a010)' : 'rgba(252,181,20,0.4)',
+                    background: i === 0 ? 'linear-gradient(90deg, #D4A53A, #e0a010)' : 'rgba(212,165,58,0.4)',
                     borderRadius: 999,
                     transition: 'width 0.5s ease',
                   }} />

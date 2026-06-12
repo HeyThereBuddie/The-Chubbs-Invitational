@@ -53,7 +53,7 @@ body {
 /* Scrollbars */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(252,181,20,0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(212,165,58,0.3); border-radius: 2px; }
 
 /* ── Animations ── */
 @keyframes fadeUp {
@@ -75,8 +75,8 @@ body {
 @keyframes spinAnim { to { transform: rotate(360deg); } }
 
 @keyframes pulseGlow {
-  0%,100% { box-shadow: 0 0 16px rgba(252,181,20,0.45), 0 0 32px rgba(252,181,20,0.15); }
-  50%      { box-shadow: 0 0 28px rgba(252,181,20,0.75), 0 0 56px rgba(252,181,20,0.25); }
+  0%,100% { box-shadow: 0 0 16px rgba(212,165,58,0.45), 0 0 32px rgba(212,165,58,0.15); }
+  50%      { box-shadow: 0 0 28px rgba(212,165,58,0.75), 0 0 56px rgba(212,165,58,0.25); }
 }
 @keyframes float {
   0%,100% { transform: translateY(0); }
@@ -188,7 +188,7 @@ body {
   background: var(--card);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(252,181,20,0.20);
+  border: 1px solid rgba(212,165,58,0.20);
   border-radius: 18px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
 }
@@ -197,20 +197,20 @@ body {
   background: var(--card-strong);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(252,181,20,0.30);
+  border: 1px solid rgba(212,165,58,0.30);
   border-radius: 18px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
 /* ── Gold glow text ── */
 .gold-text {
-  color: #FCB514;
-  text-shadow: 0 0 24px rgba(252,181,20,0.55);
+  color: #D4A53A;
+  text-shadow: 0 0 24px rgba(212,165,58,0.55);
 }
 
 /* ── Shimmer gradient text ── */
 .text-shimmer {
-  background: linear-gradient(90deg, #e0a010 0%, #FCB514 30%, #ffe066 50%, #FCB514 70%, #e0a010 100%);
+  background: linear-gradient(90deg, #e0a010 0%, #D4A53A 30%, #ffe066 50%, #D4A53A 70%, #e0a010 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -221,15 +221,15 @@ body {
 /* ── Background mesh ── */
 .bg-mesh {
   background:
-    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(252,181,20,0.13) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 35% at 5%  95%, rgba(252,181,20,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 35% at 95% 95%, rgba(252,181,20,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(212,165,58,0.13) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 5%  95%, rgba(212,165,58,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 35% at 95% 95%, rgba(212,165,58,0.05) 0%, transparent 60%),
     var(--bg);
 }
 
 /* ── Buttons ── */
 .btn-gold {
-  background: linear-gradient(135deg, #FCB514, #e0a010);
+  background: linear-gradient(135deg, #D4A53A, #e0a010);
   color: #080808;
   font-weight: 700;
   border-radius: 999px;
@@ -249,11 +249,11 @@ body {
 
 .btn-outline {
   background: transparent;
-  color: #FCB514;
+  color: #D4A53A;
   font-weight: 600;
   border-radius: 999px;
   padding: 10px 24px;
-  border: 1px solid rgba(252,181,20,0.4);
+  border: 1px solid rgba(212,165,58,0.4);
   cursor: pointer;
   transition: background 0.2s;
   display: inline-flex;
@@ -262,7 +262,7 @@ body {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
 }
-.btn-outline:hover { background: rgba(252,181,20,0.08); }
+.btn-outline:hover { background: rgba(212,165,58,0.08); }
 
 .btn-ghost {
   background: transparent;
@@ -287,13 +287,13 @@ body {
   padding: 12px 28px;
   background: var(--panel);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(252,181,20,0.5);
+  border: 1px solid rgba(212,165,58,0.5);
   border-radius: 999px;
-  color: #FCB514;
+  color: #D4A53A;
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
-  box-shadow: 0 0 32px rgba(252,181,20,0.25);
+  box-shadow: 0 0 32px rgba(212,165,58,0.25);
 }
 
 /* ── Input ── */
@@ -305,7 +305,7 @@ input[type="time"],
 select,
 textarea {
   background: var(--surf);
-  border: 1px solid rgba(252,181,20,0.2);
+  border: 1px solid rgba(212,165,58,0.2);
   border-radius: 10px;
   color: var(--tx1);
   padding: 10px 14px;
@@ -316,7 +316,7 @@ textarea {
   transition: border-color 0.2s;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: rgba(252,181,20,0.6);
+  border-color: rgba(212,165,58,0.6);
 }
 input::placeholder, textarea::placeholder { color: var(--tx4); }
 select option { background: var(--bg); color: var(--tx1); }
@@ -335,9 +335,9 @@ select option { background: var(--bg); color: var(--tx1); }
   color: var(--tx3);
 }
 .pill-tab.active {
-  background: rgba(252,181,20,0.15);
-  border-color: rgba(252,181,20,0.4);
-  color: #FCB514;
+  background: rgba(212,165,58,0.15);
+  border-color: rgba(212,165,58,0.4);
+  color: #D4A53A;
   transform: scale(1.03);
 }
 .pill-tab:hover:not(.active) { color: var(--tx2); }
@@ -365,9 +365,9 @@ select option { background: var(--bg); color: var(--tx1); }
 /* Eagle — double circle, gold */
 .score-eagle {
   border-radius: 50%;
-  border: 2px solid #FCB514;
-  color: #FCB514;
-  outline: 2px solid #FCB514;
+  border: 2px solid #D4A53A;
+  color: #D4A53A;
+  outline: 2px solid #D4A53A;
   outline-offset: 3px;
 }
 
@@ -436,7 +436,7 @@ html[data-theme="light"] .glass-strong {
 /* ── Divider ── */
 .divider-gold {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(252,181,20,0.35), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212,165,58,0.35), transparent);
   border: none;
   margin: 0;
 }

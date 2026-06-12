@@ -35,22 +35,22 @@ export default function InviteResponsePage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(252,181,20,0.12) 0%, transparent 70%), #080808',
+      background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,165,58,0.12) 0%, transparent 70%), #080808',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px', fontFamily: 'system-ui, sans-serif',
     }}>
       <div style={{
         width: '100%', maxWidth: 460, textAlign: 'center',
         background: 'rgba(18,14,6,0.88)',
-        border: '1px solid rgba(252,181,20,0.18)',
+        border: '1px solid rgba(212,165,58,0.18)',
         borderRadius: 22, padding: '44px 36px',
-        boxShadow: '0 0 60px rgba(252,181,20,0.08)',
+        boxShadow: '0 0 60px rgba(212,165,58,0.08)',
       }}>
         {/* Chubbs circle */}
         <div style={{
           width: 80, height: 80, borderRadius: '50%',
-          border: '3px solid #FCB514',
-          boxShadow: '0 0 24px rgba(252,181,20,0.4)',
+          border: '3px solid #D4A53A',
+          boxShadow: '0 0 24px rgba(212,165,58,0.4)',
           overflow: 'hidden', margin: '0 auto 24px',
         }}>
           <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -58,10 +58,10 @@ export default function InviteResponsePage() {
 
         {state === 'loading' && (
           <>
-            <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 28, letterSpacing: 4, color: '#FCB514', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 28, letterSpacing: 4, color: '#D4A53A', marginBottom: 12 }}>
               One moment…
             </div>
-            <div style={{ margin: '0 auto', width: 36, height: 36, border: '3px solid rgba(252,181,20,0.2)', borderTopColor: '#FCB514', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ margin: '0 auto', width: 36, height: 36, border: '3px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </>
         )}
@@ -69,7 +69,7 @@ export default function InviteResponsePage() {
         {state === 'yes' && (
           <>
             <div style={{ fontSize: 48, marginBottom: 12 }}>⛳</div>
-            <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 32, letterSpacing: 4, color: '#FCB514', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 32, letterSpacing: 4, color: '#D4A53A', marginBottom: 12 }}>
               You're In{name ? `, ${name.split(' ')[0]}` : ''}!
             </div>
             <p style={{ color: 'var(--tx2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
@@ -85,7 +85,7 @@ export default function InviteResponsePage() {
         {state === 'no' && (
           <>
             <div style={{ fontSize: 44, marginBottom: 12 }}>😔</div>
-            <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 32, letterSpacing: 4, color: '#FCB514', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 32, letterSpacing: 4, color: '#D4A53A', marginBottom: 12 }}>
               We'll Miss You{name ? `, ${name.split(' ')[0]}` : ''}
             </div>
             <p style={{ color: 'var(--tx2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
@@ -117,8 +117,8 @@ export default function InviteResponsePage() {
           </>
         )}
 
-        <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid rgba(252,181,20,0.1)' }}>
-          <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 14, letterSpacing: 3, color: 'rgba(252,181,20,0.4)' }}>
+        <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid rgba(212,165,58,0.1)' }}>
+          <div style={{ fontFamily: 'Bebas Neue, system-ui', fontSize: 14, letterSpacing: 3, color: 'rgba(212,165,58,0.4)' }}>
             THE CHUBBS MEMORIAL
           </div>
         </div>

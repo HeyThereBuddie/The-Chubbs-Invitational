@@ -65,7 +65,7 @@ export default function WelcomePage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(252,181,20,0.12) 0%, transparent 70%), #080808',
+      background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(212,165,58,0.12) 0%, transparent 70%), #080808',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px',
     }}>
@@ -73,14 +73,14 @@ export default function WelcomePage() {
         {/* Chubbs avatar */}
         <div style={{
           width: 72, height: 72, borderRadius: '50%',
-          border: '3px solid #FCB514',
-          boxShadow: '0 0 24px rgba(252,181,20,0.4)',
+          border: '3px solid #D4A53A',
+          boxShadow: '0 0 24px rgba(212,165,58,0.4)',
           overflow: 'hidden', margin: '0 auto 20px',
         }}>
           <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 4, color: '#FCB514', margin: '0 0 8px' }}>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 4, color: '#D4A53A', margin: '0 0 8px' }}>
           Welcome, {name}!
         </h1>
         <p style={{ color: 'var(--tx2)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.5 }}>
@@ -92,7 +92,7 @@ export default function WelcomePage() {
           onClick={() => !uploading && fileRef.current?.click()}
           style={{
             width: 120, height: 120, borderRadius: '50%',
-            border: `2px dashed ${preview ? '#FCB514' : 'rgba(252,181,20,0.35)'}`,
+            border: `2px dashed ${preview ? '#D4A53A' : 'rgba(212,165,58,0.35)'}`,
             overflow: 'hidden', margin: '0 auto 20px',
             background: 'var(--surf)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -106,12 +106,12 @@ export default function WelcomePage() {
             <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(252,181,20,0.5)" strokeWidth="1.5">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(212,165,58,0.5)" strokeWidth="1.5">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <span style={{ fontSize: 11, color: 'rgba(252,181,20,0.5)' }}>Tap to choose</span>
+              <span style={{ fontSize: 11, color: 'rgba(212,165,58,0.5)' }}>Tap to choose</span>
             </div>
           )}
           {uploading && (
@@ -120,7 +120,7 @@ export default function WelcomePage() {
               background: 'rgba(0,0,0,0.6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <div className="animate-spin" style={{ width: 28, height: 28, border: '2px solid rgba(252,181,20,0.3)', borderTopColor: '#FCB514', borderRadius: '50%' }} />
+              <div className="animate-spin" style={{ width: 28, height: 28, border: '2px solid rgba(212,165,58,0.3)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
             </div>
           )}
         </div>
