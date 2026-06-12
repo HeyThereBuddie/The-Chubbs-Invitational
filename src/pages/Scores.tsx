@@ -476,6 +476,11 @@ export default function Scores() {
         player1: ((parseJson(t.player1_json) as Player | undefined) ?? (t.p1_id ? profMap.get(t.p1_id) as unknown as Player : undefined)),
         player2: ((parseJson(t.player2_json) as Player | undefined) ?? (t.p2_id ? profMap.get(t.p2_id) as unknown as Player : undefined)),
       })) as unknown as TeamFull[])
+      // Initialize adminTeamId from cache — only if not already set by user interaction
+      if (isAdmin && isCurrentYear) {
+        const defaultId = (myTeamId && localTeams.find(t => t.id === myTeamId)) ? myTeamId : localTeams[0].id
+        setAdminTeamId(prev => prev ?? defaultId)
+      }
     }
 
     // Step 2: Refresh from Supabase in the background
@@ -563,14 +568,27 @@ export default function Scores() {
   }
 
   const loadAdminScores = async (teamId: string) => {
-    const [{ data: scores }, { data: ch }] = await Promise.all([
-      supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-      supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
+    // Step 1: Show cached scores immediately (works offline)
+    const [localScores, localCh] = await Promise.all([
+      localDb.scores.where('team_id').equals(teamId).toArray(),
+      localDb.chulligans.where('team_id').equals(teamId).toArray(),
     ])
-    const map: Record<number, ScoreRow> = {}
-    for (const s of scores ?? []) map[s.hole] = s
-    setAdminScores(map)
-    setAdminChulligans((ch ?? []) as ChulliganRow[])
+    const cacheMap: Record<number, ScoreRow> = {}
+    for (const s of localScores) cacheMap[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
+    setAdminScores(cacheMap)
+    setAdminChulligans(localCh.map(c => ({ id: c.id, player_id: c.player_id, hole: c.hole })))
+
+    // Step 2: Refresh from Supabase in the background
+    try {
+      const [{ data: scores }, { data: ch }] = await Promise.all([
+        supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+        supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
+      ])
+      const map: Record<number, ScoreRow> = {}
+      for (const s of scores ?? []) map[s.hole] = s
+      if (scores) setAdminScores(map)
+      if (ch) setAdminChulligans((ch ?? []) as ChulliganRow[])
+    } catch { /* offline — cached data shown */ }
   }
 
   const loadViewTeam = async (teamId: string) => {
