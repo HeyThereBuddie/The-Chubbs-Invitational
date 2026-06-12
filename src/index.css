@@ -328,10 +328,10 @@ select option { background: var(--bg); color: var(--tx1); }
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1px solid var(--bdr);
   transition: all 0.2s;
   white-space: nowrap;
-  background: transparent;
+  background: var(--surf);
   color: var(--tx3);
 }
 .pill-tab.active {
