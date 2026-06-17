@@ -297,12 +297,26 @@ BEGIN
   -- ── 8. Chulligans ─────────────────────────────────────────────────────
   -- One per player per round allowed
   DELETE FROM public.chulligans WHERE team_id IN (t1,t2,t3,t4,t5,t6,t7,t8,t9,t10);
-  INSERT INTO public.chulligans (team_id, player_id, hole) VALUES
-    (t2,  p2,  3),   -- Happy used his on hole 3
-    (t3,  p5,  7),   -- Doug used his on hole 7
-    (t5,  p8,  8),   -- Tommy used his on hole 8 (that bogey)
-    (t7,  p13, 2),   -- Dave Walsh used his on hole 2
-    (t9,  p16, 6);   -- Lee used his — still didn't help
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='chulligans' AND column_name='half') THEN
+    -- Older schema: half column still present (migration 028 not yet applied)
+    INSERT INTO public.chulligans (team_id, player_id, half, hole) VALUES
+      (t2,  p2,  'front', 3),
+      (t3,  p5,  'front', 7),
+      (t5,  p8,  'front', 8),
+      (t7,  p13, 'front', 2),
+      (t9,  p16, 'front', 6)
+    ON CONFLICT DO NOTHING;
+  ELSE
+    -- Newer schema: half column dropped (migration 028 applied)
+    INSERT INTO public.chulligans (team_id, player_id, hole) VALUES
+      (t2,  p2,  3),
+      (t3,  p5,  7),
+      (t5,  p8,  8),
+      (t7,  p13, 2),
+      (t9,  p16, 6)
+    ON CONFLICT DO NOTHING;
+  END IF;
 
   -- ── 9. Contest entries ────────────────────────────────────────────────
   DELETE FROM public.contest_entries WHERE tournament_id = v_tid;
