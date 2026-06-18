@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import Map, { Marker, NavigationControl, type MapRef } from 'react-map-gl/mapbox'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import Map, { Marker, NavigationControl, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Search, Save, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Save, Download, ChevronLeft, ChevronRight, Lock, MapPin } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import type { CourseGps, HoleGps, LatLng } from '../../lib/types'
@@ -27,16 +27,17 @@ function kmBetween(lat1: number, lng1: number, lat2: number, lng2: number): numb
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10
 }
 
-type PinMode = 'center' | 'front' | 'back' | 'tee'
+type PinMode = 'tee' | 'front' | 'center' | 'back'
+
+// Pin placement order: tee first, then front/center/back green pins
+const MODES: PinMode[] = ['tee', 'front', 'center', 'back']
 
 const PIN_META: Record<PinMode, { label: string; short: string; color: string; desc: string }> = {
-  center: { label: 'Center',  short: 'C', color: '#D4A53A', desc: 'Middle of green' },
-  front:  { label: 'Front',   short: 'F', color: '#16a34a', desc: 'Front edge' },
-  back:   { label: 'Back',    short: 'B', color: '#dc2626', desc: 'Back edge' },
-  tee:    { label: 'Tee',     short: 'T', color: '#6b7280', desc: 'Tee box' },
+  tee:    { label: 'Tee',    short: 'T', color: '#6b7280', desc: 'Tee box' },
+  front:  { label: 'Front',  short: 'F', color: '#16a34a', desc: 'Front edge' },
+  center: { label: 'Center', short: 'C', color: '#D4A53A', desc: 'Middle of green' },
+  back:   { label: 'Back',   short: 'B', color: '#dc2626', desc: 'Back edge' },
 }
-
-const MODES: PinMode[] = ['center', 'front', 'back', 'tee']
 
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -57,7 +58,6 @@ async function overpassQuery(q: string, timeoutMs = 12000): Promise<unknown> {
       return await res.json()
     } catch {
       clearTimeout(timer)
-      // try next mirror
     }
   }
   throw new Error('All Overpass endpoints failed or timed out')
@@ -76,6 +76,41 @@ function centroid(nodes: { lat: number; lon: number }[]): LatLng {
     lat: nodes.reduce((s, n) => s + n.lat, 0) / nodes.length,
     lng: nodes.reduce((s, n) => s + n.lon, 0) / nodes.length,
   }
+}
+
+// Corridor helpers (mirrors GpsPage.tsx)
+function calcBearing(a: LatLng, b: LatLng): number {
+  const lat1 = (a.lat * Math.PI) / 180
+  const lat2 = (b.lat * Math.PI) / 180
+  const dLng  = ((b.lng - a.lng) * Math.PI) / 180
+  const x = Math.sin(dLng) * Math.cos(lat2)
+  const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360
+}
+
+function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLng {
+  const R = 6371000
+  const d = meters / R
+  const b = (bearingDeg * Math.PI) / 180
+  const lat1 = (origin.lat * Math.PI) / 180
+  const lng1 = (origin.lng * Math.PI) / 180
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b))
+  const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
+  return { lat: (lat2 * 180) / Math.PI, lng: ((lng2 * 180) / Math.PI + 540) % 360 - 180 }
+}
+
+function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, number][] {
+  const teeSideW   = 23
+  const greenSideW = 16
+  const teeBack    = offsetLatLng(tee,   bearing + 180, 6)
+  const greenFwd   = offsetLatLng(green, bearing,       10)
+  const pts = [
+    offsetLatLng(teeBack,  bearing - 90, teeSideW),
+    offsetLatLng(teeBack,  bearing + 90, teeSideW),
+    offsetLatLng(greenFwd, bearing + 90, greenSideW),
+    offsetLatLng(greenFwd, bearing - 90, greenSideW),
+  ]
+  return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
 }
 
 function AdminPin({ short, color, borderRadius = 50 }: { short: string; color: string; borderRadius?: number }) {
@@ -119,6 +154,8 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const { showToast } = useToast()
   const mapRef = useRef<MapRef>(null)
 
+  const [gpsSubTab, setGpsSubTab] = useState<'selection' | 'setup'>(() => currentGps ? 'setup' : 'selection')
+
   const [query, setQuery]           = useState('')
   const [results, setResults]       = useState<CourseResult[]>([])
   const [searching, setSearching]   = useState(false)
@@ -133,7 +170,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const [nearbyLoading, setNearbyLoading] = useState(false)
   const [holes, setHoles]           = useState<HoleGps[]>(currentGps?.holes?.length ? currentGps.holes : emptyHoles())
   const [editingHole, setEditingHole] = useState(1)
-  const [pinMode, setPinMode]       = useState<PinMode>('center')
+  const [pinMode, setPinMode]       = useState<PinMode>('tee')
   const [saving, setSaving]         = useState(false)
   const [importingOsm, setImportingOsm] = useState(false)
   const [viewState, setViewState]   = useState({
@@ -142,7 +179,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     zoom:      currentGps?.lat ? 16 : 4,
   })
 
-  // ── Nominatim fetch (with timeout + User-Agent) ──────────────────────────
+  // ── Nominatim fetch ──────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nominatimFetch = async (params: Record<string, string>): Promise<any[]> => {
     const qs = new URLSearchParams({ format: 'json', limit: '20', extratags: '1', addressdetails: '1', ...params })
@@ -166,7 +203,6 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fromNominatim = (r: any, userLat?: number, userLng?: number): CourseResult | null => {
     const tags = r.extratags ?? {}
-    // Must be an actual golf course OSM element — strict check, no regex fallbacks
     const isGolf = tags.leisure === 'golf_course'
       || tags.amenity === 'golf_course'
       || (r.class === 'leisure' && r.type === 'golf_course')
@@ -205,8 +241,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     }
   }
 
-  // ── Get user location + auto-load nearby golf courses via Overpass ──────
-  // Overpass queries [leisure=golf_course] directly — no roads or addresses
+  // ── Get user location + auto-load nearby golf courses ───────────────────
   useEffect(() => {
     if (!navigator.geolocation || currentGps) return
     navigator.geolocation.getCurrentPosition(async pos => {
@@ -227,7 +262,6 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
         setResults(mapped)
       } catch {
-        // Overpass down — fall back to Nominatim (may include some road entries)
         try {
           const delta = 0.45
           const viewbox = `${lng - delta},${lat + delta},${lng + delta},${lat - delta}`
@@ -243,9 +277,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     }, () => { setNearbyLoading(false) }, { timeout: 8000 })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Course name search: Nominatim + Overpass run in parallel ─────────────
-  // Both fire at once; results are merged and deduplicated so Royal Ashburn
-  // shows up even if one service misses it.
+  // ── Course name search: Nominatim + Overpass in parallel ─────────────────
   const searchCourse = async () => {
     if (!query.trim()) return
     setSearching(true)
@@ -281,15 +313,12 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       const fromNom = nomResult.status === 'fulfilled' ? nomResult.value : []
       const fromOvp = ovpResult.status === 'fulfilled' ? ovpResult.value : []
 
-      // Overpass results first (OSM-tagged golf courses), then Nominatim extras
       const all = [...fromOvp, ...fromNom]
-      // Deduplicate: courses within 0.5 km of an already-added entry = same place
       const seen: CourseResult[] = []
       for (const r of all) {
         if (!seen.some(s => kmBetween(s.lat, s.lng, r.lat, r.lng) < 0.5)) seen.push(r)
       }
 
-      // If still empty, retry Nominatim with "golf club" appended
       if (!seen.length && !/golf|club|links|course/i.test(q)) {
         const data2 = await nominatimFetch({ q: `${q} golf club` })
         const extra = data2
@@ -315,6 +344,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setResults([])
     setViewState({ longitude: r.lng, latitude: r.lat, zoom: 16 })
     mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 16, duration: 900 })
+    setGpsSubTab('setup')  // auto-advance to pin placement
   }
 
   const applyManualCoords = () => {
@@ -328,13 +358,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   // ── OSM auto-import ──────────────────────────────────────────────────────
   const importFromOsm = async () => {
-    if (!picked) return
+    if (!picked && !currentGps) return
     setImportingOsm(true)
     try {
-      const b = picked.bounds
+      const src = picked ?? { lat: currentGps!.lat!, lng: currentGps!.lng!, bounds: undefined }
+      const b = (picked as CourseResult | null)?.bounds
       const bbox = b
         ? `${b.minLat},${b.minLon},${b.maxLat},${b.maxLon}`
-        : `${picked.lat - 0.025},${picked.lng - 0.04},${picked.lat + 0.025},${picked.lng + 0.04}`
+        : `${src.lat - 0.025},${src.lng - 0.04},${src.lat + 0.025},${src.lng + 0.04}`
       const q = `[out:json][timeout:30];(way[golf=green](${bbox});way[golf=tee](${bbox}););out geom;`
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await overpassQuery(q) as any
@@ -368,33 +399,29 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setImportingOsm(false)
   }
 
-  // ── Map click → place pin ────────────────────────────────────────────────
+  // ── Map click → place pin, then auto-advance ─────────────────────────────
   const handleMapClick = useCallback((e: MapMouseEvent) => {
     const { lat, lng } = e.lngLat
     setHoles(prev => prev.map(h => {
       if (h.hole !== editingHole) return h
       switch (pinMode) {
-        case 'center': return { ...h, green: { ...h.green, center: { lat, lng } } }
-        case 'front':  return { ...h, green: { ...h.green, front:  { lat, lng } } }
-        case 'back':   return { ...h, green: { ...h.green, back:   { lat, lng } } }
         case 'tee':    return { ...h, tee: { lat, lng } }
+        case 'front':  return { ...h, green: { ...h.green, front:  { lat, lng } } }
+        case 'center': return { ...h, green: { ...h.green, center: { lat, lng } } }
+        case 'back':   return { ...h, green: { ...h.green, back:   { lat, lng } } }
       }
     }))
-    // Auto-advance through modes
     const idx = MODES.indexOf(pinMode)
     if (idx < MODES.length - 1) setPinMode(MODES[idx + 1])
   }, [editingHole, pinMode])
 
   const jumpToHole = (h: HoleGps) => {
     setEditingHole(h.hole)
-    setPinMode('center')
-    const target = h.green.center ?? h.tee
+    setPinMode('tee')
+    const target = h.tee ?? h.green.center
     if (target) {
-      // Hole has a pin — zoom in tight for precision editing
       mapRef.current?.flyTo({ center: [target.lng, target.lat], zoom: 18, duration: 500 })
     } else {
-      // No pin yet — fly to the nearest neighbouring hole that has one so the
-      // user lands in roughly the right part of the course
       const nearest = holes
         .filter(n => n.hole !== h.hole && (n.green.center ?? n.tee))
         .sort((a, b) => Math.abs(a.hole - h.hole) - Math.abs(b.hole - h.hole))[0]
@@ -431,7 +458,25 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     onSaved(gpsRow as CourseGps)
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const currentH = holes.find(h => h.hole === editingHole)
+  const pinsSet  = holes.filter(h => h.green.center).length
+  const mapReady = courseLat !== null && courseLng !== null
+
+  // Corridor polygon for the currently-editing hole
+  const corridorGeoJson = useMemo(() => {
+    const tee   = currentH?.tee
+    const green = currentH?.green.center
+    if (!tee || !green) return null
+    const bearing = calcBearing(tee, green)
+    return {
+      type: 'Feature' as const,
+      geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, bearing)] },
+      properties: {},
+    }
+  }, [currentH])
+
+  // ── No token ──────────────────────────────────────────────────────────────
   if (!TOKEN) return (
     <div className="glass" style={{ padding: 20 }}>
       <p style={{ color: 'var(--tx3)', fontSize: 13 }}>
@@ -441,114 +486,180 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     </div>
   )
 
-  const currentH = holes.find(h => h.hole === editingHole)
-  const pinsSet  = holes.filter(h => h.green.center).length
-  const mapReady = courseLat !== null && courseLng !== null
+  const isLocked = currentGps !== null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* ── Course search ── */}
-      <div className="glass" style={{ padding: '16px 20px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 12 }}>
-          Find Course
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && searchCourse()}
-            placeholder="e.g. Royal Ashburn Golf Club"
-            style={{
-              flex: 1, padding: '10px 14px', borderRadius: 10,
-              background: 'var(--surf2)', border: '1px solid var(--bdr)',
-              color: 'var(--tx1)', fontSize: 14, outline: 'none',
-            }}
-          />
-          <button onClick={searchCourse} disabled={searching} style={{
-            padding: '10px 14px', borderRadius: 10,
-            background: 'rgba(212,165,58,0.14)', border: '1px solid rgba(212,165,58,0.3)',
-            color: '#D4A53A', cursor: 'pointer', display: 'flex', alignItems: 'center',
-          }}>
-            <Search size={17} />
-          </button>
-        </div>
+      {/* ── Sub-tab strip ── */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {([
+          { id: 'selection' as const, label: 'Course Selection' },
+          { id: 'setup'     as const, label: 'Course Setup' },
+        ]).map(({ id, label }) => {
+          const disabled = id === 'setup' && !mapReady
+          const active   = gpsSubTab === id
+          return (
+            <button key={id} onClick={() => !disabled && setGpsSubTab(id)} style={{
+              padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
+              background: active ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
+              border: `1px solid ${active ? 'rgba(212,165,58,0.4)' : 'var(--bdr)'}`,
+              color: active ? '#D4A53A' : disabled ? 'var(--tx5)' : 'var(--tx2)',
+              display: 'flex', alignItems: 'center', gap: 6,
+              opacity: disabled ? 0.5 : 1,
+            }}>
+              {id === 'selection' && isLocked && <Lock size={11} />}
+              {id === 'setup' && mapReady && <MapPin size={11} />}
+              {label}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Nearby loading */}
-        {nearbyLoading && (
-          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%', flexShrink: 0 }} />
-            <span style={{ color: 'var(--tx3)', fontSize: 12 }}>Finding nearby golf courses…</span>
-            <button onClick={() => setNearbyLoading(false)} style={{
-              background: 'none', border: 'none', color: 'var(--tx4)', cursor: 'pointer',
-              fontSize: 11, textDecoration: 'underline', padding: 0,
-            }}>Skip</button>
-          </div>
-        )}
-
-        {/* Results list */}
-        {results.length > 0 && (
-          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {!query && userLocation && (
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: 'var(--tx4)', textTransform: 'uppercase', padding: '2px 4px' }}>
-                📍 Nearest to you
+      {/* ── Course Selection Tab ── */}
+      {gpsSubTab === 'selection' && (
+        <div className="glass" style={{ padding: '16px 20px' }}>
+          {isLocked ? (
+            /* Locked state — course is committed to this tournament */
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <Lock size={16} color="#D4A53A" />
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 2 }}>
+                  {currentGps.name}
+                </span>
               </div>
-            )}
-            {results.map(r => (
-              <button key={r.id} onClick={() => selectResult(r)} style={{
-                padding: '9px 12px', borderRadius: 9, textAlign: 'left', width: '100%',
-                background: 'var(--surf2)', border: '1px solid var(--bdr)',
-                cursor: 'pointer', color: 'var(--tx1)', fontSize: 13,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
-                  {r.address && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>{r.address}</div>}
-                </div>
-                {r.distanceKm !== undefined && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#D4A53A', flexShrink: 0, textAlign: 'right' }}>
-                    {r.distanceKm < 1 ? `${Math.round(r.distanceKm * 1000)}m` : `${r.distanceKm} km`}
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600 }}>
+                  ✓ {currentGps.holes?.filter(h => h.green?.center).length ?? 0}/18 greens set
+                </span>
+                {currentGps.lat && (
+                  <span style={{ fontSize: 12, color: 'var(--tx4)' }}>
+                    · {currentGps.lat.toFixed(4)}, {currentGps.lng?.toFixed(4)}
+                  </span>
                 )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Manual coordinate fallback */}
-        <div style={{ marginTop: 10 }}>
-          <button onClick={() => setShowManual(m => !m)} style={{
-            background: 'none', border: 'none', color: 'var(--tx4)', cursor: 'pointer',
-            fontSize: 12, textDecoration: 'underline', padding: 0,
-          }}>
-            {showManual ? '▲ Hide' : '▼ Can\'t find your course? Enter coordinates manually'}
-          </button>
-          {showManual && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.5 }}>
-                Open Google Maps, right-click the course → copy the coordinates (e.g. 43.8584, -79.0048)
+              </div>
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(212,165,58,0.06)', border: '1px solid rgba(212,165,58,0.2)' }}>
+                <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.6 }}>
+                  <strong style={{ color: '#D4A53A' }}>Course is locked</strong> to this tournament.
+                  To switch courses, click <strong style={{ color: 'var(--tx2)' }}>Reset GPS Course</strong> in the
+                  Tournament tab → Current Tournament Actions.
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Unlocked state — search and select a course */
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 12 }}>
+                Find Course
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input value={manualLat} onChange={e => setManualLat(e.target.value)}
-                  placeholder="Latitude (e.g. 43.8584)"
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }} />
-                <input value={manualLng} onChange={e => setManualLng(e.target.value)}
-                  placeholder="Longitude (e.g. -79.0048)"
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }} />
+                <input
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchCourse()}
+                  placeholder="e.g. Royal Ashburn Golf Club"
+                  style={{
+                    flex: 1, padding: '10px 14px', borderRadius: 10,
+                    background: 'var(--surf2)', border: '1px solid var(--bdr)',
+                    color: 'var(--tx1)', fontSize: 14, outline: 'none',
+                  }}
+                />
+                <button onClick={searchCourse} disabled={searching} style={{
+                  padding: '10px 14px', borderRadius: 10,
+                  background: 'rgba(212,165,58,0.14)', border: '1px solid rgba(212,165,58,0.3)',
+                  color: '#D4A53A', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                }}>
+                  <Search size={17} />
+                </button>
               </div>
-              <button onClick={applyManualCoords} style={{
-                padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: 'rgba(212,165,58,0.14)', border: '1px solid rgba(212,165,58,0.3)', color: '#D4A53A',
-              }}>
-                Use These Coordinates →
-              </button>
-            </div>
+
+              {nearbyLoading && (
+                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%', flexShrink: 0 }} />
+                  <span style={{ color: 'var(--tx3)', fontSize: 12 }}>Finding nearby golf courses…</span>
+                  <button onClick={() => setNearbyLoading(false)} style={{
+                    background: 'none', border: 'none', color: 'var(--tx4)', cursor: 'pointer',
+                    fontSize: 11, textDecoration: 'underline', padding: 0,
+                  }}>Skip</button>
+                </div>
+              )}
+
+              {results.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {!query && userLocation && (
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: 'var(--tx4)', textTransform: 'uppercase', padding: '2px 4px' }}>
+                      📍 Nearest to you
+                    </div>
+                  )}
+                  {results.map(r => (
+                    <button key={r.id} onClick={() => selectResult(r)} style={{
+                      padding: '9px 12px', borderRadius: 9, textAlign: 'left', width: '100%',
+                      background: 'var(--surf2)', border: '1px solid var(--bdr)',
+                      cursor: 'pointer', color: 'var(--tx1)', fontSize: 13,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+                        {r.address && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>{r.address}</div>}
+                      </div>
+                      {r.distanceKm !== undefined && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#D4A53A', flexShrink: 0, textAlign: 'right' }}>
+                          {r.distanceKm < 1 ? `${Math.round(r.distanceKm * 1000)}m` : `${r.distanceKm} km`}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Manual coordinate fallback */}
+              <div style={{ marginTop: 10 }}>
+                <button onClick={() => setShowManual(m => !m)} style={{
+                  background: 'none', border: 'none', color: 'var(--tx4)', cursor: 'pointer',
+                  fontSize: 12, textDecoration: 'underline', padding: 0,
+                }}>
+                  {showManual ? '▲ Hide' : '▼ Can\'t find your course? Enter coordinates manually'}
+                </button>
+                {showManual && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.5 }}>
+                      Open Google Maps, right-click the course → copy the coordinates (e.g. 43.8584, -79.0048)
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input value={manualLat} onChange={e => setManualLat(e.target.value)}
+                        placeholder="Latitude (e.g. 43.8584)"
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }} />
+                      <input value={manualLng} onChange={e => setManualLng(e.target.value)}
+                        placeholder="Longitude (e.g. -79.0048)"
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }} />
+                    </div>
+                    <button onClick={applyManualCoords} style={{
+                      padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                      background: 'rgba(212,165,58,0.14)', border: '1px solid rgba(212,165,58,0.3)', color: '#D4A53A',
+                    }}>
+                      Use These Coordinates →
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
+      )}
 
-        {/* Course name (editable) + OSM import */}
-        {mapReady && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* ── Course Setup Tab ── */}
+      {gpsSubTab === 'setup' && !mapReady && (
+        <div className="glass" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--tx4)' }}>
+          <MapPin size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.2 }} />
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No course selected</div>
+          <div style={{ fontSize: 13 }}>Search for and select a course in the Course Selection tab first.</div>
+        </div>
+      )}
+
+      {gpsSubTab === 'setup' && mapReady && (
+        <>
+          {/* Course name + OSM import */}
+          <div className="glass" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <input
               value={courseName}
               onChange={e => setCourseName(e.target.value)}
@@ -559,7 +670,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                 color: 'var(--tx1)', fontSize: 13, outline: 'none',
               }}
             />
-            {picked && (
+            {(picked || currentGps) && (
               <button onClick={importFromOsm} disabled={importingOsm} style={{
                 padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13,
                 background: 'var(--surf2)', border: '1px solid var(--bdr)',
@@ -570,15 +681,11 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               </button>
             )}
           </div>
-        )}
-      </div>
 
-      {/* ── Hole editor (only once a course is located) ── */}
-      {mapReady && (
-        <>
           {/* Hole tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={() => setEditingHole(h => Math.max(1, h - 1))} disabled={editingHole === 1}
+            <button onClick={() => setEditingHole(h => { const nh = Math.max(1, h - 1); jumpToHole(holes.find(x => x.hole === nh)!); return nh })}
+              disabled={editingHole === 1}
               style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: editingHole === 1 ? 0.3 : 1 }}>
               <ChevronLeft size={18} />
             </button>
@@ -590,13 +697,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                 ))}
               </div>
             </div>
-            <button onClick={() => setEditingHole(h => Math.min(18, h + 1))} disabled={editingHole === 18}
+            <button onClick={() => setEditingHole(h => { const nh = Math.min(18, h + 1); jumpToHole(holes.find(x => x.hole === nh)!); return nh })}
+              disabled={editingHole === 18}
               style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: editingHole === 18 ? 0.3 : 1 }}>
               <ChevronRight size={18} />
             </button>
           </div>
 
-          {/* Pin mode selector */}
+          {/* Pin mode selector — order: Tee → Front → Center → Back */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
             {MODES.map(mode => {
               const m = PIN_META[mode]
@@ -637,6 +745,16 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             >
               <NavigationControl position="top-right" showCompass={false} />
 
+              {/* Hole corridor outline — drawn once tee + green center are set */}
+              {corridorGeoJson && (
+                <Source id="setup-corridor" type="geojson" data={corridorGeoJson}>
+                  <Layer id="setup-corridor-fill" type="fill"
+                    paint={{ 'fill-color': 'rgba(212,165,58,0.05)' }} />
+                  <Layer id="setup-corridor-outline" type="line"
+                    paint={{ 'line-color': 'rgba(212,165,58,0.55)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
+                </Source>
+              )}
+
               {/* All holes with green centers — small numbered dots */}
               {holes.filter(h => h.green.center).map(h => (
                 <Marker key={`dot-${h.hole}`}
@@ -653,6 +771,11 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               ))}
 
               {/* Current hole pins */}
+              {currentH?.tee && (
+                <Marker longitude={currentH.tee.lng} latitude={currentH.tee.lat} anchor="center">
+                  <AdminPin short="T" color="#6b7280" borderRadius={4} />
+                </Marker>
+              )}
               {currentH?.green.front && (
                 <Marker longitude={currentH.green.front.lng} latitude={currentH.green.front.lat} anchor="center">
                   <AdminPin short="F" color="#16a34a" />
@@ -668,17 +791,12 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                   <AdminPin short="B" color="#dc2626" />
                 </Marker>
               )}
-              {currentH?.tee && (
-                <Marker longitude={currentH.tee.lng} latitude={currentH.tee.lat} anchor="center">
-                  <AdminPin short="T" color="#6b7280" borderRadius={4} />
-                </Marker>
-              )}
             </Map>
           </div>
 
           {/* Legend */}
           <div style={{ fontSize: 11, color: 'var(--tx4)', textAlign: 'center' }}>
-            Select a pin type above, then tap the satellite map to place it on hole {editingHole}
+            Tap the map to place the <strong style={{ color: PIN_META[pinMode].color }}>{PIN_META[pinMode].label}</strong> pin on hole {editingHole}
           </div>
 
           {/* Progress + save */}

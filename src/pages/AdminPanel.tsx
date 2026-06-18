@@ -212,6 +212,8 @@ export default function AdminPanel() {
   const [regenerating, setRegenerating] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
+  const [resetGpsConfirm, setResetGpsConfirm] = useState(false)
+  const [resettingGps, setResettingGps] = useState(false)
   const [laheyVotingOpen, setLaheyVotingOpen] = useState(false)
   const [laheyResetting, setLaheyResetting] = useState(false)
   const [laheyTogglingOpen, setLaheyTogglingOpen] = useState(false)
@@ -246,15 +248,29 @@ export default function AdminPanel() {
   useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
 
   useEffect(() => {
-    if (tab !== 'gps' || !activeTournamentId) return
+    // Load GPS state when visiting either GPS setup tab or Tournament tab (needed for Reset GPS button)
+    if ((tab !== 'gps' && tab !== 'tournament') || !activeTournamentId) return
     supabase
       .from('tournaments')
       .select('course_gps:course_gps_id(id, name, lat, lng, holes)')
       .eq('id', activeTournamentId)
       .single()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(({ data }: { data: any }) => { if (data?.course_gps) setCurrentGps(data.course_gps as CourseGps) })
+      .then(({ data }: { data: any }) => {
+        if (data?.course_gps) setCurrentGps(data.course_gps as CourseGps)
+        else setCurrentGps(null)
+      })
   }, [tab, activeTournamentId])
+
+  const resetGpsCourse = async () => {
+    if (!activeTournamentId) return
+    setResettingGps(true)
+    await supabase.from('tournaments').update({ course_gps_id: null }).eq('id', activeTournamentId)
+    setCurrentGps(null)
+    setResettingGps(false)
+    setResetGpsConfirm(false)
+    showToast('GPS course unlinked. Select a new course in the GPS tab.')
+  }
 
   const resetTournament = async () => {
     if (!activeTournamentId) return
@@ -1280,6 +1296,64 @@ export default function AdminPanel() {
                   </button>
                 </div>
 
+                {/* GPS Course reset */}
+                {currentGps && (
+                  <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(212,165,58,0.25)', background: 'rgba(212,165,58,0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <span style={{ fontSize: 20 }}>🗺️</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#D4A53A' }}>Reset GPS Course</div>
+                        <div style={{ fontSize: 12, color: '#4ade80', marginTop: 2 }}>
+                          Active: {currentGps.name} · {currentGps.holes?.filter(h => h.green?.center).length ?? 0}/18 greens set
+                        </div>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 18, lineHeight: 1.6 }}>
+                      Unlinks the current GPS course from this tournament. All pin data is preserved and can be
+                      re-linked from the GPS tab. Use this to switch to a different course.
+                    </p>
+                    {!resetGpsConfirm ? (
+                      <button
+                        onClick={() => setResetGpsConfirm(true)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                          color: '#ef4444', cursor: 'pointer',
+                        }}
+                      >
+                        Reset GPS Course
+                      </button>
+                    ) : (
+                      <div style={{ padding: '16px 20px', borderRadius: 12, background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.4)' }}>
+                        <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 15, marginBottom: 6 }}>Unlink "{currentGps.name}"?</div>
+                        <div style={{ fontSize: 13, color: 'var(--tx2)', marginBottom: 16 }}>
+                          The course and its pin data will be preserved but detached from this tournament. You can re-select it anytime from the GPS tab.
+                        </div>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button
+                            onClick={resetGpsCourse}
+                            disabled={resettingGps}
+                            style={{
+                              padding: '10px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                              background: '#ef4444', border: 'none', color: 'white',
+                              cursor: resettingGps ? 'not-allowed' : 'pointer', opacity: resettingGps ? 0.6 : 1,
+                            }}
+                          >
+                            {resettingGps ? 'Unlinking…' : 'Yes, unlink course'}
+                          </button>
+                          <button
+                            onClick={() => setResetGpsConfirm(false)}
+                            style={{ padding: '10px 24px', borderRadius: 999, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)', cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Score reset */}
                 <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -1505,25 +1579,17 @@ export default function AdminPanel() {
       {/* ── GPS Course tab ──────────────────────────────────────────── */}
       {tab === 'gps' && (
         <div>
-          <div className="glass" style={{ padding: '16px 20px', marginBottom: 16 }}>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, marginBottom: 4 }}>
-              GPS Course Setup
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, marginBottom: 4 }}>GPS Course Setup</h2>
             <p style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.6 }}>
-              Search for your course, optionally auto-import hole data from OpenStreetMap,
-              then tap the satellite map to place Front / Center / Back pins for each green.
-              Players will see live yardages on the GPS page.
+              Select your course, place tee and green pins for each hole, then save.
+              Players see live yardages on the GPS page during play.
             </p>
-            {currentGps && (
-              <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', fontSize: 13, color: '#4ade80' }}>
-                ✓ Active: <strong>{currentGps.name}</strong> — {currentGps.holes?.filter(h => h.green?.center).length ?? 0}/18 greens set
-              </div>
-            )}
           </div>
           <CourseGpsSetup
             tournamentId={activeTournamentId}
             currentGps={currentGps}
-            onSaved={setCurrentGps}
+            onSaved={gps => { setCurrentGps(gps) }}
           />
         </div>
       )}
