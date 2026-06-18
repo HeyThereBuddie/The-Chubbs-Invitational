@@ -175,6 +175,8 @@ export interface HoleGps {
     back:   LatLng | null
   }
   fairway?: LatLng[] | null
+  bunkers?: LatLng[][] | null
+  water?:   LatLng[][] | null
 }
 
 export interface CourseGps {

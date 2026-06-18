@@ -193,6 +193,20 @@ export default function GpsPage() {
     }
   }, [currentHole])
 
+  const makePolyCollection = (polys: import('../lib/types').LatLng[][] | null | undefined) => {
+    if (!polys?.length) return null
+    return {
+      type: 'FeatureCollection' as const,
+      features: polys.map((poly, i) => ({
+        type: 'Feature' as const, id: i,
+        geometry: { type: 'Polygon' as const, coordinates: [[...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]] },
+        properties: {},
+      })),
+    }
+  }
+  const bunkersGeoJson = useMemo(() => makePolyCollection(currentHole?.bunkers), [currentHole])
+  const waterGeoJson   = useMemo(() => makePolyCollection(currentHole?.water),   [currentHole])
+
   // Aim line: Tee → Player (faded) → Green center (bright)
   const aimLineGeoJson = useMemo(() => {
     const green = currentHole?.green.center
@@ -386,13 +400,33 @@ export default function GpsPage() {
         >
           <NavigationControl position="top-right" showCompass={false} />
 
-          {/* Hole corridor outline */}
+          {/* Fairway / hole corridor */}
           {corridorGeoJson && (
             <Source id="corridor" type="geojson" data={corridorGeoJson}>
               <Layer id="corridor-fill" type="fill"
                 paint={{ 'fill-color': 'rgba(255,255,255,0.05)' }} />
               <Layer id="corridor-outline" type="line"
                 paint={{ 'line-color': 'rgba(255,255,255,0.40)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
+            </Source>
+          )}
+
+          {/* Bunkers — sand fills */}
+          {bunkersGeoJson && (
+            <Source id="bunkers" type="geojson" data={bunkersGeoJson}>
+              <Layer id="bunkers-fill" type="fill"
+                paint={{ 'fill-color': '#D4B483', 'fill-opacity': 0.80 }} />
+              <Layer id="bunkers-outline" type="line"
+                paint={{ 'line-color': '#A0845C', 'line-width': 1.5 }} />
+            </Source>
+          )}
+
+          {/* Water hazards */}
+          {waterGeoJson && (
+            <Source id="water-hazards" type="geojson" data={waterGeoJson}>
+              <Layer id="water-fill" type="fill"
+                paint={{ 'fill-color': 'rgba(59,130,246,0.55)' }} />
+              <Layer id="water-outline" type="line"
+                paint={{ 'line-color': 'rgba(37,99,235,0.85)', 'line-width': 1.5 }} />
             </Source>
           )}
 

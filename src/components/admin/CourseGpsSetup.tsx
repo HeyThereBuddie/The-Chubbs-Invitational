@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Map, { Marker, NavigationControl, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Search, Save, Download, ChevronLeft, ChevronRight, Lock, MapPin } from 'lucide-react'
+import { Search, Save, Download, ChevronLeft, ChevronRight, Lock, MapPin, Wand2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import type { CourseGps, HoleGps, LatLng } from '../../lib/types'
@@ -92,12 +92,16 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
   }
 
   // Pass 2: parse all ways in one loop
-  //   golf=green / golf=tee    → wayMap (centroid)
-  //   golf=fairway             → fairwayMap (full polygon)
-  //   golf=hole                → holeAnchors (first node≈tee, last node≈green)
-  //   leisure=golf_course      → courseBounds (boundary polygons for cross-course filtering)
+  //   golf=green / golf=tee              → wayMap (centroid)
+  //   golf=fairway                       → fairwayMap (full polygon)
+  //   golf=bunker                        → bunkerMap (full polygon)
+  //   golf=water_hazard / lateral_water  → waterMap (full polygon)
+  //   golf=hole                          → holeAnchors (first node≈tee, last node≈green)
+  //   leisure=golf_course                → courseBounds (boundary polygons)
   const wayMap: Record<string, { tags: Record<string, string>; center: Pt | null }> = {}
   const fairwayMap: Record<string, { tags: Record<string, string>; polygon: Pt[] }> = {}
+  const bunkerMap: Record<string, { tags: Record<string, string>; polygon: Pt[] }> = {}
+  const waterMap: Record<string, { tags: Record<string, string>; polygon: Pt[] }> = {}
   const holeAnchors: Array<{ ref: number; teePos: Pt; greenPos: Pt }> = []
   const courseBounds: Array<Pt[]> = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
@@ -123,6 +127,12 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     } else if (golf === 'fairway') {
       const pts = ndRefs.map(r => nodePos[r]).filter((n): n is Pt => n != null)
       if (pts.length >= 3) fairwayMap[id] = { tags, polygon: pts }
+    } else if (golf === 'bunker') {
+      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) bunkerMap[id] = { tags, polygon: pts }
+    } else if (golf === 'water_hazard' || golf === 'lateral_water_hazard') {
+      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) waterMap[id] = { tags, polygon: pts }
     } else if (golf === 'hole') {
       // golf=hole routing ways run tee→green and carry ref=1..18 even when green/tee shapes don't
       const holeNum = parseInt(tags['ref'] ?? '0')
@@ -181,9 +191,17 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
       for (const fwId of Object.keys(fairwayMap)) {
         const pts = fairwayMap[fwId].polygon
         const centroid = { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
-        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) {
-          delete fairwayMap[fwId]
-        }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) delete fairwayMap[fwId]
+      }
+      for (const bId of Object.keys(bunkerMap)) {
+        const pts = bunkerMap[bId].polygon
+        const centroid = { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) delete bunkerMap[bId]
+      }
+      for (const wId of Object.keys(waterMap)) {
+        const pts = waterMap[wId].polygon
+        const centroid = { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) delete waterMap[wId]
       }
     }
   }
@@ -205,6 +223,34 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     }
     if (bestGreenId && bestGreenD < MAX_GREEN_D2) wayHoleNum[bestGreenId] = anchor.ref
     if (bestTeeId   && bestTeeD   < MAX_TEE_D2)  wayHoleNum[bestTeeId]   = anchor.ref
+  }
+
+  // Pass 4c/4d shared helper — nearest anchor match for hazard polygons
+  const matchHazardToHole = (polygon: Pt[], tags: Record<string, string>): number => {
+    let holeNum = parseInt(tags['ref'] ?? '0')
+    if (holeNum >= 1 && holeNum <= 18) return holeNum
+    const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+    let bestD = Infinity
+    for (const anchor of holeAnchors) {
+      const midLat = (anchor.teePos.lat + anchor.greenPos.lat) / 2
+      const midLon = (anchor.teePos.lon + anchor.greenPos.lon) / 2
+      const d = (centroid.lat - midLat) ** 2 + (centroid.lon - midLon) ** 2
+      if (d < bestD) { bestD = d; holeNum = anchor.ref }
+    }
+    return bestD < 0.006 * 0.006 ? holeNum : 0
+  }
+
+  // Bunker hole assignment
+  const bunkerHoleNum: Record<string, number> = {}
+  for (const [bId, { tags, polygon }] of Object.entries(bunkerMap)) {
+    const n = matchHazardToHole(polygon, tags)
+    if (n) bunkerHoleNum[bId] = n
+  }
+  // Water hole assignment
+  const waterHoleNum: Record<string, number> = {}
+  for (const [wId, { tags, polygon }] of Object.entries(waterMap)) {
+    const n = matchHazardToHole(polygon, tags)
+    if (n) waterHoleNum[wId] = n
   }
 
   // Pass 4c: match fairway polygons to hole numbers
@@ -239,6 +285,16 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const holeNum = fairwayHoleNum[id]
     if (!holeNum) continue
     elements.push({ type: 'way', id: parseInt(id), tags: { ...tags, ref: String(holeNum) }, geometry: polygon })
+  }
+  for (const [id, { polygon }] of Object.entries(bunkerMap)) {
+    const holeNum = bunkerHoleNum[id]
+    if (!holeNum) continue
+    elements.push({ type: 'way', id: parseInt(id), tags: { golf: 'bunker', ref: String(holeNum) }, geometry: polygon })
+  }
+  for (const [id, { polygon }] of Object.entries(waterMap)) {
+    const holeNum = waterHoleNum[id]
+    if (!holeNum) continue
+    elements.push({ type: 'way', id: parseInt(id), tags: { golf: 'water_hazard', ref: String(holeNum) }, geometry: polygon })
   }
   return { elements }
 }
@@ -404,6 +460,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const [pinMode, setPinMode]       = useState<PinMode>('tee')
   const [saving, setSaving]         = useState(false)
   const [importingOsm, setImportingOsm] = useState(false)
+  const [tracingAi,    setTracingAi]    = useState(false)
   const [viewState, setViewState]   = useState({
     longitude: currentGps?.lng ?? -79.0,
     latitude:  currentGps?.lat ?? 43.85,
@@ -614,8 +671,8 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         : { minLat: lat - 0.03, minLon: lng - 0.05, maxLat: lat + 0.03, maxLon: lng + 0.05 }
       const bboxStr = `${bboxObj.minLat},${bboxObj.minLon},${bboxObj.maxLat},${bboxObj.maxLon}`
 
-      // Two-part query: centroids for green/tee shapes, full geometry for fairways + routing lines
-      const q = `[out:json][timeout:25];(way[golf=green](${bboxStr});way[golf=tee](${bboxStr}););out center;(way[golf=fairway](${bboxStr});way[golf=hole](${bboxStr}););out geom;`
+      // Two-part query: centroids for green/tee shapes, full geometry for everything else
+      const q = `[out:json][timeout:25];(way[golf=green](${bboxStr});way[golf=tee](${bboxStr}););out center;(way[golf=fairway](${bboxStr});way[golf=hole](${bboxStr});way[golf=bunker](${bboxStr});way[golf=water_hazard](${bboxStr});way[golf=lateral_water_hazard](${bboxStr}););out geom;`
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let data: any
@@ -689,18 +746,58 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           newHoles[holeNum - 1].fairway = el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
       }
 
+      // Bunkers and water hazards — full geometry, multiple per hole
+      const MAX_HAZARD_D2 = 0.006 * 0.006  // ~660m
+      const matchHazard = (el: typeof elements[0]): number => {
+        if (!el.geometry || el.geometry.length < 3) return 0
+        let holeNum = parseInt(el.tags?.ref ?? '0')
+        if (holeNum >= 1 && holeNum <= 18) return holeNum
+        const centLat = el.geometry.reduce((s, p) => s + p.lat, 0) / el.geometry.length
+        const centLon = el.geometry.reduce((s, p) => s + p.lon, 0) / el.geometry.length
+        let bestD = Infinity
+        const sources = holeAnchors.length > 0 ? holeAnchors :
+          newHoles.filter(h => h.green.center && h.tee).map(h => ({
+            ref: h.hole,
+            midLat: (h.green.center!.lat + h.tee!.lat) / 2,
+            midLon: (h.green.center!.lng + h.tee!.lng) / 2,
+          }))
+        for (const src of sources) {
+          const d = (centLat - src.midLat) ** 2 + (centLon - src.midLon) ** 2
+          if (d < bestD) { bestD = d; holeNum = src.ref }
+        }
+        return bestD < MAX_HAZARD_D2 ? holeNum : 0
+      }
+      for (const el of elements) {
+        if (el.tags?.golf !== 'bunker' || !el.geometry) continue
+        const n = matchHazard(el)
+        if (!n) continue
+        const poly = el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
+        if (!newHoles[n - 1].bunkers) newHoles[n - 1].bunkers = []
+        newHoles[n - 1].bunkers!.push(poly)
+      }
+      for (const el of elements) {
+        if (!['water_hazard', 'lateral_water_hazard'].includes(el.tags?.golf ?? '') || !el.geometry) continue
+        const n = matchHazard(el)
+        if (!n) continue
+        const poly = el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
+        if (!newHoles[n - 1].water) newHoles[n - 1].water = []
+        newHoles[n - 1].water!.push(poly)
+      }
+
       // Auto-calculate front/back from the tee→green bearing when both are known
       for (const h of newHoles) {
         if (h.tee && h.green.center && !h.green.front && !h.green.back) {
           const bearing = calcBearing(h.tee, h.green.center)
-          h.green.front = offsetLatLng(h.green.center, bearing + 180, 5)  // 5m toward tee
-          h.green.back  = offsetLatLng(h.green.center, bearing,       5)  // 5m away from tee
+          h.green.front = offsetLatLng(h.green.center, bearing + 180, 5)
+          h.green.back  = offsetLatLng(h.green.center, bearing,       5)
         }
       }
 
       const greensFound   = newHoles.filter(h => h.green.center).length
       const teesFound     = newHoles.filter(h => h.tee).length
       const fairwaysFound = newHoles.filter(h => h.fairway).length
+      const bunkersFound  = newHoles.reduce((s, h) => s + (h.bunkers?.length ?? 0), 0)
+      const waterFound    = newHoles.reduce((s, h) => s + (h.water?.length ?? 0), 0)
       if (greensFound === 0) {
         // OSM has the shapes but no hole numbers — can't reliably assign
         const hasShapes = elements.length > 0
@@ -715,7 +812,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       }
       setHoles(newHoles)
       showToast(
-        `Imported ${greensFound}/18 greens, ${teesFound}/18 tees, ${fairwaysFound}/18 fairways from OpenStreetMap` +
+        `OSM: ${greensFound}G ${teesFound}T ${fairwaysFound}FW ${bunkersFound}BNK ${waterFound}H₂O` +
         (greensFound < 18 ? ' — set missing holes manually' : '')
       )
     } catch (err) {
@@ -723,6 +820,39 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       showToast(`OSM import failed — ${(err as Error).message ?? 'check connection'}`, 'error')
     }
     setImportingOsm(false)
+  }
+
+  const traceWithAi = async () => {
+    const h = holes.find(x => x.hole === editingHole)
+    if (!h?.tee || !h.green.center) {
+      showToast('Set tee and green center pins first, then AI trace', 'error'); return
+    }
+    setTracingAi(true)
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/trace-hole-ai`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ tee: h.tee, green: h.green.center, mapboxToken: TOKEN }),
+        }
+      )
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json() as { fairway: LatLng[]; bunkers: LatLng[][]; water: LatLng[][] }
+      setHoles(prev => prev.map(hole => hole.hole !== editingHole ? hole : {
+        ...hole,
+        fairway:  data.fairway?.length  ? data.fairway  : hole.fairway,
+        bunkers:  data.bunkers?.length  ? data.bunkers  : hole.bunkers,
+        water:    data.water?.length    ? data.water    : hole.water,
+      }))
+      showToast(`AI traced hole ${editingHole}: fairway + ${data.bunkers?.length ?? 0} bunkers + ${data.water?.length ?? 0} water`)
+    } catch (err) {
+      showToast(`AI trace failed — ${(err as Error).message}`, 'error')
+    }
+    setTracingAi(false)
   }
 
   // ── Map click → place pin, then auto-advance ─────────────────────────────
@@ -807,6 +937,29 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       properties: {},
     }
   }, [currentH])
+
+  // GeoJSON for all bunkers across all holes (admin map overview)
+  const allBunkersGeoJson = useMemo(() => {
+    const features = holes.flatMap(h =>
+      (h.bunkers ?? []).map((poly, i) => ({
+        type: 'Feature' as const, id: `${h.hole}-b${i}`,
+        geometry: { type: 'Polygon' as const, coordinates: [[...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]] },
+        properties: {},
+      }))
+    )
+    return features.length ? { type: 'FeatureCollection' as const, features } : null
+  }, [holes])
+
+  const allWaterGeoJson = useMemo(() => {
+    const features = holes.flatMap(h =>
+      (h.water ?? []).map((poly, i) => ({
+        type: 'Feature' as const, id: `${h.hole}-w${i}`,
+        geometry: { type: 'Polygon' as const, coordinates: [[...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]] },
+        properties: {},
+      }))
+    )
+    return features.length ? { type: 'FeatureCollection' as const, features } : null
+  }, [holes])
 
   // ── No token ──────────────────────────────────────────────────────────────
   if (!TOKEN) return (
@@ -1001,14 +1154,27 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               }}
             />
             {(picked || currentGps) && (
-              <button onClick={importFromOsm} disabled={importingOsm} style={{
-                padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13,
-                background: 'var(--surf2)', border: '1px solid var(--bdr)',
-                color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <Download size={14} />
-                {importingOsm ? 'Importing from OpenStreetMap…' : 'Auto-import holes from OpenStreetMap'}
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={importFromOsm} disabled={importingOsm || tracingAi} style={{
+                  flex: 1, padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13,
+                  background: 'var(--surf2)', border: '1px solid var(--bdr)',
+                  color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <Download size={14} />
+                  {importingOsm ? 'Importing…' : 'Import from OpenStreetMap'}
+                </button>
+                <button onClick={traceWithAi} disabled={tracingAi || importingOsm || !currentH?.tee || !currentH?.green.center} style={{
+                  flex: 1, padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13,
+                  background: tracingAi ? 'var(--surf2)' : 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(59,130,246,0.15))',
+                  border: '1px solid rgba(99,102,241,0.4)',
+                  color: tracingAi ? 'var(--tx3)' : '#818cf8',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  opacity: (!currentH?.tee || !currentH?.green.center) ? 0.45 : 1,
+                }}>
+                  <Wand2 size={14} />
+                  {tracingAi ? 'AI Tracing…' : `AI Trace Hole ${editingHole}`}
+                </button>
+              </div>
             )}
           </div>
 
@@ -1075,13 +1241,31 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             >
               <NavigationControl position="top-right" showCompass={false} />
 
-              {/* Hole corridor outline — drawn once tee + green center are set */}
+              {/* Hole corridor / fairway */}
               {corridorGeoJson && (
                 <Source id="setup-corridor" type="geojson" data={corridorGeoJson}>
                   <Layer id="setup-corridor-fill" type="fill"
-                    paint={{ 'fill-color': 'rgba(212,165,58,0.05)' }} />
+                    paint={{ 'fill-color': 'rgba(212,165,58,0.07)' }} />
                   <Layer id="setup-corridor-outline" type="line"
                     paint={{ 'line-color': 'rgba(212,165,58,0.55)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
+                </Source>
+              )}
+              {/* Bunkers */}
+              {allBunkersGeoJson && (
+                <Source id="setup-bunkers" type="geojson" data={allBunkersGeoJson}>
+                  <Layer id="setup-bunkers-fill" type="fill"
+                    paint={{ 'fill-color': '#D4B483', 'fill-opacity': 0.75 }} />
+                  <Layer id="setup-bunkers-outline" type="line"
+                    paint={{ 'line-color': '#A0845C', 'line-width': 1 }} />
+                </Source>
+              )}
+              {/* Water hazards */}
+              {allWaterGeoJson && (
+                <Source id="setup-water" type="geojson" data={allWaterGeoJson}>
+                  <Layer id="setup-water-fill" type="fill"
+                    paint={{ 'fill-color': 'rgba(59,130,246,0.50)' }} />
+                  <Layer id="setup-water-outline" type="line"
+                    paint={{ 'line-color': 'rgba(37,99,235,0.8)', 'line-width': 1.5 }} />
                 </Source>
               )}
 

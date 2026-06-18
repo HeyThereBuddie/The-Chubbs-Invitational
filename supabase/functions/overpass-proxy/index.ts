@@ -90,6 +90,8 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
   //   leisure=golf_course      → courseBounds (boundary polygons)
   const wayMap = new Map<string, { tags: Record<string, string>; center: Pt | null }>()
   const fairwayMap = new Map<string, { tags: Record<string, string>; polygon: Pt[] }>()
+  const bunkerMap  = new Map<string, { tags: Record<string, string>; polygon: Pt[] }>()
+  const waterMap   = new Map<string, { tags: Record<string, string>; polygon: Pt[] }>()
   const holeAnchors: Array<{ ref: number; teePos: Pt; greenPos: Pt }> = []
   const courseBounds: Pt[][] = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
@@ -115,6 +117,12 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     } else if (golf === 'fairway') {
       const pts = ndRefs.map(r => nodePos.get(r)).filter((n): n is Pt => n != null)
       if (pts.length >= 3) fairwayMap.set(id, { tags, polygon: pts })
+    } else if (golf === 'bunker') {
+      const pts = ndRefs.map(r => nodePos.get(r)).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) bunkerMap.set(id, { tags, polygon: pts })
+    } else if (golf === 'water_hazard' || golf === 'lateral_water_hazard') {
+      const pts = ndRefs.map(r => nodePos.get(r)).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) waterMap.set(id, { tags, polygon: pts })
     } else if (golf === 'hole') {
       const holeNum = parseInt(tags['ref'] ?? '0')
       if (holeNum < 1 || holeNum > 18 || ndRefs.length < 2) continue
@@ -168,9 +176,15 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
       }
       for (const [fwId, { polygon }] of fairwayMap) {
         const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
-        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) {
-          fairwayMap.delete(fwId)
-        }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) fairwayMap.delete(fwId)
+      }
+      for (const [bId, { polygon }] of bunkerMap) {
+        const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) bunkerMap.delete(bId)
+      }
+      for (const [wId, { polygon }] of waterMap) {
+        const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) waterMap.delete(wId)
       }
     }
   }
@@ -191,6 +205,32 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     }
     if (bestGreenId && bestGreenD < MAX_GREEN_D2) wayHoleNum.set(bestGreenId, anchor.ref)
     if (bestTeeId   && bestTeeD   < MAX_TEE_D2)  wayHoleNum.set(bestTeeId,   anchor.ref)
+  }
+
+  // Shared hazard→hole matching helper
+  const matchHazard = (polygon: Pt[], tags: Record<string, string>, maxD2: number): number => {
+    let holeNum = parseInt(tags['ref'] ?? '0')
+    if (holeNum >= 1 && holeNum <= 18) return holeNum
+    const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+    let bestD = Infinity
+    for (const anchor of holeAnchors) {
+      const midLat = (anchor.teePos.lat + anchor.greenPos.lat) / 2
+      const midLon = (anchor.teePos.lon + anchor.greenPos.lon) / 2
+      const d = (centroid.lat - midLat) ** 2 + (centroid.lon - midLon) ** 2
+      if (d < bestD) { bestD = d; holeNum = anchor.ref }
+    }
+    return bestD < maxD2 ? holeNum : 0
+  }
+
+  const bunkerHoleNum = new Map<string, number>()
+  for (const [bId, { tags, polygon }] of bunkerMap) {
+    const n = matchHazard(polygon, tags, 0.006 * 0.006)
+    if (n) bunkerHoleNum.set(bId, n)
+  }
+  const waterHoleNum = new Map<string, number>()
+  for (const [wId, { tags, polygon }] of waterMap) {
+    const n = matchHazard(polygon, tags, 0.006 * 0.006)
+    if (n) waterHoleNum.set(wId, n)
   }
 
   // Pass 4c: match fairway polygons to hole numbers
@@ -224,6 +264,16 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     const holeNum = fairwayHoleNum.get(id)
     if (!holeNum) continue
     elements.push({ type: 'way', id: parseInt(id), tags: { ...tags, ref: String(holeNum) }, geometry: polygon })
+  }
+  for (const [id, { polygon }] of bunkerMap) {
+    const holeNum = bunkerHoleNum.get(id)
+    if (!holeNum) continue
+    elements.push({ type: 'way', id: parseInt(id), tags: { golf: 'bunker', ref: String(holeNum) }, geometry: polygon })
+  }
+  for (const [id, { polygon }] of waterMap) {
+    const holeNum = waterHoleNum.get(id)
+    if (!holeNum) continue
+    elements.push({ type: 'way', id: parseInt(id), tags: { golf: 'water_hazard', ref: String(holeNum) }, geometry: polygon })
   }
   return { elements }
 }
