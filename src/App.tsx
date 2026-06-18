@@ -24,6 +24,7 @@ import WelcomePage from './pages/WelcomePage'
 import InviteResponsePage from './pages/InviteResponsePage'
 import HallOfFame from './pages/HallOfFame'
 import HappysPlace from './pages/HappysPlace'
+import GpsPage from './pages/GpsPage'
 
 function Spinner() {
   return (
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="/course" element={<ProtectedRoute><Layout><CoursePage /></Layout></ProtectedRoute>} />
       <Route path="/live-feed" element={<ProtectedRoute><Layout><LiveFeed /></Layout></ProtectedRoute>} />
       <Route path="/scores" element={<ProtectedRoute><Layout><Scores /></Layout></ProtectedRoute>} />
+      <Route path="/gps" element={<ProtectedRoute><Layout><GpsPage /></Layout></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
       <Route path="/hall-of-fame" element={<ProtectedRoute><Layout><HallOfFame /></Layout></ProtectedRoute>} />
       <Route path="/happys-place" element={<ProtectedRoute><Layout><HappysPlace /></Layout></ProtectedRoute>} />

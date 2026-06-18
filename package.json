@@ -16,8 +16,10 @@
     "dexie": "^4.4.3",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
+    "mapbox-gl": "^3.25.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-map-gl": "^8.1.1",
     "react-router-dom": "^7.17.0",
     "workbox-routing": "^7.4.1"
   },

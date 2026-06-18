@@ -161,3 +161,26 @@ export const ALL_QUOTES: { quote: string; by: string }[] = [
   { quote: "Every great golfer starts somewhere.", by: "Chubbs Peterson" },
   { quote: "Happy Gilmore — the most unique golfer I have ever seen.", by: "Chubbs Peterson" },
 ]
+
+// ── GPS types ──────────────────────────────────────────────────────────────
+
+export interface LatLng { lat: number; lng: number }
+
+export interface HoleGps {
+  hole: number
+  tee: LatLng | null
+  green: {
+    front:  LatLng | null
+    center: LatLng | null
+    back:   LatLng | null
+  }
+}
+
+export interface CourseGps {
+  id: string
+  name: string
+  lat: number | null
+  lng: number | null
+  holes: HoleGps[]
+  created_at: string
+}

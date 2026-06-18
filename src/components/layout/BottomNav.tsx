@@ -2,12 +2,13 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
-  Target, Shield, UserCircle, Star, Images
+  Target, Shield, UserCircle, Star, Images, MapPin
 } from 'lucide-react'
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
+  { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'Team' },
@@ -21,6 +22,7 @@ const playerNav = [
 const adminNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/scores', icon: ClipboardList, label: 'Scores' },
+  { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'Team' },

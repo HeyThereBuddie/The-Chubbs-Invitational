@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
-import type { Profile, Team } from '../lib/types'
+import type { Profile, Team, CourseGps } from '../lib/types'
 import { displayName, HOLE_PARS } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
+import CourseGpsSetup from '../components/admin/CourseGpsSetup'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -41,7 +42,8 @@ interface THistoryEntry {
 export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
-  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo'>('teams')
+  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps'>('teams')
+  const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [teams, setTeams] = useState<TeamWithPlayers[]>([])
@@ -242,6 +244,17 @@ export default function AdminPanel() {
   }, [])
 
   useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
+
+  useEffect(() => {
+    if (tab !== 'gps' || !activeTournamentId) return
+    supabase
+      .from('tournaments')
+      .select('course_gps:course_gps_id(id, name, lat, lng, holes)')
+      .eq('id', activeTournamentId)
+      .single()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(({ data }: { data: any }) => { if (data?.course_gps) setCurrentGps(data.course_gps as CourseGps) })
+  }, [tab, activeTournamentId])
 
   const resetTournament = async () => {
     if (!activeTournamentId) return
@@ -618,6 +631,7 @@ export default function AdminPanel() {
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
+          { id: 'gps',        label: '🗺️ GPS Course' },
           { id: 'brevo',      label: '📣 Brevo' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
@@ -1488,6 +1502,32 @@ export default function AdminPanel() {
       })()}
 
       {/* ── Brevo tab ───────────────────────────────────────────── */}
+      {/* ── GPS Course tab ──────────────────────────────────────────── */}
+      {tab === 'gps' && (
+        <div>
+          <div className="glass" style={{ padding: '16px 20px', marginBottom: 16 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, marginBottom: 4 }}>
+              GPS Course Setup
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.6 }}>
+              Search for your course, optionally auto-import hole data from OpenStreetMap,
+              then tap the satellite map to place Front / Center / Back pins for each green.
+              Players will see live yardages on the GPS page.
+            </p>
+            {currentGps && (
+              <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', fontSize: 13, color: '#4ade80' }}>
+                ✓ Active: <strong>{currentGps.name}</strong> — {currentGps.holes?.filter(h => h.green?.center).length ?? 0}/18 greens set
+              </div>
+            )}
+          </div>
+          <CourseGpsSetup
+            tournamentId={activeTournamentId}
+            currentGps={currentGps}
+            onSaved={setCurrentGps}
+          />
+        </div>
+      )}
+
       {tab === 'brevo' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
