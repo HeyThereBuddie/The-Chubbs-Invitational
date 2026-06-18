@@ -84,12 +84,19 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
 }
 
 // Direct OSM API fetch — no Overpass dependency
+// OSM API /map has a 50k-node limit, so we start tight and shrink on 400
 async function fetchOsmApiDirect(bbox: BboxObj): Promise<{ elements: OsmElement[] }> {
-  const { minLat, minLon, maxLat, maxLon } = bbox
-  const url = `https://api.openstreetmap.org/api/0.6/map?bbox=${minLon},${minLat},${maxLon},${maxLat}`
-  const r = await fetch(url, { headers: { 'User-Agent': 'ChubbsGolfApp/1.0', Accept: 'application/xml' } })
-  if (!r.ok) throw new Error(`OSM API HTTP ${r.status}`)
-  return parseOsmXml(await r.text())
+  const clat = (bbox.minLat + bbox.maxLat) / 2
+  const clon = (bbox.minLon + bbox.maxLon) / 2
+  for (const r of [0.014, 0.009, 0.005]) {
+    const b = { minLat: clat - r, maxLat: clat + r, minLon: clon - r, maxLon: clon + r }
+    const url = `https://api.openstreetmap.org/api/0.6/map?bbox=${b.minLon},${b.minLat},${b.maxLon},${b.maxLat}`
+    const res = await fetch(url, { headers: { Accept: 'application/xml' } })
+    if (res.ok) return parseOsmXml(await res.text())
+    if (res.status !== 400) throw new Error(`OSM API HTTP ${res.status}`)
+    // 400 = too many nodes in this area, retry with tighter box
+  }
+  throw new Error('Area too dense for automatic import — deploy the updated Edge Function or place pins manually')
 }
 
 async function overpassQuery(
