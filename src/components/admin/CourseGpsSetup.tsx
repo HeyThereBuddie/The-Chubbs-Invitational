@@ -46,10 +46,15 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.private.coffee/api/interpreter',
 ]
 
-async function overpassQuery(q: string, timeoutMs = 25000): Promise<unknown> {
+async function overpassQuery(
+  q: string,
+  timeoutMs = 25000,
+  bbox?: { minLat: number; minLon: number; maxLat: number; maxLon: number },
+): Promise<unknown> {
   // Primary: Supabase Edge Function proxy (server-side, not subject to browser IP blocks)
+  // Passes bbox so the Edge Function can fall back to OSM API if all Overpass mirrors fail
   try {
-    const { data, error } = await supabase.functions.invoke('overpass-proxy', { body: { query: q } })
+    const { data, error } = await supabase.functions.invoke('overpass-proxy', { body: { query: q, bbox } })
     if (!error && data && !data.error) return data
   } catch { /* fall through to direct browser requests */ }
 
@@ -392,16 +397,17 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setImportingOsm(true)
     try {
       const b = (picked as CourseResult | null)?.bounds
-      const bbox = b
-        ? `${b.minLat},${b.minLon},${b.maxLat},${b.maxLon}`
-        : `${lat - 0.03},${lng - 0.05},${lat + 0.03},${lng + 0.05}`
+      const bboxObj = b
+        ? { minLat: b.minLat, minLon: b.minLon, maxLat: b.maxLat, maxLon: b.maxLon }
+        : { minLat: lat - 0.03, minLon: lng - 0.05, maxLat: lat + 0.03, maxLon: lng + 0.05 }
+      const bboxStr = `${bboxObj.minLat},${bboxObj.minLon},${bboxObj.maxLat},${bboxObj.maxLon}`
 
       // Use "out center" instead of "out geom" — returns one centroid point per way
       // instead of every polygon vertex. Much smaller response, 5-10x faster.
-      const q = `[out:json][timeout:25];(way[golf=green](${bbox});way[golf=tee](${bbox}););out center;`
+      const q = `[out:json][timeout:25];(way[golf=green](${bboxStr});way[golf=tee](${bboxStr}););out center;`
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = await overpassQuery(q, 30000) as any
+      const data = await overpassQuery(q, 30000, bboxObj) as any
 
       const elements = (data?.elements ?? []) as Array<{
         tags: Record<string, string>
