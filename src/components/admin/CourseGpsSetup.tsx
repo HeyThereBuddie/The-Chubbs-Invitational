@@ -154,6 +154,21 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   const [gpsSubTab, setGpsSubTab] = useState<'selection' | 'setup'>(() => currentGps ? 'setup' : 'selection')
 
+  // Switch to setup tab as soon as the async currentGps prop arrives (DB fetch in AdminPanel
+  // completes after the component first renders, so the lazy initializer above isn't enough)
+  useEffect(() => {
+    if (currentGps) {
+      setGpsSubTab('setup')
+      setCourseName(currentGps.name)
+      setCourseLat(currentGps.lat ?? null)
+      setCourseLng(currentGps.lng ?? null)
+      setHoles(currentGps.holes?.length ? currentGps.holes : emptyHoles())
+      if (currentGps.lat && currentGps.lng) {
+        setViewState(v => ({ ...v, latitude: currentGps.lat!, longitude: currentGps.lng!, zoom: 16 }))
+      }
+    }
+  }, [currentGps])
+
   const [query, setQuery]           = useState('')
   const [results, setResults]       = useState<CourseResult[]>([])
   const [searching, setSearching]   = useState(false)
@@ -334,7 +349,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setSearching(false)
   }
 
-  const selectResult = (r: CourseResult) => {
+  const selectResult = async (r: CourseResult) => {
     setPicked(r)
     setCourseName(r.name)
     setCourseLat(r.lat)
@@ -342,7 +357,22 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setResults([])
     setViewState({ longitude: r.lng, latitude: r.lat, zoom: 16 })
     mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 16, duration: 900 })
-    setGpsSubTab('setup')  // auto-advance to pin placement
+    setGpsSubTab('setup')
+
+    // Immediately persist the course selection so it survives a refresh.
+    // Holes are empty at this point — the user fills them in and hits Save later.
+    if (!tournamentId) return
+    try {
+      const { data: gpsRow } = await supabase
+        .from('course_gps')
+        .insert({ name: r.name, lat: r.lat, lng: r.lng, holes: [] })
+        .select()
+        .single()
+      if (gpsRow) {
+        await supabase.from('tournaments').update({ course_gps_id: gpsRow.id }).eq('id', tournamentId)
+        onSaved(gpsRow as CourseGps)
+      }
+    } catch { /* non-fatal — user can still place pins and Save manually */ }
   }
 
   const applyManualCoords = () => {
