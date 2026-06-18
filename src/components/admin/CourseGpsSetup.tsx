@@ -9,12 +9,13 @@ import type { CourseGps, HoleGps, LatLng } from '../../lib/types'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
-interface NominatimResult {
-  place_id: number
-  display_name: string
-  lat: string
-  lon: string
-  boundingbox: [string, string, string, string]
+interface CourseResult {
+  id: number
+  name: string
+  lat: number
+  lng: number
+  address?: string
+  bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number }
 }
 
 type PinMode = 'center' | 'front' | 'back' | 'tee'
@@ -85,12 +86,15 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const mapRef = useRef<MapRef>(null)
 
   const [query, setQuery]           = useState('')
-  const [results, setResults]       = useState<NominatimResult[]>([])
+  const [results, setResults]       = useState<CourseResult[]>([])
   const [searching, setSearching]   = useState(false)
-  const [picked, setPicked]         = useState<NominatimResult | null>(null)
+  const [picked, setPicked]         = useState<CourseResult | null>(null)
   const [courseName, setCourseName] = useState(currentGps?.name ?? '')
   const [courseLat, setCourseLat]   = useState<number | null>(currentGps?.lat ?? null)
   const [courseLng, setCourseLng]   = useState<number | null>(currentGps?.lng ?? null)
+  const [manualLat, setManualLat]   = useState('')
+  const [manualLng, setManualLng]   = useState('')
+  const [showManual, setShowManual] = useState(false)
   const [holes, setHoles]           = useState<HoleGps[]>(currentGps?.holes?.length ? currentGps.holes : emptyHoles())
   const [editingHole, setEditingHole] = useState(1)
   const [pinMode, setPinMode]       = useState<PinMode>('center')
@@ -102,38 +106,59 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     zoom:      currentGps?.lat ? 16 : 4,
   })
 
-  // ── Course search ────────────────────────────────────────────────────────
+  // ── Course search (queries OSM directly for golf_course features) ───────
   const searchCourse = async () => {
     if (!query.trim()) return
     setSearching(true)
     setResults([])
     try {
-      // Search with and without "golf course" appended, merge unique results
-      const search = async (q: string) => {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1`
-        return fetch(url, { headers: { 'User-Agent': 'ChubbsInvitational/1.0 (contact: golf-app)' } }).then(r => r.json()) as Promise<NominatimResult[]>
-      }
-      const [r1, r2] = await Promise.all([search(query), search(query + ' golf club')])
-      const seen = new Set<number>()
-      const data: NominatimResult[] = [...r1, ...r2].filter(r => { if (seen.has(r.place_id)) return false; seen.add(r.place_id); return true }).slice(0, 8)
-      setResults(data)
+      const escaped = query.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
+      const q = `[out:json][timeout:30];(way[leisure=golf_course][name~"${escaped}",i];relation[leisure=golf_course][name~"${escaped}",i];node[leisure=golf_course][name~"${escaped}",i];);out center bb tags;`
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST', body: `data=${encodeURIComponent(q)}`,
+      }).then(r => r.json())
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
+        const lat = el.center?.lat ?? el.lat
+        const lng = el.center?.lon ?? el.lon
+        const b = el.bounds
+        const addrParts = [el.tags?.['addr:city'], el.tags?.['addr:state'], el.tags?.['addr:country']].filter(Boolean)
+        return {
+          id: el.id,
+          name: el.tags?.name ?? 'Unnamed Course',
+          lat, lng,
+          address: addrParts.join(', ') || undefined,
+          bounds: b ? { minLat: b.minlat, maxLat: b.maxlat, minLon: b.minlon, maxLon: b.maxlon } : undefined,
+        }
+      }).filter((r: CourseResult) => r.lat && r.lng)
+
+      setResults(mapped)
+      if (!mapped.length) showToast('No golf courses found — try a shorter name, or use manual coordinates below', 'error')
     } catch {
       showToast('Search failed — check your connection', 'error')
     }
     setSearching(false)
   }
 
-  const selectResult = (r: NominatimResult) => {
-    const lat = parseFloat(r.lat)
-    const lng = parseFloat(r.lon)
+  const selectResult = (r: CourseResult) => {
     setPicked(r)
-    setCourseName(r.display_name.split(',')[0].trim())
-    setCourseLat(lat)
-    setCourseLng(lng)
+    setCourseName(r.name)
+    setCourseLat(r.lat)
+    setCourseLng(r.lng)
     setResults([])
-    const next = { longitude: lng, latitude: lat, zoom: 16 }
-    setViewState(next)
-    mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 900 })
+    setViewState({ longitude: r.lng, latitude: r.lat, zoom: 16 })
+    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 16, duration: 900 })
+  }
+
+  const applyManualCoords = () => {
+    const lat = parseFloat(manualLat)
+    const lng = parseFloat(manualLng)
+    if (isNaN(lat) || isNaN(lng)) { showToast('Enter valid latitude and longitude', 'error'); return }
+    const r: CourseResult = { id: Date.now(), name: query || 'My Course', lat, lng }
+    selectResult(r)
+    setShowManual(false)
   }
 
   // ── OSM auto-import ──────────────────────────────────────────────────────
@@ -141,8 +166,10 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (!picked) return
     setImportingOsm(true)
     try {
-      const [minLat, maxLat, minLon, maxLon] = picked.boundingbox
-      const bbox = `${minLat},${minLon},${maxLat},${maxLon}`
+      const b = picked.bounds
+      const bbox = b
+        ? `${b.minLat},${b.minLon},${b.maxLat},${b.maxLon}`
+        : `${picked.lat - 0.025},${picked.lng - 0.04},${picked.lat + 0.025},${picked.lng + 0.04}`
       const q = `[out:json][timeout:30];(way[golf=green](${bbox});way[golf=tee](${bbox}););out geom;`
       const data = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST', body: `data=${encodeURIComponent(q)}`,
@@ -276,22 +303,51 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         {results.length > 0 && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
             {results.map(r => (
-              <button key={r.place_id} onClick={() => selectResult(r)} style={{
+              <button key={r.id} onClick={() => selectResult(r)} style={{
                 padding: '9px 12px', borderRadius: 9, textAlign: 'left', width: '100%',
                 background: 'var(--surf2)', border: '1px solid var(--bdr)',
                 cursor: 'pointer', color: 'var(--tx1)', fontSize: 13,
               }}>
-                <div style={{ fontWeight: 600 }}>{r.display_name.split(',')[0]}</div>
-                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-                  {r.display_name.split(',').slice(1).join(',').trim()}
-                </div>
+                <div style={{ fontWeight: 600 }}>{r.name}</div>
+                {r.address && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{r.address}</div>}
                 <div style={{ fontSize: 10, color: 'var(--tx4)', marginTop: 2 }}>
-                  {parseFloat(r.lat).toFixed(4)}, {parseFloat(r.lon).toFixed(4)}
+                  {r.lat.toFixed(4)}, {r.lng.toFixed(4)}
                 </div>
               </button>
             ))}
           </div>
         )}
+
+        {/* Manual coordinate fallback */}
+        <div style={{ marginTop: 10 }}>
+          <button onClick={() => setShowManual(m => !m)} style={{
+            background: 'none', border: 'none', color: 'var(--tx4)', cursor: 'pointer',
+            fontSize: 12, textDecoration: 'underline', padding: 0,
+          }}>
+            {showManual ? '▲ Hide' : '▼ Can\'t find your course? Enter coordinates manually'}
+          </button>
+          {showManual && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.5 }}>
+                Open Google Maps, right-click the course → copy the coordinates (e.g. 43.8584, -79.0048)
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={manualLat} onChange={e => setManualLat(e.target.value)}
+                  placeholder="Latitude (e.g. 43.8584)"
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }} />
+                <input value={manualLng} onChange={e => setManualLng(e.target.value)}
+                  placeholder="Longitude (e.g. -79.0048)"
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }} />
+              </div>
+              <button onClick={applyManualCoords} style={{
+                padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                background: 'rgba(212,165,58,0.14)', border: '1px solid rgba(212,165,58,0.3)', color: '#D4A53A',
+              }}>
+                Use These Coordinates →
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Course name (editable) + OSM import */}
         {mapReady && (
