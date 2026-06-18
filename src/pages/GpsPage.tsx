@@ -232,9 +232,43 @@ export default function GpsPage() {
     })
   }, [])
 
+  const [mapLoaded, setMapLoaded] = useState(false)
+  const initialFlyDone = useRef(false)
+
+  // Wait until BOTH map style is loaded AND course data is ready, then fly once.
+  // flyTo is silently ignored by Mapbox before the style finishes loading, so we
+  // must gate on mapLoaded rather than just waiting for course data.
   useEffect(() => {
-    if (currentHole) flyToHole(currentHole)
-  }, [selectedHole, course]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!mapLoaded || !currentHole || initialFlyDone.current) return
+    initialFlyDone.current = true
+    flyToHole(currentHole)
+  }, [mapLoaded, currentHole, flyToHole])
+
+  // Fly on subsequent hole-strip taps (map is already loaded by this point)
+  useEffect(() => {
+    if (!initialFlyDone.current || !currentHole) return
+    flyToHole(currentHole)
+  }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prevent iOS Safari pull-to-refresh on this fixed-layout page.
+  // CSS overscroll-behavior:none is ignored by older iOS; the touchmove
+  // preventDefault is the reliable fallback. We skip events on the Mapbox
+  // canvas so pan/zoom still works.
+  useEffect(() => {
+    let startY = 0
+    const onStart = (e: TouchEvent) => { startY = e.touches[0]?.clientY ?? 0 }
+    const onMove  = (e: TouchEvent) => {
+      if (!e.cancelable) return
+      if ((e.target as HTMLElement)?.closest?.('canvas')) return // let Mapbox handle canvas touches
+      if ((e.touches[0]?.clientY ?? 0) > startY) e.preventDefault() // downward = pull-to-refresh
+    }
+    document.addEventListener('touchstart', onStart, { passive: true })
+    document.addEventListener('touchmove',  onMove,  { passive: false })
+    return () => {
+      document.removeEventListener('touchstart', onStart)
+      document.removeEventListener('touchmove',  onMove)
+    }
+  }, [])
 
   const handleMapClick = (e: MapMouseEvent) => {
     setTapPoint({ lat: e.lngLat.lat, lng: e.lngLat.lng })
@@ -342,6 +376,7 @@ export default function GpsPage() {
           onMove={(e: { viewState: typeof viewState }) => setViewState(e.viewState)}
           style={{ width: '100%', height: '100%' }}
           mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+          onLoad={() => setMapLoaded(true)}
           onClick={handleMapClick}
         >
           <NavigationControl position="top-right" showCompass={false} />
