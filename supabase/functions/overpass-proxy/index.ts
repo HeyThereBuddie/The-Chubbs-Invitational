@@ -60,8 +60,11 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     if (id && lat && lon) nodePos.set(id, { lat: parseFloat(lat), lon: parseFloat(lon) })
   }
 
-  // Pass 2: way id → tags + centroid (only golf=green and golf=tee)
+  // Pass 2: parse all ways in one loop
+  //   golf=green / golf=tee → wayMap (centroid)
+  //   golf=hole             → holeAnchors (first node≈tee, last node≈green)
   const wayMap = new Map<string, { tags: Record<string, string>; center: { lat: number; lon: number } | null }>()
+  const holeAnchors: Array<{ ref: number; teePos: { lat: number; lon: number }; greenPos: { lat: number; lon: number } }> = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
   while ((m = reWay.exec(xml)) !== null) {
     const [, attrs, body] = m
@@ -71,19 +74,27 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     const reTag = /<tag\s+k="([^"]+)"\s+v="([^"]+)"/g
     let t: RegExpExecArray | null
     while ((t = reTag.exec(body)) !== null) tags[t[1]] = t[2]
-    if (tags['golf'] !== 'green' && tags['golf'] !== 'tee') continue
-    const refs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
-    const pts = refs.map(r => nodePos.get(r)).filter((n): n is { lat: number; lon: number } => n != null)
-    wayMap.set(id, {
-      tags,
-      center: pts.length
-        ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
-        : null,
-    })
+    const golf = tags['golf']
+    const ndRefs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
+
+    if (golf === 'green' || golf === 'tee') {
+      const pts = ndRefs.map(r => nodePos.get(r)).filter((n): n is { lat: number; lon: number } => n != null)
+      wayMap.set(id, {
+        tags,
+        center: pts.length
+          ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
+          : null,
+      })
+    } else if (golf === 'hole') {
+      const holeNum = parseInt(tags['ref'] ?? '0')
+      if (holeNum < 1 || holeNum > 18 || ndRefs.length < 2) continue
+      const teePos   = nodePos.get(ndRefs[0])
+      const greenPos = nodePos.get(ndRefs[ndRefs.length - 1])
+      if (teePos && greenPos) holeAnchors.push({ ref: holeNum, teePos, greenPos })
+    }
   }
 
   // Pass 3: golf=hole relations → map way IDs to hole numbers
-  // Many courses tag ref=N on the relation but not on individual tee/green ways
   const wayHoleNum = new Map<string, number>()
   const reRelation = /<relation\b[^>]*>([\s\S]*?)<\/relation>/g
   while ((m = reRelation.exec(xml)) !== null) {
@@ -105,7 +116,22 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     }
   }
 
-  // Pass 4: assemble output — prefer relation hole number over way's own ref tag
+  // Pass 4: proximity-match unnumbered greens/tees to golf=hole way endpoints
+  for (const anchor of holeAnchors) {
+    let bestGreenId = '', bestGreenD = Infinity
+    let bestTeeId   = '', bestTeeD   = Infinity
+    for (const [wayId, { tags, center }] of wayMap) {
+      if (!center || wayHoleNum.has(wayId)) continue
+      const dg = (center.lat - anchor.greenPos.lat) ** 2 + (center.lon - anchor.greenPos.lon) ** 2
+      const dt = (center.lat - anchor.teePos.lat)   ** 2 + (center.lon - anchor.teePos.lon)   ** 2
+      if (tags['golf'] === 'green' && dg < bestGreenD) { bestGreenD = dg; bestGreenId = wayId }
+      if (tags['golf'] === 'tee'   && dt < bestTeeD)   { bestTeeD   = dt; bestTeeId   = wayId }
+    }
+    if (bestGreenId) wayHoleNum.set(bestGreenId, anchor.ref)
+    if (bestTeeId)   wayHoleNum.set(bestTeeId,   anchor.ref)
+  }
+
+  // Pass 5: assemble output — prefer relation/anchor hole number over way's own ref tag
   const elements: unknown[] = []
   for (const [id, { tags, center }] of wayMap) {
     if (!center) continue

@@ -64,8 +64,11 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     if (id && lat && lon) nodePos[id] = { lat: parseFloat(lat), lon: parseFloat(lon) }
   }
 
-  // Pass 2: way id → tags + centroid (only golf=green and golf=tee ways)
+  // Pass 2: parse all ways in one loop
+  //   golf=green / golf=tee → wayMap (centroid)
+  //   golf=hole             → holeAnchors (first node≈tee, last node≈green)
   const wayMap: Record<string, { tags: Record<string, string>; center: { lat: number; lon: number } | null }> = {}
+  const holeAnchors: Array<{ ref: number; teePos: { lat: number; lon: number }; greenPos: { lat: number; lon: number } }> = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
   while ((m = reWay.exec(xml)) !== null) {
     const [, attrs, body] = m
@@ -75,14 +78,24 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const reTag = /<tag\s+k="([^"]+)"\s+v="([^"]+)"/g
     let t: RegExpExecArray | null
     while ((t = reTag.exec(body)) !== null) tags[t[1]] = t[2]
-    if (tags['golf'] !== 'green' && tags['golf'] !== 'tee') continue
-    const refs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
-    const pts = refs.map(r => nodePos[r]).filter((n): n is { lat: number; lon: number } => n != null)
-    wayMap[id] = {
-      tags,
-      center: pts.length
-        ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
-        : null,
+    const golf = tags['golf']
+    const ndRefs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
+
+    if (golf === 'green' || golf === 'tee') {
+      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is { lat: number; lon: number } => n != null)
+      wayMap[id] = {
+        tags,
+        center: pts.length
+          ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
+          : null,
+      }
+    } else if (golf === 'hole') {
+      // golf=hole routing ways run tee→green and carry ref=1..18 even when green/tee shapes don't
+      const holeNum = parseInt(tags['ref'] ?? '0')
+      if (holeNum < 1 || holeNum > 18 || ndRefs.length < 2) continue
+      const teePos   = nodePos[ndRefs[0]]
+      const greenPos = nodePos[ndRefs[ndRefs.length - 1]]
+      if (teePos && greenPos) holeAnchors.push({ ref: holeNum, teePos, greenPos })
     }
   }
 
@@ -99,7 +112,6 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     if (tags['golf'] !== 'hole') continue
     const holeNum = parseInt(tags['ref'] ?? '0')
     if (holeNum < 1 || holeNum > 18) continue
-    // Collect all way member refs regardless of role
     const reMember = /<member\b([^>]*?)(?:\/>|>)/g
     let mem: RegExpExecArray | null
     while ((mem = reMember.exec(body)) !== null) {
@@ -110,7 +122,23 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     }
   }
 
-  // Pass 4: assemble output — prefer relation hole number over way's own ref tag
+  // Pass 4: proximity-match unnumbered greens/tees to golf=hole way endpoints
+  // Watson's Glen and many courses put ref=1..18 on the routing line, not on shapes
+  for (const anchor of holeAnchors) {
+    let bestGreenId = '', bestGreenD = Infinity
+    let bestTeeId   = '', bestTeeD   = Infinity
+    for (const [wayId, { tags, center }] of Object.entries(wayMap)) {
+      if (!center || wayHoleNum[wayId]) continue
+      const dg = (center.lat - anchor.greenPos.lat) ** 2 + (center.lon - anchor.greenPos.lon) ** 2
+      const dt = (center.lat - anchor.teePos.lat)   ** 2 + (center.lon - anchor.teePos.lon)   ** 2
+      if (tags['golf'] === 'green' && dg < bestGreenD) { bestGreenD = dg; bestGreenId = wayId }
+      if (tags['golf'] === 'tee'   && dt < bestTeeD)   { bestTeeD   = dt; bestTeeId   = wayId }
+    }
+    if (bestGreenId) wayHoleNum[bestGreenId] = anchor.ref
+    if (bestTeeId)   wayHoleNum[bestTeeId]   = anchor.ref
+  }
+
+  // Pass 5: assemble output — prefer relation/anchor hole number over way's own ref tag
   const elements: OsmElement[] = []
   for (const [id, { tags, center }] of Object.entries(wayMap)) {
     if (!center) continue
