@@ -842,25 +842,32 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       )
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json() as {
-        fairway: LatLng[]
-        bunkers: LatLng[][]
-        water:   LatLng[][]
+        fairway:     LatLng[]
+        bunkers:     LatLng[][]
+        water:       LatLng[][]
+        avoidZones:  LatLng[][]
         green: { front: LatLng | null; center: LatLng | null; back: LatLng | null }
+        landingZone: LatLng | null
+        tip:         string | null
       }
       setHoles(prev => prev.map(hole => hole.hole !== editingHole ? hole : {
         ...hole,
-        fairway: data.fairway?.length ? data.fairway : hole.fairway,
-        bunkers: data.bunkers?.length ? data.bunkers : hole.bunkers,
-        water:   data.water?.length   ? data.water   : hole.water,
+        fairway:     data.fairway?.length     ? data.fairway     : hole.fairway,
+        bunkers:     data.bunkers?.length     ? data.bunkers     : hole.bunkers,
+        water:       data.water?.length       ? data.water       : hole.water,
+        avoidZones:  data.avoidZones?.length  ? data.avoidZones  : hole.avoidZones,
         green: {
           front:  data.green?.front  ?? hole.green.front,
           center: data.green?.center ?? hole.green.center,
           back:   data.green?.back   ?? hole.green.back,
         },
+        landingZone: data.landingZone ?? hole.landingZone,
+        tip:         data.tip         ?? hole.tip,
       }))
       const g = data.green
       const greenSet = [g?.front, g?.center, g?.back].filter(Boolean).length
-      showToast(`AI traced hole ${editingHole}: fairway, ${data.bunkers?.length ?? 0} bunkers, ${data.water?.length ?? 0} water, ${greenSet}/3 green pins`)
+      const extras = [data.landingZone && 'LZ', data.tip && 'tip'].filter(Boolean).join(' ')
+      showToast(`AI traced hole ${editingHole}: fairway, ${data.bunkers?.length ?? 0} bnk, ${data.water?.length ?? 0} H₂O, ${greenSet}/3 pins${extras ? ' · ' + extras : ''}`)
     } catch (err) {
       showToast(`AI trace failed — ${(err as Error).message}`, 'error')
     }

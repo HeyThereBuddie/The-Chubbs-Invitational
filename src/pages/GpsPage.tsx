@@ -155,6 +155,7 @@ export default function GpsPage() {
     return h >= 1 && h <= 18 ? h : 1
   })
   const [tapPoint, setTapPoint] = useState<LatLng | null>(null)
+  const [tipOpen, setTipOpen]   = useState(false)
   const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15, bearing: 0, pitch: 0 })
 
   // Load GPS course data for current tournament
@@ -223,8 +224,27 @@ export default function GpsPage() {
       })),
     }
   }
-  const bunkersGeoJson = useMemo(() => makePolyCollection(currentHole?.bunkers), [currentHole])
-  const waterGeoJson   = useMemo(() => makePolyCollection(currentHole?.water),   [currentHole])
+  const bunkersGeoJson = useMemo(() => makePolyCollection(currentHole?.bunkers),    [currentHole])
+  const waterGeoJson   = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
+  const avoidZonesGeoJson = useMemo(() => makePolyCollection(currentHole?.avoidZones), [currentHole])
+
+  // Landing zone — approximate 30-yard radius circle as a polygon
+  const landingZoneGeoJson = useMemo(() => {
+    const lz = currentHole?.landingZone
+    if (!lz) return null
+    const steps = 36
+    const radiusM = 27  // ~30 yards
+    const coords: [number, number][] = []
+    for (let i = 0; i <= steps; i++) {
+      const pt = offsetLatLng(lz, (i / steps) * 360, radiusM)
+      coords.push([pt.lng, pt.lat])
+    }
+    return {
+      type: 'Feature' as const,
+      geometry: { type: 'Polygon' as const, coordinates: [coords] },
+      properties: {},
+    }
+  }, [currentHole])
 
   // Aim line: Tee → Player (faded) → Green center (bright)
   const aimLineGeoJson = useMemo(() => {
@@ -287,6 +307,9 @@ export default function GpsPage() {
     if (!initialFlyDone.current || !currentHole) return
     flyToHole(currentHole)
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset tip state when switching holes
+  useEffect(() => { setTipOpen(false) }, [selectedHole])
 
   // Prevent iOS Safari pull-to-refresh on this fixed-layout page.
   // CSS overscroll-behavior:none is ignored by older iOS; the touchmove
@@ -477,6 +500,26 @@ export default function GpsPage() {
             </Source>
           )}
 
+          {/* Avoid zones — red danger overlays */}
+          {avoidZonesGeoJson && (
+            <Source id="avoid-zones" type="geojson" data={avoidZonesGeoJson}>
+              <Layer id="avoid-zones-fill" type="fill"
+                paint={{ 'fill-color': 'rgba(239,68,68,0.22)' }} />
+              <Layer id="avoid-zones-outline" type="line"
+                paint={{ 'line-color': 'rgba(239,68,68,0.75)', 'line-width': 1.5, 'line-dasharray': [4, 3] }} />
+            </Source>
+          )}
+
+          {/* Landing zone — green glow circle */}
+          {landingZoneGeoJson && (
+            <Source id="landing-zone" type="geojson" data={landingZoneGeoJson}>
+              <Layer id="landing-zone-fill" type="fill"
+                paint={{ 'fill-color': 'rgba(74,222,128,0.18)' }} />
+              <Layer id="landing-zone-outline" type="line"
+                paint={{ 'line-color': 'rgba(74,222,128,0.80)', 'line-width': 2, 'line-dasharray': [6, 3] }} />
+            </Source>
+          )}
+
           {/* Aim line: tee → player → green */}
           {aimLineGeoJson && (
             <Source id="aimline" type="geojson" data={aimLineGeoJson}>
@@ -515,6 +558,17 @@ export default function GpsPage() {
           {currentHole?.tee && (
             <Marker longitude={currentHole.tee.lng} latitude={currentHole.tee.lat} anchor="center">
               <TeePin />
+            </Marker>
+          )}
+
+          {/* Landing zone center marker */}
+          {currentHole?.landingZone && (
+            <Marker longitude={currentHole.landingZone.lng} latitude={currentHole.landingZone.lat} anchor="center">
+              <div style={{
+                width: 18, height: 18, borderRadius: '50%',
+                background: 'rgba(74,222,128,0.30)', border: '2px solid rgba(74,222,128,0.90)',
+                boxShadow: '0 0 8px rgba(74,222,128,0.6)',
+              }} />
             </Marker>
           )}
 
@@ -568,8 +622,8 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Tap hint — only show when no tap yet */}
-        {!tapPoint && position && (
+        {/* Tap hint — only show when no tap yet and no tip card */}
+        {!tapPoint && position && !currentHole?.tip && (
           <div style={{
             position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(10,10,15,0.7)', color: 'rgba(255,255,255,0.6)',
@@ -577,6 +631,36 @@ export default function GpsPage() {
             whiteSpace: 'nowrap', pointerEvents: 'none',
           }}>
             Tap map to measure distance
+          </div>
+        )}
+
+        {/* Hole tip card */}
+        {currentHole?.tip && (
+          <div style={{
+            position: 'absolute', bottom: 8, left: 8, right: 8,
+            background: 'rgba(8,8,12,0.88)', backdropFilter: 'blur(10px)',
+            borderRadius: 12, padding: '9px 12px',
+            border: '1px solid rgba(212,165,58,0.28)',
+          }}>
+            <button
+              onClick={() => setTipOpen(v => !v)}
+              style={{
+                width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.4 }}>💡</span>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.82)', lineHeight: 1.5, flex: 1 }}>
+                {tipOpen
+                  ? currentHole.tip
+                  : currentHole.tip.length > 100
+                    ? currentHole.tip.slice(0, 97) + '…'
+                    : currentHole.tip}
+              </span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0, paddingTop: 3 }}>
+                {tipOpen ? '▲' : '▼'}
+              </span>
+            </button>
           </div>
         )}
       </div>

@@ -177,6 +177,9 @@ export interface HoleGps {
   fairway?: LatLng[] | null
   bunkers?: LatLng[][] | null
   water?:   LatLng[][] | null
+  landingZone?: LatLng | null      // center of ideal tee-shot landing area
+  avoidZones?:  LatLng[][] | null  // danger areas beyond mapped hazards
+  tip?: string | null              // AI-generated playing tip
 }
 
 export interface CourseGps {
