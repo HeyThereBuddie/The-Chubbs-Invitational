@@ -389,7 +389,18 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setEditingHole(h.hole)
     setPinMode('center')
     const target = h.green.center ?? h.tee
-    if (target) mapRef.current?.flyTo({ center: [target.lng, target.lat], zoom: 17, duration: 600 })
+    if (target) {
+      // Hole has a pin — zoom in tight for precision editing
+      mapRef.current?.flyTo({ center: [target.lng, target.lat], zoom: 18, duration: 500 })
+    } else {
+      // No pin yet — fly to the nearest neighbouring hole that has one so the
+      // user lands in roughly the right part of the course
+      const nearest = holes
+        .filter(n => n.hole !== h.hole && (n.green.center ?? n.tee))
+        .sort((a, b) => Math.abs(a.hole - h.hole) - Math.abs(b.hole - h.hole))[0]
+      const ref = nearest?.green.center ?? nearest?.tee
+      if (ref) mapRef.current?.flyTo({ center: [ref.lng, ref.lat], zoom: 16, duration: 500 })
+    }
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────
@@ -613,7 +624,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           </div>
 
           {/* Map */}
-          <div style={{ borderRadius: 14, overflow: 'hidden', height: 420, border: '1px solid var(--bdr)' }}>
+          <div style={{ borderRadius: 14, overflow: 'hidden', height: 'min(640px, 60vh)', minHeight: 460, border: '1px solid var(--bdr)' }}>
             <Map
               ref={mapRef}
               mapboxAccessToken={TOKEN}
