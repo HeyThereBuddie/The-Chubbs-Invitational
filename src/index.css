@@ -456,3 +456,13 @@ html[data-theme="light"] .glass-strong {
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(7px); }
 }
+
+/* GPS player dot pulse ring */
+@keyframes gpsRingPulse {
+  0%   { transform: scale(0.6); opacity: 0.7; }
+  70%  { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.gps-pulse-ring {
+  animation: gpsRingPulse 2s ease-out infinite;
+}

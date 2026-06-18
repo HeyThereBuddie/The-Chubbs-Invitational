@@ -54,12 +54,31 @@ function TeePin() {
 
 function PlayerDot() {
   return (
-    <div style={{
-      width: 18, height: 18, borderRadius: '50%',
-      background: '#3b82f6', border: '3px solid white',
-      boxShadow: '0 0 0 5px rgba(59,130,246,0.25)',
-    }} />
+    <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Pulsing accuracy ring */}
+      <div className="gps-pulse-ring" style={{
+        position: 'absolute', width: 44, height: 44, borderRadius: '50%',
+        background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
+      }} />
+      {/* Blue dot */}
+      <div style={{
+        width: 18, height: 18, borderRadius: '50%',
+        background: '#3b82f6', border: '3px solid white',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+        zIndex: 1, flexShrink: 0,
+      }} />
+    </div>
   )
+}
+
+// Bearing in degrees (0=N, 90=E) from point a to point b
+function calcBearing(a: LatLng, b: LatLng): number {
+  const lat1 = (a.lat * Math.PI) / 180
+  const lat2 = (b.lat * Math.PI) / 180
+  const dLng  = ((b.lng - a.lng) * Math.PI) / 180
+  const x = Math.sin(dLng) * Math.cos(lat2)
+  const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360
 }
 
 function YardagePanel({ label, yards, color }: { label: string; yards: number | null; color: string }) {
@@ -90,7 +109,7 @@ export default function GpsPage() {
     return h >= 1 && h <= 18 ? h : 1
   })
   const [tapPoint, setTapPoint] = useState<LatLng | null>(null)
-  const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15 })
+  const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15, bearing: 0, pitch: 0 })
 
   // Load GPS course data for current tournament
   useEffect(() => {
@@ -129,10 +148,31 @@ export default function GpsPage() {
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
 
-  // Fly to green center when hole changes
+  // Orient the map so tee is at bottom, green at top (like 18Birdies)
   const flyToHole = useCallback((hole: HoleGps) => {
-    const target = hole.green.center ?? hole.tee
-    if (target) mapRef.current?.flyTo({ center: [target.lng, target.lat], zoom: 17, duration: 700 })
+    const green  = hole.green.center
+    const tee    = hole.tee
+    if (!green && !tee) return
+
+    // Bearing from tee → green so that direction points "up" on screen
+    const bearing = tee && green ? calcBearing(tee, green) : 0
+
+    // Center on midpoint so both tee and green are visible
+    const center = tee && green
+      ? { lat: (tee.lat + green.lat) / 2, lng: (tee.lng + green.lng) / 2 }
+      : (green ?? tee!)
+
+    // Scale zoom to hole length: longer holes need a wider view
+    const yds = tee && green ? haversineYards(tee, green) : 200
+    const zoom = yds > 450 ? 16 : yds > 300 ? 16.5 : yds > 150 ? 17 : 17.5
+
+    mapRef.current?.flyTo({
+      center: [center.lng, center.lat],
+      zoom,
+      bearing,
+      pitch: 0,
+      duration: 800,
+    })
   }, [])
 
   useEffect(() => {
