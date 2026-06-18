@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Map, { Marker, NavigationControl, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -15,7 +15,16 @@ interface CourseResult {
   lat: number
   lng: number
   address?: string
+  distanceKm?: number
   bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number }
+}
+
+function kmBetween(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10
 }
 
 type PinMode = 'center' | 'front' | 'back' | 'tee'
@@ -95,6 +104,8 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const [manualLat, setManualLat]   = useState('')
   const [manualLng, setManualLng]   = useState('')
   const [showManual, setShowManual] = useState(false)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [nearbyLoading, setNearbyLoading] = useState(false)
   const [holes, setHoles]           = useState<HoleGps[]>(currentGps?.holes?.length ? currentGps.holes : emptyHoles())
   const [editingHole, setEditingHole] = useState(1)
   const [pinMode, setPinMode]       = useState<PinMode>('center')
@@ -105,6 +116,40 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     latitude:  currentGps?.lat ?? 43.85,
     zoom:      currentGps?.lat ? 16 : 4,
   })
+
+  // ── Get user location + auto-load nearby courses on mount ───────────────
+  useEffect(() => {
+    if (!navigator.geolocation || currentGps) return
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lng } = pos.coords
+      setUserLocation({ lat, lng })
+      setViewState({ longitude: lng, latitude: lat, zoom: 11 })
+      setNearbyLoading(true)
+      try {
+        const q = `[out:json][timeout:30];(way[leisure=golf_course](around:40000,${lat},${lng});relation[leisure=golf_course](around:40000,${lat},${lng}););out center bb tags;`
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST', body: `data=${encodeURIComponent(q)}`,
+        }).then(r => r.json())
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
+          const elLat = el.center?.lat ?? el.lat
+          const elLng = el.center?.lon ?? el.lon
+          const b = el.bounds
+          const addrParts = [el.tags?.['addr:city'], el.tags?.['addr:state'], el.tags?.['addr:country']].filter(Boolean)
+          return {
+            id: el.id, name: el.tags?.name ?? 'Unnamed Course', lat: elLat, lng: elLng,
+            address: addrParts.join(', ') || undefined,
+            distanceKm: kmBetween(lat, lng, elLat, elLng),
+            bounds: b ? { minLat: b.minlat, maxLat: b.maxlat, minLon: b.minlon, maxLon: b.maxlon } : undefined,
+          }
+        }).filter((r: CourseResult) => r.lat && r.lng)
+          .sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+        setResults(mapped)
+      } catch { /* silent — user can still search manually */ }
+      setNearbyLoading(false)
+    }, () => { /* permission denied — that's fine */ }, { timeout: 8000 })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Course search (queries OSM directly for golf_course features) ───────
   const searchCourse = async () => {
@@ -134,8 +179,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         }
       }).filter((r: CourseResult) => r.lat && r.lng)
 
-      setResults(mapped)
-      if (!mapped.length) showToast('No golf courses found — try a shorter name, or use manual coordinates below', 'error')
+      // Attach distance from user and sort closest first
+      const withDist = mapped.map((r: CourseResult) => ({
+        ...r,
+        distanceKm: userLocation ? kmBetween(userLocation.lat, userLocation.lng, r.lat, r.lng) : undefined,
+      })).sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+
+      setResults(withDist)
+      if (!withDist.length) showToast('No golf courses found — try a shorter name, or use manual coordinates below', 'error')
     } catch {
       showToast('Search failed — check your connection', 'error')
     }
@@ -299,20 +350,38 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           </button>
         </div>
 
-        {/* Search results */}
+        {/* Nearby loading */}
+        {nearbyLoading && (
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--tx3)', fontSize: 12 }}>
+            <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%', flexShrink: 0 }} />
+            Finding nearby golf courses…
+          </div>
+        )}
+
+        {/* Results list */}
         {results.length > 0 && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {!query && userLocation && (
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: 'var(--tx4)', textTransform: 'uppercase', padding: '2px 4px' }}>
+                📍 Nearest to you
+              </div>
+            )}
             {results.map(r => (
               <button key={r.id} onClick={() => selectResult(r)} style={{
                 padding: '9px 12px', borderRadius: 9, textAlign: 'left', width: '100%',
                 background: 'var(--surf2)', border: '1px solid var(--bdr)',
                 cursor: 'pointer', color: 'var(--tx1)', fontSize: 13,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
               }}>
-                <div style={{ fontWeight: 600 }}>{r.name}</div>
-                {r.address && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{r.address}</div>}
-                <div style={{ fontSize: 10, color: 'var(--tx4)', marginTop: 2 }}>
-                  {r.lat.toFixed(4)}, {r.lng.toFixed(4)}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+                  {r.address && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>{r.address}</div>}
                 </div>
+                {r.distanceKm !== undefined && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#D4A53A', flexShrink: 0, textAlign: 'right' }}>
+                    {r.distanceKm < 1 ? `${Math.round(r.distanceKm * 1000)}m` : `${r.distanceKm} km`}
+                  </div>
+                )}
               </button>
             ))}
           </div>
