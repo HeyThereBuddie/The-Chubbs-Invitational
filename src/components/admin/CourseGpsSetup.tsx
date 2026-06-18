@@ -398,12 +398,12 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         ? `(around:150000,${userLocation.lat},${userLocation.lng})`
         : ''
 
-      const [nomResult, ovpResult] = await Promise.allSettled([
-        nominatimFetch({ q }).then(data =>
-          data
-            .map(r => fromNominatim(r, userLocation?.lat, userLocation?.lng))
-            .filter((r): r is CourseResult => r !== null)
-        ),
+      // Always search with "golf course" suffix in parallel for courses like
+      // "Watson's Glen" whose full OSM name is "Watson's Glen Golf Course"
+      const hasGolfTerm = /golf|club|links|course/i.test(q)
+      const nomQueries = hasGolfTerm ? [q] : [q, `${q} golf course`, `${q} golf club`]
+
+      const [ovpResult, ...nomResults] = await Promise.allSettled([
         (overpassQuery(
           `[out:json][timeout:8];(` +
           `way["leisure"="golf_course"]["name"~"${safe}",i]${area};` +
@@ -417,10 +417,17 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             .map(el => fromOverpassEl(el, userLocation?.lat, userLocation?.lng))
             .filter((r): r is CourseResult => r !== null)
         ),
+        ...nomQueries.map(nq =>
+          nominatimFetch({ q: nq }).then(data =>
+            data
+              .map(r => fromNominatim(r, userLocation?.lat, userLocation?.lng))
+              .filter((r): r is CourseResult => r !== null)
+          )
+        ),
       ])
 
-      const fromNom = nomResult.status === 'fulfilled' ? nomResult.value : []
       const fromOvp = ovpResult.status === 'fulfilled' ? ovpResult.value : []
+      const fromNom = nomResults.flatMap(r => r.status === 'fulfilled' ? r.value : [])
 
       const all = [...fromOvp, ...fromNom]
       const seen: CourseResult[] = []
@@ -428,17 +435,9 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         if (!seen.some(s => kmBetween(s.lat, s.lng, r.lat, r.lng) < 0.5)) seen.push(r)
       }
 
-      if (!seen.length && !/golf|club|links|course/i.test(q)) {
-        const data2 = await nominatimFetch({ q: `${q} golf club` })
-        const extra = data2
-          .map(r => fromNominatim(r, userLocation?.lat, userLocation?.lng))
-          .filter((r): r is CourseResult => r !== null)
-        seen.push(...extra)
-      }
-
       seen.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
       setResults(seen)
-      if (!seen.length) showToast('No golf courses found — try the full name or enter coordinates manually below', 'error')
+      if (!seen.length) showToast("No golf courses found — try typing the full name (e.g. \"Watson's Glen Golf Course\") or enter coordinates manually", 'error')
     } catch {
       showToast('Search failed — check your connection', 'error')
     }
