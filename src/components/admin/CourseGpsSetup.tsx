@@ -151,63 +151,47 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       setViewState({ longitude: lng, latitude: lat, zoom: 11 })
       setNearbyLoading(true)
       try {
-        const q = `[out:json][timeout:20];(way[leisure=golf_course](around:25000,${lat},${lng}););out center bb tags;`
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/golf%20club.json?types=poi&proximity=${lng},${lat}&limit=15&access_token=${TOKEN}`
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = await overpassQuery(q, 15000)
+        const data: any = await fetch(url).then(r => r.json())
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
-          const elLat = el.center?.lat ?? el.lat
-          const elLng = el.center?.lon ?? el.lon
-          const b = el.bounds
-          const addrParts = [el.tags?.['addr:city'], el.tags?.['addr:state'], el.tags?.['addr:country']].filter(Boolean)
-          return {
-            id: el.id, name: el.tags?.name ?? 'Unnamed Course', lat: elLat, lng: elLng,
-            address: addrParts.join(', ') || undefined,
-            distanceKm: kmBetween(lat, lng, elLat, elLng),
-            bounds: b ? { minLat: b.minlat, maxLat: b.maxlat, minLon: b.minlon, maxLon: b.maxlon } : undefined,
-          }
-        }).filter((r: CourseResult) => r.lat && r.lng)
-          .sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+        const mapped: CourseResult[] = (data.features ?? []).map((f: any) => ({
+          id: f.id,
+          name: f.text,
+          lat: f.center[1],
+          lng: f.center[0],
+          address: f.place_name.split(',').slice(1).join(',').trim(),
+          distanceKm: kmBetween(lat, lng, f.center[1], f.center[0]),
+          bounds: f.bbox ? { minLat: f.bbox[1], maxLat: f.bbox[3], minLon: f.bbox[0], maxLon: f.bbox[2] } : undefined,
+        }))
         setResults(mapped)
-      } catch { /* silent — user can still search manually */ }
+      } catch { /* silent */ }
       setNearbyLoading(false)
-    }, () => { /* permission denied — that's fine */ }, { timeout: 8000 })
+    }, () => { setNearbyLoading(false) }, { timeout: 8000 })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Course search (queries OSM directly for golf_course features) ───────
+  // ── Course search via Mapbox Geocoding API ───────────────────────────────
   const searchCourse = async () => {
     if (!query.trim()) return
     setSearching(true)
     setResults([])
     try {
-      const escaped = query.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
-      const q = `[out:json][timeout:30];(way[leisure=golf_course][name~"${escaped}",i];relation[leisure=golf_course][name~"${escaped}",i];node[leisure=golf_course][name~"${escaped}",i];);out center bb tags;`
+      const proximity = userLocation ? `&proximity=${userLocation.lng},${userLocation.lat}` : ''
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=poi&limit=10${proximity}&access_token=${TOKEN}`
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await overpassQuery(q)
-
+      const data: any = await fetch(url).then(r => r.json())
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
-        const lat = el.center?.lat ?? el.lat
-        const lng = el.center?.lon ?? el.lon
-        const b = el.bounds
-        const addrParts = [el.tags?.['addr:city'], el.tags?.['addr:state'], el.tags?.['addr:country']].filter(Boolean)
-        return {
-          id: el.id,
-          name: el.tags?.name ?? 'Unnamed Course',
-          lat, lng,
-          address: addrParts.join(', ') || undefined,
-          bounds: b ? { minLat: b.minlat, maxLat: b.maxlat, minLon: b.minlon, maxLon: b.maxlon } : undefined,
-        }
-      }).filter((r: CourseResult) => r.lat && r.lng)
-
-      // Attach distance from user and sort closest first
-      const withDist = mapped.map((r: CourseResult) => ({
-        ...r,
-        distanceKm: userLocation ? kmBetween(userLocation.lat, userLocation.lng, r.lat, r.lng) : undefined,
-      })).sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
-
-      setResults(withDist)
-      if (!withDist.length) showToast('No golf courses found — try a shorter name, or use manual coordinates below', 'error')
+      const mapped: CourseResult[] = (data.features ?? []).map((f: any) => ({
+        id: f.id,
+        name: f.text,
+        lat: f.center[1],
+        lng: f.center[0],
+        address: f.place_name.split(',').slice(1).join(',').trim(),
+        distanceKm: userLocation ? kmBetween(userLocation.lat, userLocation.lng, f.center[1], f.center[0]) : undefined,
+        bounds: f.bbox ? { minLat: f.bbox[1], maxLat: f.bbox[3], minLon: f.bbox[0], maxLon: f.bbox[2] } : undefined,
+      }))
+      setResults(mapped)
+      if (!mapped.length) showToast('No courses found — try a shorter name or use manual coordinates below', 'error')
     } catch {
       showToast('Search failed — check your connection', 'error')
     }
