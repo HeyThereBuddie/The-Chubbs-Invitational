@@ -165,6 +165,9 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
   }
 
   // Pass 4b: proximity-match unnumbered greens/tees to golf=hole way endpoints
+  // Max distance thresholds reject off-course features (e.g. tees in adjacent farmland)
+  const MAX_GREEN_D2 = 0.003 * 0.003  // ~330m
+  const MAX_TEE_D2   = 0.004 * 0.004  // ~440m
   for (const anchor of holeAnchors) {
     let bestGreenId = '', bestGreenD = Infinity
     let bestTeeId   = '', bestTeeD   = Infinity
@@ -175,8 +178,8 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
       if (tags['golf'] === 'green' && dg < bestGreenD) { bestGreenD = dg; bestGreenId = wayId }
       if (tags['golf'] === 'tee'   && dt < bestTeeD)   { bestTeeD   = dt; bestTeeId   = wayId }
     }
-    if (bestGreenId) wayHoleNum.set(bestGreenId, anchor.ref)
-    if (bestTeeId)   wayHoleNum.set(bestTeeId,   anchor.ref)
+    if (bestGreenId && bestGreenD < MAX_GREEN_D2) wayHoleNum.set(bestGreenId, anchor.ref)
+    if (bestTeeId   && bestTeeD   < MAX_TEE_D2)  wayHoleNum.set(bestTeeId,   anchor.ref)
   }
 
   // Pass 5: assemble output — prefer relation/anchor hole number over way's own ref tag

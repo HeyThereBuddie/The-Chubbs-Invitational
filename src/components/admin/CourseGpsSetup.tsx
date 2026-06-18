@@ -178,6 +178,9 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
 
   // Pass 4b: proximity-match unnumbered greens/tees to golf=hole way endpoints
   // Watson's Glen and many courses put ref=1..18 on the routing line, not on shapes
+  // Max distance thresholds reject off-course features (e.g. tees in adjacent farmland)
+  const MAX_GREEN_D2 = 0.003 * 0.003  // ~330m
+  const MAX_TEE_D2   = 0.004 * 0.004  // ~440m
   for (const anchor of holeAnchors) {
     let bestGreenId = '', bestGreenD = Infinity
     let bestTeeId   = '', bestTeeD   = Infinity
@@ -188,8 +191,8 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
       if (tags['golf'] === 'green' && dg < bestGreenD) { bestGreenD = dg; bestGreenId = wayId }
       if (tags['golf'] === 'tee'   && dt < bestTeeD)   { bestTeeD   = dt; bestTeeId   = wayId }
     }
-    if (bestGreenId) wayHoleNum[bestGreenId] = anchor.ref
-    if (bestTeeId)   wayHoleNum[bestTeeId]   = anchor.ref
+    if (bestGreenId && bestGreenD < MAX_GREEN_D2) wayHoleNum[bestGreenId] = anchor.ref
+    if (bestTeeId   && bestTeeD   < MAX_TEE_D2)  wayHoleNum[bestTeeId]   = anchor.ref
   }
 
   // Pass 5: assemble output — prefer relation/anchor hole number over way's own ref tag
