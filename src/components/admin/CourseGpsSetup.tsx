@@ -142,29 +142,52 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     zoom:      currentGps?.lat ? 16 : 4,
   })
 
-  // ── Convert Overpass element → CourseResult ──────────────────────────────
+  // ── Nominatim fetch (with timeout + User-Agent) ──────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fromOverpass = (el: any, userLat?: number, userLng?: number): CourseResult | null => {
-    const name = el.tags?.name
-    if (!name) return null
-    const lat = el.type === 'node' ? el.lat : (el.center?.lat ?? null)
-    const lng = el.type === 'node' ? el.lon : (el.center?.lon ?? null)
-    if (lat == null || lng == null) return null
-    const city  = el.tags?.['addr:city'] ?? ''
-    const state = el.tags?.['addr:state'] ?? ''
-    return {
-      id: el.id,
-      name,
-      lat,
-      lng,
-      address: [city, state].filter(Boolean).join(', '),
-      distanceKm: userLat !== undefined && userLng !== undefined
-        ? kmBetween(userLat, userLng, lat, lng)
-        : undefined,
+  const nominatimFetch = async (params: Record<string, string>): Promise<any[]> => {
+    const qs = new URLSearchParams({ format: 'json', limit: '20', extratags: '1', addressdetails: '1', ...params })
+    const url = `https://nominatim.openstreetmap.org/search?${qs}`
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 10000)
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'ChubbsInvitational/1.0' },
+        signal: ctrl.signal,
+      })
+      clearTimeout(timer)
+      if (!res.ok) return []
+      return res.json()
+    } catch {
+      clearTimeout(timer)
+      return []
     }
   }
 
-  // ── Get user location + auto-load nearby courses via Overpass ────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fromNominatim = (r: any, userLat?: number, userLng?: number): CourseResult | null => {
+    // extratags.leisure === 'golf_course' is the definitive OSM tag check
+    const isGolf = r.extratags?.leisure === 'golf_course'
+      || r.class === 'leisure'
+      || /golf/i.test(r.display_name)
+    if (!isGolf) return null
+    const lat = parseFloat(r.lat)
+    const lng = parseFloat(r.lon)
+    const parts = (r.display_name as string).split(',')
+    return {
+      id: r.place_id,
+      name: parts[0].trim(),
+      lat, lng,
+      address: parts.slice(1, 4).join(',').trim(),
+      distanceKm: userLat !== undefined && userLng !== undefined
+        ? kmBetween(userLat, userLng, lat, lng) : undefined,
+      bounds: r.boundingbox ? {
+        minLat: parseFloat(r.boundingbox[0]), maxLat: parseFloat(r.boundingbox[1]),
+        minLon: parseFloat(r.boundingbox[2]), maxLon: parseFloat(r.boundingbox[3]),
+      } : undefined,
+    }
+  }
+
+  // ── Get user location + auto-load nearby golf courses ────────────────────
   useEffect(() => {
     if (!navigator.geolocation || currentGps) return
     navigator.geolocation.getCurrentPosition(async pos => {
@@ -173,48 +196,43 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       setViewState({ longitude: lng, latitude: lat, zoom: 11 })
       setNearbyLoading(true)
       try {
-        // Only returns OSM elements tagged leisure=golf_course — never streets
-        const q = `[out:json][timeout:10];(
-          way["leisure"="golf_course"](around:25000,${lat},${lng});
-          relation["leisure"="golf_course"](around:25000,${lat},${lng});
-        );out center 20;`
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = await overpassQuery(q, 10000) as any
-        const mapped = (data.elements as any[])
-          .map(el => fromOverpass(el, lat, lng))
+        const delta = 0.45
+        const viewbox = `${lng - delta},${lat + delta},${lng + delta},${lat - delta}`
+        // Use the leisure=golf_course OSM tag directly via Nominatim structured search
+        const data = await nominatimFetch({ q: 'golf course', viewbox, bounded: '1' })
+        const mapped = data
+          .map(r => fromNominatim(r, lat, lng))
           .filter((r): r is CourseResult => r !== null)
           .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
         setResults(mapped)
-      } catch { /* silent — user can still search manually */ }
+      } catch { /* silent */ }
       setNearbyLoading(false)
     }, () => { setNearbyLoading(false) }, { timeout: 8000 })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Course name search via Overpass (only leisure=golf_course) ───────────
+  // ── Course name search ────────────────────────────────────────────────────
   const searchCourse = async () => {
     if (!query.trim()) return
     setSearching(true)
     setResults([])
     try {
-      // Escape regex special chars, then search OSM name tag
-      const safe = query.trim().replace(/[[\](){}.*+?^$|\\]/g, '\\$&')
-      // If user location known, search within 200km first (fast); else global (slower)
-      const area = userLocation
-        ? `(around:200000,${userLocation.lat},${userLocation.lng})`
-        : ''
-      const q = `[out:json][timeout:15];(
-        way["leisure"="golf_course"]["name"~"${safe}",i]${area};
-        relation["leisure"="golf_course"]["name"~"${safe}",i]${area};
-        node["leisure"="golf_course"]["name"~"${safe}",i]${area};
-      );out center 15;`
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = await overpassQuery(q, 15000) as any
-      const mapped = (data.elements as any[])
-        .map(el => fromOverpass(el, userLocation?.lat, userLocation?.lng))
+      const data = await nominatimFetch({ q: query.trim() })
+      let mapped = data
+        .map(r => fromNominatim(r, userLocation?.lat, userLocation?.lng))
         .filter((r): r is CourseResult => r !== null)
         .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+
+      // If nothing matched with OSM tag filter, retry appending "golf club"
+      if (!mapped.length && !/golf|club|links|course/i.test(query)) {
+        const data2 = await nominatimFetch({ q: `${query.trim()} golf club` })
+        mapped = data2
+          .map(r => fromNominatim(r, userLocation?.lat, userLocation?.lng))
+          .filter((r): r is CourseResult => r !== null)
+          .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+      }
+
       setResults(mapped)
-      if (!mapped.length) showToast('No golf courses found — try the full name (e.g. "Royal Ashburn"), or use manual coordinates below', 'error')
+      if (!mapped.length) showToast('No golf courses found — try the full name (e.g. "Royal Ashburn Golf Club"), or enter coordinates manually below', 'error')
     } catch {
       showToast('Search failed — check your connection', 'error')
     }
