@@ -481,48 +481,34 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       }
 
       const newHoles = emptyHoles()
-      // Collect elements with and without hole-number ref tags separately
-      const unrefedGreens: LatLng[] = []
-      const unrefedTees: LatLng[] = []
       for (const el of elements) {
         if (!el.center) continue
         const c: LatLng = { lat: el.center.lat, lng: el.center.lon }
         const golf = el.tags?.golf
         const num = parseInt(el.tags?.ref ?? '0')
-        const hasValidRef = num >= 1 && num <= 18
-        if (golf === 'green') {
-          if (hasValidRef) newHoles[num - 1].green.center = c
-          else unrefedGreens.push(c)
-        } else if (golf === 'tee') {
-          if (hasValidRef) newHoles[num - 1].tee = c
-          else unrefedTees.push(c)
-        }
-      }
-
-      // If OSM data lacks ref tags, assign sequentially sorted by latitude
-      const refdGreens = newHoles.filter(h => h.green.center).length
-      if (refdGreens === 0 && unrefedGreens.length > 0) {
-        unrefedGreens.sort((a, b) => a.lat - b.lat)
-        unrefedGreens.forEach((c, i) => { if (i < 18) newHoles[i].green.center = c })
-      }
-      const refdTees = newHoles.filter(h => h.tee).length
-      if (refdTees === 0 && unrefedTees.length > 0) {
-        unrefedTees.sort((a, b) => a.lat - b.lat)
-        unrefedTees.forEach((c, i) => { if (i < 18) newHoles[i].tee = c })
+        if (num < 1 || num > 18) continue
+        if (golf === 'green') newHoles[num - 1].green.center = c
+        else if (golf === 'tee') newHoles[num - 1].tee = c
       }
 
       const greensFound = newHoles.filter(h => h.green.center).length
       const teesFound   = newHoles.filter(h => h.tee).length
       if (greensFound === 0) {
-        showToast('No green data in OpenStreetMap for this course — place pins manually', 'error')
+        // OSM has the shapes but no hole numbers — can't reliably assign
+        const hasShapes = elements.length > 0
+        showToast(
+          hasShapes
+            ? `OSM has ${elements.length} golf feature${elements.length !== 1 ? 's' : ''} but no hole numbers (ref tags missing) — place pins manually`
+            : 'No golf feature data found in OpenStreetMap for this course — place pins manually',
+          'error'
+        )
         setImportingOsm(false)
         return
       }
       setHoles(newHoles)
-      const noRefs = refdGreens === 0 && greensFound > 0
       showToast(
         `Imported ${greensFound}/18 greens, ${teesFound}/18 tees from OpenStreetMap` +
-        (noRefs ? ' — hole order estimated, verify manually' : greensFound < 18 ? ' — set missing holes manually' : '')
+        (greensFound < 18 ? ' — set missing holes manually' : '')
       )
     } catch (err) {
       console.error('OSM import error:', err)
