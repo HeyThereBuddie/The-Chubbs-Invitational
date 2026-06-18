@@ -47,10 +47,15 @@ const OVERPASS_ENDPOINTS = [
 ]
 
 async function overpassQuery(q: string, timeoutMs = 25000): Promise<unknown> {
+  // Primary: Supabase Edge Function proxy (server-side, not subject to browser IP blocks)
+  try {
+    const { data, error } = await supabase.functions.invoke('overpass-proxy', { body: { query: q } })
+    if (!error && data && !data.error) return data
+  } catch { /* fall through to direct browser requests */ }
+
+  // Fallback: direct browser requests to all mirrors in parallel
   const body = `data=${encodeURIComponent(q)}`
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-
-  // Fire all mirrors in parallel — take whichever responds first
   const attempt = (endpoint: string) => {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), timeoutMs)
