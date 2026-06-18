@@ -46,22 +46,21 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.private.coffee/api/interpreter',
 ]
 
-async function overpassQuery(q: string, timeoutMs = 12000): Promise<unknown> {
+async function overpassQuery(q: string, timeoutMs = 25000): Promise<unknown> {
   const body = `data=${encodeURIComponent(q)}`
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      const res = await fetch(endpoint, { method: 'POST', headers, body, signal: controller.signal })
-      clearTimeout(timer)
-      if (!res.ok) continue
-      return await res.json()
-    } catch {
-      clearTimeout(timer)
-    }
+
+  // Fire all mirrors in parallel — take whichever responds first
+  const attempt = (endpoint: string) => {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+    return fetch(endpoint, { method: 'POST', headers, body, signal: ctrl.signal })
+      .then(res => { clearTimeout(timer); if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json() })
+      .catch(err => { clearTimeout(timer); throw err })
   }
-  throw new Error('All Overpass endpoints failed or timed out')
+
+  return Promise.any(OVERPASS_ENDPOINTS.map(attempt))
+    .catch(() => { throw new Error('All Overpass mirrors unreachable — check your connection or place pins manually') })
 }
 
 function emptyHoles(): HoleGps[] {
