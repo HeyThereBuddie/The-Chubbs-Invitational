@@ -65,27 +65,38 @@ Image coordinate system:
   x = 0.0 → left (west) edge,  x = 1.0 → right (east) edge
   y = 0.0 → top  (north) edge, y = 1.0 → bottom (south) edge
 
-Known anchor points:
+Known anchor points (use these to orient yourself):
   Tee box center  ≈ [${teeX.toFixed(3)}, ${teeY.toFixed(3)}]
   Green center    ≈ [${grnX.toFixed(3)}, ${grnY.toFixed(3)}]
 
-Trace the following features as polygon outlines using [x, y] normalised coordinates:
+Return the following features using [x, y] normalised coordinates:
 
-1. fairway  — the short-grass corridor from tee to green (16–28 points, follow the actual shape including curves and doglegs)
+POLYGONS (arrays of points):
+1. fairway  — short-grass corridor from tee to green (16–28 points, follow actual shape and doglegs)
 2. bunkers  — each sand trap separately (bright tan/beige patches); 6–14 points each
-3. water    — each water hazard / pond / stream separately (dark blue-grey bodies); 8–16 points each
+3. water    — each water hazard / pond / stream separately (dark blue-grey); 8–16 points each
+
+SINGLE POINTS (3 points on the putting green):
+4. green_front  — the edge of the green closest to the fairway / tee
+5. green_center — the geometric center of the putting green
+6. green_back   — the edge of the green furthest from the fairway (back of green)
+
+The putting green is the small, distinct, very short-grass circle/oval near the known green center.
+Front is the side facing the fairway, back is the opposite side.
 
 Rules:
-• Fairway polygon should outline BOTH edges of the short grass from tee area to green.
-• Do NOT include the green or tee box inside the fairway polygon.
-• If a feature is not clearly visible, return [] for it.
+• Fairway polygon outlines BOTH edges of short grass — do not include the green or tee.
+• If a feature is not clearly visible, return [] (polygon) or null (point) for it.
 • All coordinate values must be between 0.0 and 1.0.
 
 Return ONLY valid JSON — no markdown, no explanation:
 {
-  "fairway": [[x,y], ...],
-  "bunkers": [[[x,y], ...], ...],
-  "water":   [[[x,y], ...], ...]
+  "fairway":      [[x,y], ...],
+  "bunkers":      [[[x,y], ...], ...],
+  "water":        [[[x,y], ...], ...],
+  "green_front":  [x, y],
+  "green_center": [x, y],
+  "green_back":   [x, y]
 }`
 
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
@@ -123,15 +134,26 @@ Return ONLY valid JSON — no markdown, no explanation:
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Claude returned no JSON')
     const traced = JSON.parse(jsonMatch[0]) as {
-      fairway:  [number, number][]
-      bunkers:  [number, number][][]
-      water:    [number, number][][]
+      fairway:      [number, number][]
+      bunkers:      [number, number][][]
+      water:        [number, number][][]
+      green_front:  [number, number] | null
+      green_center: [number, number] | null
+      green_back:   [number, number] | null
     }
 
+    const pt = (v: [number, number] | null | undefined) =>
+      v ? norm(v[0], v[1], minLon, maxLon, minLat, maxLat) : null
+
     const result = {
-      fairway: (traced.fairway  ?? []).map(([x, y]) => norm(x, y, minLon, maxLon, minLat, maxLat)),
-      bunkers: (traced.bunkers  ?? []).map(poly => poly.map(([x, y]) => norm(x, y, minLon, maxLon, minLat, maxLat))),
-      water:   (traced.water    ?? []).map(poly => poly.map(([x, y]) => norm(x, y, minLon, maxLon, minLat, maxLat))),
+      fairway: (traced.fairway ?? []).map(([x, y]) => norm(x, y, minLon, maxLon, minLat, maxLat)),
+      bunkers: (traced.bunkers ?? []).map(poly => poly.map(([x, y]) => norm(x, y, minLon, maxLon, minLat, maxLat))),
+      water:   (traced.water   ?? []).map(poly => poly.map(([x, y]) => norm(x, y, minLon, maxLon, minLat, maxLat))),
+      green: {
+        front:  pt(traced.green_front),
+        center: pt(traced.green_center),
+        back:   pt(traced.green_back),
+      },
     }
 
     return new Response(JSON.stringify(result), {

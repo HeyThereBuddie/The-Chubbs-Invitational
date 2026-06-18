@@ -841,14 +841,26 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         }
       )
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json() as { fairway: LatLng[]; bunkers: LatLng[][]; water: LatLng[][] }
+      const data = await res.json() as {
+        fairway: LatLng[]
+        bunkers: LatLng[][]
+        water:   LatLng[][]
+        green: { front: LatLng | null; center: LatLng | null; back: LatLng | null }
+      }
       setHoles(prev => prev.map(hole => hole.hole !== editingHole ? hole : {
         ...hole,
-        fairway:  data.fairway?.length  ? data.fairway  : hole.fairway,
-        bunkers:  data.bunkers?.length  ? data.bunkers  : hole.bunkers,
-        water:    data.water?.length    ? data.water    : hole.water,
+        fairway: data.fairway?.length ? data.fairway : hole.fairway,
+        bunkers: data.bunkers?.length ? data.bunkers : hole.bunkers,
+        water:   data.water?.length   ? data.water   : hole.water,
+        green: {
+          front:  data.green?.front  ?? hole.green.front,
+          center: data.green?.center ?? hole.green.center,
+          back:   data.green?.back   ?? hole.green.back,
+        },
       }))
-      showToast(`AI traced hole ${editingHole}: fairway + ${data.bunkers?.length ?? 0} bunkers + ${data.water?.length ?? 0} water`)
+      const g = data.green
+      const greenSet = [g?.front, g?.center, g?.back].filter(Boolean).length
+      showToast(`AI traced hole ${editingHole}: fairway, ${data.bunkers?.length ?? 0} bunkers, ${data.water?.length ?? 0} water, ${greenSet}/3 green pins`)
     } catch (err) {
       showToast(`AI trace failed — ${(err as Error).message}`, 'error')
     }
