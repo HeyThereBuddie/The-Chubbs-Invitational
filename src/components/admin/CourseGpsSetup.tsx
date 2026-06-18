@@ -358,24 +358,38 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   // ── OSM auto-import ──────────────────────────────────────────────────────
   const importFromOsm = async () => {
-    if (!picked && !currentGps) return
+    const lat = courseLat ?? currentGps?.lat
+    const lng = courseLng ?? currentGps?.lng
+    if (lat == null || lng == null) { showToast('No course location — select a course first', 'error'); return }
     setImportingOsm(true)
     try {
-      const src = picked ?? { lat: currentGps!.lat!, lng: currentGps!.lng!, bounds: undefined }
+      // Use bounding box from the picked result if available, else a generous 3km box
       const b = (picked as CourseResult | null)?.bounds
       const bbox = b
         ? `${b.minLat},${b.minLon},${b.maxLat},${b.maxLon}`
-        : `${src.lat - 0.025},${src.lng - 0.04},${src.lat + 0.025},${src.lng + 0.04}`
-      const q = `[out:json][timeout:30];(way[golf=green](${bbox});way[golf=tee](${bbox}););out geom;`
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = await overpassQuery(q) as any
+        : `${lat - 0.03},${lng - 0.05},${lat + 0.03},${lng + 0.05}`
 
-      const elements = data.elements as Array<{
+      // Fetch greens, tees, and fairways (fairways carry the hole ref useful for numbering)
+      const q = [
+        `[out:json][timeout:45];`,
+        `(`,
+        `  way[golf=green](${bbox});`,
+        `  way[golf=tee](${bbox});`,
+        `  way[golf=fairway](${bbox});`,
+        `);`,
+        `out geom;`,
+      ].join('')
+
+      // Pass 50 s so AbortController doesn't fire before Overpass finishes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await overpassQuery(q, 50000) as any
+
+      const elements = (data?.elements ?? []) as Array<{
         tags: Record<string, string>
         geometry: { lat: number; lon: number }[]
       }>
 
-      if (!elements?.length) {
+      if (!elements.length) {
         showToast('No OSM hole data found for this course — place pins manually', 'error')
         setImportingOsm(false)
         return
@@ -386,15 +400,28 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         const num = parseInt(el.tags?.ref ?? '0')
         if (num < 1 || num > 18 || !el.geometry?.length) continue
         const c = centroid(el.geometry)
-        if (el.tags?.golf === 'green') newHoles[num - 1].green.center = c
-        else if (el.tags?.golf === 'tee') newHoles[num - 1].tee = c
+        const golf = el.tags?.golf
+        if (golf === 'green')   newHoles[num - 1].green.center = c
+        else if (golf === 'tee') newHoles[num - 1].tee = c
+        // fairway centroid used as tee fallback only if tee wasn't found separately
+        else if (golf === 'fairway' && !newHoles[num - 1].tee) newHoles[num - 1].tee = c
       }
 
-      const found = newHoles.filter(h => h.green.center).length
+      const greensFound = newHoles.filter(h => h.green.center).length
+      const teesFound   = newHoles.filter(h => h.tee).length
+      if (greensFound === 0) {
+        showToast('No green data in OpenStreetMap for this course — place pins manually', 'error')
+        setImportingOsm(false)
+        return
+      }
       setHoles(newHoles)
-      showToast(`Imported ${found}/18 greens from OpenStreetMap${found < 18 ? ' — set missing holes manually' : ''}`)
-    } catch {
-      showToast('OSM import failed', 'error')
+      showToast(
+        `Imported ${greensFound}/18 greens, ${teesFound}/18 tees from OpenStreetMap` +
+        (greensFound < 18 ? ' — set missing holes manually' : '')
+      )
+    } catch (err) {
+      console.error('OSM import error:', err)
+      showToast(`OSM import failed — ${(err as Error).message ?? 'check connection'}`, 'error')
     }
     setImportingOsm(false)
   }
