@@ -51,7 +51,8 @@ type BboxObj = { minLat: number; minLon: number; maxLat: number; maxLon: number 
 
 // Parse raw OSM XML into Overpass-compatible {elements:[]} shape (mirrors Edge Function logic)
 function parseOsmXml(xml: string): { elements: OsmElement[] } {
-  const nodes = new Map<string, { lat: number; lon: number }>()
+  // Can't use Map<> here — 'Map' is shadowed by the react-map-gl import above
+  const nodes: Record<string, { lat: number; lon: number }> = {}
   const reNode = /<node\b([^>]*?)(?:\/>|>[\s\S]*?<\/node>)/g
   let m: RegExpExecArray | null
   while ((m = reNode.exec(xml)) !== null) {
@@ -59,7 +60,7 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const id  = /\bid="([^"]+)"/.exec(a)?.[1]
     const lat = /\blat="([^"]+)"/.exec(a)?.[1]
     const lon = /\blon="([^"]+)"/.exec(a)?.[1]
-    if (id && lat && lon) nodes.set(id, { lat: parseFloat(lat), lon: parseFloat(lon) })
+    if (id && lat && lon) nodes[id] = { lat: parseFloat(lat), lon: parseFloat(lon) }
   }
   const elements: OsmElement[] = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
@@ -73,7 +74,7 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const golf = tags['golf']
     if (golf !== 'green' && golf !== 'tee') continue
     const refs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
-    const pts = refs.map(r => nodes.get(r)).filter((n): n is { lat: number; lon: number } => n != null)
+    const pts = refs.map(r => nodes[r]).filter((n): n is { lat: number; lon: number } => n != null)
     if (!pts.length) continue
     const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length
     const lon = pts.reduce((s, p) => s + p.lon, 0) / pts.length
