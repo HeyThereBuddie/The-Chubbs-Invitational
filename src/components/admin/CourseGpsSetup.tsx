@@ -43,6 +43,7 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.openstreetmap.fr/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ]
 
 async function overpassQuery(q: string, timeoutMs = 12000): Promise<unknown> {
@@ -69,13 +70,6 @@ function emptyHoles(): HoleGps[] {
     tee: null,
     green: { front: null, center: null, back: null },
   }))
-}
-
-function centroid(nodes: { lat: number; lon: number }[]): LatLng {
-  return {
-    lat: nodes.reduce((s, n) => s + n.lat, 0) / nodes.length,
-    lng: nodes.reduce((s, n) => s + n.lon, 0) / nodes.length,
-  }
 }
 
 // Corridor helpers (mirrors GpsPage.tsx)
@@ -363,30 +357,21 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (lat == null || lng == null) { showToast('No course location — select a course first', 'error'); return }
     setImportingOsm(true)
     try {
-      // Use bounding box from the picked result if available, else a generous 3km box
       const b = (picked as CourseResult | null)?.bounds
       const bbox = b
         ? `${b.minLat},${b.minLon},${b.maxLat},${b.maxLon}`
         : `${lat - 0.03},${lng - 0.05},${lat + 0.03},${lng + 0.05}`
 
-      // Fetch greens, tees, and fairways (fairways carry the hole ref useful for numbering)
-      const q = [
-        `[out:json][timeout:45];`,
-        `(`,
-        `  way[golf=green](${bbox});`,
-        `  way[golf=tee](${bbox});`,
-        `  way[golf=fairway](${bbox});`,
-        `);`,
-        `out geom;`,
-      ].join('')
+      // Use "out center" instead of "out geom" — returns one centroid point per way
+      // instead of every polygon vertex. Much smaller response, 5-10x faster.
+      const q = `[out:json][timeout:25];(way[golf=green](${bbox});way[golf=tee](${bbox}););out center;`
 
-      // Pass 50 s so AbortController doesn't fire before Overpass finishes
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = await overpassQuery(q, 50000) as any
+      const data = await overpassQuery(q, 30000) as any
 
       const elements = (data?.elements ?? []) as Array<{
         tags: Record<string, string>
-        geometry: { lat: number; lon: number }[]
+        center?: { lat: number; lon: number }
       }>
 
       if (!elements.length) {
@@ -398,13 +383,11 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       const newHoles = emptyHoles()
       for (const el of elements) {
         const num = parseInt(el.tags?.ref ?? '0')
-        if (num < 1 || num > 18 || !el.geometry?.length) continue
-        const c = centroid(el.geometry)
+        if (num < 1 || num > 18 || !el.center) continue
+        const c: LatLng = { lat: el.center.lat, lng: el.center.lon }
         const golf = el.tags?.golf
-        if (golf === 'green')   newHoles[num - 1].green.center = c
+        if (golf === 'green')    newHoles[num - 1].green.center = c
         else if (golf === 'tee') newHoles[num - 1].tee = c
-        // fairway centroid used as tee fallback only if tee wasn't found separately
-        else if (golf === 'fairway' && !newHoles[num - 1].tee) newHoles[num - 1].tee = c
       }
 
       const greensFound = newHoles.filter(h => h.green.center).length
