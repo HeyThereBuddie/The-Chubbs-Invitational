@@ -38,6 +38,27 @@ const PIN_META: Record<PinMode, { label: string; short: string; color: string; d
 
 const MODES: PinMode[] = ['center', 'front', 'back', 'tee']
 
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+]
+
+async function overpassQuery(q: string): Promise<unknown> {
+  const body = `data=${encodeURIComponent(q)}`
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, { method: 'POST', headers, body })
+      if (!res.ok) continue
+      return await res.json()
+    } catch {
+      // try next mirror
+    }
+  }
+  throw new Error('All Overpass endpoints failed')
+}
+
 function emptyHoles(): HoleGps[] {
   return Array.from({ length: 18 }, (_, i) => ({
     hole: i + 1,
@@ -128,9 +149,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       try {
         const q = `[out:json][timeout:30];(way[leisure=golf_course](around:40000,${lat},${lng});relation[leisure=golf_course](around:40000,${lat},${lng}););out center bb tags;`
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST', body: `data=${encodeURIComponent(q)}`,
-        }).then(r => r.json())
+        const data: any = await overpassQuery(q)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
           const elLat = el.center?.lat ?? el.lat
@@ -160,9 +179,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       const escaped = query.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
       const q = `[out:json][timeout:30];(way[leisure=golf_course][name~"${escaped}",i];relation[leisure=golf_course][name~"${escaped}",i];node[leisure=golf_course][name~"${escaped}",i];);out center bb tags;`
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST', body: `data=${encodeURIComponent(q)}`,
-      }).then(r => r.json())
+      const data: any = await overpassQuery(q)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
@@ -222,9 +239,8 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         ? `${b.minLat},${b.minLon},${b.maxLat},${b.maxLon}`
         : `${picked.lat - 0.025},${picked.lng - 0.04},${picked.lat + 0.025},${picked.lng + 0.04}`
       const q = `[out:json][timeout:30];(way[golf=green](${bbox});way[golf=tee](${bbox}););out geom;`
-      const data = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST', body: `data=${encodeURIComponent(q)}`,
-      }).then(r => r.json())
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await overpassQuery(q) as any
 
       const elements = data.elements as Array<{
         tags: Record<string, string>
