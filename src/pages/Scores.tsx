@@ -191,7 +191,7 @@ function HoleCard({
         {!readOnly && !locked && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
-              onClick={onMinus}
+              onClick={() => { navigator.vibrate?.(10); onMinus(); }}
               disabled={isSaving || (hasScore && score <= 1)}
               className="score-btn"
               style={{
@@ -203,7 +203,7 @@ function HoleCard({
               }}
             ><Minus size={16} /></button>
             <button
-              onClick={onPlus}
+              onClick={() => { navigator.vibrate?.(10); onPlus(); }}
               disabled={isSaving}
               className="score-btn"
               style={{
