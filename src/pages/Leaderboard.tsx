@@ -104,7 +104,26 @@ export default function Leaderboard() {
     setLoading(false)
   }
 
-  const toPar = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
+  const toParStr = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
+
+  const ScorePill = ({ toPar, thru, large }: { toPar: number; thru: number; large?: boolean }) => {
+    if (thru === 0) return <span style={{ fontFamily: 'Bebas Neue', fontSize: large ? 28 : 20, color: 'var(--tx4)', letterSpacing: 1 }}>—</span>
+    const text = toParStr(toPar)
+    const under = toPar < 0, over = toPar > 0
+    return (
+      <div style={{
+        padding: large ? '5px 14px' : '3px 9px',
+        borderRadius: 9,
+        background: under ? 'rgba(34,197,94,0.18)' : over ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.07)',
+        border: `1px solid ${under ? 'rgba(34,197,94,0.4)' : over ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.14)'}`,
+        fontFamily: 'Bebas Neue',
+        fontSize: large ? 30 : 20,
+        letterSpacing: 1,
+        color: under ? '#4ade80' : over ? '#f87171' : 'var(--tx2)',
+        lineHeight: 1,
+      }}>{text}</div>
+    )
+  }
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
@@ -176,21 +195,21 @@ export default function Leaderboard() {
 
               return (
               <div key={row.team.id} className="glass animate-fadeUp" style={{
-                padding: '16px 20px',
-                borderColor: isLeader ? 'rgba(212,165,58,0.4)' : undefined,
-                boxShadow: isLeader ? '0 0 20px rgba(212,165,58,0.1)' : undefined,
+                padding: isLeader ? '20px 24px' : '14px 20px',
+                borderColor: isLeader ? 'rgba(212,165,58,0.5)' : undefined,
+                boxShadow: isLeader ? '0 0 32px rgba(212,165,58,0.18), 0 2px 16px rgba(0,0,0,0.4)' : undefined,
                 animationDelay: `${Math.min(i * 60, 480)}ms`,
-              }} >
+              }}>
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 42, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div style={{ width: 46, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                     {rankIndicator}
                     {back !== null && back > 0 && (
                       <div style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
                         padding: '3px 6px', borderRadius: 6,
-                        background: 'rgba(239, 68, 68, 0.09)',
-                        border: '1px solid rgba(239, 68, 68, 0.22)',
+                        background: 'rgba(239,68,68,0.09)',
+                        border: '1px solid rgba(239,68,68,0.22)',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 2, lineHeight: 1 }}>
                           <span style={{ fontSize: 8, color: '#f87171', lineHeight: 1 }}>▲</span>
@@ -202,32 +221,39 @@ export default function Leaderboard() {
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: isLeader ? '#D4A53A' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{
+                      fontFamily: isLeader ? 'Bebas Neue' : undefined,
+                      fontWeight: isLeader ? undefined : 700,
+                      fontSize: isLeader ? 22 : 15,
+                      letterSpacing: isLeader ? 2 : undefined,
+                      color: isLeader ? '#D4A53A' : 'var(--tx1)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
                       {row.team.name}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 1 }}>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
                       {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 16, textAlign: 'right', flexShrink: 0 }}>
-                    <div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: row.toPar <= 0 ? '#D4A53A' : 'var(--tx1)' }}>
-                        {row.thru > 0 ? toPar(row.toPar) : '—'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <ScorePill toPar={row.toPar} thru={row.thru} large={isLeader} />
+                      <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 3, letterSpacing: 0.5 }}>TO PAR</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums' }}>{row.gross || '—'}</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 0.5 }}>GROSS</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums' }}>
+                        {row.thru === 18 ? 'F' : row.thru || '—'}
                       </div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>TO PAR</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 0.5 }}>THRU</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)' }}>{row.gross || '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>GROSS</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)' }}>{row.thru}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>THRU</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)' }}>{row.putts || '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)' }}>PUTTS</div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums' }}>{row.putts || '—'}</div>
+                      <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 0.5 }}>PUTTS</div>
                     </div>
                   </div>
                 </div>

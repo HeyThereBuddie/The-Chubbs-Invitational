@@ -440,3 +440,19 @@ html[data-theme="light"] .glass-strong {
   border: none;
   margin: 0;
 }
+
+/* ── Page Transitions (View Transitions API) ── */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: 160ms ease both page-exit;
+  }
+  ::view-transition-new(root) {
+    animation: 240ms ease both page-enter;
+  }
+}
+@keyframes page-exit {
+  to { opacity: 0; transform: translateY(-7px); }
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(7px); }
+}

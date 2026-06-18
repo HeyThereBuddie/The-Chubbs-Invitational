@@ -191,7 +191,7 @@ function HoleCard({
         {!readOnly && !locked && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
-              onClick={() => { navigator.vibrate?.(10); onMinus(); }}
+              onClick={() => { navigator.vibrate?.(10); onMinus?.(); }}
               disabled={isSaving || (hasScore && score <= 1)}
               className="score-btn"
               style={{
@@ -203,7 +203,7 @@ function HoleCard({
               }}
             ><Minus size={16} /></button>
             <button
-              onClick={() => { navigator.vibrate?.(10); onPlus(); }}
+              onClick={() => { navigator.vibrate?.(10); onPlus?.(); }}
               disabled={isSaving}
               className="score-btn"
               style={{
@@ -1028,7 +1028,7 @@ export default function Scores() {
     twoPlayers: boolean
     locked?: boolean
   }) => (
-    <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 14 }}>
+    <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 8, marginBottom: 14, scrollbarWidth: 'none' }}>
       {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
         const isLocked = applyLock && hole > 1 && !isHoleComplete(scoreMap[hole - 1], twoPlayers)
         const sr  = scoreMap[hole]
@@ -1036,32 +1036,48 @@ export default function Scores() {
         const hasScore = sr?.score !== undefined
         const diff = hasScore ? sr!.score - par : null
         const isActive = selectedHole === hole
-        const dotColor = diff === null ? null
-          : diff <= -2 ? '#86efac' : diff === -1 ? '#4ade80' : diff === 0 ? '#22c55e'
-          : diff === 1 ? '#ef4444' : '#dc2626'
+        const fillBg = diff === null ? null
+          : diff <= -2 ? 'rgba(96,165,250,0.20)'
+          : diff === -1 ? 'rgba(74,222,128,0.20)'
+          : diff === 0  ? 'rgba(34,197,94,0.13)'
+          : diff === 1  ? 'rgba(251,146,60,0.20)'
+          : 'rgba(239,68,68,0.22)'
+        const scoreColor = diff === null ? 'var(--tx4)'
+          : diff <= -2 ? '#93c5fd'
+          : diff === -1 ? '#4ade80'
+          : diff === 0  ? '#22c55e'
+          : diff === 1  ? '#fb923c'
+          : '#f87171'
         return (
-          <button key={hole} onClick={() => handleSelectHole(hole)}
-            style={{
-              minWidth: 38, padding: '6px 4px', borderRadius: 8, flexShrink: 0,
-              border: `1px solid ${isActive ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
-              background: isActive ? 'rgba(212,165,58,0.12)' : 'var(--surf)',
-              cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-              opacity: isLocked ? 0.38 : 1, transition: 'all 0.15s',
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 700, color: isActive ? '#D4A53A' : 'var(--tx1)', lineHeight: 1 }}>
-              {hole}
-            </span>
-            {isLocked ? (
-              <span style={{ fontSize: 9, lineHeight: 1 }}>🔒</span>
-            ) : dotColor !== null ? (
-              <span style={{ fontSize: 10, fontWeight: 700, color: dotColor, lineHeight: 1 }}>
-                {diff === 0 ? 'E' : diff! > 0 ? `+${diff}` : `${diff}`}
-              </span>
-            ) : (
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--surf2)', display: 'inline-block' }} />
+          <div key={hole} style={{ display: 'contents' }}>
+            {hole === 10 && (
+              <div style={{ width: 1, alignSelf: 'stretch', flexShrink: 0, background: 'rgba(212,165,58,0.22)', borderRadius: 1, margin: '2px 1px' }} />
             )}
-          </button>
+            <button onClick={() => handleSelectHole(hole)}
+              style={{
+                minWidth: 40, padding: '7px 5px', borderRadius: 10, flexShrink: 0,
+                border: isActive ? '2px solid #D4A53A' : '1px solid var(--bdr)',
+                background: isActive ? (fillBg ?? 'rgba(212,165,58,0.13)') : (fillBg ?? 'var(--surf)'),
+                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                opacity: isLocked ? 0.35 : 1,
+                transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                transition: 'transform 0.15s, border-color 0.15s, background 0.15s',
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#D4A53A' : 'var(--tx2)', lineHeight: 1 }}>
+                {hole}
+              </span>
+              {isLocked ? (
+                <span style={{ fontSize: 8, lineHeight: 1 }}>🔒</span>
+              ) : diff !== null ? (
+                <span style={{ fontSize: 10, fontWeight: 800, color: scoreColor, lineHeight: 1 }}>
+                  {diff === 0 ? 'E' : diff! > 0 ? `+${diff}` : `${diff}`}
+                </span>
+              ) : (
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--bdr2)', display: 'inline-block' }} />
+              )}
+            </button>
+          </div>
         )
       })}
     </div>
