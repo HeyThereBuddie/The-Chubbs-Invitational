@@ -93,10 +93,10 @@ function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLn
   return { lat: (lat2 * 180) / Math.PI, lng: ((lng2 * 180) / Math.PI + 540) % 360 - 180 }
 }
 
-// Build a GeoJSON polygon coordinate ring for the hole corridor
+// Build a GeoJSON polygon coordinate ring for the hole corridor (fallback when no OSM fairway)
 function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, number][] {
-  const teeSideW   = 23  // metres from centreline at tee end (~25 yds)
-  const greenSideW = 16  // narrower at the green end
+  const teeSideW   = 35  // metres from centreline at tee end (~38 yds) — wider Option 3 fallback
+  const greenSideW = 22  // narrower at the green end (~24 yds)
   const teeBack    = offsetLatLng(tee,   bearing + 180, 6)
   const greenFwd   = offsetLatLng(green, bearing,       10)
   const pts = [
@@ -175,8 +175,13 @@ export default function GpsPage() {
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
 
-  // Hole corridor polygon (dashed outline showing playing area)
+  // Hole corridor polygon: use actual OSM fairway polygon if available, else computed trapezoid
   const corridorGeoJson = useMemo(() => {
+    if (currentHole?.fairway && currentHole.fairway.length >= 3) {
+      const coords = currentHole.fairway.map(p => [p.lng, p.lat] as [number, number])
+      coords.push(coords[0])  // close the ring
+      return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+    }
     const tee   = currentHole?.tee
     const green = currentHole?.green.center
     if (!tee || !green) return null

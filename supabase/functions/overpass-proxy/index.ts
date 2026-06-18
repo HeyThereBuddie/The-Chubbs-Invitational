@@ -85,9 +85,11 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
 
   // Pass 2: parse all ways in one loop
   //   golf=green / golf=tee    → wayMap (centroid)
+  //   golf=fairway             → fairwayMap (full polygon)
   //   golf=hole                → holeAnchors (first node≈tee, last node≈green)
   //   leisure=golf_course      → courseBounds (boundary polygons)
   const wayMap = new Map<string, { tags: Record<string, string>; center: Pt | null }>()
+  const fairwayMap = new Map<string, { tags: Record<string, string>; polygon: Pt[] }>()
   const holeAnchors: Array<{ ref: number; teePos: Pt; greenPos: Pt }> = []
   const courseBounds: Pt[][] = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
@@ -110,6 +112,9 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
           ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
           : null,
       })
+    } else if (golf === 'fairway') {
+      const pts = ndRefs.map(r => nodePos.get(r)).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) fairwayMap.set(id, { tags, polygon: pts })
     } else if (golf === 'hole') {
       const holeNum = parseInt(tags['ref'] ?? '0')
       if (holeNum < 1 || holeNum > 18 || ndRefs.length < 2) continue
@@ -144,7 +149,7 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     }
   }
 
-  // Pass 4a: filter wayMap to the course boundary containing the most hole anchors
+  // Pass 4a: filter wayMap/fairwayMap to the course boundary containing the most hole anchors
   if (holeAnchors.length > 0 && courseBounds.length > 0) {
     let bestBound: Pt[] | null = null
     let bestScore = 0
@@ -159,6 +164,12 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
       for (const [wayId, { center }] of wayMap) {
         if (center && !pointInPoly(center, bestBound) && !nearPoly(center, bestBound, PAD)) {
           wayMap.delete(wayId)
+        }
+      }
+      for (const [fwId, { polygon }] of fairwayMap) {
+        const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) {
+          fairwayMap.delete(fwId)
         }
       }
     }
@@ -182,6 +193,25 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     if (bestTeeId   && bestTeeD   < MAX_TEE_D2)  wayHoleNum.set(bestTeeId,   anchor.ref)
   }
 
+  // Pass 4c: match fairway polygons to hole numbers
+  const fairwayHoleNum = new Map<string, number>()
+  const MAX_FAIRWAY_D2 = 0.007 * 0.007
+  for (const [fwId, { tags, polygon }] of fairwayMap) {
+    let holeNum = parseInt(tags['ref'] ?? '0')
+    if (holeNum < 1 || holeNum > 18) {
+      const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+      let bestD = Infinity
+      for (const anchor of holeAnchors) {
+        const midLat = (anchor.teePos.lat + anchor.greenPos.lat) / 2
+        const midLon = (anchor.teePos.lon + anchor.greenPos.lon) / 2
+        const d = (centroid.lat - midLat) ** 2 + (centroid.lon - midLon) ** 2
+        if (d < bestD) { bestD = d; holeNum = anchor.ref }
+      }
+      if (bestD > MAX_FAIRWAY_D2) holeNum = 0
+    }
+    if (holeNum >= 1 && holeNum <= 18) fairwayHoleNum.set(fwId, holeNum)
+  }
+
   // Pass 5: assemble output — prefer relation/anchor hole number over way's own ref tag
   const elements: unknown[] = []
   for (const [id, { tags, center }] of wayMap) {
@@ -189,6 +219,11 @@ function parseGolfXml(xml: string): { elements: unknown[] } {
     const relNum = wayHoleNum.get(id)
     const effectiveTags = relNum ? { ...tags, ref: String(relNum) } : tags
     elements.push({ type: 'way', id: parseInt(id), tags: effectiveTags, center })
+  }
+  for (const [id, { tags, polygon }] of fairwayMap) {
+    const holeNum = fairwayHoleNum.get(id)
+    if (!holeNum) continue
+    elements.push({ type: 'way', id: parseInt(id), tags: { ...tags, ref: String(holeNum) }, geometry: polygon })
   }
   return { elements }
 }

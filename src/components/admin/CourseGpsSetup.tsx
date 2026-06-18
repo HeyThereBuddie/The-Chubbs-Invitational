@@ -46,7 +46,7 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.private.coffee/api/interpreter',
 ]
 
-type OsmElement = { type: string; id: number; tags: Record<string, string>; center: { lat: number; lon: number } }
+type OsmElement = { type: string; id: number; tags: Record<string, string>; center?: { lat: number; lon: number }; geometry?: { lat: number; lon: number }[] }
 type BboxObj = { minLat: number; minLon: number; maxLat: number; maxLon: number }
 type Pt = { lat: number; lon: number }
 
@@ -93,9 +93,11 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
 
   // Pass 2: parse all ways in one loop
   //   golf=green / golf=tee    → wayMap (centroid)
+  //   golf=fairway             → fairwayMap (full polygon)
   //   golf=hole                → holeAnchors (first node≈tee, last node≈green)
   //   leisure=golf_course      → courseBounds (boundary polygons for cross-course filtering)
   const wayMap: Record<string, { tags: Record<string, string>; center: Pt | null }> = {}
+  const fairwayMap: Record<string, { tags: Record<string, string>; polygon: Pt[] }> = {}
   const holeAnchors: Array<{ ref: number; teePos: Pt; greenPos: Pt }> = []
   const courseBounds: Array<Pt[]> = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
@@ -118,6 +120,9 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
           ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
           : null,
       }
+    } else if (golf === 'fairway') {
+      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) fairwayMap[id] = { tags, polygon: pts }
     } else if (golf === 'hole') {
       // golf=hole routing ways run tee→green and carry ref=1..18 even when green/tee shapes don't
       const holeNum = parseInt(tags['ref'] ?? '0')
@@ -154,8 +159,8 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     }
   }
 
-  // Pass 4a: if multiple courses are in the bbox, filter wayMap to the course whose
-  // boundary polygon contains the most hole anchors — prevents cross-course contamination
+  // Pass 4a: if multiple courses are in the bbox, filter wayMap/fairwayMap to the course
+  // whose boundary polygon contains the most hole anchors — prevents cross-course contamination
   if (holeAnchors.length > 0 && courseBounds.length > 0) {
     let bestBound: Pt[] | null = null
     let bestScore = 0
@@ -171,6 +176,13 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
         const c = wayMap[wayId].center
         if (c && !pointInPoly(c, bestBound) && !nearPoly(c, bestBound, PAD)) {
           delete wayMap[wayId]
+        }
+      }
+      for (const fwId of Object.keys(fairwayMap)) {
+        const pts = fairwayMap[fwId].polygon
+        const centroid = { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
+        if (!pointInPoly(centroid, bestBound) && !nearPoly(centroid, bestBound, PAD)) {
+          delete fairwayMap[fwId]
         }
       }
     }
@@ -195,6 +207,26 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     if (bestTeeId   && bestTeeD   < MAX_TEE_D2)  wayHoleNum[bestTeeId]   = anchor.ref
   }
 
+  // Pass 4c: match fairway polygons to hole numbers
+  // Priority: ref tag on fairway → proximity to holeAnchor midpoints
+  const fairwayHoleNum: Record<string, number> = {}
+  const MAX_FAIRWAY_D2 = 0.007 * 0.007  // ~770m — fairways can be long par-5s
+  for (const [fwId, { tags, polygon }] of Object.entries(fairwayMap)) {
+    let holeNum = parseInt(tags['ref'] ?? '0')
+    if (holeNum < 1 || holeNum > 18) {
+      const centroid = { lat: polygon.reduce((s, p) => s + p.lat, 0) / polygon.length, lon: polygon.reduce((s, p) => s + p.lon, 0) / polygon.length }
+      let bestD = Infinity
+      for (const anchor of holeAnchors) {
+        const midLat = (anchor.teePos.lat + anchor.greenPos.lat) / 2
+        const midLon = (anchor.teePos.lon + anchor.greenPos.lon) / 2
+        const d = (centroid.lat - midLat) ** 2 + (centroid.lon - midLon) ** 2
+        if (d < bestD) { bestD = d; holeNum = anchor.ref }
+      }
+      if (bestD > MAX_FAIRWAY_D2) holeNum = 0
+    }
+    if (holeNum >= 1 && holeNum <= 18) fairwayHoleNum[fwId] = holeNum
+  }
+
   // Pass 5: assemble output — prefer relation/anchor hole number over way's own ref tag
   const elements: OsmElement[] = []
   for (const [id, { tags, center }] of Object.entries(wayMap)) {
@@ -202,6 +234,11 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const relNum = wayHoleNum[id]
     const effectiveTags = relNum ? { ...tags, ref: String(relNum) } : tags
     elements.push({ type: 'way', id: parseInt(id), tags: effectiveTags, center })
+  }
+  for (const [id, { tags, polygon }] of Object.entries(fairwayMap)) {
+    const holeNum = fairwayHoleNum[id]
+    if (!holeNum) continue
+    elements.push({ type: 'way', id: parseInt(id), tags: { ...tags, ref: String(holeNum) }, geometry: polygon })
   }
   return { elements }
 }
@@ -577,9 +614,8 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         : { minLat: lat - 0.03, minLon: lng - 0.05, maxLat: lat + 0.03, maxLon: lng + 0.05 }
       const bboxStr = `${bboxObj.minLat},${bboxObj.minLon},${bboxObj.maxLat},${bboxObj.maxLon}`
 
-      // Use "out center" instead of "out geom" — returns one centroid point per way
-      // instead of every polygon vertex. Much smaller response, 5-10x faster.
-      const q = `[out:json][timeout:25];(way[golf=green](${bboxStr});way[golf=tee](${bboxStr}););out center;`
+      // Two-part query: centroids for green/tee shapes, full geometry for fairways + routing lines
+      const q = `[out:json][timeout:25];(way[golf=green](${bboxStr});way[golf=tee](${bboxStr}););out center;(way[golf=fairway](${bboxStr});way[golf=hole](${bboxStr}););out geom;`
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let data: any
@@ -594,6 +630,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       const elements = (data?.elements ?? []) as Array<{
         tags: Record<string, string>
         center?: { lat: number; lon: number }
+        geometry?: { lat: number; lon: number }[]
       }>
 
       if (!elements.length) {
@@ -602,7 +639,20 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         return
       }
 
+      // Build hole anchors from golf=hole routing ways (full geometry — first node=tee, last=green)
+      const holeAnchors: Array<{ ref: number; midLat: number; midLon: number }> = []
+      for (const el of elements) {
+        if (el.tags?.golf !== 'hole' || !el.geometry || el.geometry.length < 2) continue
+        const num = parseInt(el.tags?.ref ?? '0')
+        if (num < 1 || num > 18) continue
+        const teeG   = el.geometry[0]
+        const greenG = el.geometry[el.geometry.length - 1]
+        holeAnchors.push({ ref: num, midLat: (teeG.lat + greenG.lat) / 2, midLon: (teeG.lon + greenG.lon) / 2 })
+      }
+
       const newHoles = emptyHoles()
+
+      // Greens and tees — have center centroid
       for (const el of elements) {
         if (!el.center) continue
         const c: LatLng = { lat: el.center.lat, lng: el.center.lon }
@@ -611,6 +661,32 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         if (num < 1 || num > 18) continue
         if (golf === 'green') newHoles[num - 1].green.center = c
         else if (golf === 'tee') newHoles[num - 1].tee = c
+      }
+
+      // Fairways — have full geometry polygon
+      const MAX_FAIRWAY_D2 = 0.007 * 0.007  // ~770m max match distance
+      for (const el of elements) {
+        if (el.tags?.golf !== 'fairway' || !el.geometry || el.geometry.length < 3) continue
+        let holeNum = parseInt(el.tags?.ref ?? '0')
+        if (holeNum < 1 || holeNum > 18) {
+          const centLat = el.geometry.reduce((s, p) => s + p.lat, 0) / el.geometry.length
+          const centLon = el.geometry.reduce((s, p) => s + p.lon, 0) / el.geometry.length
+          let bestD = Infinity
+          // Prefer matching via hole routing anchors; fall back to green/tee midpoints
+          const sources = holeAnchors.length > 0 ? holeAnchors :
+            newHoles.filter(h => h.green.center && h.tee).map(h => ({
+              ref: h.hole,
+              midLat: (h.green.center!.lat + h.tee!.lat) / 2,
+              midLon: (h.green.center!.lng + h.tee!.lng) / 2,
+            }))
+          for (const src of sources) {
+            const d = (centLat - src.midLat) ** 2 + (centLon - src.midLon) ** 2
+            if (d < bestD) { bestD = d; holeNum = src.ref }
+          }
+          if (bestD > MAX_FAIRWAY_D2) holeNum = 0
+        }
+        if (holeNum >= 1 && holeNum <= 18)
+          newHoles[holeNum - 1].fairway = el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
       }
 
       // Auto-calculate front/back from the tee→green bearing when both are known
@@ -622,8 +698,9 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         }
       }
 
-      const greensFound = newHoles.filter(h => h.green.center).length
-      const teesFound   = newHoles.filter(h => h.tee).length
+      const greensFound   = newHoles.filter(h => h.green.center).length
+      const teesFound     = newHoles.filter(h => h.tee).length
+      const fairwaysFound = newHoles.filter(h => h.fairway).length
       if (greensFound === 0) {
         // OSM has the shapes but no hole numbers — can't reliably assign
         const hasShapes = elements.length > 0
@@ -638,7 +715,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       }
       setHoles(newHoles)
       showToast(
-        `Imported ${greensFound}/18 greens, ${teesFound}/18 tees from OpenStreetMap` +
+        `Imported ${greensFound}/18 greens, ${teesFound}/18 tees, ${fairwaysFound}/18 fairways from OpenStreetMap` +
         (greensFound < 18 ? ' — set missing holes manually' : '')
       )
     } catch (err) {
@@ -714,6 +791,12 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   // Corridor polygon for the currently-editing hole
   const corridorGeoJson = useMemo(() => {
+    // Use actual OSM fairway polygon if available
+    if (currentH?.fairway && currentH.fairway.length >= 3) {
+      const coords = currentH.fairway.map(p => [p.lng, p.lat] as [number, number])
+      coords.push(coords[0])  // close the ring
+      return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+    }
     const tee   = currentH?.tee
     const green = currentH?.green.center
     if (!tee || !green) return null
