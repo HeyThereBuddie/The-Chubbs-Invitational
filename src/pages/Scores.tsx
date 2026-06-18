@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
@@ -7,9 +7,9 @@ import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue, getPendingCount } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
-import type { Team, Player } from '../lib/types'
+import type { Team, Player, HoleGps } from '../lib/types'
 import { displayName } from '../lib/types'
-import { Minus, Plus, Users } from 'lucide-react'
+import { Minus, Plus, Users, MapPin } from 'lucide-react'
 
 const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
 
@@ -127,7 +127,7 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
 }
 
 function HoleCard({
-  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, infoExpanded, onToggleInfo,
+  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, infoExpanded, onToggleInfo, gpsHole, onOpenGps,
 }: {
   hole: number
   scoreRow: ScoreRow | undefined
@@ -147,6 +147,8 @@ function HoleCard({
   holeInfo?: { yards: number; si: number; description?: string; photo?: string }
   infoExpanded?: boolean
   onToggleInfo?: () => void
+  gpsHole?: HoleGps
+  onOpenGps?: () => void
 }) {
   const par      = HOLE_PARS[hole - 1]
   const score    = scoreRow?.score
@@ -340,21 +342,39 @@ function HoleCard({
         </div>
       )}
 
-      {(holeInfo?.description || holeInfo?.photo) && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)' }}>
-          <button type="button" onClick={onToggleInfo} style={{
-            width: '100%', padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-            background: infoExpanded ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
-            border: `1px solid ${infoExpanded ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
-            color: infoExpanded ? '#D4A53A' : 'var(--tx2)',
-            fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            <span style={{ fontSize: 15 }}>⛳</span>
-            {infoExpanded ? 'Hide Hole Guide' : 'View Hole Guide'}
-            <span style={{ fontSize: 11, opacity: 0.6 }}>{infoExpanded ? '▲' : '▼'}</span>
-          </button>
-        </div>
-      )}
+      {(() => {
+        const gpsReady = !!(gpsHole?.green.center && gpsHole?.green.front && gpsHole?.green.back && gpsHole?.tee)
+        const hasGuide = !!(holeInfo?.description || holeInfo?.photo)
+        if (!gpsReady && !hasGuide) return null
+        return (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', gap: 6 }}>
+            {gpsReady && (
+              <button type="button" onClick={onOpenGps} style={{
+                flex: 1, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+                background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.32)',
+                color: '#22c55e', fontSize: 13, fontWeight: 600,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}>
+                <MapPin size={14} />
+                Open GPS
+              </button>
+            )}
+            {hasGuide && (
+              <button type="button" onClick={onToggleInfo} style={{
+                flex: 1, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+                background: infoExpanded ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
+                border: `1px solid ${infoExpanded ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
+                color: infoExpanded ? '#D4A53A' : 'var(--tx2)',
+                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}>
+                <span style={{ fontSize: 15 }}>⛳</span>
+                {infoExpanded ? 'Hide Hole Guide' : 'View Hole Guide'}
+                <span style={{ fontSize: 11, opacity: 0.6 }}>{infoExpanded ? '▲' : '▼'}</span>
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
         <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bdr)' }}>
@@ -381,6 +401,7 @@ export default function Scores() {
   const { profile, isAdmin } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline, refreshPendingCount } = useSyncContext()
+  const navigate = useNavigate()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -411,6 +432,7 @@ export default function Scores() {
   const [teamPick,      setTeamPick]      = useState('')
   const [settingTeam,   setSettingTeam]   = useState(false)
   const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set([1]))
+  const [courseHoles,   setCourseHoles]   = useState<HoleGps[]>([])
   const toggleHoleInfo = (hole: number) => setExpandedHoles(prev => {
     const next = new Set(prev)
     next.has(hole) ? next.delete(hole) : next.add(hole)
@@ -436,6 +458,21 @@ export default function Scores() {
   useEffect(() => { allTeamsRef.current = allTeams }, [allTeams])
 
   // ── Load ────────────────────────────────────────────────────
+
+  // Load course GPS holes so we know which holes have all 4 pins
+  useEffect(() => {
+    if (!effectiveTournamentId) return
+    supabase
+      .from('tournaments')
+      .select('course_gps:course_gps_id(holes)')
+      .eq('id', effectiveTournamentId)
+      .single()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(({ data }: { data: any }) => {
+        const h = data?.course_gps?.holes
+        if (Array.isArray(h)) setCourseHoles(h as HoleGps[])
+      })
+  }, [effectiveTournamentId])
 
   useEffect(() => { loadAllTeams() }, [effectiveTournamentId])
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1165,6 +1202,8 @@ export default function Scores() {
               holeInfo={HOLE_DATA[hole - 1]}
               infoExpanded={expandedHoles.has(hole)}
               onToggleInfo={() => toggleHoleInfo(hole)}
+              gpsHole={courseHoles.find(h2 => h2.hole === hole)}
+              onOpenGps={() => navigate(`/gps?hole=${hole}`)}
             />
           )
         })()}
@@ -1288,6 +1327,8 @@ export default function Scores() {
               holeInfo={HOLE_DATA[hole - 1]}
               infoExpanded={expandedHoles.has(hole)}
               onToggleInfo={() => toggleHoleInfo(hole)}
+              gpsHole={courseHoles.find(h2 => h2.hole === hole)}
+              onOpenGps={() => navigate(`/gps?hole=${hole}`)}
             />
           )
         }
@@ -1303,6 +1344,8 @@ export default function Scores() {
             holeInfo={HOLE_DATA[hole - 1]}
             infoExpanded={expandedHoles.has(hole)}
             onToggleInfo={() => toggleHoleInfo(hole)}
+            gpsHole={courseHoles.find(h2 => h2.hole === hole)}
+            onOpenGps={() => navigate(`/gps?hole=${hole}`)}
           />
         )
       })()}

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import Map, { Marker, NavigationControl, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Target, Navigation, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
@@ -76,13 +77,18 @@ function YardagePanel({ label, yards, color }: { label: string; yards: number | 
 
 export default function GpsPage() {
   const { effectiveTournamentId } = useYear()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const mapRef = useRef<MapRef>(null)
 
   const [course, setCourse] = useState<CourseGps | null>(null)
   const [loading, setLoading] = useState(true)
   const [position, setPosition] = useState<LatLng | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'acquiring' | 'ok' | 'denied' | 'unavailable'>('acquiring')
-  const [selectedHole, setSelectedHole] = useState(1)
+  const [selectedHole, setSelectedHole] = useState(() => {
+    const h = parseInt(searchParams.get('hole') ?? '1')
+    return h >= 1 && h <= 18 ? h : 1
+  })
   const [tapPoint, setTapPoint] = useState<LatLng | null>(null)
   const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15 })
 
@@ -184,6 +190,14 @@ export default function GpsPage() {
       {/* Hole selector strip */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', gap: 6 }}>
+          {/* Back to scores */}
+          <button onClick={() => navigate('/scores')} style={{
+            padding: '4px 8px', background: 'none', border: 'none',
+            color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 12, flexShrink: 0,
+          }}>
+            <X size={16} />
+          </button>
           <button onClick={() => setSelectedHole(h => Math.max(1, h - 1))}
             disabled={selectedHole === 1}
             style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 1 ? 0.3 : 1 }}>
