@@ -20,5 +20,5 @@ create policy "course_gps_read" on course_gps
 
 create policy "course_gps_admin_write" on course_gps
   for all using (
-    exists (select 1 from profiles where id = auth.uid() and is_admin = true)
+    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
