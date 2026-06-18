@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import Map, { Marker, NavigationControl, type MapRef } from 'react-map-gl/mapbox'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import Map, { Marker, NavigationControl, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
@@ -81,6 +81,33 @@ function calcBearing(a: LatLng, b: LatLng): number {
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360
 }
 
+// Move a point <meters> in <bearingDeg> direction
+function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLng {
+  const R = 6371000
+  const d = meters / R
+  const b = (bearingDeg * Math.PI) / 180
+  const lat1 = (origin.lat * Math.PI) / 180
+  const lng1 = (origin.lng * Math.PI) / 180
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b))
+  const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
+  return { lat: (lat2 * 180) / Math.PI, lng: ((lng2 * 180) / Math.PI + 540) % 360 - 180 }
+}
+
+// Build a GeoJSON polygon coordinate ring for the hole corridor
+function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, number][] {
+  const teeSideW   = 23  // metres from centreline at tee end (~25 yds)
+  const greenSideW = 16  // narrower at the green end
+  const teeBack    = offsetLatLng(tee,   bearing + 180, 6)
+  const greenFwd   = offsetLatLng(green, bearing,       10)
+  const pts = [
+    offsetLatLng(teeBack,  bearing - 90, teeSideW),
+    offsetLatLng(teeBack,  bearing + 90, teeSideW),
+    offsetLatLng(greenFwd, bearing + 90, greenSideW),
+    offsetLatLng(greenFwd, bearing - 90, greenSideW),
+  ]
+  return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
+}
+
 function YardagePanel({ label, yards, color }: { label: string; yards: number | null; color: string }) {
   return (
     <div style={{ flex: 1, textAlign: 'center' }}>
@@ -147,6 +174,36 @@ export default function GpsPage() {
   }, [])
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
+
+  // Hole corridor polygon (dashed outline showing playing area)
+  const corridorGeoJson = useMemo(() => {
+    const tee   = currentHole?.tee
+    const green = currentHole?.green.center
+    if (!tee || !green) return null
+    const bearing = calcBearing(tee, green)
+    return {
+      type: 'Feature' as const,
+      geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, bearing)] },
+      properties: {},
+    }
+  }, [currentHole])
+
+  // Aim line: Tee → Player (faded) → Green center (bright)
+  const aimLineGeoJson = useMemo(() => {
+    const green = currentHole?.green.center
+    const tee   = currentHole?.tee
+    if (!green) return null
+    const coords: [number, number][] = []
+    if (tee)      coords.push([tee.lng, tee.lat])
+    if (position) coords.push([position.lng, position.lat])
+    coords.push([green.lng, green.lat])
+    if (coords.length < 2) return null
+    return {
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: coords },
+      properties: {},
+    }
+  }, [currentHole, position])
 
   // Orient the map so tee is at bottom, green at top (like 18Birdies)
   const flyToHole = useCallback((hole: HoleGps) => {
@@ -288,6 +345,26 @@ export default function GpsPage() {
           onClick={handleMapClick}
         >
           <NavigationControl position="top-right" showCompass={false} />
+
+          {/* Hole corridor outline */}
+          {corridorGeoJson && (
+            <Source id="corridor" type="geojson" data={corridorGeoJson}>
+              <Layer id="corridor-fill" type="fill"
+                paint={{ 'fill-color': 'rgba(255,255,255,0.05)' }} />
+              <Layer id="corridor-outline" type="line"
+                paint={{ 'line-color': 'rgba(255,255,255,0.40)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
+            </Source>
+          )}
+
+          {/* Aim line: tee → player → green */}
+          {aimLineGeoJson && (
+            <Source id="aimline" type="geojson" data={aimLineGeoJson}>
+              <Layer id="aimline-bg" type="line"
+                paint={{ 'line-color': 'rgba(0,0,0,0.4)', 'line-width': 4 }} />
+              <Layer id="aimline-fg" type="line"
+                paint={{ 'line-color': 'rgba(255,255,255,0.85)', 'line-width': 2, 'line-dasharray': [8, 5] }} />
+            </Source>
+          )}
 
           {/* Player position */}
           {position && (
