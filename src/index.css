@@ -46,6 +46,8 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  /* Disable pull-to-refresh on all pages — this is a PWA, not a browser page */
+  overscroll-behavior-y: none;
 }
 
 #root { min-height: 100dvh; }
