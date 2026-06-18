@@ -48,6 +48,33 @@ const OVERPASS_ENDPOINTS = [
 
 type OsmElement = { type: string; id: number; tags: Record<string, string>; center: { lat: number; lon: number } }
 type BboxObj = { minLat: number; minLon: number; maxLat: number; maxLon: number }
+type Pt = { lat: number; lon: number }
+
+// Ray-casting point-in-polygon (horizontal ray, +lon direction)
+function pointInPoly(p: Pt, poly: Pt[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const { lat: iy, lon: ix } = poly[i]
+    const { lat: jy, lon: jx } = poly[j]
+    if ((iy > p.lat) !== (jy > p.lat))
+      if (p.lon < ix + (jx - ix) * (p.lat - iy) / (jy - iy)) inside = !inside
+  }
+  return inside
+}
+
+function segDist2(p: Pt, a: Pt, b: Pt): number {
+  const dy = b.lat - a.lat, dx = b.lon - a.lon
+  const len2 = dy * dy + dx * dx
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.lat - a.lat) * dy + (p.lon - a.lon) * dx) / len2)) : 0
+  return (p.lat - a.lat - t * dy) ** 2 + (p.lon - a.lon - t * dx) ** 2
+}
+
+function nearPoly(p: Pt, poly: Pt[], pad: number): boolean {
+  const pad2 = pad * pad
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++)
+    if (segDist2(p, poly[i], poly[j]) < pad2) return true
+  return false
+}
 
 // Parse raw OSM XML into Overpass-compatible {elements:[]} shape (mirrors Edge Function logic)
 function parseOsmXml(xml: string): { elements: OsmElement[] } {
@@ -65,10 +92,12 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
   }
 
   // Pass 2: parse all ways in one loop
-  //   golf=green / golf=tee → wayMap (centroid)
-  //   golf=hole             → holeAnchors (first node≈tee, last node≈green)
-  const wayMap: Record<string, { tags: Record<string, string>; center: { lat: number; lon: number } | null }> = {}
-  const holeAnchors: Array<{ ref: number; teePos: { lat: number; lon: number }; greenPos: { lat: number; lon: number } }> = []
+  //   golf=green / golf=tee    → wayMap (centroid)
+  //   golf=hole                → holeAnchors (first node≈tee, last node≈green)
+  //   leisure=golf_course      → courseBounds (boundary polygons for cross-course filtering)
+  const wayMap: Record<string, { tags: Record<string, string>; center: Pt | null }> = {}
+  const holeAnchors: Array<{ ref: number; teePos: Pt; greenPos: Pt }> = []
+  const courseBounds: Array<Pt[]> = []
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
   while ((m = reWay.exec(xml)) !== null) {
     const [, attrs, body] = m
@@ -82,7 +111,7 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const ndRefs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
 
     if (golf === 'green' || golf === 'tee') {
-      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is { lat: number; lon: number } => n != null)
+      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is Pt => n != null)
       wayMap[id] = {
         tags,
         center: pts.length
@@ -96,6 +125,9 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
       const teePos   = nodePos[ndRefs[0]]
       const greenPos = nodePos[ndRefs[ndRefs.length - 1]]
       if (teePos && greenPos) holeAnchors.push({ ref: holeNum, teePos, greenPos })
+    } else if (tags['leisure'] === 'golf_course') {
+      const pts = ndRefs.map(r => nodePos[r]).filter((n): n is Pt => n != null)
+      if (pts.length >= 3) courseBounds.push(pts)
     }
   }
 
@@ -122,7 +154,29 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     }
   }
 
-  // Pass 4: proximity-match unnumbered greens/tees to golf=hole way endpoints
+  // Pass 4a: if multiple courses are in the bbox, filter wayMap to the course whose
+  // boundary polygon contains the most hole anchors — prevents cross-course contamination
+  if (holeAnchors.length > 0 && courseBounds.length > 0) {
+    let bestBound: Pt[] | null = null
+    let bestScore = 0
+    for (const bound of courseBounds) {
+      const score = holeAnchors.filter(a =>
+        pointInPoly(a.greenPos, bound) || pointInPoly(a.teePos, bound)
+      ).length
+      if (score > bestScore) { bestScore = score; bestBound = bound }
+    }
+    if (bestBound) {
+      const PAD = 0.001  // ~110m to handle approximate course boundaries
+      for (const wayId of Object.keys(wayMap)) {
+        const c = wayMap[wayId].center
+        if (c && !pointInPoly(c, bestBound) && !nearPoly(c, bestBound, PAD)) {
+          delete wayMap[wayId]
+        }
+      }
+    }
+  }
+
+  // Pass 4b: proximity-match unnumbered greens/tees to golf=hole way endpoints
   // Watson's Glen and many courses put ref=1..18 on the routing line, not on shapes
   for (const anchor of holeAnchors) {
     let bestGreenId = '', bestGreenD = Infinity
