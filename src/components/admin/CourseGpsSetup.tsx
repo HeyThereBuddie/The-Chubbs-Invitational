@@ -142,57 +142,69 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     zoom:      currentGps?.lat ? 16 : 4,
   })
 
+  // ── Nominatim helper ─────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nominatim = async (params: string): Promise<any[]> => {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=12&accept-language=en&${params}`
+    const res = await fetch(url, { headers: { 'User-Agent': 'ChubbsInvitational/1.0' } })
+    return res.json()
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toResult = (r: any, userLat?: number, userLng?: number): CourseResult => ({
+    id: r.place_id,
+    name: r.display_name.split(',')[0].trim(),
+    lat: parseFloat(r.lat),
+    lng: parseFloat(r.lon),
+    address: r.display_name.split(',').slice(1, 4).join(',').trim(),
+    distanceKm: userLat !== undefined && userLng !== undefined
+      ? kmBetween(userLat, userLng, parseFloat(r.lat), parseFloat(r.lon))
+      : undefined,
+    bounds: r.boundingbox ? {
+      minLat: parseFloat(r.boundingbox[0]), maxLat: parseFloat(r.boundingbox[1]),
+      minLon: parseFloat(r.boundingbox[2]), maxLon: parseFloat(r.boundingbox[3]),
+    } : undefined,
+  })
+
+  const isGolfResult = (name: string) =>
+    /golf|links|club|course/i.test(name)
+
   // ── Get user location + auto-load nearby courses on mount ───────────────
   useEffect(() => {
-    if (!navigator.geolocation || currentGps || !TOKEN) return
+    if (!navigator.geolocation || currentGps) return
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude: lat, longitude: lng } = pos.coords
       setUserLocation({ lat, lng })
       setViewState({ longitude: lng, latitude: lat, zoom: 11 })
       setNearbyLoading(true)
       try {
-        // Search for "golf club" near user — no type filter so Mapbox returns all matches
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/golf%20club.json?proximity=${lng},${lat}&limit=10&access_token=${TOKEN}`
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = await fetch(url).then(r => r.json())
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped: CourseResult[] = (data.features ?? []).map((f: any) => ({
-          id: f.id,
-          name: f.text,
-          lat: f.center[1],
-          lng: f.center[0],
-          address: f.place_name.split(',').slice(1).join(',').trim(),
-          distanceKm: kmBetween(lat, lng, f.center[1], f.center[0]),
-          bounds: f.bbox ? { minLat: f.bbox[1], maxLat: f.bbox[3], minLon: f.bbox[0], maxLon: f.bbox[2] } : undefined,
-        })).sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+        const delta = 0.35
+        const viewbox = `${lng - delta},${lat + delta},${lng + delta},${lat - delta}`
+        const data = await nominatim(`q=golf+course&viewbox=${viewbox}&bounded=1`)
+        const mapped = data
+          .map((r: any) => toResult(r, lat, lng))
+          .sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
         setResults(mapped)
-      } catch { /* silent — user can search manually */ }
+      } catch { /* silent */ }
       setNearbyLoading(false)
     }, () => { setNearbyLoading(false) }, { timeout: 8000 })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Course search via Mapbox Geocoding API ───────────────────────────────
+  // ── Course name search via Nominatim ─────────────────────────────────────
   const searchCourse = async () => {
     if (!query.trim()) return
     setSearching(true)
     setResults([])
     try {
-      const proximity = userLocation ? `&proximity=${userLocation.lng},${userLocation.lat}` : ''
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?limit=10${proximity}&access_token=${TOKEN}`
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await fetch(url).then(r => r.json())
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapped: CourseResult[] = (data.features ?? []).map((f: any) => ({
-        id: f.id,
-        name: f.text,
-        lat: f.center[1],
-        lng: f.center[0],
-        address: f.place_name.split(',').slice(1).join(',').trim(),
-        distanceKm: userLocation ? kmBetween(userLocation.lat, userLocation.lng, f.center[1], f.center[0]) : undefined,
-        bounds: f.bbox ? { minLat: f.bbox[1], maxLat: f.bbox[3], minLon: f.bbox[0], maxLon: f.bbox[2] } : undefined,
-      }))
+      // Auto-add "golf club" if query has no golf-related words
+      const q = isGolfResult(query) ? query : `${query} golf club`
+      const data = await nominatim(`q=${encodeURIComponent(q)}`)
+      const mapped = data
+        .filter((r: any) => isGolfResult(r.display_name))
+        .map((r: any) => toResult(r, userLocation?.lat, userLocation?.lng))
+        .sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
       setResults(mapped)
-      if (!mapped.length) showToast('No courses found — try a shorter name or use manual coordinates below', 'error')
+      if (!mapped.length) showToast('No golf courses found — try the full course name, or enter coordinates manually below', 'error')
     } catch {
       showToast('Search failed — check your connection', 'error')
     }
