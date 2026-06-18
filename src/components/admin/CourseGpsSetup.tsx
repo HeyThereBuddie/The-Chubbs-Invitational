@@ -46,10 +46,55 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.private.coffee/api/interpreter',
 ]
 
+type OsmElement = { type: string; id: number; tags: Record<string, string>; center: { lat: number; lon: number } }
+type BboxObj = { minLat: number; minLon: number; maxLat: number; maxLon: number }
+
+// Parse raw OSM XML into Overpass-compatible {elements:[]} shape (mirrors Edge Function logic)
+function parseOsmXml(xml: string): { elements: OsmElement[] } {
+  const nodes = new Map<string, { lat: number; lon: number }>()
+  const reNode = /<node\b([^>]*?)(?:\/>|>[\s\S]*?<\/node>)/g
+  let m: RegExpExecArray | null
+  while ((m = reNode.exec(xml)) !== null) {
+    const a = m[1]
+    const id  = /\bid="([^"]+)"/.exec(a)?.[1]
+    const lat = /\blat="([^"]+)"/.exec(a)?.[1]
+    const lon = /\blon="([^"]+)"/.exec(a)?.[1]
+    if (id && lat && lon) nodes.set(id, { lat: parseFloat(lat), lon: parseFloat(lon) })
+  }
+  const elements: OsmElement[] = []
+  const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
+  while ((m = reWay.exec(xml)) !== null) {
+    const [, attrs, body] = m
+    const id = /\bid="([^"]+)"/.exec(attrs)?.[1]
+    const tags: Record<string, string> = {}
+    const reTag = /<tag\s+k="([^"]+)"\s+v="([^"]+)"/g
+    let t: RegExpExecArray | null
+    while ((t = reTag.exec(body)) !== null) tags[t[1]] = t[2]
+    const golf = tags['golf']
+    if (golf !== 'green' && golf !== 'tee') continue
+    const refs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
+    const pts = refs.map(r => nodes.get(r)).filter((n): n is { lat: number; lon: number } => n != null)
+    if (!pts.length) continue
+    const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length
+    const lon = pts.reduce((s, p) => s + p.lon, 0) / pts.length
+    elements.push({ type: 'way', id: id ? parseInt(id) : 0, tags, center: { lat, lon } })
+  }
+  return { elements }
+}
+
+// Direct OSM API fetch — no Overpass dependency
+async function fetchOsmApiDirect(bbox: BboxObj): Promise<{ elements: OsmElement[] }> {
+  const { minLat, minLon, maxLat, maxLon } = bbox
+  const url = `https://api.openstreetmap.org/api/0.6/map?bbox=${minLon},${minLat},${maxLon},${maxLat}`
+  const r = await fetch(url, { headers: { 'User-Agent': 'ChubbsGolfApp/1.0', Accept: 'application/xml' } })
+  if (!r.ok) throw new Error(`OSM API HTTP ${r.status}`)
+  return parseOsmXml(await r.text())
+}
+
 async function overpassQuery(
   q: string,
   timeoutMs = 25000,
-  bbox?: { minLat: number; minLon: number; maxLat: number; maxLon: number },
+  bbox?: BboxObj,
 ): Promise<unknown> {
   // Primary: Supabase Edge Function proxy (server-side, not subject to browser IP blocks)
   // Passes bbox so the Edge Function can fall back to OSM API if all Overpass mirrors fail
@@ -70,7 +115,7 @@ async function overpassQuery(
   }
 
   return Promise.any(OVERPASS_ENDPOINTS.map(attempt))
-    .catch(() => { throw new Error('All Overpass mirrors unreachable — check your connection or place pins manually') })
+    .catch(() => { throw new Error('overpass-unavailable') })
 }
 
 function emptyHoles(): HoleGps[] {
@@ -407,7 +452,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       const q = `[out:json][timeout:25];(way[golf=green](${bboxStr});way[golf=tee](${bboxStr}););out center;`
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = await overpassQuery(q, 30000, bboxObj) as any
+      let data: any
+      try {
+        data = await overpassQuery(q, 30000, bboxObj)
+      } catch (overpassErr) {
+        // Overpass completely unreachable — fall back to direct OSM API (no Overpass dependency)
+        if ((overpassErr as Error).message !== 'overpass-unavailable') throw overpassErr
+        data = await fetchOsmApiDirect(bboxObj)
+      }
 
       const elements = (data?.elements ?? []) as Array<{
         tags: Record<string, string>
