@@ -24,6 +24,25 @@ function dist(pos: LatLng | null, target: LatLng | null | undefined): number | n
   return pos && target ? haversineYards(pos, target) : null
 }
 
+// Nearest point on segment a→b to point p (in lng/lat space — accurate for small distances)
+function nearestOnSegment(p: LatLng, a: LatLng, b: LatLng): LatLng {
+  const dx = b.lng - a.lng, dy = b.lat - a.lat
+  const len2 = dx * dx + dy * dy
+  if (len2 === 0) return a
+  const t = Math.max(0, Math.min(1, ((p.lng - a.lng) * dx + (p.lat - a.lat) * dy) / len2))
+  return { lng: a.lng + t * dx, lat: a.lat + t * dy }
+}
+
+// Min haversine distance from pos to any edge of a closed polygon
+function distToPolygon(pos: LatLng, poly: LatLng[]): number {
+  let min = Infinity
+  for (let i = 0; i < poly.length; i++) {
+    const d = haversineYards(pos, nearestOnSegment(pos, poly[i], poly[(i + 1) % poly.length]))
+    if (d < min) min = d
+  }
+  return min
+}
+
 function GreenPin({ label, color }: { label: string; color: string }) {
   return (
     <div style={{
@@ -298,6 +317,34 @@ export default function GpsPage() {
   const backDist   = dist(position, currentHole?.green.back)
   const tapDist    = dist(position, tapPoint)
 
+  // Hazard distances — nearest edge of each forward hazard, with L/R side relative to aim line
+  const hazardDistances = useMemo(() => {
+    if (!position || !currentHole?.green.center) return null
+    const green = currentHole.green.center
+    const aimDlng = green.lng - position.lng
+    const aimDlat = green.lat - position.lat
+
+    type HazInfo = { dist: number; side: 'L' | 'R' }
+    const processPolys = (polys: import('../lib/types').LatLng[][]): HazInfo[] =>
+      polys.flatMap(poly => {
+        if (poly.length < 3) return []
+        const centroid = {
+          lat: poly.reduce((s, p) => s + p.lat, 0) / poly.length,
+          lng: poly.reduce((s, p) => s + p.lng, 0) / poly.length,
+        }
+        // Skip hazards behind the player (negative dot product on aim vector)
+        const hazDlng = centroid.lng - position.lng
+        const hazDlat = centroid.lat - position.lat
+        if (hazDlng * aimDlng + hazDlat * aimDlat < 0) return []
+        const cross = aimDlng * hazDlat - aimDlat * hazDlng
+        return [{ dist: Math.round(distToPolygon(position, poly)), side: cross > 0 ? 'L' as const : 'R' as const }]
+      }).sort((a, b) => a.dist - b.dist)
+
+    const bunkers = processPolys(currentHole.bunkers ?? [])
+    const water   = processPolys(currentHole.water   ?? [])
+    return (bunkers.length || water.length) ? { bunkers, water } : null
+  }, [position, currentHole])
+
   // ── No token configured ─────────────────────────────────────────────────
   if (!TOKEN) return (
     <div style={{ padding: 32, textAlign: 'center' }}>
@@ -533,6 +580,36 @@ export default function GpsPage() {
           </div>
         )}
       </div>
+
+      {/* Hazard distance row — only shown when hazards exist ahead of the player */}
+      {hazardDistances && (
+        <div style={{
+          background: 'var(--panel)', borderTop: '1px solid var(--bdr)',
+          padding: '8px 8px', display: 'flex', alignItems: 'center', flexShrink: 0, gap: 0,
+        }}>
+          {hazardDistances.bunkers.slice(0, 2).map((h, i) => (
+            <div key={`b${i}`} style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: '#C4985A', textTransform: 'uppercase', marginBottom: 2 }}>
+                ⛱ Bnk {h.side}
+              </div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, lineHeight: 1, color: 'var(--tx1)' }}>{h.dist}</div>
+              <div style={{ fontSize: 8, color: 'var(--tx4)' }}>yds</div>
+            </div>
+          ))}
+          {hazardDistances.bunkers.length > 0 && hazardDistances.water.length > 0 && (
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bdr)', margin: '0 4px' }} />
+          )}
+          {hazardDistances.water.slice(0, 2).map((h, i) => (
+            <div key={`w${i}`} style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: '#3b82f6', textTransform: 'uppercase', marginBottom: 2 }}>
+                💧 H₂O {h.side}
+              </div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, lineHeight: 1, color: 'var(--tx1)' }}>{h.dist}</div>
+              <div style={{ fontSize: 8, color: 'var(--tx4)' }}>yds</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Distance readout panel */}
       <div style={{
