@@ -497,16 +497,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           { id: 'selection' as const, label: 'Course Selection' },
           { id: 'setup'     as const, label: 'Course Setup' },
         ]).map(({ id, label }) => {
-          const disabled = id === 'setup' && !mapReady
-          const active   = gpsSubTab === id
+          const active = gpsSubTab === id
           return (
-            <button key={id} onClick={() => !disabled && setGpsSubTab(id)} style={{
-              padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
+            <button key={id} onClick={() => setGpsSubTab(id)} style={{
+              padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               background: active ? 'rgba(212,165,58,0.15)' : 'var(--surf2)',
               border: `1px solid ${active ? 'rgba(212,165,58,0.4)' : 'var(--bdr)'}`,
-              color: active ? '#D4A53A' : disabled ? 'var(--tx5)' : 'var(--tx2)',
+              color: active ? '#D4A53A' : 'var(--tx2)',
               display: 'flex', alignItems: 'center', gap: 6,
-              opacity: disabled ? 0.5 : 1,
             }}>
               {id === 'selection' && isLocked && <Lock size={11} />}
               {id === 'setup' && mapReady && <MapPin size={11} />}
