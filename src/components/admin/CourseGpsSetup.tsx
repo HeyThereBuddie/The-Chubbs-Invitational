@@ -44,19 +44,23 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.openstreetmap.fr/api/interpreter',
 ]
 
-async function overpassQuery(q: string): Promise<unknown> {
+async function overpassQuery(q: string, timeoutMs = 12000): Promise<unknown> {
   const body = `data=${encodeURIComponent(q)}`
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
   for (const endpoint of OVERPASS_ENDPOINTS) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
-      const res = await fetch(endpoint, { method: 'POST', headers, body })
+      const res = await fetch(endpoint, { method: 'POST', headers, body, signal: controller.signal })
+      clearTimeout(timer)
       if (!res.ok) continue
       return await res.json()
     } catch {
+      clearTimeout(timer)
       // try next mirror
     }
   }
-  throw new Error('All Overpass endpoints failed')
+  throw new Error('All Overpass endpoints failed or timed out')
 }
 
 function emptyHoles(): HoleGps[] {
@@ -147,9 +151,9 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       setViewState({ longitude: lng, latitude: lat, zoom: 11 })
       setNearbyLoading(true)
       try {
-        const q = `[out:json][timeout:30];(way[leisure=golf_course](around:40000,${lat},${lng});relation[leisure=golf_course](around:40000,${lat},${lng}););out center bb tags;`
+        const q = `[out:json][timeout:20];(way[leisure=golf_course](around:25000,${lat},${lng}););out center bb tags;`
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = await overpassQuery(q)
+        const data: any = await overpassQuery(q, 15000)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapped: CourseResult[] = (data.elements ?? []).map((el: any) => {
           const elLat = el.center?.lat ?? el.lat
@@ -368,9 +372,13 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
         {/* Nearby loading */}
         {nearbyLoading && (
-          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--tx3)', fontSize: 12 }}>
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%', flexShrink: 0 }} />
-            Finding nearby golf courses…
+            <span style={{ color: 'var(--tx3)', fontSize: 12 }}>Finding nearby golf courses…</span>
+            <button onClick={() => setNearbyLoading(false)} style={{
+              background: 'none', border: 'none', color: 'var(--tx4)', cursor: 'pointer',
+              fontSize: 11, textDecoration: 'underline', padding: 0,
+            }}>Skip</button>
           </div>
         )}
 
