@@ -343,7 +343,7 @@ function HoleCard({
       )}
 
       {(() => {
-        const gpsReady = !!(gpsHole?.green.center && gpsHole?.green.front && gpsHole?.green.back && gpsHole?.tee)
+        const gpsReady = !!(gpsHole?.green.center)
         const hasGuide = !!(holeInfo?.description || holeInfo?.photo)
         if (!gpsReady && !hasGuide) return null
         return (

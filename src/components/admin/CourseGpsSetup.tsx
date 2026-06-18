@@ -613,6 +613,15 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         else if (golf === 'tee') newHoles[num - 1].tee = c
       }
 
+      // Auto-calculate front/back from the tee→green bearing when both are known
+      for (const h of newHoles) {
+        if (h.tee && h.green.center && !h.green.front && !h.green.back) {
+          const bearing = calcBearing(h.tee, h.green.center)
+          h.green.front = offsetLatLng(h.green.center, bearing + 180, 5)  // 5m toward tee
+          h.green.back  = offsetLatLng(h.green.center, bearing,       5)  // 5m away from tee
+        }
+      }
+
       const greensFound = newHoles.filter(h => h.green.center).length
       const teesFound   = newHoles.filter(h => h.tee).length
       if (greensFound === 0) {
