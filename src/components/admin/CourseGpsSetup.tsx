@@ -52,7 +52,8 @@ type BboxObj = { minLat: number; minLon: number; maxLat: number; maxLon: number 
 // Parse raw OSM XML into Overpass-compatible {elements:[]} shape (mirrors Edge Function logic)
 function parseOsmXml(xml: string): { elements: OsmElement[] } {
   // Can't use Map<> here — 'Map' is shadowed by the react-map-gl import above
-  const nodes: Record<string, { lat: number; lon: number }> = {}
+  // Pass 1: node id → lat/lon
+  const nodePos: Record<string, { lat: number; lon: number }> = {}
   const reNode = /<node\b([^>]*?)(?:\/>|>[\s\S]*?<\/node>)/g
   let m: RegExpExecArray | null
   while ((m = reNode.exec(xml)) !== null) {
@@ -60,25 +61,62 @@ function parseOsmXml(xml: string): { elements: OsmElement[] } {
     const id  = /\bid="([^"]+)"/.exec(a)?.[1]
     const lat = /\blat="([^"]+)"/.exec(a)?.[1]
     const lon = /\blon="([^"]+)"/.exec(a)?.[1]
-    if (id && lat && lon) nodes[id] = { lat: parseFloat(lat), lon: parseFloat(lon) }
+    if (id && lat && lon) nodePos[id] = { lat: parseFloat(lat), lon: parseFloat(lon) }
   }
-  const elements: OsmElement[] = []
+
+  // Pass 2: way id → tags + centroid (only golf=green and golf=tee ways)
+  const wayMap: Record<string, { tags: Record<string, string>; center: { lat: number; lon: number } | null }> = {}
   const reWay = /<way\b([^>]*)>([\s\S]*?)<\/way>/g
   while ((m = reWay.exec(xml)) !== null) {
     const [, attrs, body] = m
     const id = /\bid="([^"]+)"/.exec(attrs)?.[1]
+    if (!id) continue
     const tags: Record<string, string> = {}
     const reTag = /<tag\s+k="([^"]+)"\s+v="([^"]+)"/g
     let t: RegExpExecArray | null
     while ((t = reTag.exec(body)) !== null) tags[t[1]] = t[2]
-    const golf = tags['golf']
-    if (golf !== 'green' && golf !== 'tee') continue
+    if (tags['golf'] !== 'green' && tags['golf'] !== 'tee') continue
     const refs = [...body.matchAll(/<nd\s+ref="(\d+)"/g)].map(x => x[1])
-    const pts = refs.map(r => nodes[r]).filter((n): n is { lat: number; lon: number } => n != null)
-    if (!pts.length) continue
-    const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length
-    const lon = pts.reduce((s, p) => s + p.lon, 0) / pts.length
-    elements.push({ type: 'way', id: id ? parseInt(id) : 0, tags, center: { lat, lon } })
+    const pts = refs.map(r => nodePos[r]).filter((n): n is { lat: number; lon: number } => n != null)
+    wayMap[id] = {
+      tags,
+      center: pts.length
+        ? { lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lon: pts.reduce((s, p) => s + p.lon, 0) / pts.length }
+        : null,
+    }
+  }
+
+  // Pass 3: golf=hole relations → map way IDs to hole numbers
+  // Many courses tag ref=N on the relation but not on individual tee/green ways
+  const wayHoleNum: Record<string, number> = {}
+  const reRelation = /<relation\b[^>]*>([\s\S]*?)<\/relation>/g
+  while ((m = reRelation.exec(xml)) !== null) {
+    const body = m[1]
+    const tags: Record<string, string> = {}
+    const reTag = /<tag\s+k="([^"]+)"\s+v="([^"]+)"/g
+    let t: RegExpExecArray | null
+    while ((t = reTag.exec(body)) !== null) tags[t[1]] = t[2]
+    if (tags['golf'] !== 'hole') continue
+    const holeNum = parseInt(tags['ref'] ?? '0')
+    if (holeNum < 1 || holeNum > 18) continue
+    // Collect all way member refs regardless of role
+    const reMember = /<member\b([^>]*?)(?:\/>|>)/g
+    let mem: RegExpExecArray | null
+    while ((mem = reMember.exec(body)) !== null) {
+      const ma = mem[1]
+      if (!ma.includes('type="way"')) continue
+      const ref = /\bref="(\d+)"/.exec(ma)?.[1]
+      if (ref) wayHoleNum[ref] = holeNum
+    }
+  }
+
+  // Pass 4: assemble output — prefer relation hole number over way's own ref tag
+  const elements: OsmElement[] = []
+  for (const [id, { tags, center }] of Object.entries(wayMap)) {
+    if (!center) continue
+    const relNum = wayHoleNum[id]
+    const effectiveTags = relNum ? { ...tags, ref: String(relNum) } : tags
+    elements.push({ type: 'way', id: parseInt(id), tags: effectiveTags, center })
   }
   return { elements }
 }
