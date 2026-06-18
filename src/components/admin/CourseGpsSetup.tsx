@@ -144,14 +144,15 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   // ── Get user location + auto-load nearby courses on mount ───────────────
   useEffect(() => {
-    if (!navigator.geolocation || currentGps) return
+    if (!navigator.geolocation || currentGps || !TOKEN) return
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude: lat, longitude: lng } = pos.coords
       setUserLocation({ lat, lng })
       setViewState({ longitude: lng, latitude: lat, zoom: 11 })
       setNearbyLoading(true)
       try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/golf%20club.json?types=poi&proximity=${lng},${lat}&limit=15&access_token=${TOKEN}`
+        // Search for "golf club" near user — no type filter so Mapbox returns all matches
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/golf%20club.json?proximity=${lng},${lat}&limit=10&access_token=${TOKEN}`
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: any = await fetch(url).then(r => r.json())
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -163,9 +164,9 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           address: f.place_name.split(',').slice(1).join(',').trim(),
           distanceKm: kmBetween(lat, lng, f.center[1], f.center[0]),
           bounds: f.bbox ? { minLat: f.bbox[1], maxLat: f.bbox[3], minLon: f.bbox[0], maxLon: f.bbox[2] } : undefined,
-        }))
+        })).sort((a: CourseResult, b: CourseResult) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
         setResults(mapped)
-      } catch { /* silent */ }
+      } catch { /* silent — user can search manually */ }
       setNearbyLoading(false)
     }, () => { setNearbyLoading(false) }, { timeout: 8000 })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -177,7 +178,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setResults([])
     try {
       const proximity = userLocation ? `&proximity=${userLocation.lng},${userLocation.lat}` : ''
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=poi&limit=10${proximity}&access_token=${TOKEN}`
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?limit=10${proximity}&access_token=${TOKEN}`
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = await fetch(url).then(r => r.json())
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
