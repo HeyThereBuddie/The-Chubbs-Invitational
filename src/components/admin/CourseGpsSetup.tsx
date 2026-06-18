@@ -108,10 +108,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setSearching(true)
     setResults([])
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' golf course')}&format=json&limit=6`
-      const data: NominatimResult[] = await fetch(url, {
-        headers: { 'User-Agent': 'ChubbsInvitational/1.0' },
-      }).then(r => r.json())
+      // Search with and without "golf course" appended, merge unique results
+      const search = async (q: string) => {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1`
+        return fetch(url, { headers: { 'User-Agent': 'ChubbsInvitational/1.0 (contact: golf-app)' } }).then(r => r.json()) as Promise<NominatimResult[]>
+      }
+      const [r1, r2] = await Promise.all([search(query), search(query + ' golf club')])
+      const seen = new Set<number>()
+      const data: NominatimResult[] = [...r1, ...r2].filter(r => { if (seen.has(r.place_id)) return false; seen.add(r.place_id); return true }).slice(0, 8)
       setResults(data)
     } catch {
       showToast('Search failed — check your connection', 'error')
@@ -279,7 +283,10 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               }}>
                 <div style={{ fontWeight: 600 }}>{r.display_name.split(',')[0]}</div>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-                  {r.display_name.split(',').slice(1, 3).join(',').trim()}
+                  {r.display_name.split(',').slice(1).join(',').trim()}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--tx4)', marginTop: 2 }}>
+                  {parseFloat(r.lat).toFixed(4)}, {parseFloat(r.lon).toFixed(4)}
                 </div>
               </button>
             ))}
