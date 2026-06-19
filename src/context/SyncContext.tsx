@@ -3,6 +3,9 @@ import { useYear } from './YearContext'
 import { syncAll } from '../lib/syncService'
 import { localDb } from '../lib/localDb'
 import { drainQueue, getPendingCount } from '../lib/writeQueue'
+import { precacheMapTiles } from '../lib/precacheMapTiles'
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 interface SyncContextValue {
   isOnline: boolean
@@ -43,6 +46,16 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       syncedForRef.current = tournamentId
       setLastSynced(new Date())
       setPendingCount(await getPendingCount())
+
+      // Pre-fetch satellite tiles for the course so the GPS map works offline.
+      // Runs in background — never blocks or throws into the sync error handler.
+      if (MAPBOX_TOKEN) {
+        localDb.course_gps.get(tournamentId).then(cached => {
+          if (cached?.lat && cached?.lng) {
+            precacheMapTiles(cached.lat, cached.lng, cached.holes_json, MAPBOX_TOKEN!).catch(() => {})
+          }
+        }).catch(() => {})
+      }
     } catch {
       // silent — offline fallback will kick in
     } finally {

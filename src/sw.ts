@@ -1,9 +1,6 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { CacheFirst } from 'workbox-strategies'
-import { CacheableResponsePlugin } from 'workbox-cacheable-response'
-import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -13,17 +10,40 @@ cleanupOutdatedCaches()
 // Serve cached index.html for all navigation requests so the app loads offline
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
 
-// Cache Mapbox tiles so the map works offline after the course has been viewed once.
-// Tiles are keyed by URL (zoom/x/y) and kept for 7 days with a 600-tile cap.
+// Cache Mapbox tiles so the map works offline after the course has been pre-fetched.
+//
+// Mapbox GL JS appends a per-session `sku` param to every tile request for billing
+// tracking. That means a manually pre-fetched tile (no sku) and a tile requested by
+// the map (with sku) have different URLs and would never share a cache entry.
+//
+// Fix: strip `sku` before using the URL as the cache key, so pre-fetched tiles and
+// live tile requests resolve to the same cache entry regardless of session.
+const MAPBOX_CACHE = 'mapbox-tiles-v1'
+
 registerRoute(
   ({ url }) => url.hostname.endsWith('.mapbox.com') || url.hostname.endsWith('.mapbox.cn'),
-  new CacheFirst({
-    cacheName: 'mapbox-tiles-v1',
-    plugins: [
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
-      new ExpirationPlugin({ maxEntries: 600, maxAgeSeconds: 7 * 24 * 60 * 60 }),
-    ],
-  })
+  async ({ request }: { request: Request }) => {
+    const url = new URL(request.url)
+    url.searchParams.delete('sku')
+    const normalizedKey = url.toString()
+
+    const cache = await caches.open(MAPBOX_CACHE)
+    const cached = await cache.match(normalizedKey)
+    if (cached) return cached
+
+    try {
+      const response = await fetch(request)
+      if (response.status === 200 || response.status === 0) {
+        // Evict the oldest entry once cache exceeds 700 tiles (~25 MB satellite)
+        const keys = await cache.keys()
+        if (keys.length >= 700) await cache.delete(keys[0])
+        cache.put(normalizedKey, response.clone())
+      }
+      return response
+    } catch {
+      return new Response('', { status: 503 })
+    }
+  }
 )
 
 self.addEventListener('install', () => self.skipWaiting())
