@@ -5,15 +5,16 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { localDb } from '../lib/localDb'
+import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
-import { displayName } from '../lib/types'
+import { displayName, HOLE_PARS } from '../lib/types'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
+const STALE_MS = 30 * 60 * 1000 // hide markers older than 30 minutes
 
 function haversineYards(a: LatLng, b: LatLng): number {
   const R = 6371000
@@ -112,6 +113,27 @@ function YardagePanel({ label, yards, color }: { label: string; yards: number | 
   )
 }
 
+interface PlayerPosition {
+  player_id: string
+  team_id: string | null
+  lat: number
+  lng: number
+  updated_at: string
+}
+
+function timeAgo(isoString: string): string {
+  const mins = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins === 1) return '1 min ago'
+  return `${mins} mins ago`
+}
+
+function scoreToPar(teamId: string, scores: LocalScore[]): number | null {
+  const teamScores = scores.filter(s => s.team_id === teamId)
+  if (!teamScores.length) return null
+  return teamScores.reduce((sum, s) => sum + s.score - (HOLE_PARS[s.hole - 1] ?? 4), 0)
+}
+
 export default function GpsPage() {
   const { profile } = useAuth()
   const { effectiveTournamentId } = useYear()
@@ -133,6 +155,23 @@ export default function GpsPage() {
   const [tapPoint, setTapPoint] = useState<LatLng | null>(null)
   const [tipOpen, setTipOpen]   = useState(false)
   const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15, bearing: 0, pitch: 0 })
+
+  // Other players' live positions
+  const [otherPositions, setOtherPositions] = useState<PlayerPosition[]>([])
+  const [selectedCartPlayerId, setSelectedCartPlayerId] = useState<string | null>(null)
+
+  // Local DB snapshots for computing score-to-par in the popup (already cached by syncAll)
+  const [localScores, setLocalScores] = useState<LocalScore[]>([])
+  const [localTeams, setLocalTeams] = useState<LocalTeam[]>([])
+  const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
+
+  // Refs for position publishing — avoids re-registering the GPS watch when profile/tournament changes
+  const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
+  const publishRef = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
+  // Keep publishRef fresh on every render (cheap — just a ref assignment)
+  publishRef.current = (profile && effectiveTournamentId)
+    ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
+    : null
 
   // Load GPS course data — cache first (works offline), then refresh from network
   useEffect(() => {
@@ -183,18 +222,81 @@ export default function GpsPage() {
     })()
   }, [effectiveTournamentId])
 
-  // GPS tracking
+  // GPS tracking + position publishing
   useEffect(() => {
     if (!navigator.geolocation) { setGpsStatus('unavailable'); return }
     const id = navigator.geolocation.watchPosition(
       pos => {
-        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setPosition(newPos)
         setGpsStatus('ok')
+
+        // Publish to player_positions: only when moved >11 yards (~10m) or >15s since last publish
+        const info = publishRef.current
+        const last = lastPublishRef.current
+        const movedYards = last ? haversineYards(last, newPos) : Infinity
+        const ageMs = last ? Date.now() - last.at : Infinity
+        if (info && navigator.onLine && (movedYards > 11 || ageMs > 15000)) {
+          lastPublishRef.current = { ...newPos, at: Date.now() }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(supabase as any).from('player_positions').upsert({
+            player_id: info.profileId,
+            tournament_id: info.tournamentId,
+            team_id: info.teamId,
+            lat: newPos.lat,
+            lng: newPos.lng,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'player_id' }).catch(() => {})
+        }
       },
       err => setGpsStatus(err.code === 1 ? 'denied' : 'unavailable'),
       { enableHighAccuracy: true, maximumAge: 4000, timeout: 15000 },
     )
     return () => navigator.geolocation.clearWatch(id)
+  }, []) // uses publishRef for latest profile/tournament — no re-registration needed
+
+  // Load other players' positions + subscribe to realtime updates
+  useEffect(() => {
+    if (!effectiveTournamentId) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any)
+      .from('player_positions')
+      .select('player_id, team_id, lat, lng, updated_at')
+      .eq('tournament_id', effectiveTournamentId)
+      .then(({ data }: { data: PlayerPosition[] | null }) => {
+        if (data) setOtherPositions(data)
+      })
+
+    const channel = supabase
+      .channel(`player-positions-${effectiveTournamentId}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, {
+        event: '*', schema: 'public', table: 'player_positions',
+        filter: `tournament_id=eq.${effectiveTournamentId}`,
+      }, (payload: { new: PlayerPosition }) => {
+        const updated = payload.new
+        setOtherPositions(prev => [
+          ...prev.filter(p => p.player_id !== updated.player_id),
+          updated,
+        ])
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [effectiveTournamentId])
+
+  // Load cached scores/teams/profiles for the popup score-to-par computation
+  useEffect(() => {
+    Promise.all([
+      localDb.scores.toArray(),
+      localDb.teams.toArray(),
+      localDb.profiles.toArray(),
+    ]).then(([scores, teams, profiles]) => {
+      setLocalScores(scores)
+      setLocalTeams(teams)
+      setLocalProfiles(profiles)
+    })
   }, [])
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
@@ -270,6 +372,15 @@ export default function GpsPage() {
       properties: {},
     }
   }, [tapPoint, currentHole])
+
+  // Other players filtered to non-stale, non-self
+  const activeOtherPositions = useMemo(() => {
+    const now = Date.now()
+    return otherPositions.filter(p =>
+      p.player_id !== profile?.id &&
+      now - new Date(p.updated_at).getTime() < STALE_MS
+    )
+  }, [otherPositions, profile?.id])
 
   // Orient the map so tee is at bottom, green at top (like 18Birdies)
   const flyToHole = useCallback((hole: HoleGps) => {
@@ -347,6 +458,7 @@ export default function GpsPage() {
 
   const handleMapClick = (e: MapMouseEvent) => {
     setTapPoint({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+    setSelectedCartPlayerId(null)
   }
 
   const frontDist      = dist(position, currentHole?.green.front)
@@ -632,6 +744,22 @@ export default function GpsPage() {
               </div>
             </Marker>
           )}
+
+          {/* Other players — gold cart emoji markers */}
+          {activeOtherPositions.map(p => (
+            <Marker key={p.player_id} longitude={p.lng} latitude={p.lat} anchor="bottom">
+              <button
+                onClick={e => { e.stopPropagation(); setSelectedCartPlayerId(p.player_id) }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: 24, lineHeight: 1,
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
+                }}
+              >
+                🛒
+              </button>
+            </Marker>
+          ))}
         </Map>
 
         {/* GPS status badge */}
@@ -734,6 +862,49 @@ export default function GpsPage() {
             ⛳ Enter Score
           </button>
         )}
+
+        {/* Cart player info popup — shown when a cart marker is tapped */}
+        {(() => {
+          if (!selectedCartPlayerId) return null
+          const pos = activeOtherPositions.find(p => p.player_id === selectedCartPlayerId)
+          if (!pos) return null
+          const player = localProfiles.find(p => p.id === selectedCartPlayerId)
+          const team = pos.team_id ? localTeams.find(t => t.id === pos.team_id) : null
+          const toPar = pos.team_id ? scoreToPar(pos.team_id, localScores) : null
+          const toParStr = toPar == null ? '—' : toPar > 0 ? `+${toPar}` : toPar === 0 ? 'E' : `${toPar}`
+          const toParColor = toPar == null ? 'var(--tx3)' : toPar < 0 ? '#22c55e' : toPar > 0 ? '#ef4444' : '#D4A53A'
+          return (
+            <div
+              onClick={() => setSelectedCartPlayerId(null)}
+              style={{
+                position: 'absolute', bottom: 70, left: '50%', transform: 'translateX(-50%)',
+                background: 'rgba(8,8,12,0.92)', backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(212,165,58,0.35)',
+                borderRadius: 14, padding: '14px 22px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                cursor: 'pointer', zIndex: 10, minWidth: 170,
+                boxShadow: '0 4px 24px rgba(0,0,0,0.7)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)' }}>
+                🛒 {player ? (player.nickname?.trim() || player.name || 'Player') : 'Player'}
+              </div>
+              {team && (
+                <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{team.name}</div>
+              )}
+              <div style={{
+                fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 1, lineHeight: 1.1,
+                color: toParColor,
+              }}>
+                {toParStr}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--tx4)', marginTop: 2 }}>
+                {timeAgo(pos.updated_at)} · tap to dismiss
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Round stats strip — drives + chulligans */}
