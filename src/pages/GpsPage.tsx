@@ -927,7 +927,8 @@ export default function GpsPage() {
             }}>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 52, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
-              <div style={{ marginTop: 4, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+              <div style={{ marginTop: 6, fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
             </div>
           )
         })()}
