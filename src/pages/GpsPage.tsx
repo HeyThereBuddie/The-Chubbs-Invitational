@@ -872,13 +872,13 @@ export default function GpsPage() {
             const display = yards !== null && yards <= 9999 ? yards : '—'
             return (
               <div key={label} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', gap: 10,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-                padding: '5px 10px', minWidth: 82,
+                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
+                padding: '9px 16px', minWidth: 120,
               }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 22 }}>{label}</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 36, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
               </div>
             )
           })}
