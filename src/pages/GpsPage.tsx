@@ -859,6 +859,21 @@ export default function GpsPage() {
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
         </div>
 
+        {/* Recenter button — top right */}
+        {currentHole && (
+          <button onClick={() => flyToHole(currentHole)} style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 10,
+            background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+            border: '1px solid rgba(255,255,255,0.14)', color: 'white',
+            borderRadius: 12, padding: '10px 14px', fontSize: 12, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+          }}>
+            <Target size={14} color="#D4A53A" />
+            Hole
+          </button>
+        )}
+
         {/* Yardage stack — bottom left */}
         <div style={{
           position: 'absolute', bottom: navBase, left: 12, zIndex: 10,
@@ -934,16 +949,23 @@ export default function GpsPage() {
                     return (
                       <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <span style={nameStyle}>{firstName}</span>
-                        {/* Beer mug: full opacity = available, faded + strikethrough hole badge = used */}
-                        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                        {/* Beer mug: full = available; tappable faded = used (tap to undo) */}
+                        <button
+                          onClick={ch ? () => scoring.toggleMyChulligan(player.id, ch.hole) : undefined}
+                          style={{
+                            position: 'relative', display: 'inline-flex', alignItems: 'center',
+                            background: 'none', border: 'none', padding: 0, cursor: ch ? 'pointer' : 'default',
+                          }}
+                          title={ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
+                        >
                           <span style={{
                             fontSize: 18, lineHeight: 1,
-                            opacity: ch ? 0.25 : 1,
+                            opacity: ch ? 0.28 : 1,
                             filter: ch ? 'grayscale(1)' : 'none',
                             transition: 'opacity 0.3s, filter 0.3s',
                           }}>🍺</span>
                           {ch ? (
-                            /* Used: red badge with hole number */
+                            /* Used: red badge with hole number — tap the whole button to undo */
                             <span style={{
                               position: 'absolute', top: -5, right: -8,
                               fontSize: 8, fontWeight: 800, lineHeight: 1,
@@ -960,7 +982,7 @@ export default function GpsPage() {
                               boxShadow: '0 0 5px rgba(34,197,94,0.8)',
                             }} />
                           )}
-                        </div>
+                        </button>
                       </div>
                     )
                   })}
@@ -994,19 +1016,6 @@ export default function GpsPage() {
             )
           })()}
 
-          {/* Recenter button */}
-          {currentHole && (
-            <button onClick={() => flyToHole(currentHole)} style={{
-              background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-              border: '1px solid rgba(255,255,255,0.14)', color: 'white',
-              borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-            }}>
-              <Target size={12} color="#D4A53A" />
-              Hole
-            </button>
-          )}
         </div>
       </div>
 
