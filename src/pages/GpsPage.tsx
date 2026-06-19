@@ -144,29 +144,23 @@ function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
   return lenSq === 0 ? 0 : (px * vx + py * vy) / lenSq
 }
 
-// Place a bunker label just outside the bunker edge, on the side away from the
-// tee→green centre line. Projects the centroid onto the axis, then pushes the
-// label in the direction from the axis toward (and beyond) the bunker.
-function bunkerLabelPos(poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
-  const dx = green.lng - tee.lng, dy = green.lat - tee.lat
-  const lenSq = dx * dx + dy * dy
-  if (lenSq === 0) return centroid
-  // Closest point on the tee→green axis to the bunker centroid
-  const t = ((centroid.lng - tee.lng) * dx + (centroid.lat - tee.lat) * dy) / lenSq
-  const axisLng = tee.lng + t * dx, axisLat = tee.lat + t * dy
-  // Vector pointing directly away from the fairway centre line toward the bunker
-  const perpLng = centroid.lng - axisLng, perpLat = centroid.lat - axisLat
+// Place a bunker label on the far side of the bunker from the player (or tee).
+// Pushing in the direction player→bunker guarantees the label is always on the
+// side away from the approaching player, which is opposite the fairway.
+function bunkerLabelPos(poly: LatLng[], centroid: LatLng, reference: LatLng): LatLng {
+  const perpLng = centroid.lng - reference.lng
+  const perpLat = centroid.lat - reference.lat
   const perpLen = Math.sqrt(perpLng * perpLng + perpLat * perpLat)
   if (perpLen === 0) return centroid
   const unitLng = perpLng / perpLen, unitLat = perpLat / perpLen
-  // Find how far the polygon extends in that outward direction
+  // Furthest polygon vertex in the outward direction from the centroid
   let edgeDeg = 0
   for (const v of poly) {
     const proj = (v.lng - centroid.lng) * unitLng + (v.lat - centroid.lat) * unitLat
     if (proj > edgeDeg) edgeDeg = proj
   }
-  // ~12 yards of clearance past the bunker edge
-  const gapDeg = 12 * 0.9144 / 111111
+  // 15 yards of clearance past the bunker edge
+  const gapDeg = 15 * 0.9144 / 111111
   return {
     lat: centroid.lat + unitLat * (edgeDeg + gapDeg),
     lng: centroid.lng + unitLng * (edgeDeg + gapDeg),
@@ -417,10 +411,13 @@ export default function GpsPage() {
     const bunkers = currentHole?.bunkers, tee = currentHole?.tee, green = currentHole?.green.center
     if (!bunkers?.length || !tee || !green || !position) return []
     const playerT = holeProgress(tee, green, position)
+    // Use player position as reference so label is always on the far side of the
+    // bunker from the player. Fall back to tee if position equals tee.
+    const reference = position
     return bunkers
       .map((poly, idx) => {
         const centroid = polygonCentroid(poly)
-        const labelPos = bunkerLabelPos(poly, centroid, tee, green)
+        const labelPos = bunkerLabelPos(poly, centroid, reference)
         return { idx, centroid, labelPos, bunkerT: holeProgress(tee, green, centroid), yards: haversineYards(position, centroid) }
       })
       .filter(b => playerT <= b.bunkerT)
