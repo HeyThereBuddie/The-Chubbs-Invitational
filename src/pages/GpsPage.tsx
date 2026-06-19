@@ -924,21 +924,21 @@ export default function GpsPage() {
           <div style={{
             position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
-            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
+            border: '1px solid rgba(255,255,255,0.14)', borderRadius: 13,
+            padding: '8px 15px', display: 'flex', alignItems: 'center', gap: 10,
             boxShadow: '0 4px 16px rgba(0,0,0,0.3)', whiteSpace: 'nowrap',
           }}>
             {/* Arrow pointing in the direction wind is travelling TO */}
             <div style={{ transform: `rotate(${wind.direction}deg)`, display: 'flex', lineHeight: 1 }}>
-              <Navigation size={13} color="#D4A53A" fill="#D4A53A" />
+              <Navigation size={15} color="#D4A53A" fill="#D4A53A" />
             </div>
-            <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, lineHeight: 1, color: 'white', letterSpacing: 0.5 }}>
+            <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, lineHeight: 1, color: 'white', letterSpacing: 0.5 }}>
               {wind.speed}
             </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
               MPH
             </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>
               {cardinalDir(wind.direction)}
             </span>
             {/* Head/tail + drift summary relative to this hole */}
