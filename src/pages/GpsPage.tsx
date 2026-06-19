@@ -256,6 +256,17 @@ export default function GpsPage() {
     }
   }, [position, tapPoint])
 
+  // Tap-to-green line: Tap point → Green center (remaining distance to flag)
+  const tapToGreenGeoJson = useMemo(() => {
+    const green = currentHole?.green.center
+    if (!tapPoint || !green) return null
+    return {
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: [[tapPoint.lng, tapPoint.lat], [green.lng, green.lat]] },
+      properties: {},
+    }
+  }, [tapPoint, currentHole])
+
   // Orient the map so tee is at bottom, green at top (like 18Birdies)
   const flyToHole = useCallback((hole: HoleGps) => {
     const green  = hole.green.center
@@ -519,13 +530,23 @@ export default function GpsPage() {
             </Source>
           )}
 
-          {/* Aim line: tee → player → green */}
+          {/* Aim line: Player → Tap point */}
           {aimLineGeoJson && (
             <Source id="aimline" type="geojson" data={aimLineGeoJson}>
               <Layer id="aimline-bg" type="line"
                 paint={{ 'line-color': 'rgba(0,0,0,0.4)', 'line-width': 4 }} />
               <Layer id="aimline-fg" type="line"
                 paint={{ 'line-color': 'rgba(255,255,255,0.85)', 'line-width': 2, 'line-dasharray': [8, 5] }} />
+            </Source>
+          )}
+
+          {/* Tap-to-green line: Tap point → Green center */}
+          {tapToGreenGeoJson && (
+            <Source id="tap-to-green" type="geojson" data={tapToGreenGeoJson}>
+              <Layer id="tap-to-green-bg" type="line"
+                paint={{ 'line-color': 'rgba(0,0,0,0.35)', 'line-width': 3 }} />
+              <Layer id="tap-to-green-fg" type="line"
+                paint={{ 'line-color': 'rgba(212,165,58,0.80)', 'line-width': 1.5, 'line-dasharray': [5, 4] }} />
             </Source>
           )}
 
