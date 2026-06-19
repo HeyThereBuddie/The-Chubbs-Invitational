@@ -154,7 +154,9 @@ export function usePlayerScoring() {
 
     // Drain immediately if online; notify function is fire-and-forget after sync
     if (navigator.onLine) {
-      drainQueue().then(() => pingLeadCheck({ team_id: myTeamId!, hole, score: next })).catch(() => {})
+      drainQueue()
+        .then(() => { pingLeadCheck({ team_id: myTeamId!, hole, score: next }).catch(() => {}); return refreshPendingCount() })
+        .catch(() => {})
     }
     await refreshPendingCount()
   }
@@ -168,7 +170,7 @@ export function usePlayerScoring() {
     await localDb.scores.update(existing.id, { drive_used_id: newId })
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
     await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
-    if (navigator.onLine) drainQueue().catch(() => {})
+    if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     await refreshPendingCount()
   }
 
@@ -207,7 +209,7 @@ export function usePlayerScoring() {
         .delete()
     }
 
-    if (navigator.onLine) drainQueue().catch(() => {})
+    if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     await refreshPendingCount()
   }
 
@@ -232,7 +234,7 @@ export function usePlayerScoring() {
     if (!String(existing.id).startsWith('offline-')) {
       // Row exists in Supabase — queue a delete
       await enqueue('delete_score', { team_id: myTeamId!, hole }, { team_id: myTeamId!, hole })
-      if (navigator.onLine) drainQueue().catch(() => {})
+      if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     } else {
       // Row was never synced — just remove related queued writes
       for (const opType of ['set_score', 'set_drive', 'set_putts'] as const) {
@@ -300,7 +302,7 @@ export function usePlayerScoring() {
       await queueFeedEvent()
     }
 
-    if (navigator.onLine) drainQueue().catch(() => {})
+    if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     await refreshPendingCount()
   }
 
