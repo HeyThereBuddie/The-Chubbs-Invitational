@@ -96,25 +96,33 @@ export function ScoreBottomSheet({
           </span>
         </div>
 
-        {/* HoleCard content */}
+        {/* HoleCard content or no-team message */}
         <div style={{ padding: '0 12px' }}>
-          <HoleCard
-            key={hole}
-            hole={hole}
-            scoreRow={myScores[hole]}
-            isSaving={saving === hole}
-            onMinus={() => adjustMyScore(hole, -1)}
-            onPlus={() => adjustMyScore(hole, 1)}
-            player1={mp1}
-            player2={mp2}
-            onSetDrive={(pid) => setMyDrive(hole, pid)}
-            driveDisabled={driveDisabled}
-            onSetPutts={(n) => setMyPutts(hole, n)}
-            onReset={() => resetMyScore(hole)}
-            chulligans={myChulligans}
-            onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
-            locked={locked}
-          />
+          {!myTeam ? (
+            <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--tx3)', fontSize: 14, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>👥</div>
+              You're not assigned to a team yet.{'\n'}
+              <span style={{ color: 'var(--tx4)', fontSize: 12 }}>Go to Scores → pick your team first.</span>
+            </div>
+          ) : (
+            <HoleCard
+              key={hole}
+              hole={hole}
+              scoreRow={myScores[hole]}
+              isSaving={saving === hole}
+              onMinus={() => adjustMyScore(hole, -1)}
+              onPlus={() => adjustMyScore(hole, 1)}
+              player1={mp1}
+              player2={mp2}
+              onSetDrive={(pid) => setMyDrive(hole, pid)}
+              driveDisabled={driveDisabled}
+              onSetPutts={(n) => setMyPutts(hole, n)}
+              onReset={() => resetMyScore(hole)}
+              chulligans={myChulligans}
+              onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
+              locked={locked}
+            />
+          )}
         </div>
 
         {/* Footer */}

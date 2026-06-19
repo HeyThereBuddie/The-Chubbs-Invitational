@@ -5,6 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
@@ -130,6 +131,7 @@ function YardagePanel({ label, yards, color }: { label: string; yards: number | 
 }
 
 export default function GpsPage() {
+  const { profile } = useAuth()
   const { effectiveTournamentId } = useYear()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -726,8 +728,8 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Enter Score FAB — only shown when player is on a team */}
-        {scoring.myTeamId && (
+        {/* Enter Score FAB — shown to any logged-in user */}
+        {profile && (
           <button
             onClick={() => setSheetOpen(true)}
             style={{
