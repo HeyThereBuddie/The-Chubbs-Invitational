@@ -116,6 +116,35 @@ function calcBearing(a: LatLng, b: LatLng): number {
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360
 }
 
+// ─── Wind helpers ─────────────────────────────────────────────────────────────
+
+interface WindData { speed: number; direction: number; fetchedAt: number }
+
+function windComponents(speedMph: number, windDirDeg: number, holeBearingDeg: number) {
+  // meteorological: direction wind comes FROM → convert to "going to" by +180
+  const windToDeg = (windDirDeg + 180) % 360
+  const relRad = ((windToDeg - holeBearingDeg) * Math.PI) / 180
+  return {
+    headwind:  speedMph * Math.cos(relRad),  // + = into face, - = at back
+    crosswind: speedMph * Math.sin(relRad),  // + = pushes right, - = pushes left
+  }
+}
+
+function windAdjYards(baseYards: number, headwind: number): number {
+  // +1 yd per mph headwind; only −0.5 per mph tailwind (ball lands before full assist)
+  return Math.round(baseYards + (headwind >= 0 ? headwind : headwind * 0.5))
+}
+
+function windDriftYards(baseYards: number, crosswind: number): number {
+  // ≈1 yd drift per 10 mph crosswind per 100 yards of carry
+  return Math.round(crosswind * baseYards / 100)
+}
+
+function cardinalDir(deg: number): string {
+  const dirs = ['N','NE','E','SE','S','SW','W','NW']
+  return dirs[Math.round(deg / 45) % 8]
+}
+
 function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLng {
   const R = 6371000, d = meters / R, b = (bearingDeg * Math.PI) / 180
   const lat1 = (origin.lat * Math.PI) / 180, lng1 = (origin.lng * Math.PI) / 180
@@ -245,6 +274,7 @@ export default function GpsPage() {
 
   const [otherPositions, setOtherPositions] = useState<PlayerPosition[]>([])
   const [selectedCartPlayerId, setSelectedCartPlayerId] = useState<string | null>(null)
+  const [wind, setWind] = useState<WindData | null>(null)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
@@ -361,6 +391,27 @@ export default function GpsPage() {
         setLocalScores(scores); setLocalTeams(teams); setLocalProfiles(profiles)
       })
   }, [])
+
+  // ── Wind data (Open-Meteo, refreshes every 10 min) ────────────────────────
+
+  useEffect(() => {
+    if (!course?.lat || !course?.lng) return
+    const lat = course.lat, lng = course.lng
+    const fetchWind = async () => {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=auto`
+        const res = await fetch(url)
+        if (!res.ok) return
+        const json = await res.json()
+        const c = json.current
+        if (typeof c?.wind_speed_10m === 'number' && typeof c?.wind_direction_10m === 'number')
+          setWind({ speed: Math.round(c.wind_speed_10m), direction: c.wind_direction_10m, fetchedAt: Date.now() })
+      } catch { /* offline */ }
+    }
+    fetchWind()
+    const id = setInterval(fetchWind, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [course?.lat, course?.lng])
 
   // ── Derived state ─────────────────────────────────────────────────────────
 
@@ -532,6 +583,15 @@ export default function GpsPage() {
   // Elements above the nav bar sit at this base; tip/hint cards go higher
   const navBase      = `calc(env(safe-area-inset-bottom, 0px) + 68px)`
   const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + 170px)`
+
+  // Wind adjustments for the current hole
+  const holeBearing = currentHole?.tee && currentHole?.green.center
+    ? calcBearing(currentHole.tee, currentHole.green.center) : null
+  const { headwind, crosswind } = (wind && holeBearing !== null)
+    ? windComponents(wind.speed, wind.direction, holeBearing)
+    : { headwind: 0, crosswind: 0 }
+  const driftYards = (wind && centerDist !== null && centerDist <= 9999)
+    ? windDriftYards(centerDist, crosswind) : 0
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -859,6 +919,49 @@ export default function GpsPage() {
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
         </div>
 
+        {/* Wind chip — top center */}
+        {wind && (
+          <div style={{
+            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
+            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)', whiteSpace: 'nowrap',
+          }}>
+            {/* Arrow pointing in the direction wind is travelling TO */}
+            <div style={{ transform: `rotate(${wind.direction}deg)`, display: 'flex', lineHeight: 1 }}>
+              <Navigation size={13} color="#D4A53A" fill="#D4A53A" />
+            </div>
+            <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, lineHeight: 1, color: 'white', letterSpacing: 0.5 }}>
+              {wind.speed}
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
+              MPH
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>
+              {cardinalDir(wind.direction)}
+            </span>
+            {/* Head/tail + drift summary relative to this hole */}
+            {holeBearing !== null && wind.speed > 0 && (
+              <div style={{ display: 'flex', gap: 5, marginLeft: 2, borderLeft: '1px solid rgba(255,255,255,0.12)', paddingLeft: 8 }}>
+                {Math.abs(headwind) >= 1 && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2,
+                    color: headwind > 0 ? '#ef4444' : '#22c55e',
+                  }}>
+                    {headwind > 0 ? '▲' : '▼'}{Math.abs(Math.round(headwind))}y
+                  </span>
+                )}
+                {Math.abs(driftYards) >= 1 && (
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2, color: '#60a5fa' }}>
+                    {driftYards > 0 ? '→' : '←'}{Math.abs(driftYards)}y
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Recenter button — top right */}
         {currentHole && (
           <button onClick={() => flyToHole(currentHole)} style={{
@@ -884,16 +987,28 @@ export default function GpsPage() {
             { label: 'Ctr',  yards: centerDist, color: '#D4A53A' },
             { label: 'Frt',  yards: frontDist,  color: '#22c55e' },
           ].map(({ label, yards, color }) => {
-            const display = yards !== null && yards <= 9999 ? yards : '—'
+            const raw = yards !== null && yards <= 9999 ? yards : null
+            const adj = raw !== null && wind ? windAdjYards(raw, headwind) : raw
+            const delta = raw !== null && wind ? (windAdjYards(raw, headwind) - raw) : 0
+            const display = adj ?? '—'
             return (
               <div key={label} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: '10px 16px', minWidth: 128,
+                padding: '10px 16px', minWidth: 128, position: 'relative',
               }}>
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 38, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 38, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                {delta !== 0 && (
+                  <span style={{
+                    position: 'absolute', top: 4, right: 8,
+                    fontSize: 9, fontWeight: 800, letterSpacing: 0.3,
+                    color: delta > 0 ? '#ef4444' : '#22c55e',
+                  }}>
+                    {delta > 0 ? '+' : ''}{delta}w
+                  </span>
+                )}
               </div>
             )
           })}
