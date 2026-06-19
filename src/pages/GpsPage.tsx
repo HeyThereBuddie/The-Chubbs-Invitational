@@ -5,6 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { localDb } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
@@ -133,25 +134,53 @@ export default function GpsPage() {
   const [tipOpen, setTipOpen]   = useState(false)
   const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15, bearing: 0, pitch: 0 })
 
-  // Load GPS course data for current tournament
+  // Load GPS course data — cache first (works offline), then refresh from network
   useEffect(() => {
     if (!effectiveTournamentId) { setLoading(false); return }
-    supabase
-      .from('tournaments')
-      .select('course_gps:course_gps_id(id, name, lat, lng, holes)')
-      .eq('id', effectiveTournamentId)
-      .single()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(({ data }: { data: any }) => {
+
+    const applyGps = (gps: CourseGps) => {
+      setCourse(gps)
+      if (gps.lat && gps.lng) {
+        setViewState(v => ({ ...v, latitude: gps.lat!, longitude: gps.lng!, zoom: 16 }))
+      }
+    }
+
+    // Step 1: show cached data immediately so the page works offline
+    localDb.course_gps.get(effectiveTournamentId).then(cached => {
+      if (cached) {
+        applyGps({
+          id: cached.gps_id, name: cached.name ?? '', created_at: '',
+          lat: cached.lat, lng: cached.lng,
+          holes: JSON.parse(cached.holes_json) as HoleGps[],
+        })
+        setLoading(false)
+      }
+    })
+
+    // Step 2: refresh from Supabase in background; update cache with latest data
+    ;(async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase
+          .from('tournaments')
+          .select('course_gps:course_gps_id(id, name, lat, lng, holes)')
+          .eq('id', effectiveTournamentId)
+          .single() as unknown as Promise<{ data: any }>)
         const gps = data?.course_gps
         if (gps) {
-          setCourse(gps as CourseGps)
-          if (gps.lat && gps.lng) {
-            setViewState(v => ({ ...v, latitude: gps.lat, longitude: gps.lng, zoom: 16 }))
-          }
+          applyGps(gps as CourseGps)
+          localDb.course_gps.put({
+            id: effectiveTournamentId,
+            gps_id: gps.id,
+            name: gps.name ?? null,
+            lat: gps.lat ?? null,
+            lng: gps.lng ?? null,
+            holes_json: JSON.stringify(gps.holes ?? []),
+          }).catch(() => {})
         }
-        setLoading(false)
-      })
+      } catch { /* offline — cached data already shown */ }
+      setLoading(false)
+    })()
   }, [effectiveTournamentId])
 
   // GPS tracking

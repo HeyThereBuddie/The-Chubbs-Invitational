@@ -12,6 +12,7 @@ export async function syncAll(tournamentId: string): Promise<void> {
     { data: leaheyVotes },
     { data: feedEvents },
     { data: pairings },
+    { data: tournamentRow },
   ] = await Promise.all([
     supabase.from('teams')
       .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
@@ -34,6 +35,10 @@ export async function syncAll(tournamentId: string): Promise<void> {
     supabase.from('pairings')
       .select('*, player_a:profiles!pairings_player_a_id_fkey(*), player_b:profiles!pairings_player_b_id_fkey(*)')
       .order('generated_at', { ascending: false }),
+    supabase.from('tournaments')
+      .select('course_gps:course_gps_id(id, name, lat, lng, holes)')
+      .eq('id', tournamentId)
+      .single(),
   ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,7 +47,8 @@ export async function syncAll(tournamentId: string): Promise<void> {
   await localDb.transaction('rw', [
     localDb.teams, localDb.profiles, localDb.scores, localDb.chulligans,
     localDb.tee_times, localDb.contest_entries, localDb.leahey_votes,
-    localDb.feed_events, localDb.feed_reactions, localDb.pairings, localDb.sync_meta,
+    localDb.feed_events, localDb.feed_reactions, localDb.pairings,
+    localDb.course_gps, localDb.sync_meta,
   ], async () => {
     if (teams?.length) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +110,19 @@ export async function syncAll(tournamentId: string): Promise<void> {
         player_a_json: p.player_a ? JSON.stringify(p.player_a) : null,
         player_b_json: p.player_b ? JSON.stringify(p.player_b) : null,
       })))
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const gps = (tournamentRow as any)?.course_gps
+    if (gps?.id) {
+      await localDb.course_gps.put({
+        id: tournamentId,
+        gps_id: gps.id,
+        name: gps.name ?? null,
+        lat: gps.lat ?? null,
+        lng: gps.lng ?? null,
+        holes_json: JSON.stringify(gps.holes ?? []),
+      })
     }
 
     await localDb.sync_meta.put({ key: 'lastSynced', value: new Date().toISOString() })

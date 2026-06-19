@@ -112,6 +112,15 @@ export interface LocalPhoto {
   uploader_json: string | null
 }
 
+export interface LocalCourseGps {
+  id: string          // keyed by tournament_id for instant lookup
+  gps_id: string      // actual course_gps row id
+  name: string | null
+  lat: number | null
+  lng: number | null
+  holes_json: string  // JSON.stringify(HoleGps[])
+}
+
 export interface SyncMeta {
   key: string
   value: string
@@ -139,6 +148,7 @@ class ChubbsLocalDB extends Dexie {
   feed_reactions!: Table<LocalFeedReaction>
   pairings!: Table<LocalPairing>
   photos!: Table<LocalPhoto>
+  course_gps!: Table<LocalCourseGps>
   sync_meta!: Table<SyncMeta>
   pending_writes!: Table<PendingWrite>
 
@@ -189,6 +199,22 @@ class ChubbsLocalDB extends Dexie {
       pending_writes:  '++id, op_type, status, client_ts',
     }).upgrade(() => {
       // Adding photos table
+    })
+    this.version(4).stores({
+      teams:           'id, tournament_id',
+      profiles:        'id, status',
+      scores:          'id, team_id',
+      chulligans:      'id, team_id, player_id',
+      tee_times:       'id',
+      contest_entries: 'id, type, tournament_id',
+      leahey_votes:    'id, voter_id, tournament_id',
+      feed_events:     'id, tournament_id, event_type',
+      feed_reactions:  'id, event_id',
+      pairings:        'id',
+      photos:          'id, tournament_id, uploader_id',
+      course_gps:      'id',
+      sync_meta:       'key',
+      pending_writes:  '++id, op_type, status, client_ts',
     })
   }
 }
