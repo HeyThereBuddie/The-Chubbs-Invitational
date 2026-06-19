@@ -345,10 +345,18 @@ export default function GpsPage() {
     setTapPoint({ lat: e.lngLat.lat, lng: e.lngLat.lng })
   }
 
-  const frontDist  = dist(position, currentHole?.green.front)
-  const centerDist = dist(position, currentHole?.green.center)
-  const backDist   = dist(position, currentHole?.green.back)
-  const tapDist    = dist(position, tapPoint)
+  const frontDist      = dist(position, currentHole?.green.front)
+  const centerDist     = dist(position, currentHole?.green.center)
+  const backDist       = dist(position, currentHole?.green.back)
+  const tapDist        = dist(position, tapPoint)
+  const tapToGreenDist = dist(tapPoint, currentHole?.green.center)
+
+  const aimLineMid = position && tapPoint
+    ? { lat: (position.lat + tapPoint.lat) / 2, lng: (position.lng + tapPoint.lng) / 2 }
+    : null
+  const tapToGreenMid = tapPoint && currentHole?.green.center
+    ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 }
+    : null
 
   // Hazard distances — nearest edge of each forward hazard, with L/R side relative to aim line
   const hazardDistances = useMemo(() => {
@@ -603,6 +611,34 @@ export default function GpsPage() {
               }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#374151' }} />
               </div>
+            </Marker>
+          )}
+
+          {/* Aim line distance label — midpoint of player → tap point */}
+          {aimLineMid && tapDist !== null && (
+            <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
+              <div style={{
+                background: 'rgba(10,10,15,0.82)', backdropFilter: 'blur(6px)',
+                color: 'white', borderRadius: 10, padding: '2px 8px',
+                fontSize: 13, fontFamily: 'Bebas Neue', letterSpacing: 0.5,
+                border: '1px solid rgba(255,255,255,0.18)',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.5)',
+                whiteSpace: 'nowrap', pointerEvents: 'none',
+              }}>{tapDist} yds</div>
+            </Marker>
+          )}
+
+          {/* Tap-to-green distance label — midpoint of tap point → green center */}
+          {tapToGreenMid && tapToGreenDist !== null && (
+            <Marker longitude={tapToGreenMid.lng} latitude={tapToGreenMid.lat} anchor="center">
+              <div style={{
+                background: 'rgba(10,10,15,0.82)', backdropFilter: 'blur(6px)',
+                color: '#D4A53A', borderRadius: 10, padding: '2px 8px',
+                fontSize: 13, fontFamily: 'Bebas Neue', letterSpacing: 0.5,
+                border: '1px solid rgba(212,165,58,0.35)',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.5)',
+                whiteSpace: 'nowrap', pointerEvents: 'none',
+              }}>{tapToGreenDist} yds</div>
             </Marker>
           )}
         </Map>
