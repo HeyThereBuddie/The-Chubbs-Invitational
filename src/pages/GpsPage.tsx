@@ -197,22 +197,6 @@ function polygonCentroid(poly: LatLng[]): LatLng {
   }
 }
 
-// ─── UI helpers ─────────────────────────────────────────────────────────────
-
-function YardagePanel({ label, yards, color, hero = false }: { label: string; yards: number | null; color: string; hero?: boolean }) {
-  const display = yards !== null && yards <= 9999 ? yards : '—'
-  const hasValue = yards !== null && yards <= 9999
-  return (
-    <div style={{ flex: hero ? 1.3 : 1, textAlign: 'center' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.8, color, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontFamily: 'Bebas Neue', fontSize: hero ? 40 : 28, letterSpacing: 0.5, lineHeight: 1, color: hasValue ? 'white' : 'rgba(255,255,255,0.22)' }}>
-        {display}
-      </div>
-      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 3, letterSpacing: 0.3 }}>yds</div>
-    </div>
-  )
-}
-
 interface PlayerPosition {
   player_id: string
   team_id: string | null
@@ -544,14 +528,10 @@ export default function GpsPage() {
 
   const holeHasData = (h: number) => course.holes.some(hd => hd.hole === h && hd.green.center)
 
-  // Card floats 12px above the nav bar (~56px) plus safe-area.
-  // Card height: distance panel ~82px + stats strip ~(players * 38px + 20px padding)
-  const hasStats     = !!scoring.myTeam
-  const playerCount  = [scoring.myTeam?.player1, scoring.myTeam?.player2].filter(Boolean).length
-  const statsHeight  = hasStats ? (20 + playerCount * 38 + (playerCount > 1 ? 9 : 0)) : 0
-  const cardHeight   = 82 + statsHeight
-  const cardBottom   = 80  // nav bar 56px + 12px gap + ~12px safe-area headroom
-  const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + ${cardBottom + cardHeight + 16}px)`
+  const parForHole = HOLE_PARS[selectedHole - 1] ?? 4
+  // Elements above the nav bar sit at this base; tip/hint cards go higher
+  const navBase      = `calc(env(safe-area-inset-bottom, 0px) + 68px)`
+  const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + 170px)`
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -789,33 +769,13 @@ export default function GpsPage() {
         {/* GPS status badge */}
         {gpsStatus !== 'ok' && (
           <div style={{
-            position: 'absolute', top: 8, left: 8,
+            position: 'absolute', top: 8, right: 8,
             background: gpsStatus === 'acquiring' ? 'rgba(0,0,0,0.72)' : 'rgba(239,68,68,0.88)',
             color: 'white', padding: '5px 12px', borderRadius: 10,
             fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
           }}>
             <Navigation size={12} />
             {gpsStatus === 'acquiring' ? 'Acquiring GPS…' : gpsStatus === 'denied' ? 'GPS permission denied' : 'GPS unavailable'}
-          </div>
-        )}
-
-        {/* Tap distance bubble */}
-        {tapDist !== null && tapDist <= 9999 && (
-          <div style={{
-            position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
-            color: 'white', padding: '6px 14px 6px 10px', borderRadius: 24,
-            display: 'flex', alignItems: 'center', gap: 8,
-            border: '1px solid rgba(255,255,255,0.12)',
-          }}>
-            <Target size={14} color="#D4A53A" />
-            <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1 }}>{tapDist}</span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 400 }}>yds</span>
-            <button onClick={() => setTapPoint(currentHole?.landingZone ?? null)} style={{
-              background: 'rgba(255,255,255,0.12)', border: 'none', color: 'rgba(255,255,255,0.7)',
-              cursor: 'pointer', borderRadius: '50%', width: 18, height: 18,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, padding: 0,
-            }}>×</button>
           </div>
         )}
 
@@ -854,36 +814,6 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Recenter — above floating HUD */}
-        {currentHole && (
-          <button onClick={() => flyToHole(currentHole)} style={{
-            position: 'absolute', bottom: aboveHudCalc, left: 16,
-            zIndex: 10,
-            background: 'rgba(8,8,12,0.80)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.15)', color: 'white',
-            borderRadius: 12, padding: '10px 14px', fontSize: 13, fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.5)', cursor: 'pointer',
-          }}>
-            <Target size={14} color="#D4A53A" />
-            Hole
-          </button>
-        )}
-
-        {/* Enter Score FAB — above floating HUD */}
-        {profile && (
-          <button onClick={() => setSheetOpen(true)} style={{
-            position: 'absolute', bottom: aboveHudCalc, right: 16,
-            zIndex: 10,
-            background: 'rgba(212,165,58,0.92)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.15)', color: '#000',
-            borderRadius: 14, padding: '12px 20px', fontSize: 15, fontWeight: 800, letterSpacing: 0.5,
-            boxShadow: '0 4px 20px rgba(212,165,58,0.4)', cursor: 'pointer',
-          }}>
-            ⛳ Enter Score
-          </button>
-        )}
-
         {/* Cart player popup */}
         {(() => {
           if (!selectedCartPlayerId) return null
@@ -896,7 +826,7 @@ export default function GpsPage() {
           const toParColor = toPar == null ? 'var(--tx3)' : toPar < 0 ? '#22c55e' : toPar > 0 ? '#ef4444' : '#D4A53A'
           return (
             <div onClick={() => setSelectedCartPlayerId(null)} style={{
-              position: 'absolute', bottom: `calc(${aboveHudCalc} + 56px)`, left: '50%', transform: 'translateX(-50%)',
+              position: 'absolute', bottom: `calc(env(safe-area-inset-bottom, 0px) + 136px)`, left: '50%', transform: 'translateX(-50%)',
               background: 'rgba(8,8,12,0.92)', backdropFilter: 'blur(12px)',
               border: '1px solid rgba(212,165,58,0.35)', borderRadius: 14, padding: '14px 22px',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
@@ -917,96 +847,115 @@ export default function GpsPage() {
           )
         })()}
 
-        {/* Floating glass card — floats above nav bar with rounded corners */}
+        {/* Hole + Par chip — top left */}
         <div style={{
-          position: 'absolute',
-          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${cardBottom}px)`,
-          left: 12, right: 12,
-          borderRadius: 20,
-          overflow: 'hidden',
-          background: 'rgba(255, 255, 255, 0.10)',
-          backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
-          border: '1px solid rgba(255,255,255,0.18)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.12) inset',
-          pointerEvents: 'all',
-          display: 'flex', flexDirection: 'column',
+          position: 'absolute', top: 8, left: 8, zIndex: 10,
+          background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.14)', borderRadius: 14,
+          padding: '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
         }}>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
+        </div>
 
-          {/* Stats strip (drives + chulligans) */}
+        {/* Yardage stack — bottom left */}
+        <div style={{
+          position: 'absolute', bottom: navBase, left: 12, zIndex: 10,
+          display: 'flex', flexDirection: 'column', gap: 5,
+        }}>
+          {[
+            { label: 'Back', yards: backDist,   color: '#ef4444' },
+            { label: 'Ctr',  yards: centerDist, color: '#D4A53A' },
+            { label: 'Frt',  yards: frontDist,  color: '#22c55e' },
+          ].map(({ label, yards, color }) => {
+            const display = yards !== null && yards <= 9999 ? yards : '—'
+            return (
+              <div key={label} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
+                padding: '5px 10px', minWidth: 82,
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 22 }}>{label}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Enter Score — bottom center */}
+        {profile && (
+          <button onClick={() => setSheetOpen(true)} style={{
+            position: 'absolute', bottom: navBase, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 10,
+            background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.15)', color: '#000',
+            borderRadius: 14, padding: '12px 22px', fontSize: 15, fontWeight: 800, letterSpacing: 0.5,
+            boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>
+            ⛳ Enter Score
+          </button>
+        )}
+
+        {/* Bottom-right: compact drives/chulligan + recenter */}
+        <div style={{
+          position: 'absolute', bottom: navBase, right: 12, zIndex: 10,
+          display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-end',
+        }}>
+          {/* Compact per-player stats */}
           {scoring.myTeam && (() => {
             const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
             const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
             if (players.length === 0) return null
             return (
-              <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {players.map((player, idx) => {
+              <>
+                {players.map(player => {
                   const f9 = scoring.countDrives(player.id, 1, 9)
                   const b9 = scoring.countDrives(player.id, 10, 18)
                   const chulligan = scoring.myChulligans.find(c => c.player_id === player.id)
+                  const initials = displayName(player).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
                   return (
                     <div key={player.id} style={{
-                      paddingTop: idx > 0 ? 9 : 0,
-                      marginTop: idx > 0 ? 9 : 0,
-                      borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                      border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10,
+                      padding: '5px 8px',
                     }}>
-                      {/* Name + chulligan */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'white', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {displayName(player)}
-                        </span>
-                        <div style={{
-                          background: chulligan ? 'rgba(212,165,58,0.14)' : 'rgba(255,255,255,0.06)',
-                          border: `1px solid ${chulligan ? 'rgba(212,165,58,0.30)' : 'rgba(255,255,255,0.10)'}`,
-                          borderRadius: 10, padding: '3px 9px', flexShrink: 0,
-                        }}>
-                          <span style={{ fontSize: 12, color: chulligan ? '#D4A53A' : 'rgba(255,255,255,0.25)' }}>
-                            🍺 {chulligan ? `H${chulligan.hole}` : '—'}
-                          </span>
-                        </div>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)', width: 18, letterSpacing: 0.5 }}>{initials}</span>
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <div key={i} style={{
+                            width: 7, height: 7, borderRadius: '50%',
+                            background: i < (f9 + b9) ? '#D4A53A' : 'rgba(255,255,255,0.15)',
+                            boxShadow: i < (f9 + b9) ? '0 0 4px rgba(212,165,58,0.6)' : 'none',
+                          }} />
+                        ))}
                       </div>
-                      {/* Drive dots */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5, width: 14 }}>F</span>
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <div key={i} style={{
-                              width: 12, height: 12, borderRadius: '50%',
-                              background: i < f9 ? '#D4A53A' : 'rgba(255,255,255,0.15)',
-                              boxShadow: i < f9 ? '0 0 6px rgba(212,165,58,0.6)' : 'none',
-                            }} />
-                          ))}
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5, width: 14 }}>B</span>
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <div key={i} style={{
-                              width: 12, height: 12, borderRadius: '50%',
-                              background: i < b9 ? '#D4A53A' : 'rgba(255,255,255,0.15)',
-                              boxShadow: i < b9 ? '0 0 6px rgba(212,165,58,0.6)' : 'none',
-                            }} />
-                          ))}
-                        </div>
-                      </div>
+                      <span style={{ fontSize: 10, color: chulligan ? '#D4A53A' : 'rgba(255,255,255,0.2)' }}>
+                        {chulligan ? `🍺${chulligan.hole}` : '🍺'}
+                      </span>
                     </div>
                   )
                 })}
-              </div>
+              </>
             )
           })()}
 
-          {/* Distance readout */}
-          <div style={{ padding: '14px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <YardagePanel label="Front"  yards={frontDist}  color="#22c55e" />
-            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />
-            <YardagePanel label="Center" yards={centerDist} color="#D4A53A" hero />
-            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />
-            <YardagePanel label="Back"   yards={backDist}   color="#ef4444" />
-            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.14)', margin: '0 6px' }} />
-            <div style={{ textAlign: 'center', flexShrink: 0, width: 52 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Hole</div>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 40, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-            </div>
-          </div>
+          {/* Recenter button */}
+          {currentHole && (
+            <button onClick={() => flyToHole(currentHole)} style={{
+              background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255,255,255,0.14)', color: 'white',
+              borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+            }}>
+              <Target size={12} color="#D4A53A" />
+              Hole
+            </button>
+          )}
         </div>
       </div>
 
