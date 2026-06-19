@@ -1065,7 +1065,7 @@ export default function GpsPage() {
                 display: 'flex', alignItems: 'center', gap: 10,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: '10px 16px', minWidth: 128, position: 'relative',
+                padding: '10px 14px', minWidth: 110, position: 'relative',
               }}>
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
                 <span style={{ fontFamily: 'Bebas Neue', fontSize: 38, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
@@ -1111,7 +1111,7 @@ export default function GpsPage() {
             const panelStyle: React.CSSProperties = {
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
               border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-              padding: '7px 12px', minWidth: 128,
+              padding: '7px 10px', minWidth: 110,
             }
             const headerStyle: React.CSSProperties = {
               fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
