@@ -85,6 +85,22 @@ function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLn
   return { lat: (lat2 * 180) / Math.PI, lng: ((lng2 * 180) / Math.PI + 540) % 360 - 180 }
 }
 
+// Scalar progress along the tee→green axis (0 = tee, 1 = green).
+// Uses flat lat/lng arithmetic — accurate enough at golf-hole distances.
+function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
+  const vx = green.lng - tee.lng, vy = green.lat - tee.lat
+  const px = point.lng - tee.lng, py = point.lat - tee.lat
+  const lenSq = vx * vx + vy * vy
+  return lenSq === 0 ? 0 : (px * vx + py * vy) / lenSq
+}
+
+function polygonCentroid(poly: LatLng[]): LatLng {
+  return {
+    lat: poly.reduce((s, p) => s + p.lat, 0) / poly.length,
+    lng: poly.reduce((s, p) => s + p.lng, 0) / poly.length,
+  }
+}
+
 // Build a GeoJSON polygon coordinate ring for the hole corridor (fallback when no OSM fairway)
 function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, number][] {
   const teeSideW   = 35  // metres from centreline at tee end (~38 yds) — wider Option 3 fallback
@@ -333,6 +349,24 @@ export default function GpsPage() {
   const bunkersGeoJson = useMemo(() => makePolyCollection(currentHole?.bunkers),    [currentHole])
   const waterGeoJson   = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
   const avoidZonesGeoJson = useMemo(() => makePolyCollection(currentHole?.avoidZones), [currentHole])
+
+  // Bunker distance labels: one per bunker polygon, visible only while the bunker is still ahead.
+  // "Ahead" = bunker's projection on the tee→green axis is farther than the player's projection.
+  const bunkerLabels = useMemo(() => {
+    const bunkers = currentHole?.bunkers
+    const tee     = currentHole?.tee
+    const green   = currentHole?.green.center
+    if (!bunkers?.length || !tee || !green || !position) return []
+    const playerT = holeProgress(tee, green, position)
+    return bunkers
+      .map((poly, idx) => {
+        const centroid = polygonCentroid(poly)
+        const bunkerT  = holeProgress(tee, green, centroid)
+        const yards    = haversineYards(position, centroid)
+        return { idx, centroid, bunkerT, yards }
+      })
+      .filter(b => playerT <= b.bunkerT)
+  }, [currentHole, position])
 
   // Landing zone — approximate 30-yard radius circle as a polygon
   const landingZoneGeoJson = useMemo(() => {
@@ -596,6 +630,28 @@ export default function GpsPage() {
                 paint={{ 'line-color': '#A0845C', 'line-width': 1.5 }} />
             </Source>
           )}
+
+          {/* Bunker distance labels — sand-coloured pill at each bunker centroid */}
+          {bunkerLabels.map(b => (
+            <Marker key={`bunk-dist-${b.idx}`} longitude={b.centroid.lng} latitude={b.centroid.lat} anchor="center">
+              <div style={{
+                background: 'rgba(212,180,131,0.92)',
+                backdropFilter: 'blur(4px)',
+                color: '#2a1400',
+                borderRadius: 5,
+                padding: '2px 6px',
+                fontSize: 11,
+                fontWeight: 700,
+                fontFamily: 'Inter, sans-serif',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.55)',
+                border: '1px solid #A0845C',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}>
+                {b.yards}
+              </div>
+            </Marker>
+          ))}
 
           {/* Water hazards */}
           {waterGeoJson && (
