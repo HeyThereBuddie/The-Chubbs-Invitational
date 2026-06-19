@@ -497,11 +497,14 @@ export default function GpsPage() {
 
   const holeHasData = (h: number) => course.holes.some(hd => hd.hole === h && hd.green.center)
 
-  // Improvement 3: FAB/overlays sit above the floating glass HUD.
-  // HUD ≈ 140px (distance panel) + 70px (stats strip when team present)
+  // Card floats 12px above the nav bar (~56px) plus safe-area.
+  // Card height: distance panel ~82px + stats strip ~(players * 38px + 20px padding)
   const hasStats     = !!scoring.myTeam
-  const aboveHud     = hasStats ? '240px' : '168px'
-  const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + ${hasStats ? 166 : 96}px)`
+  const playerCount  = [scoring.myTeam?.player1, scoring.myTeam?.player2].filter(Boolean).length
+  const statsHeight  = hasStats ? (20 + playerCount * 38 + (playerCount > 1 ? 9 : 0)) : 0
+  const cardHeight   = 82 + statsHeight
+  const cardBottom   = 80  // nav bar 56px + 12px gap + ~12px safe-area headroom
+  const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + ${cardBottom + cardHeight + 16}px)`
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -772,7 +775,7 @@ export default function GpsPage() {
         {/* Tap hint */}
         {!tapPoint && position && !currentHole?.tip && (
           <div style={{
-            position: 'absolute', bottom: aboveHud, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', bottom: aboveHudCalc, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(10,10,15,0.7)', color: 'rgba(255,255,255,0.6)',
             padding: '4px 12px', borderRadius: 20, fontSize: 11,
             whiteSpace: 'nowrap', pointerEvents: 'none',
@@ -784,7 +787,7 @@ export default function GpsPage() {
         {/* Hole tip card */}
         {currentHole?.tip && (
           <div style={{
-            position: 'absolute', bottom: aboveHud, left: 8, right: 8,
+            position: 'absolute', bottom: aboveHudCalc, left: 8, right: 8,
             background: 'rgba(8,8,12,0.88)', backdropFilter: 'blur(10px)',
             borderRadius: 12, padding: '9px 12px',
             border: '1px solid rgba(212,165,58,0.28)',
@@ -867,8 +870,20 @@ export default function GpsPage() {
           )
         })()}
 
-        {/* Improvement 3: Floating glass HUD — stats strip + distance readout over the map */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}>
+        {/* Floating glass card — floats above nav bar with rounded corners */}
+        <div style={{
+          position: 'absolute',
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${cardBottom}px)`,
+          left: 12, right: 12,
+          borderRadius: 20,
+          overflow: 'hidden',
+          background: 'rgba(10, 10, 18, 0.62)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.06) inset',
+          pointerEvents: 'all',
+          display: 'flex', flexDirection: 'column',
+        }}>
 
           {/* Stats strip (drives + chulligans) */}
           {scoring.myTeam && (() => {
@@ -876,12 +891,7 @@ export default function GpsPage() {
             const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
             if (players.length === 0) return null
             return (
-              <div style={{
-                pointerEvents: 'all',
-                background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-                borderTop: '1px solid rgba(255,255,255,0.07)',
-                padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 0,
-              }}>
+              <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 {players.map((player, idx) => {
                   const f9 = scoring.countDrives(player.id, 1, 9)
                   const b9 = scoring.countDrives(player.id, 10, 18)
@@ -898,7 +908,7 @@ export default function GpsPage() {
                       </span>
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 5,
-                        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)',
                         borderRadius: 10, padding: '4px 10px', flexShrink: 0,
                       }}>
                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>F</span>
@@ -909,7 +919,7 @@ export default function GpsPage() {
                       </div>
                       <div style={{
                         background: chulligan ? 'rgba(212,165,58,0.14)' : 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${chulligan ? 'rgba(212,165,58,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                        border: `1px solid ${chulligan ? 'rgba(212,165,58,0.30)' : 'rgba(255,255,255,0.10)'}`,
                         borderRadius: 10, padding: '4px 10px', flexShrink: 0,
                       }}>
                         <span style={{ fontSize: 12, color: chulligan ? '#D4A53A' : 'rgba(255,255,255,0.25)' }}>
@@ -923,15 +933,8 @@ export default function GpsPage() {
             )
           })()}
 
-          {/* Distance readout — glass panel */}
-          <div style={{
-            pointerEvents: 'all',
-            background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: '14px 8px',
-            paddingBottom: 'max(14px, calc(env(safe-area-inset-bottom, 0px) + 60px))',
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}>
+          {/* Distance readout */}
+          <div style={{ padding: '14px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
             <YardagePanel label="Front"  yards={frontDist}  color="#22c55e" />
             <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />
             <YardagePanel label="Center" yards={centerDist} color="#D4A53A" hero />
