@@ -145,26 +145,49 @@ function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
 }
 
 // Place a bunker label on the outer side of the bunker (away from fairway).
-// Strategy: try both perpendicular directions from the tee→green axis, then
-// pick whichever candidate is further from the axis — that's always the outer
-// side, with no sign-convention ambiguity.
-function bunkerLabelPos(_poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
+// Greenside bunkers (last 35% of hole) use "away from green center" because
+// their polygon centroid can end up on the wrong side of the straight tee→green
+// axis when the bunker wraps a corner. Fairway bunkers use the dual-perpendicular
+// method: try both axis perpendiculars and pick whichever is further from the axis.
+function bunkerLabelPos(poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
   const dx = green.lng - tee.lng, dy = green.lat - tee.lat
-  const len = Math.sqrt(dx * dx + dy * dy)
-  if (len === 0) return centroid
-  // The two perpendicular unit vectors (left and right of tee→green)
-  const aLng = -dy / len, aLat = dx / len   // left perp
-  const bLng =  dy / len, bLat = -dx / len  // right perp
-  // Push 30 yards from the centroid in each direction
-  const deg = 30 * 0.9144 / 111111
-  const posA = { lat: centroid.lat + aLat * deg, lng: centroid.lng + aLng * deg }
-  const posB = { lat: centroid.lat + bLat * deg, lng: centroid.lng + bLng * deg }
-  // Pick whichever candidate is further from the tee→green axis.
-  // |cross| = |dx*(P.lat-tee.lat) - dy*(P.lng-tee.lng)| is proportional to
-  // perpendicular distance from the axis — no division needed for comparison.
-  const crossA = Math.abs(dx * (posA.lat - tee.lat) - dy * (posA.lng - tee.lng))
-  const crossB = Math.abs(dx * (posB.lat - tee.lat) - dy * (posB.lng - tee.lng))
-  return crossA > crossB ? posA : posB
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return centroid
+  const len = Math.sqrt(lenSq)
+  const gapDeg = 15 * 0.9144 / 111111
+
+  // Projection parameter along tee→green (0=tee, 1=green)
+  const t = ((centroid.lng - tee.lng) * dx + (centroid.lat - tee.lat) * dy) / lenSq
+
+  let unitLng: number, unitLat: number
+  if (t > 0.65) {
+    // Greenside: push directly away from green center
+    const dLng = centroid.lng - green.lng, dLat = centroid.lat - green.lat
+    const dLen = Math.sqrt(dLng * dLng + dLat * dLat)
+    if (dLen === 0) return centroid
+    unitLng = dLng / dLen; unitLat = dLat / dLen
+  } else {
+    // Fairway: try both axis perpendiculars, pick the one further from the axis
+    const aLng = -dy / len, aLat = dx / len
+    const bLng =  dy / len, bLat = -dx / len
+    const bigDeg = 100 * 0.9144 / 111111
+    const pA = { lat: centroid.lat + aLat * bigDeg, lng: centroid.lng + aLng * bigDeg }
+    const pB = { lat: centroid.lat + bLat * bigDeg, lng: centroid.lng + bLng * bigDeg }
+    const cA = Math.abs(dx * (pA.lat - tee.lat) - dy * (pA.lng - tee.lng))
+    const cB = Math.abs(dx * (pB.lat - tee.lat) - dy * (pB.lng - tee.lng))
+    ;[unitLng, unitLat] = cA > cB ? [aLng, aLat] : [bLng, bLat]
+  }
+
+  // Find the furthest polygon vertex in the chosen outward direction, then add gap
+  let edgeDeg = 0
+  for (const v of poly) {
+    const proj = (v.lng - centroid.lng) * unitLng + (v.lat - centroid.lat) * unitLat
+    if (proj > edgeDeg) edgeDeg = proj
+  }
+  return {
+    lat: centroid.lat + unitLat * (edgeDeg + gapDeg),
+    lng: centroid.lng + unitLng * (edgeDeg + gapDeg),
+  }
 }
 
 function polygonCentroid(poly: LatLng[]): LatLng {
