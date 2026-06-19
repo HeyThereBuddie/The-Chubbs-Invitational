@@ -7,6 +7,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
+import { usePlayerScoring } from '../hooks/usePlayerScoring'
+import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
@@ -132,6 +134,9 @@ export default function GpsPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const mapRef = useRef<MapRef>(null)
+
+  const scoring = usePlayerScoring()
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const [course, setCourse] = useState<CourseGps | null>(null)
   const [loading, setLoading] = useState(true)
@@ -720,6 +725,30 @@ export default function GpsPage() {
             </button>
           </div>
         )}
+
+        {/* Enter Score FAB — only shown when player is on a team */}
+        {scoring.myTeamId && (
+          <button
+            onClick={() => setSheetOpen(true)}
+            style={{
+              position: 'absolute', bottom: 16, right: 16,
+              zIndex: 10,
+              background: 'rgba(212,165,58,0.92)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#000',
+              borderRadius: 14,
+              padding: '12px 20px',
+              fontSize: 15,
+              fontWeight: 800,
+              letterSpacing: 0.5,
+              boxShadow: '0 4px 20px rgba(212,165,58,0.4)',
+              cursor: 'pointer',
+            }}
+          >
+            ⛳ Enter Score
+          </button>
+        )}
       </div>
 
       {/* Hazard distance row — only shown when hazards exist ahead of the player */}
@@ -772,6 +801,23 @@ export default function GpsPage() {
           <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>of 18</div>
         </div>
       </div>
+
+      <ScoreBottomSheet
+        open={sheetOpen}
+        hole={selectedHole}
+        onClose={() => setSheetOpen(false)}
+        onNextHole={() => { setSelectedHole(h => Math.min(18, h + 1)); setSheetOpen(false) }}
+        myTeam={scoring.myTeam}
+        myScores={scoring.myScores}
+        myChulligans={scoring.myChulligans}
+        saving={scoring.saving}
+        adjustMyScore={scoring.adjustMyScore}
+        setMyDrive={scoring.setMyDrive}
+        setMyPutts={scoring.setMyPutts}
+        resetMyScore={scoring.resetMyScore}
+        toggleMyChulligan={scoring.toggleMyChulligan}
+        countDrives={scoring.countDrives}
+      />
     </div>
   )
 }

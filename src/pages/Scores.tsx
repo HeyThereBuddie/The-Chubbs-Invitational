@@ -5,31 +5,23 @@ import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
-import { enqueue, drainQueue, getPendingCount } from '../lib/writeQueue'
+import { enqueue, drainQueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
-import type { Team, Player, HoleGps } from '../lib/types'
+import type { Player, HoleGps } from '../lib/types'
 import { displayName } from '../lib/types'
-import { Minus, Plus, Users, MapPin } from 'lucide-react'
-
-const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
-
-function scoreFeedInfo(score: number, hole: number): { label: string; emoji: string } {
-  if (score === 1) return { emoji: '🕳️', label: 'Hole in One!' }
-  const par = HOLE_PARS[hole - 1]
-  const d = score - par
-  if (d <= -2) return { emoji: '🦅', label: 'Eagle' }
-  if (d === -1) return { emoji: '🐦', label: 'Birdie' }
-  if (d === 0)  return { emoji: '⛳', label: 'Par' }
-  if (d === 1)  return { emoji: '😬', label: 'Bogey' }
-  if (d === 2)  return { emoji: '😤', label: 'Double' }
-  return { emoji: '💥', label: `+${d}` }
-}
-
-function puttFeedInfo(putts: number): { label: string; emoji: string } {
-  if (putts >= 5) return { label: `${putts}-Putt`, emoji: '💀' }
-  if (putts === 4) return { label: '4-Putt', emoji: '😱' }
-  return { label: '3-Putt', emoji: '😰' }
-}
+import { Users } from 'lucide-react'
+import { HoleCard } from '../components/HoleCard'
+import { usePlayerScoring } from '../hooks/usePlayerScoring'
+import {
+  type TeamFull,
+  type ScoreRow,
+  type ChulliganRow,
+  HOLE_PARS,
+  SCORE_SELECT,
+  scoreFeedInfo,
+  puttFeedInfo,
+  isHoleComplete,
+} from '../lib/scoreTypes'
 
 async function logFeedEvent(
   eventType: 'score' | 'chulligan' | 'putt',
@@ -85,36 +77,12 @@ const HOLE_DATA: { yards: number; si: number; description?: string; photo?: stri
   { yards: 345, si: 14, photo: `${BASE}/ROY-Hole-18.png`,  description: 'Depending on the wind, this hole could be a driver, fairway wood or hybrid from the tee. A well placed drive will leave a mid to short iron to a large tiered green. Locate the pin position and measure your distance accurately as this green is 50 yards in length.' },
 ]
 
-function isHoleComplete(scoreRow: ScoreRow | undefined, twoPlayers: boolean): boolean {
-  if (!scoreRow) return false
-  if (scoreRow.putts == null) return false
-  if (twoPlayers && !scoreRow.drive_used_id) return false
-  return true
-}
-
 async function pingLeadCheck(payload?: { team_id: string; hole: number; score: number; is_admin_edit?: boolean }) {
   const { data: { session } } = await supabase.auth.getSession()
   supabase.functions.invoke('notify-lead-change', {
     headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
     body: payload,
   }).catch(() => { /* fire and forget */ })
-}
-
-type TeamFull = Team & { player1?: Player; player2?: Player }
-type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
-type ChulliganRow = { id: string; player_id: string; hole: number }
-
-const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
-
-function scoreBubbleClass(score: number, par: number): string {
-  if (score === 1) return 'score-hole-in-one'
-  const diff = score - par
-  if (diff <= -2) return 'score-eagle'
-  if (diff === -1) return 'score-birdie'
-  if (diff === 0)  return 'score-par'
-  if (diff === 1)  return 'score-bogey'
-  if (diff === 2)  return 'score-double'
-  return 'score-triple-plus'
 }
 
 function calcStats(scoreMap: Record<number, ScoreRow>) {
@@ -126,283 +94,26 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
   return { gross, thru, toPar, putts, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
 }
 
-function HoleCard({
-  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, infoExpanded, onToggleInfo, gpsHole, onOpenGps,
-}: {
-  hole: number
-  scoreRow: ScoreRow | undefined
-  isSaving: boolean
-  onMinus?: () => void
-  onPlus?: () => void
-  player1?: Player
-  player2?: Player
-  onSetDrive?: (playerId: string) => void
-  driveDisabled?: Record<string, boolean>
-  onSetPutts?: (putts: number) => void
-  onReset?: () => void
-  chulligans?: ChulliganRow[]
-  onToggleChulligan?: (playerId: string, hole: number) => void
-  readOnly?: boolean
-  locked?: boolean
-  holeInfo?: { yards: number; si: number; description?: string; photo?: string }
-  infoExpanded?: boolean
-  onToggleInfo?: () => void
-  gpsHole?: HoleGps
-  onOpenGps?: () => void
-}) {
-  const par      = HOLE_PARS[hole - 1]
-  const score    = scoreRow?.score
-  const hasScore = score !== undefined
-  const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'
-  const driveId  = scoreRow?.drive_used_id ?? null
-  const putts    = scoreRow?.putts ?? null
-
-  return (
-    <div className="glass animate-fadeUp" style={{
-      padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 12, flexShrink: 0,
-            background: 'rgba(212,165,58,0.12)', border: '2px solid rgba(212,165,58,0.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, fontWeight: 900, color: '#D4A53A',
-            letterSpacing: -0.5,
-          }}>{hole}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx1)', lineHeight: 1 }}>Par {par}</span>
-            {holeInfo && (
-              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx2)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-        {hasScore ? (
-          <div key={score} className={`score-bubble ${cls} score-digit-pop`} style={{ width: 56, height: 56, fontSize: 26 }}>
-            {score}
-          </div>
-        ) : (
-          <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 22, color: 'var(--tx5)', fontWeight: 300, lineHeight: 1 }}>—</span>
-          </div>
-        )}
-
-        {!readOnly && !locked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => { navigator.vibrate?.(10); onMinus?.(); }}
-              disabled={isSaving || (hasScore && score <= 1)}
-              className="score-btn"
-              style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: 'var(--surf2)', border: '1px solid var(--bdr)',
-                color: 'var(--tx1)', cursor: isSaving ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              }}
-            ><Minus size={16} /></button>
-            <button
-              onClick={() => { navigator.vibrate?.(10); onPlus?.(); }}
-              disabled={isSaving}
-              className="score-btn"
-              style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: 'rgba(212,165,58,0.18)', border: '1px solid rgba(212,165,58,0.4)',
-                color: '#D4A53A', cursor: isSaving ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(212,165,58,0.15)',
-              }}
-            ><Plus size={16} /></button>
-            {hasScore && onReset && (
-              <button
-                onClick={onReset}
-                disabled={isSaving}
-                title="Clear score"
-                style={{
-                  width: 24, height: 24, borderRadius: '50%',
-                  background: 'transparent', border: '1px solid var(--bdr)',
-                  color: 'var(--tx4)', cursor: isSaving ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, lineHeight: 1,
-                }}
-              >×</button>
-            )}
-          </div>
-        )}
-        {!readOnly && locked && (
-          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <span style={{ fontSize: 18, opacity: 0.22 }}>🔒</span>
-            <span style={{ fontSize: 9, color: 'var(--tx5)', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Hole {hole - 1} first</span>
-          </div>
-        )}
-      </div>
-
-      {readOnly && hasScore && (scoreRow?.drive_used_id || scoreRow?.putts != null) && (
-        <div style={{ marginTop: 8, display: 'flex', gap: 14 }}>
-          {scoreRow?.drive_used_id && (player1 || player2) && (() => {
-            const driver = [player1, player2].find(p => p?.id === scoreRow.drive_used_id)
-            return driver ? (
-              <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Drive: {displayName(driver)}</span>
-            ) : null
-          })()}
-          {scoreRow?.putts != null && (
-            <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Putts: {scoreRow.putts}</span>
-          )}
-        </div>
-      )}
-
-      {!readOnly && !locked && hasScore && player1 && player2 && onSetDrive && (
-        <div style={{
-          marginTop: 10, paddingTop: 10,
-          borderTop: '1px solid var(--bdr)',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>Drive:</span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[player1, player2].map(p => {
-              const active   = driveId === p.id
-              const disabled = driveDisabled?.[p.id] ?? false
-              return (
-                <button key={p.id} onClick={() => !disabled && onSetDrive(p.id)}
-                  disabled={disabled}
-                  title={disabled ? 'Max 5 drives per half reached' : undefined}
-                  style={{
-                    padding: '4px 12px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, border: '1px solid',
-                    background: active ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
-                    borderColor: active ? '#D4A53A' : 'var(--bdr)',
-                    color: active ? '#D4A53A' : 'var(--tx3)',
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    opacity: disabled ? 0.3 : 1,
-                    transition: 'all 0.15s',
-                  }}>
-                  {displayName(p)}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {!readOnly && !locked && hasScore && onSetPutts && (
-        <div style={{
-          marginTop: 10, paddingTop: 10,
-          borderTop: '1px solid var(--bdr)',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>Putts:</span>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {[0, 1, 2, 3, 4, 5].map(n => {
-              const active = putts === n
-              return (
-                <button key={n} onClick={() => onSetPutts(n)} style={{
-                  width: 32, height: 28, borderRadius: 6,
-                  fontSize: 13, fontWeight: 700, border: '1px solid',
-                  background: active ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
-                  borderColor: active ? '#D4A53A' : 'var(--bdr)',
-                  color: active ? '#D4A53A' : 'var(--tx3)',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                }}>
-                  {n}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {!readOnly && !locked && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>🍺</span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[player1, player2].map(p => {
-              const myC = chulligans.find(c => c.player_id === p.id)
-              const usedHere      = myC?.hole === hole
-              const usedElsewhere = myC && !usedHere
-              return (
-                <button key={p.id}
-                  onClick={() => !usedElsewhere && onToggleChulligan(p.id, hole)}
-                  title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
-                  style={{
-                    padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: usedHere ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
-                    border: `1px solid ${usedHere ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
-                    color: usedHere ? '#D4A53A' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
-                    cursor: usedElsewhere ? 'not-allowed' : 'pointer',
-                    textDecoration: usedElsewhere ? 'line-through' : 'none',
-                  }}>
-                  {usedHere ? '✅' : '🍺'} {displayName(p)}{usedElsewhere ? ` H${myC!.hole}` : ''}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {(() => {
-        const gpsReady = !!(gpsHole?.green.center)
-        const hasGuide = !!(holeInfo?.description || holeInfo?.photo)
-        if (!gpsReady && !hasGuide) return null
-        return (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', gap: 6 }}>
-            {gpsReady && (
-              <button type="button" onClick={onOpenGps} style={{
-                flex: 1, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.32)',
-                color: '#22c55e', fontSize: 13, fontWeight: 600,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                <MapPin size={14} />
-                Open GPS
-              </button>
-            )}
-            {hasGuide && (
-              <button type="button" onClick={onToggleInfo} style={{
-                flex: 1, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                background: infoExpanded ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
-                border: `1px solid ${infoExpanded ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
-                color: infoExpanded ? '#D4A53A' : 'var(--tx2)',
-                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                <span style={{ fontSize: 15 }}>⛳</span>
-                {infoExpanded ? 'Hide Hole Guide' : 'View Hole Guide'}
-                <span style={{ fontSize: 11, opacity: 0.6 }}>{infoExpanded ? '▲' : '▼'}</span>
-              </button>
-            )}
-          </div>
-        )
-      })()}
-
-      {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
-        <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bdr)' }}>
-          {holeInfo.photo && (
-            <img
-              src={holeInfo.photo}
-              alt={`Hole ${hole} diagram`}
-              referrerPolicy="no-referrer"
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-            />
-          )}
-          {holeInfo.description && (
-            <div style={{ padding: '10px 12px', background: 'var(--surf)', fontSize: 12, color: 'var(--tx2)', lineHeight: 1.7 }}>
-              {holeInfo.description}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
-  const { isOnline, refreshPendingCount } = useSyncContext()
+  const { refreshPendingCount } = useSyncContext()
   const navigate = useNavigate()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
+
+  // Player-side scoring state & actions from hook
+  const {
+    myTeam,
+    myScores,
+    myChulligans,
+    saving: playerSaving,
+    adjustMyScore,
+    setMyDrive,
+    setMyPutts,
+    resetMyScore,
+    toggleMyChulligan,
+    countDrives: countMyDrives,
+  } = usePlayerScoring()
 
   const [searchParams, setSearchParams] = useSearchParams()
   // Read jump target written by Leaderboard before navigating here.
@@ -413,9 +124,6 @@ export default function Scores() {
   })()
 
   const [allTeams,         setAllTeams]         = useState<TeamFull[]>([])
-  const [myTeam,           setMyTeam]           = useState<TeamFull | null>(null)
-  const [myScores,         setMyScores]         = useState<Record<number, ScoreRow>>({})
-  const [myChulligans,     setMyChulligans]     = useState<ChulliganRow[]>([])
   const [adminScores,      setAdminScores]      = useState<Record<number, ScoreRow>>({})
   const [adminChulligans,  setAdminChulligans]  = useState<ChulliganRow[]>([])
   const [viewingTeamId, setViewingTeamId] = useState<string | null>(_jump?.teamId ?? null)
@@ -423,12 +131,12 @@ export default function Scores() {
   const [viewScores,  setViewScores]  = useState<Record<number, ScoreRow>>({})
 
   const [adminTeamId,   setAdminTeamId]   = useState<string | null>(null)
+  const [adminSaving,   setAdminSaving]   = useState<number | null>(null)
   const [leaderToPar,   setLeaderToPar]   = useState<number | null>(null)
   const [selectedHole,  setSelectedHole]  = useState<number>(() => {
     const h = _jump?.hole ?? parseInt(searchParams.get('hole') ?? '1')
     return h >= 1 && h <= 18 ? h : 1
   })
-  const [saving,        setSaving]        = useState<number | null>(null)
   const [teamPick,      setTeamPick]      = useState('')
   const [settingTeam,   setSettingTeam]   = useState(false)
   const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set([1]))
@@ -443,7 +151,6 @@ export default function Scores() {
     setExpandedHoles(prev => new Set([...prev, hole]))
   }
 
-  const myTeamIdRef      = useRef<string | undefined>(undefined)
   const viewingTeamIdRef = useRef<string | null>(null)
   const allTeamsRef      = useRef<TeamFull[]>([])
   // Clean up sessionStorage entry and legacy URL params on mount
@@ -453,7 +160,6 @@ export default function Scores() {
     window.history.replaceState({}, '')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
   useEffect(() => { viewingTeamIdRef.current = viewingTeamId }, [viewingTeamId])
   useEffect(() => { allTeamsRef.current = allTeams }, [allTeams])
 
@@ -475,8 +181,6 @@ export default function Scores() {
   }, [effectiveTournamentId])
 
   useEffect(() => { loadAllTeams() }, [effectiveTournamentId])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (myTeamId) loadPlayerData(myTeamId) }, [myTeamId, isOnline])
   useEffect(() => { if (adminTeamId) loadAdminScores(adminTeamId) }, [adminTeamId])
   // Default to own team only when no jump target was stored (viewingTeamId starts null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -487,12 +191,12 @@ export default function Scores() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewingTeamId, myTeamId])
 
+  // Realtime subscription for admin and viewTeam data (player data is handled by usePlayerScoring hook)
   useEffect(() => {
     const reload = () => {
-      if (myTeamIdRef.current) loadPlayerData(myTeamIdRef.current)
       if (adminTeamId) loadAdminScores(adminTeamId)
       const vId = viewingTeamIdRef.current
-      if (vId && vId !== myTeamIdRef.current) loadViewTeam(vId)
+      if (vId && vId !== myTeamId) loadViewTeam(vId)
       computeLeaderToPar(allTeamsRef.current)
     }
     const sub = supabase.channel('scores-rt')
@@ -500,7 +204,7 @@ export default function Scores() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chulligans' }, reload)
       .subscribe()
     return () => { supabase.removeChannel(sub) }
-  }, [adminTeamId])
+  }, [adminTeamId, myTeamId])
 
   const loadAllTeams = async () => {
     if (!effectiveTournamentId) { setAllTeams([]); setLeaderToPar(null); return }
@@ -564,50 +268,6 @@ export default function Scores() {
     setLeaderToPar(best)
   }
 
-  const loadPlayerData = async (teamId: string) => {
-    // Step 1: Show cached data immediately (works offline, zero latency)
-    const [localScores, localCh, localTeam] = await Promise.all([
-      localDb.scores.where('team_id').equals(teamId).toArray(),
-      localDb.chulligans.where('team_id').equals(teamId).toArray(),
-      localDb.teams.get(teamId),
-    ])
-    const cacheMap: Record<number, ScoreRow> = {}
-    for (const s of localScores) cacheMap[s.hole] = { id: s.id, hole: s.hole, score: s.score, drive_used_id: s.drive_used_id, putts: s.putts }
-    setMyScores(cacheMap)
-    setMyChulligans(localCh.map(c => ({ id: c.id, player_id: c.player_id, hole: c.hole })))
-    if (localTeam) {
-      let p1 = parseJson(localTeam.player1_json) as Player | undefined
-      let p2 = parseJson(localTeam.player2_json) as Player | undefined
-      if (!p1 && localTeam.p1_id) { const r = await localDb.profiles.get(localTeam.p1_id); if (r) p1 = r as unknown as Player }
-      if (!p2 && localTeam.p2_id) { const r = await localDb.profiles.get(localTeam.p2_id); if (r) p2 = r as unknown as Player }
-      setMyTeam({ ...localTeam, player1: p1, player2: p2 } as unknown as TeamFull)
-    }
-
-    // Step 2: Refresh from Supabase in the background
-    try {
-      const { data: t } = await supabase
-        .from('teams')
-        .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-        .eq('id', teamId).single()
-      if (!t) return
-      // Preserve cached player data if Supabase join returned null (spotty connection)
-      setMyTeam(prev => ({ ...t, player1: t.player1 ?? prev?.player1, player2: t.player2 ?? prev?.player2 } as TeamFull))
-
-      // Only overwrite scores when no pending local writes — prevents wiping offline changes
-      const pendingCount = await getPendingCount()
-      if (pendingCount === 0) {
-        const [{ data: scores }, { data: ch }] = await Promise.all([
-          supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
-          supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
-        ])
-        const map: Record<number, ScoreRow> = {}
-        for (const s of scores ?? []) map[s.hole] = s
-        setMyScores(map)
-        setMyChulligans((ch ?? []) as ChulliganRow[])
-      }
-    } catch { /* offline — cached data already shown */ }
-  }
-
   const loadAdminScores = async (teamId: string) => {
     // Step 1: Show cached scores immediately (works offline)
     const [localScores, localCh] = await Promise.all([
@@ -667,65 +327,12 @@ export default function Scores() {
 
   // ── Actions ─────────────────────────────────────────────────
 
-  const adjustMyScore = async (hole: number, delta: number) => {
-    if (!myTeamId) return
-    navigator.vibrate?.(8)
-    const cur  = myScores[hole]?.score ?? HOLE_PARS[hole - 1]
-    const next = Math.max(1, cur + delta)
-    const existing = myScores[hole]
-    const isNew = !existing?.id || String(existing.id).startsWith('offline-')
-    const scoreId = isNew ? `offline-${myTeamId}-${hole}` : existing!.id
-
-    setSaving(hole)
-
-    // Write to local cache FIRST — prevents concurrent loadPlayerData from reading stale IndexedDB
-    await localDb.scores.put({
-      id: scoreId,
-      team_id: myTeamId,
-      hole,
-      score: next,
-      drive_used_id: existing?.drive_used_id ?? null,
-      putts: existing?.putts ?? null,
-      updated_at: new Date().toISOString(),
-    })
-
-    // Optimistic update — localDb is already correct so any concurrent read returns the right value
-    setMyScores(prev => ({ ...prev, [hole]: { id: scoreId, hole, score: next, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
-
-    // Queue the score write (LWW dedup: rapid taps keep only the latest)
-    await enqueue('set_score', { team_id: myTeamId, hole, score: next }, { team_id: myTeamId, hole })
-
-    // Queue the feed event (same conflict key ensures only the final score is posted)
-    const feedInfo = scoreFeedInfo(next, hole)
-    await enqueue('log_feed_event', {
-      id: crypto.randomUUID(),
-      event_type: 'score',
-      team_id: myTeamId ?? null,
-      team_name: myTeam?.name ?? '',
-      player_name: null,
-      voter_name: null,
-      hole,
-      score: next,
-      label: feedInfo.label,
-      emoji: feedInfo.emoji,
-      tournament_id: effectiveTournamentId ?? null,
-    } satisfies LogFeedEventPayload, { team_id: myTeamId, hole, ev: 'score' })
-
-    setSaving(null)
-
-    // Drain immediately if online; notify function is fire-and-forget after sync
-    if (navigator.onLine) {
-      drainQueue().then(() => pingLeadCheck({ team_id: myTeamId!, hole, score: next })).catch(() => {})
-    }
-    await refreshPendingCount()
-  }
-
   const adjustAdminScore = async (hole: number, delta: number) => {
     if (!adminTeamId) return
     navigator.vibrate?.(8)
     const cur  = adminScores[hole]?.score ?? HOLE_PARS[hole - 1]
     const next = Math.max(1, cur + delta)
-    setSaving(hole)
+    setAdminSaving(hole)
     const existing = adminScores[hole]
     if (existing?.id) {
       await supabase.from('scores').update({ score: next }).eq('id', existing.id)
@@ -735,23 +342,10 @@ export default function Scores() {
         .insert({ team_id: adminTeamId, hole, score: next }).select('id, drive_used_id, putts').single()
       if (data) setAdminScores(prev => ({ ...prev, [hole]: { id: data.id, hole, score: next, drive_used_id: data.drive_used_id, putts: data.putts } }))
     }
-    setSaving(null)
+    setAdminSaving(null)
     pingLeadCheck({ team_id: adminTeamId, hole, score: next, is_admin_edit: !!existing?.id })
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
     logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
-  }
-
-  const setMyDrive = async (hole: number, playerId: string) => {
-    const existing = myScores[hole]
-    if (!existing?.id) return
-    const newId = existing.drive_used_id === playerId ? null : playerId
-
-    // Write localDb first so any concurrent read picks up the new value
-    await localDb.scores.update(existing.id, { drive_used_id: newId })
-    setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
-    await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
-    if (navigator.onLine) drainQueue().catch(() => {})
-    await refreshPendingCount()
   }
 
   const setAdminDrive = async (hole: number, playerId: string) => {
@@ -760,45 +354,6 @@ export default function Scores() {
     const newId = existing.drive_used_id === playerId ? null : playerId
     await supabase.from('scores').update({ drive_used_id: newId }).eq('id', existing.id)
     setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
-  }
-
-  const setMyPutts = async (hole: number, putts: number) => {
-    const existing = myScores[hole]
-    if (!existing?.id) return
-    const newPutts = existing.putts === putts ? null : putts
-
-    // Write localDb first so any concurrent read picks up the new value
-    await localDb.scores.update(existing.id, { putts: newPutts })
-    setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
-    await enqueue('set_putts', { team_id: myTeamId!, hole, putts: newPutts }, { team_id: myTeamId!, hole })
-
-    // Queue/replace the putt feed event; cancel it if putts dropped below 3
-    const puttFeedKey = { team_id: myTeamId!, hole, ev: 'putt' }
-    if (newPutts != null && newPutts >= 3) {
-      const info = puttFeedInfo(newPutts)
-      await enqueue('log_feed_event', {
-        id: crypto.randomUUID(),
-        event_type: 'putt',
-        team_id: myTeamId ?? null,
-        team_name: myTeam?.name ?? '',
-        player_name: null,
-        voter_name: null,
-        hole,
-        score: null,
-        label: info.label,
-        emoji: info.emoji,
-        tournament_id: effectiveTournamentId ?? null,
-      } satisfies LogFeedEventPayload, puttFeedKey)
-    } else {
-      // Remove any queued putt feed event for this hole (user deselected or chose < 3)
-      await localDb.pending_writes
-        .where('op_type').equals('log_feed_event')
-        .filter(w => w.conflict_key === JSON.stringify(puttFeedKey) && w.status === 'pending')
-        .delete()
-    }
-
-    if (navigator.onLine) drainQueue().catch(() => {})
-    await refreshPendingCount()
   }
 
   const setAdminPutts = async (hole: number, putts: number) => {
@@ -813,40 +368,6 @@ export default function Scores() {
     }
   }
 
-  const resetMyScore = async (hole: number) => {
-    const existing = myScores[hole]
-    if (!existing?.id) return
-
-    setMyScores(prev => { const next = { ...prev }; delete next[hole]; return next })
-    await localDb.scores.delete(existing.id)
-
-    // Cancel any queued feed events for this hole
-    for (const evKey of [
-      JSON.stringify({ team_id: myTeamId!, hole, ev: 'score' }),
-      JSON.stringify({ team_id: myTeamId!, hole, ev: 'putt' }),
-    ]) {
-      await localDb.pending_writes
-        .where('op_type').equals('log_feed_event')
-        .filter(w => w.conflict_key === evKey && w.status === 'pending')
-        .delete()
-    }
-
-    if (!String(existing.id).startsWith('offline-')) {
-      // Row exists in Supabase — queue a delete
-      await enqueue('delete_score', { team_id: myTeamId!, hole }, { team_id: myTeamId!, hole })
-      if (navigator.onLine) drainQueue().catch(() => {})
-    } else {
-      // Row was never synced — just remove related queued writes
-      for (const opType of ['set_score', 'set_drive', 'set_putts'] as const) {
-        await localDb.pending_writes
-          .where('op_type').equals(opType)
-          .filter(w => w.conflict_key === JSON.stringify({ team_id: myTeamId!, hole }) && w.status === 'pending')
-          .delete()
-      }
-    }
-    await refreshPendingCount()
-  }
-
   const resetAdminScore = async (hole: number) => {
     const existing = adminScores[hole]
     if (!existing?.id) return
@@ -854,6 +375,7 @@ export default function Scores() {
     setAdminScores(prev => { const next = { ...prev }; delete next[hole]; return next })
   }
 
+  // Admin-only toggleChulligan (5-param version used for admin team editing)
   const toggleChulligan = async (
     teamId: string,
     playerId: string,
@@ -1188,7 +710,7 @@ export default function Scores() {
             <HoleCard
               hole={hole}
               scoreRow={adminScores[hole]}
-              isSaving={saving === hole}
+              isSaving={adminSaving === hole}
               onMinus={() => adjustAdminScore(hole, -1)}
               onPlus={() => adjustAdminScore(hole, 1)}
               player1={ap1}
@@ -1300,8 +822,8 @@ export default function Scores() {
           const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
           const hFrom = hole <= 9 ? 1 : 10
           const hTo   = hole <= 9 ? 9 : 18
-          const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo, myScores)
-          const p2n   = countDrives(mp2?.id ?? null, hFrom, hTo, myScores)
+          const p1n   = countMyDrives(mp1?.id ?? null, hFrom, hTo)
+          const p2n   = countMyDrives(mp2?.id ?? null, hFrom, hTo)
           const driveId = myScores[hole]?.drive_used_id ?? null
           const driveDisabled: Record<string, boolean> = {
             ...(mp1 ? { [mp1.id]: p1n >= 5 && driveId !== mp1.id } : {}),
@@ -1312,7 +834,7 @@ export default function Scores() {
               key={hole}
               hole={hole}
               scoreRow={myScores[hole]}
-              isSaving={saving === hole}
+              isSaving={playerSaving === hole}
               onMinus={() => adjustMyScore(hole, -1)}
               onPlus={() => adjustMyScore(hole, 1)}
               player1={mp1}
@@ -1322,7 +844,7 @@ export default function Scores() {
               onSetPutts={(n) => setMyPutts(hole, n)}
               onReset={() => resetMyScore(hole)}
               chulligans={myChulligans}
-              onToggleChulligan={(pid, h) => toggleChulligan(myTeamId!, pid, h, myChulligans, setMyChulligans)}
+              onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
               locked={locked}
               holeInfo={HOLE_DATA[hole - 1]}
               infoExpanded={expandedHoles.has(hole)}
