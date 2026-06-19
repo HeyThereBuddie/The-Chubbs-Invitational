@@ -610,7 +610,7 @@ export default function AdminPanel() {
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
-  const allPlayers    = profiles.filter(p => p.role !== 'admin')
+  const allPlayers    = profiles
 
   // ── Brevo sync ────────────────────────────────────────────
   const [brevoSyncing, setBrevoSyncing] = useState(false)
