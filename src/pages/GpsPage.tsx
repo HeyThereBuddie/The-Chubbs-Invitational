@@ -144,6 +144,32 @@ function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
   return lenSq === 0 ? 0 : (px * vx + py * vy) / lenSq
 }
 
+// Place a bunker label just outside the bunker edge, on the side away from the
+// tee→green centre line. Uses each polygon vertex to find the actual edge so
+// the label always clears the sand shape regardless of bunker size.
+function bunkerLabelPos(poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
+  const dx = green.lng - tee.lng, dy = green.lat - tee.lat
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len === 0) return centroid
+  // Left-perpendicular unit vector (in lng/lat space)
+  const px = -dy / len, py = dx / len
+  // Determine which side of the fairway axis the bunker is on
+  const cross = dx * (centroid.lat - tee.lat) - dy * (centroid.lng - tee.lng)
+  const side = cross >= 0 ? 1 : -1
+  // Find how far the polygon extends in the "away" direction from its centroid
+  let edgeDeg = 0
+  for (const v of poly) {
+    const proj = side * ((v.lng - centroid.lng) * px + (v.lat - centroid.lat) * py)
+    if (proj > edgeDeg) edgeDeg = proj
+  }
+  // Add ~12 yards of clearance (12 * 0.9144 / 111111 ≈ 9.9e-5 degrees)
+  const gapDeg = 12 * 0.9144 / 111111
+  return {
+    lat: centroid.lat + side * py * (edgeDeg + gapDeg),
+    lng: centroid.lng + side * px * (edgeDeg + gapDeg),
+  }
+}
+
 function polygonCentroid(poly: LatLng[]): LatLng {
   return {
     lat: poly.reduce((s, p) => s + p.lat, 0) / poly.length,
@@ -391,7 +417,8 @@ export default function GpsPage() {
     return bunkers
       .map((poly, idx) => {
         const centroid = polygonCentroid(poly)
-        return { idx, centroid, bunkerT: holeProgress(tee, green, centroid), yards: haversineYards(position, centroid) }
+        const labelPos = bunkerLabelPos(poly, centroid, tee, green)
+        return { idx, centroid, labelPos, bunkerT: holeProgress(tee, green, centroid), yards: haversineYards(position, centroid) }
       })
       .filter(b => playerT <= b.bunkerT)
   }, [currentHole, position])
@@ -591,9 +618,9 @@ export default function GpsPage() {
             </Source>
           )}
 
-          {/* Bunker distance labels */}
+          {/* Bunker distance labels — positioned outside the bunker edge, away from fairway */}
           {bunkerLabels.map(b => (
-            <Marker key={`bunk-dist-${b.idx}`} longitude={b.centroid.lng} latitude={b.centroid.lat} anchor="center">
+            <Marker key={`bunk-dist-${b.idx}`} longitude={b.labelPos.lng} latitude={b.labelPos.lat} anchor="center">
               <div style={{
                 background: 'rgba(212,180,131,0.92)', backdropFilter: 'blur(4px)',
                 color: '#2a1400', borderRadius: 5, padding: '2px 6px',
