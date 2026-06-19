@@ -908,16 +908,29 @@ export default function GpsPage() {
         })()}
 
         {/* Hole + Par chip — top left */}
-        <div style={{
-          position: 'absolute', top: 8, left: 8, zIndex: 10,
-          background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.14)', borderRadius: 14,
-          padding: '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-        }}>
-          <div style={{ fontFamily: 'Bebas Neue', fontSize: 52, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
-        </div>
+        {(() => {
+          let totalVsPar = 0
+          let holesPlayed = 0
+          for (let h = 1; h <= 18; h++) {
+            const s = scoring.myScores[h]
+            if (s) { totalVsPar += s.score - (HOLE_PARS[h - 1] ?? 4); holesPlayed++ }
+          }
+          const scorLabel = holesPlayed === 0 ? 'E' : totalVsPar === 0 ? 'E' : totalVsPar > 0 ? `+${totalVsPar}` : `${totalVsPar}`
+          const scorColor = totalVsPar < 0 ? '#22c55e' : totalVsPar > 0 ? '#ef4444' : 'rgba(255,255,255,0.5)'
+          return (
+            <div style={{
+              position: 'absolute', top: 8, left: 8, zIndex: 10,
+              background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 14,
+              padding: '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 52, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
+              <div style={{ marginTop: 4, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+            </div>
+          )
+        })()}
 
         {/* Wind chip — top center */}
         {wind && (
