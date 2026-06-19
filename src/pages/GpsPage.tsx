@@ -555,6 +555,41 @@ export default function GpsPage() {
   const tapToGreenMid = tapPoint && currentHole?.green.center
     ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
 
+  // Leaderboard rank — live for my team, cached for others
+  // Must be before early returns to satisfy Rules of Hooks
+  const myRank = useMemo(() => {
+    if (!scoring.myTeamId || !effectiveTournamentId) return null
+    const tournTeams = localTeams.filter(t => t.tournament_id === effectiveTournamentId)
+    if (tournTeams.length === 0) return null
+
+    const standings = tournTeams.map(team => {
+      let gross = 0, thru = 0
+      if (team.id === scoring.myTeamId) {
+        const scores = Object.values(scoring.myScores)
+        gross = scores.reduce((a, s) => a + s.score, 0)
+        thru = scores.length
+      } else {
+        const ts = localScores.filter(s => s.team_id === team.id)
+        gross = ts.reduce((a, s) => a + s.score, 0)
+        thru = ts.length
+      }
+      const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
+      return { teamId: team.id, toPar: gross - parSoFar, thru }
+    })
+
+    standings.sort((a, b) => {
+      if (a.thru === 0 && b.thru > 0) return 1
+      if (b.thru === 0 && a.thru > 0) return -1
+      return a.toPar - b.toPar || b.thru - a.thru
+    })
+
+    const myIdx = standings.findIndex(t => t.teamId === scoring.myTeamId)
+    if (myIdx === -1) return null
+    const myEntry = standings[myIdx]
+    const tied = myEntry.thru > 0 && standings.filter(t => t.thru > 0 && t.toPar === myEntry.toPar).length > 1
+    return { pos: myIdx + 1, outOf: tournTeams.length, tied, thru: myEntry.thru }
+  }, [localTeams, localScores, scoring.myScores, scoring.myTeamId, effectiveTournamentId])
+
   // ── Early-exit renders ────────────────────────────────────────────────────
 
   if (!TOKEN) return (
@@ -598,40 +633,6 @@ export default function GpsPage() {
     : { headwind: 0, crosswind: 0 }
   const driftYards = (wind && centerDist !== null && centerDist <= 9999)
     ? windDriftYards(centerDist, crosswind) : 0
-
-  // Leaderboard rank — live for my team, cached for others
-  const myRank = useMemo(() => {
-    if (!scoring.myTeamId || !effectiveTournamentId) return null
-    const tournTeams = localTeams.filter(t => t.tournament_id === effectiveTournamentId)
-    if (tournTeams.length === 0) return null
-
-    const standings = tournTeams.map(team => {
-      let gross = 0, thru = 0
-      if (team.id === scoring.myTeamId) {
-        const scores = Object.values(scoring.myScores)
-        gross = scores.reduce((a, s) => a + s.score, 0)
-        thru = scores.length
-      } else {
-        const ts = localScores.filter(s => s.team_id === team.id)
-        gross = ts.reduce((a, s) => a + s.score, 0)
-        thru = ts.length
-      }
-      const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
-      return { teamId: team.id, toPar: gross - parSoFar, thru }
-    })
-
-    standings.sort((a, b) => {
-      if (a.thru === 0 && b.thru > 0) return 1
-      if (b.thru === 0 && a.thru > 0) return -1
-      return a.toPar - b.toPar || b.thru - a.thru
-    })
-
-    const myIdx = standings.findIndex(t => t.teamId === scoring.myTeamId)
-    if (myIdx === -1) return null
-    const myEntry = standings[myIdx]
-    const tied = myEntry.thru > 0 && standings.filter(t => t.thru > 0 && t.toPar === myEntry.toPar).length > 1
-    return { pos: myIdx + 1, outOf: tournTeams.length, tied, thru: myEntry.thru }
-  }, [localTeams, localScores, scoring.myScores, scoring.myTeamId, effectiveTournamentId])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
