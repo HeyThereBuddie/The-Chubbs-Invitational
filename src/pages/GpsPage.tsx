@@ -153,15 +153,16 @@ function polygonCentroid(poly: LatLng[]): LatLng {
 
 // ─── UI helpers ─────────────────────────────────────────────────────────────
 
-function YardagePanel({ label, yards, color }: { label: string; yards: number | null; color: string }) {
+function YardagePanel({ label, yards, color, hero = false }: { label: string; yards: number | null; color: string; hero?: boolean }) {
+  const display = yards !== null && yards <= 9999 ? yards : '—'
+  const hasValue = yards !== null && yards <= 9999
   return (
-    <div style={{ flex: 1, textAlign: 'center' }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
-      <div style={{
-        fontFamily: 'Bebas Neue', fontSize: 42, letterSpacing: 1, lineHeight: 1,
-        color: yards !== null && yards <= 9999 ? 'var(--tx1)' : 'var(--tx5)',
-      }}>{yards !== null && yards <= 9999 ? yards : '—'}</div>
-      <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>yds</div>
+    <div style={{ flex: hero ? 1.3 : 1, textAlign: 'center' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.8, color, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontFamily: 'Bebas Neue', fontSize: hero ? 40 : 28, letterSpacing: 0.5, lineHeight: 1, color: hasValue ? 'white' : 'rgba(255,255,255,0.22)' }}>
+        {display}
+      </div>
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 3, letterSpacing: 0.3 }}>yds</div>
     </div>
   )
 }
@@ -877,80 +878,69 @@ export default function GpsPage() {
             return (
               <div style={{
                 pointerEvents: 'all',
-                background: 'rgba(8,8,12,0.72)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 borderTop: '1px solid rgba(255,255,255,0.07)',
-                padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 0,
               }}>
                 {players.map((player, idx) => {
                   const f9 = scoring.countDrives(player.id, 1, 9)
                   const b9 = scoring.countDrives(player.id, 10, 18)
                   const chulligan = scoring.myChulligans.find(c => c.player_id === player.id)
                   return (
-                    <>
-                      {idx > 0 && <div key={`div-${player.id}`} style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />}
-                      <div key={player.id} style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {displayName(player)}
-                          </span>
-                          <div style={{
-                            fontSize: 12, padding: '2px 8px', borderRadius: 8, flexShrink: 0, marginLeft: 8,
-                            background: chulligan ? 'rgba(212,165,58,0.15)' : 'rgba(255,255,255,0.05)',
-                            color: chulligan ? '#D4A53A' : 'var(--tx4)',
-                            border: `1px solid ${chulligan ? 'rgba(212,165,58,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                          }}>
-                            {chulligan ? `🍺 H${chulligan.hole}` : '🍺 —'}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16 }}>F9</span>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            {Array.from({ length: 5 }, (_, i) => (
-                              <div key={i} style={{
-                                width: 9, height: 9, borderRadius: '50%',
-                                background: i < f9 ? '#D4A53A' : 'rgba(255,255,255,0.12)',
-                                boxShadow: i < f9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
-                              }} />
-                            ))}
-                          </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16, marginLeft: 4 }}>B9</span>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            {Array.from({ length: 5 }, (_, i) => (
-                              <div key={i} style={{
-                                width: 9, height: 9, borderRadius: '50%',
-                                background: i < b9 ? '#D4A53A' : 'rgba(255,255,255,0.12)',
-                                boxShadow: i < b9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
-                              }} />
-                            ))}
-                          </div>
-                        </div>
+                    <div key={player.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      paddingTop: idx > 0 ? 9 : 0,
+                      marginTop: idx > 0 ? 9 : 0,
+                      borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+                    }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'white', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {displayName(player)}
+                      </span>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 10, padding: '4px 10px', flexShrink: 0,
+                      }}>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>F</span>
+                        <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, lineHeight: 1, color: f9 > 0 ? '#D4A53A' : 'rgba(255,255,255,0.3)' }}>{f9}</span>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>·</span>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>B</span>
+                        <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, lineHeight: 1, color: b9 > 0 ? '#D4A53A' : 'rgba(255,255,255,0.3)' }}>{b9}</span>
                       </div>
-                    </>
+                      <div style={{
+                        background: chulligan ? 'rgba(212,165,58,0.14)' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${chulligan ? 'rgba(212,165,58,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                        borderRadius: 10, padding: '4px 10px', flexShrink: 0,
+                      }}>
+                        <span style={{ fontSize: 12, color: chulligan ? '#D4A53A' : 'rgba(255,255,255,0.25)' }}>
+                          🍺 {chulligan ? `H${chulligan.hole}` : '—'}
+                        </span>
+                      </div>
+                    </div>
                   )
                 })}
               </div>
             )
           })()}
 
-          {/* Distance readout — glass panel with larger numbers */}
+          {/* Distance readout — glass panel */}
           <div style={{
             pointerEvents: 'all',
-            background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             borderTop: '1px solid rgba(255,255,255,0.08)',
             padding: '14px 8px',
             paddingBottom: 'max(14px, calc(env(safe-area-inset-bottom, 0px) + 60px))',
-            display: 'flex', alignItems: 'center',
+            display: 'flex', alignItems: 'center', gap: 4,
           }}>
             <YardagePanel label="Front"  yards={frontDist}  color="#22c55e" />
-            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
-            <YardagePanel label="Center" yards={centerDist} color="#D4A53A" />
-            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
-            <YardagePanel label="Back"   yards={backDist}   color="#dc2626" />
-            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 3 }}>Hole</div>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 42, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-              <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>of 18</div>
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />
+            <YardagePanel label="Center" yards={centerDist} color="#D4A53A" hero />
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />
+            <YardagePanel label="Back"   yards={backDist}   color="#ef4444" />
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.14)', margin: '0 6px' }} />
+            <div style={{ textAlign: 'center', flexShrink: 0, width: 52 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Hole</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 40, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
             </div>
           </div>
         </div>
