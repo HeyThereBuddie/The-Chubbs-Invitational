@@ -839,6 +839,31 @@ export default function GpsPage() {
           </div>
         )}
 
+        {/* Recenter button — flies back to the current hole's framed view */}
+        {currentHole && (
+          <button
+            onClick={() => flyToHole(currentHole)}
+            style={{
+              position: 'absolute', bottom: 16, left: 16,
+              zIndex: 10,
+              background: 'rgba(8,8,12,0.80)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'white',
+              borderRadius: 12,
+              padding: '10px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              cursor: 'pointer',
+            }}
+          >
+            <Target size={14} color="#D4A53A" />
+            Hole
+          </button>
+        )}
+
         {/* Enter Score FAB — shown to any logged-in user */}
         {profile && (
           <button
