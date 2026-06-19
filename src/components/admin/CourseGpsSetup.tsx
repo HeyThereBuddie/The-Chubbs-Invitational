@@ -705,6 +705,9 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
       // Build hole anchors from golf=hole routing ways (full geometry — first node=tee, last=green)
       const holeAnchors: Array<{ ref: number; midLat: number; midLon: number }> = []
+      // Also store every node along each routing way — used for tighter fairway/hazard matching
+      // (a fairway centroid matched to the nearest midpoint can pick the wrong hole when courses loop back)
+      const holeRoutePts: Record<string, { lat: number; lon: number }[]> = {}
       for (const el of elements) {
         if (el.tags?.golf !== 'hole' || !el.geometry || el.geometry.length < 2) continue
         const num = parseInt(el.tags?.ref ?? '0')
@@ -712,6 +715,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         const teeG   = el.geometry[0]
         const greenG = el.geometry[el.geometry.length - 1]
         holeAnchors.push({ ref: num, midLat: (teeG.lat + greenG.lat) / 2, midLon: (teeG.lon + greenG.lon) / 2 })
+        holeRoutePts[String(num)] = el.geometry
       }
 
       const newHoles = emptyHoles()
@@ -729,6 +733,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
       // Fairways — have full geometry polygon
       const MAX_FAIRWAY_D2 = 0.007 * 0.007  // ~770m max match distance
+      const routeEntries = Object.entries(holeRoutePts)
       for (const el of elements) {
         if (el.tags?.golf !== 'fairway' || !el.geometry || el.geometry.length < 3) continue
         let holeNum = parseInt(el.tags?.ref ?? '0')
@@ -736,16 +741,28 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           const centLat = el.geometry.reduce((s, p) => s + p.lat, 0) / el.geometry.length
           const centLon = el.geometry.reduce((s, p) => s + p.lon, 0) / el.geometry.length
           let bestD = Infinity
-          // Prefer matching via hole routing anchors; fall back to green/tee midpoints
-          const sources = holeAnchors.length > 0 ? holeAnchors :
-            newHoles.filter(h => h.green.center && h.tee).map(h => ({
-              ref: h.hole,
-              midLat: (h.green.center!.lat + h.tee!.lat) / 2,
-              midLon: (h.green.center!.lng + h.tee!.lng) / 2,
-            }))
-          for (const src of sources) {
-            const d = (centLat - src.midLat) ** 2 + (centLon - src.midLon) ** 2
-            if (d < bestD) { bestD = d; holeNum = src.ref }
+          if (routeEntries.length > 0) {
+            // Match to nearest point on the full hole routing line — much more accurate than
+            // midpoint matching, which breaks when courses loop back near other holes' tees
+            for (const [refStr, pts] of routeEntries) {
+              const ref = parseInt(refStr)
+              for (const pt of pts) {
+                const d = (centLat - pt.lat) ** 2 + (centLon - pt.lon) ** 2
+                if (d < bestD) { bestD = d; holeNum = ref }
+              }
+            }
+          } else {
+            // Fall back to midpoints when no route geometry is available
+            const sources = holeAnchors.length > 0 ? holeAnchors :
+              newHoles.filter(h => h.green.center && h.tee).map(h => ({
+                ref: h.hole,
+                midLat: (h.green.center!.lat + h.tee!.lat) / 2,
+                midLon: (h.green.center!.lng + h.tee!.lng) / 2,
+              }))
+            for (const src of sources) {
+              const d = (centLat - src.midLat) ** 2 + (centLon - src.midLon) ** 2
+              if (d < bestD) { bestD = d; holeNum = src.ref }
+            }
           }
           if (bestD > MAX_FAIRWAY_D2) holeNum = 0
         }
@@ -762,15 +779,25 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         const centLat = el.geometry.reduce((s, p) => s + p.lat, 0) / el.geometry.length
         const centLon = el.geometry.reduce((s, p) => s + p.lon, 0) / el.geometry.length
         let bestD = Infinity
-        const sources = holeAnchors.length > 0 ? holeAnchors :
-          newHoles.filter(h => h.green.center && h.tee).map(h => ({
-            ref: h.hole,
-            midLat: (h.green.center!.lat + h.tee!.lat) / 2,
-            midLon: (h.green.center!.lng + h.tee!.lng) / 2,
-          }))
-        for (const src of sources) {
-          const d = (centLat - src.midLat) ** 2 + (centLon - src.midLon) ** 2
-          if (d < bestD) { bestD = d; holeNum = src.ref }
+        if (routeEntries.length > 0) {
+          for (const [refStr, pts] of routeEntries) {
+            const ref = parseInt(refStr)
+            for (const pt of pts) {
+              const d = (centLat - pt.lat) ** 2 + (centLon - pt.lon) ** 2
+              if (d < bestD) { bestD = d; holeNum = ref }
+            }
+          }
+        } else {
+          const sources = holeAnchors.length > 0 ? holeAnchors :
+            newHoles.filter(h => h.green.center && h.tee).map(h => ({
+              ref: h.hole,
+              midLat: (h.green.center!.lat + h.tee!.lat) / 2,
+              midLon: (h.green.center!.lng + h.tee!.lng) / 2,
+            }))
+          for (const src of sources) {
+            const d = (centLat - src.midLat) ** 2 + (centLon - src.midLon) ** 2
+            if (d < bestD) { bestD = d; holeNum = src.ref }
+          }
         }
         return bestD < MAX_HAZARD_D2 ? holeNum : 0
       }
