@@ -715,7 +715,7 @@ export default function GpsPage() {
         return (
           <div style={{
             background: 'var(--panel)', borderTop: '1px solid var(--bdr)',
-            padding: '8px 14px', flexShrink: 0,
+            padding: '10px 14px', flexShrink: 0,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
             {players.map((player, idx) => {
@@ -727,14 +727,14 @@ export default function GpsPage() {
                   {idx > 0 && <div key={`div-${player.id}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--bdr)' }} />}
                   <div key={player.id} style={{ flex: 1, minWidth: 0 }}>
                     {/* Name + chulligan */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {displayName(player)}
                       </span>
                       <div style={{
-                        fontSize: 10, padding: '1px 6px', borderRadius: 8, flexShrink: 0, marginLeft: 6,
+                        fontSize: 12, padding: '2px 8px', borderRadius: 8, flexShrink: 0, marginLeft: 8,
                         background: chulligan ? 'rgba(212,165,58,0.15)' : 'rgba(255,255,255,0.05)',
-                        color: chulligan ? '#D4A53A' : 'var(--tx5)',
+                        color: chulligan ? '#D4A53A' : 'var(--tx4)',
                         border: `1px solid ${chulligan ? 'rgba(212,165,58,0.3)' : 'var(--bdr)'}`,
                       }}>
                         {chulligan ? `🍺 H${chulligan.hole}` : '🍺 —'}
@@ -742,23 +742,23 @@ export default function GpsPage() {
                     </div>
                     {/* Drive dots */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--tx4)', width: 14 }}>F9</span>
-                      <div style={{ display: 'flex', gap: 3 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16 }}>F9</span>
+                      <div style={{ display: 'flex', gap: 4 }}>
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} style={{
-                            width: 7, height: 7, borderRadius: '50%',
+                            width: 9, height: 9, borderRadius: '50%',
                             background: i < f9 ? '#D4A53A' : 'var(--surf3)',
-                            boxShadow: i < f9 ? '0 0 4px rgba(212,165,58,0.5)' : 'none',
+                            boxShadow: i < f9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
                           }} />
                         ))}
                       </div>
-                      <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--tx4)', width: 14, marginLeft: 4 }}>B9</span>
-                      <div style={{ display: 'flex', gap: 3 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16, marginLeft: 4 }}>B9</span>
+                      <div style={{ display: 'flex', gap: 4 }}>
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} style={{
-                            width: 7, height: 7, borderRadius: '50%',
+                            width: 9, height: 9, borderRadius: '50%',
                             background: i < b9 ? '#D4A53A' : 'var(--surf3)',
-                            boxShadow: i < b9 ? '0 0 4px rgba(212,165,58,0.5)' : 'none',
+                            boxShadow: i < b9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
                           }} />
                         ))}
                       </div>
