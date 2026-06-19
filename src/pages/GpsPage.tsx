@@ -145,28 +145,31 @@ function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
 }
 
 // Place a bunker label just outside the bunker edge, on the side away from the
-// tee→green centre line. Uses each polygon vertex to find the actual edge so
-// the label always clears the sand shape regardless of bunker size.
+// tee→green centre line. Projects the centroid onto the axis, then pushes the
+// label in the direction from the axis toward (and beyond) the bunker.
 function bunkerLabelPos(poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
   const dx = green.lng - tee.lng, dy = green.lat - tee.lat
-  const len = Math.sqrt(dx * dx + dy * dy)
-  if (len === 0) return centroid
-  // Left-perpendicular unit vector (in lng/lat space)
-  const px = -dy / len, py = dx / len
-  // Determine which side of the fairway axis the bunker is on
-  const cross = dx * (centroid.lat - tee.lat) - dy * (centroid.lng - tee.lng)
-  const side = cross >= 0 ? 1 : -1
-  // Find how far the polygon extends in the "away" direction from its centroid
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return centroid
+  // Closest point on the tee→green axis to the bunker centroid
+  const t = ((centroid.lng - tee.lng) * dx + (centroid.lat - tee.lat) * dy) / lenSq
+  const axisLng = tee.lng + t * dx, axisLat = tee.lat + t * dy
+  // Vector pointing directly away from the fairway centre line toward the bunker
+  const perpLng = centroid.lng - axisLng, perpLat = centroid.lat - axisLat
+  const perpLen = Math.sqrt(perpLng * perpLng + perpLat * perpLat)
+  if (perpLen === 0) return centroid
+  const unitLng = perpLng / perpLen, unitLat = perpLat / perpLen
+  // Find how far the polygon extends in that outward direction
   let edgeDeg = 0
   for (const v of poly) {
-    const proj = side * ((v.lng - centroid.lng) * px + (v.lat - centroid.lat) * py)
+    const proj = (v.lng - centroid.lng) * unitLng + (v.lat - centroid.lat) * unitLat
     if (proj > edgeDeg) edgeDeg = proj
   }
-  // Add ~12 yards of clearance (12 * 0.9144 / 111111 ≈ 9.9e-5 degrees)
+  // ~12 yards of clearance past the bunker edge
   const gapDeg = 12 * 0.9144 / 111111
   return {
-    lat: centroid.lat + side * py * (edgeDeg + gapDeg),
-    lng: centroid.lng + side * px * (edgeDeg + gapDeg),
+    lat: centroid.lat + unitLat * (edgeDeg + gapDeg),
+    lng: centroid.lng + unitLng * (edgeDeg + gapDeg),
   }
 }
 
