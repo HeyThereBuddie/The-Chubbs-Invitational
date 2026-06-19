@@ -144,27 +144,27 @@ function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
   return lenSq === 0 ? 0 : (px * vx + py * vy) / lenSq
 }
 
-// Place a bunker label on the far side of the bunker from the player (or tee).
-// Pushing in the direction player→bunker guarantees the label is always on the
-// side away from the approaching player, which is opposite the fairway.
-function bunkerLabelPos(poly: LatLng[], centroid: LatLng, reference: LatLng): LatLng {
-  const perpLng = centroid.lng - reference.lng
-  const perpLat = centroid.lat - reference.lat
-  const perpLen = Math.sqrt(perpLng * perpLng + perpLat * perpLat)
-  if (perpLen === 0) return centroid
-  const unitLng = perpLng / perpLen, unitLat = perpLat / perpLen
-  // Furthest polygon vertex in the outward direction from the centroid
-  let edgeDeg = 0
-  for (const v of poly) {
-    const proj = (v.lng - centroid.lng) * unitLng + (v.lat - centroid.lat) * unitLat
-    if (proj > edgeDeg) edgeDeg = proj
-  }
-  // 15 yards of clearance past the bunker edge
-  const gapDeg = 15 * 0.9144 / 111111
-  return {
-    lat: centroid.lat + unitLat * (edgeDeg + gapDeg),
-    lng: centroid.lng + unitLng * (edgeDeg + gapDeg),
-  }
+// Place a bunker label on the outer side of the bunker (away from fairway).
+// Strategy: try both perpendicular directions from the tee→green axis, then
+// pick whichever candidate is further from the axis — that's always the outer
+// side, with no sign-convention ambiguity.
+function bunkerLabelPos(_poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
+  const dx = green.lng - tee.lng, dy = green.lat - tee.lat
+  const len = Math.sqrt(dx * dx + dy * dy)
+  if (len === 0) return centroid
+  // The two perpendicular unit vectors (left and right of tee→green)
+  const aLng = -dy / len, aLat = dx / len   // left perp
+  const bLng =  dy / len, bLat = -dx / len  // right perp
+  // Push 30 yards from the centroid in each direction
+  const deg = 30 * 0.9144 / 111111
+  const posA = { lat: centroid.lat + aLat * deg, lng: centroid.lng + aLng * deg }
+  const posB = { lat: centroid.lat + bLat * deg, lng: centroid.lng + bLng * deg }
+  // Pick whichever candidate is further from the tee→green axis.
+  // |cross| = |dx*(P.lat-tee.lat) - dy*(P.lng-tee.lng)| is proportional to
+  // perpendicular distance from the axis — no division needed for comparison.
+  const crossA = Math.abs(dx * (posA.lat - tee.lat) - dy * (posA.lng - tee.lng))
+  const crossB = Math.abs(dx * (posB.lat - tee.lat) - dy * (posB.lng - tee.lng))
+  return crossA > crossB ? posA : posB
 }
 
 function polygonCentroid(poly: LatLng[]): LatLng {
@@ -411,13 +411,10 @@ export default function GpsPage() {
     const bunkers = currentHole?.bunkers, tee = currentHole?.tee, green = currentHole?.green.center
     if (!bunkers?.length || !tee || !green || !position) return []
     const playerT = holeProgress(tee, green, position)
-    // Use player position as reference so label is always on the far side of the
-    // bunker from the player. Fall back to tee if position equals tee.
-    const reference = position
     return bunkers
       .map((poly, idx) => {
         const centroid = polygonCentroid(poly)
-        const labelPos = bunkerLabelPos(poly, centroid, reference)
+        const labelPos = bunkerLabelPos(poly, centroid, tee, green)
         return { idx, centroid, labelPos, bunkerT: holeProgress(tee, green, centroid), yards: haversineYards(position, centroid) }
       })
       .filter(b => playerT <= b.bunkerT)
