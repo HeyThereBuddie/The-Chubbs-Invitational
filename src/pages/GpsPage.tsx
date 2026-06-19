@@ -14,12 +14,11 @@ import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
-const STALE_MS = 30 * 60 * 1000 // hide markers older than 30 minutes
+const STALE_MS = 30 * 60 * 1000
 
 function haversineYards(a: LatLng, b: LatLng): number {
   const R = 6371000
-  const φ1 = (a.lat * Math.PI) / 180
-  const φ2 = (b.lat * Math.PI) / 180
+  const φ1 = (a.lat * Math.PI) / 180, φ2 = (b.lat * Math.PI) / 180
   const Δφ = ((b.lat - a.lat) * Math.PI) / 180
   const Δλ = ((b.lng - a.lng) * Math.PI) / 180
   const x = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2
@@ -30,6 +29,40 @@ function dist(pos: LatLng | null, target: LatLng | null | undefined): number | n
   return pos && target ? haversineYards(pos, target) : null
 }
 
+// ─── Map markers ────────────────────────────────────────────────────────────
+
+// Improvement 4: directional arrow that rotates with heading; falls back to dot
+function PlayerDot({ bearing }: { bearing: number | null }) {
+  return (
+    <div style={{ position: 'relative', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="gps-pulse-ring" style={{
+        position: 'absolute', width: 44, height: 44, borderRadius: '50%',
+        background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
+      }} />
+      {bearing !== null ? (
+        <div style={{
+          transform: `rotate(${bearing}deg)`, transition: 'transform 0.6s ease',
+          zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.6))',
+        }}>
+          <svg width={22} height={22} viewBox="0 0 22 22">
+            {/* Arrow pointing North by default; CSS rotation applies heading */}
+            <polygon points="11,1 19,19 11,15 3,19"
+              fill="#3b82f6" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
+        </div>
+      ) : (
+        <div style={{
+          width: 18, height: 18, borderRadius: '50%',
+          background: '#3b82f6', border: '3px solid white',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          zIndex: 1, flexShrink: 0,
+        }} />
+      )}
+    </div>
+  )
+}
+
 function TeePin() {
   return (
     <div style={{
@@ -38,55 +71,72 @@ function TeePin() {
       boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
       color: 'white', fontWeight: 800, fontSize: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Inter, sans-serif',
-      userSelect: 'none',
+      fontFamily: 'Inter, sans-serif', userSelect: 'none',
     }}>T</div>
   )
 }
 
-function PlayerDot() {
+// Improvement 1: tactical sniper reticle replaces the plain ring tap marker
+function ReticleMarker() {
+  const cx = 32, cy = 32, outerR = 24, innerR = 9
   return (
-    <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {/* Pulsing accuracy ring */}
-      <div className="gps-pulse-ring" style={{
-        position: 'absolute', width: 44, height: 44, borderRadius: '50%',
-        background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
-      }} />
-      {/* Blue dot */}
-      <div style={{
-        width: 18, height: 18, borderRadius: '50%',
-        background: '#3b82f6', border: '3px solid white',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-        zIndex: 1, flexShrink: 0,
-      }} />
-    </div>
+    <svg width={64} height={64} viewBox="0 0 64 64"
+      style={{ overflow: 'visible', filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.35))', pointerEvents: 'none' }}>
+      <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="rgba(255,255,255,0.92)" strokeWidth="1.5" />
+      {/* Inward ticks from ring — gap in center shows terrain underneath */}
+      <line x1={cx}        y1={cy - outerR} x2={cx}        y2={cy - innerR} stroke="rgba(255,255,255,0.92)" strokeWidth="1.5" />
+      <line x1={cx}        y1={cy + outerR} x2={cx}        y2={cy + innerR} stroke="rgba(255,255,255,0.92)" strokeWidth="1.5" />
+      <line x1={cx + outerR} y1={cy}        x2={cx + innerR} y2={cy}        stroke="rgba(255,255,255,0.92)" strokeWidth="1.5" />
+      <line x1={cx - outerR} y1={cy}        x2={cx - innerR} y2={cy}        stroke="rgba(255,255,255,0.92)" strokeWidth="1.5" />
+      {/* Gold center dot */}
+      <circle cx={cx} cy={cy} r={2.5} fill="#D4A53A" />
+    </svg>
   )
 }
 
-// Bearing in degrees (0=N, 90=E) from point a to point b
+// Improvement 2: flag pin — the universal golf destination symbol
+function FlagPin() {
+  return (
+    <svg width={22} height={40} viewBox="0 0 22 40"
+      style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.75))', pointerEvents: 'none', overflow: 'visible' }}>
+      <line x1={11} y1={1} x2={11} y2={38} stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <polygon points="11,1 22,8 11,15" fill="#D4A53A" />
+      <circle cx={11} cy={38} r={3} fill="rgba(212,165,58,0.80)" />
+    </svg>
+  )
+}
+
+// ─── Geometry helpers ────────────────────────────────────────────────────────
+
 function calcBearing(a: LatLng, b: LatLng): number {
-  const lat1 = (a.lat * Math.PI) / 180
-  const lat2 = (b.lat * Math.PI) / 180
+  const lat1 = (a.lat * Math.PI) / 180, lat2 = (b.lat * Math.PI) / 180
   const dLng  = ((b.lng - a.lng) * Math.PI) / 180
   const x = Math.sin(dLng) * Math.cos(lat2)
   const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360
 }
 
-// Move a point <meters> in <bearingDeg> direction
 function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLng {
-  const R = 6371000
-  const d = meters / R
-  const b = (bearingDeg * Math.PI) / 180
-  const lat1 = (origin.lat * Math.PI) / 180
-  const lng1 = (origin.lng * Math.PI) / 180
+  const R = 6371000, d = meters / R, b = (bearingDeg * Math.PI) / 180
+  const lat1 = (origin.lat * Math.PI) / 180, lng1 = (origin.lng * Math.PI) / 180
   const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b))
   const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
   return { lat: (lat2 * 180) / Math.PI, lng: ((lng2 * 180) / Math.PI + 540) % 360 - 180 }
 }
 
-// Scalar progress along the tee→green axis (0 = tee, 1 = green).
-// Uses flat lat/lng arithmetic — accurate enough at golf-hole distances.
+function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, number][] {
+  const teeBack  = offsetLatLng(tee,   bearing + 180, 6)
+  const greenFwd = offsetLatLng(green, bearing,       10)
+  const pts = [
+    offsetLatLng(teeBack,  bearing - 90, 35),
+    offsetLatLng(teeBack,  bearing + 90, 35),
+    offsetLatLng(greenFwd, bearing + 90, 22),
+    offsetLatLng(greenFwd, bearing - 90, 22),
+  ]
+  return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
+}
+
+// Progress along tee→green axis (0=tee, 1=green). Flat-earth OK at hole scale.
 function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
   const vx = green.lng - tee.lng, vy = green.lat - tee.lat
   const px = point.lng - tee.lng, py = point.lat - tee.lat
@@ -101,27 +151,14 @@ function polygonCentroid(poly: LatLng[]): LatLng {
   }
 }
 
-// Build a GeoJSON polygon coordinate ring for the hole corridor (fallback when no OSM fairway)
-function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, number][] {
-  const teeSideW   = 35  // metres from centreline at tee end (~38 yds) — wider Option 3 fallback
-  const greenSideW = 22  // narrower at the green end (~24 yds)
-  const teeBack    = offsetLatLng(tee,   bearing + 180, 6)
-  const greenFwd   = offsetLatLng(green, bearing,       10)
-  const pts = [
-    offsetLatLng(teeBack,  bearing - 90, teeSideW),
-    offsetLatLng(teeBack,  bearing + 90, teeSideW),
-    offsetLatLng(greenFwd, bearing + 90, greenSideW),
-    offsetLatLng(greenFwd, bearing - 90, greenSideW),
-  ]
-  return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
-}
+// ─── UI helpers ─────────────────────────────────────────────────────────────
 
 function YardagePanel({ label, yards, color }: { label: string; yards: number | null; color: string }) {
   return (
     <div style={{ flex: 1, textAlign: 'center' }}>
       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
       <div style={{
-        fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 1, lineHeight: 1,
+        fontFamily: 'Bebas Neue', fontSize: 42, letterSpacing: 1, lineHeight: 1,
         color: yards !== null ? 'var(--tx1)' : 'var(--tx5)',
       }}>{yards ?? '—'}</div>
       <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>yds</div>
@@ -150,6 +187,8 @@ function scoreToPar(teamId: string, scores: LocalScore[]): number | null {
   return teamScores.reduce((sum, s) => sum + s.score - (HOLE_PARS[s.hole - 1] ?? 4), 0)
 }
 
+// ─── Page ────────────────────────────────────────────────────────────────────
+
 export default function GpsPage() {
   const { profile } = useAuth()
   const { effectiveTournamentId } = useYear()
@@ -160,9 +199,10 @@ export default function GpsPage() {
   const scoring = usePlayerScoring()
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const [course, setCourse] = useState<CourseGps | null>(null)
+  const [course, setCourse]   = useState<CourseGps | null>(null)
   const [loading, setLoading] = useState(true)
   const [position, setPosition] = useState<LatLng | null>(null)
+  const [playerBearing, setPlayerBearing] = useState<number | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'acquiring' | 'ok' | 'denied' | 'unavailable'>('acquiring')
   const [selectedHole, setSelectedHole] = useState(() => {
     const h = parseInt(searchParams.get('hole') ?? '1')
@@ -172,73 +212,59 @@ export default function GpsPage() {
   const [tipOpen, setTipOpen]   = useState(false)
   const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15, bearing: 0, pitch: 0 })
 
-  // Other players' live positions
   const [otherPositions, setOtherPositions] = useState<PlayerPosition[]>([])
   const [selectedCartPlayerId, setSelectedCartPlayerId] = useState<string | null>(null)
 
-  // Local DB snapshots for computing score-to-par in the popup (already cached by syncAll)
-  const [localScores, setLocalScores] = useState<LocalScore[]>([])
-  const [localTeams, setLocalTeams] = useState<LocalTeam[]>([])
+  const [localScores, setLocalScores]     = useState<LocalScore[]>([])
+  const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
   const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
 
-  // Refs for position publishing — avoids re-registering the GPS watch when profile/tournament changes
+  // Refs for position publishing and bearing — avoid re-registering the GPS watch
   const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
-  const publishRef = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
-  // Keep publishRef fresh on every render (cheap — just a ref assignment)
+  const lastPosRef     = useRef<LatLng | null>(null)
+  const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
     : null
 
-  // Load GPS course data — cache first (works offline), then refresh from network
+  // ── Data loading ───────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!effectiveTournamentId) { setLoading(false); return }
 
     const applyGps = (gps: CourseGps) => {
       setCourse(gps)
-      if (gps.lat && gps.lng) {
+      if (gps.lat && gps.lng)
         setViewState(v => ({ ...v, latitude: gps.lat!, longitude: gps.lng!, zoom: 16 }))
-      }
     }
 
-    // Step 1: show cached data immediately so the page works offline
     localDb.course_gps.get(effectiveTournamentId).then(cached => {
       if (cached) {
-        applyGps({
-          id: cached.gps_id, name: cached.name ?? '', created_at: '',
-          lat: cached.lat, lng: cached.lng,
-          holes: JSON.parse(cached.holes_json) as HoleGps[],
-        })
+        applyGps({ id: cached.gps_id, name: cached.name ?? '', created_at: '',
+          lat: cached.lat, lng: cached.lng, holes: JSON.parse(cached.holes_json) as HoleGps[] })
         setLoading(false)
       }
     })
-
-    // Step 2: refresh from Supabase in background; update cache with latest data
     ;(async () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (supabase
-          .from('tournaments')
+        const { data } = await (supabase.from('tournaments')
           .select('course_gps:course_gps_id(id, name, lat, lng, holes)')
-          .eq('id', effectiveTournamentId)
-          .single() as unknown as Promise<{ data: any }>)
+          .eq('id', effectiveTournamentId).single() as unknown as Promise<{ data: any }>)
         const gps = data?.course_gps
         if (gps) {
           applyGps(gps as CourseGps)
-          localDb.course_gps.put({
-            id: effectiveTournamentId,
-            gps_id: gps.id,
-            name: gps.name ?? null,
-            lat: gps.lat ?? null,
-            lng: gps.lng ?? null,
-            holes_json: JSON.stringify(gps.holes ?? []),
-          }).catch(() => {})
+          localDb.course_gps.put({ id: effectiveTournamentId, gps_id: gps.id,
+            name: gps.name ?? null, lat: gps.lat ?? null, lng: gps.lng ?? null,
+            holes_json: JSON.stringify(gps.holes ?? []) }).catch(() => {})
         }
-      } catch { /* offline — cached data already shown */ }
+      } catch { /* offline */ }
       setLoading(false)
     })()
   }, [effectiveTournamentId])
 
-  // GPS tracking + position publishing
+  // ── GPS tracking + position publishing ────────────────────────────────────
+
   useEffect(() => {
     if (!navigator.geolocation) { setGpsStatus('unavailable'); return }
     const id = navigator.geolocation.watchPosition(
@@ -247,20 +273,22 @@ export default function GpsPage() {
         setPosition(newPos)
         setGpsStatus('ok')
 
-        // Publish to player_positions: only when moved >11 yards (~10m) or >15s since last publish
+        // Improvement 4: track heading between updates (>2 yds moved to filter jitter)
+        if (lastPosRef.current && haversineYards(lastPosRef.current, newPos) > 2)
+          setPlayerBearing(calcBearing(lastPosRef.current, newPos))
+        lastPosRef.current = newPos
+
+        // Publish to Supabase when moved >11 yds or >15s since last publish
         const info = publishRef.current
         const last = lastPublishRef.current
         const movedYards = last ? haversineYards(last, newPos) : Infinity
-        const ageMs = last ? Date.now() - last.at : Infinity
+        const ageMs      = last ? Date.now() - last.at : Infinity
         if (info && navigator.onLine && (movedYards > 11 || ageMs > 15000)) {
           lastPublishRef.current = { ...newPos, at: Date.now() }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ;(supabase as any).from('player_positions').upsert({
-            player_id: info.profileId,
-            tournament_id: info.tournamentId,
-            team_id: info.teamId,
-            lat: newPos.lat,
-            lng: newPos.lng,
+            player_id: info.profileId, tournament_id: info.tournamentId,
+            team_id: info.teamId, lat: newPos.lat, lng: newPos.lng,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'player_id' }).catch(() => {})
         }
@@ -269,145 +297,104 @@ export default function GpsPage() {
       { enableHighAccuracy: true, maximumAge: 4000, timeout: 15000 },
     )
     return () => navigator.geolocation.clearWatch(id)
-  }, []) // uses publishRef for latest profile/tournament — no re-registration needed
+  }, [])
 
-  // Load other players' positions + subscribe to realtime updates
+  // ── Other players' live positions ─────────────────────────────────────────
+
   useEffect(() => {
     if (!effectiveTournamentId) return
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(supabase as any)
-      .from('player_positions')
+    ;(supabase as any).from('player_positions')
       .select('player_id, team_id, lat, lng, updated_at')
       .eq('tournament_id', effectiveTournamentId)
-      .then(({ data }: { data: PlayerPosition[] | null }) => {
-        if (data) setOtherPositions(data)
-      })
+      .then(({ data }: { data: PlayerPosition[] | null }) => { if (data) setOtherPositions(data) })
 
-    const channel = supabase
-      .channel(`player-positions-${effectiveTournamentId}`)
+    const channel = supabase.channel(`player-positions-${effectiveTournamentId}`)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .on('postgres_changes' as any, {
         event: '*', schema: 'public', table: 'player_positions',
         filter: `tournament_id=eq.${effectiveTournamentId}`,
       }, (payload: { new: PlayerPosition }) => {
         const updated = payload.new
-        setOtherPositions(prev => [
-          ...prev.filter(p => p.player_id !== updated.player_id),
-          updated,
-        ])
+        setOtherPositions(prev => [...prev.filter(p => p.player_id !== updated.player_id), updated])
       })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [effectiveTournamentId])
 
-  // Load cached scores/teams/profiles for the popup score-to-par computation
+  // ── Local DB snapshot for score-to-par in cart popups ────────────────────
+
   useEffect(() => {
-    Promise.all([
-      localDb.scores.toArray(),
-      localDb.teams.toArray(),
-      localDb.profiles.toArray(),
-    ]).then(([scores, teams, profiles]) => {
-      setLocalScores(scores)
-      setLocalTeams(teams)
-      setLocalProfiles(profiles)
-    })
+    Promise.all([localDb.scores.toArray(), localDb.teams.toArray(), localDb.profiles.toArray()])
+      .then(([scores, teams, profiles]) => {
+        setLocalScores(scores); setLocalTeams(teams); setLocalProfiles(profiles)
+      })
   }, [])
+
+  // ── Derived state ─────────────────────────────────────────────────────────
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
 
-  // Hole corridor polygon: use actual OSM fairway polygon if available, else computed trapezoid
   const corridorGeoJson = useMemo(() => {
     if (currentHole?.fairway && currentHole.fairway.length >= 3) {
       const coords = currentHole.fairway.map(p => [p.lng, p.lat] as [number, number])
-      coords.push(coords[0])  // close the ring
+      coords.push(coords[0])
       return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
     }
-    const tee   = currentHole?.tee
-    const green = currentHole?.green.center
+    const tee = currentHole?.tee, green = currentHole?.green.center
     if (!tee || !green) return null
-    const bearing = calcBearing(tee, green)
-    return {
-      type: 'Feature' as const,
-      geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, bearing)] },
-      properties: {},
-    }
+    return { type: 'Feature' as const,
+      geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, calcBearing(tee, green))] },
+      properties: {} }
   }, [currentHole])
 
   const makePolyCollection = (polys: import('../lib/types').LatLng[][] | null | undefined) => {
     if (!polys?.length) return null
-    return {
-      type: 'FeatureCollection' as const,
+    return { type: 'FeatureCollection' as const,
       features: polys.map((poly, i) => ({
         type: 'Feature' as const, id: i,
-        geometry: { type: 'Polygon' as const, coordinates: [[...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]] },
+        geometry: { type: 'Polygon' as const,
+          coordinates: [[...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]] },
         properties: {},
-      })),
-    }
+      })) }
   }
-  const bunkersGeoJson = useMemo(() => makePolyCollection(currentHole?.bunkers),    [currentHole])
-  const waterGeoJson   = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
+  const bunkersGeoJson    = useMemo(() => makePolyCollection(currentHole?.bunkers),    [currentHole])
+  const waterGeoJson      = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
   const avoidZonesGeoJson = useMemo(() => makePolyCollection(currentHole?.avoidZones), [currentHole])
 
-  // Bunker distance labels: one per bunker polygon, visible only while the bunker is still ahead.
-  // "Ahead" = bunker's projection on the tee→green axis is farther than the player's projection.
+  const landingZoneGeoJson = useMemo(() => {
+    const lz = currentHole?.landingZone; if (!lz) return null
+    const coords: [number, number][] = []
+    for (let i = 0; i <= 36; i++) { const pt = offsetLatLng(lz, (i / 36) * 360, 27); coords.push([pt.lng, pt.lat]) }
+    return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+  }, [currentHole])
+
+  const aimLineGeoJson = useMemo(() => {
+    if (!position || !tapPoint) return null
+    return { type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: [[position.lng, position.lat], [tapPoint.lng, tapPoint.lat]] },
+      properties: {} }
+  }, [position, tapPoint])
+
+  const tapToGreenGeoJson = useMemo(() => {
+    const green = currentHole?.green.center; if (!tapPoint || !green) return null
+    return { type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: [[tapPoint.lng, tapPoint.lat], [green.lng, green.lat]] },
+      properties: {} }
+  }, [tapPoint, currentHole])
+
   const bunkerLabels = useMemo(() => {
-    const bunkers = currentHole?.bunkers
-    const tee     = currentHole?.tee
-    const green   = currentHole?.green.center
+    const bunkers = currentHole?.bunkers, tee = currentHole?.tee, green = currentHole?.green.center
     if (!bunkers?.length || !tee || !green || !position) return []
     const playerT = holeProgress(tee, green, position)
     return bunkers
       .map((poly, idx) => {
         const centroid = polygonCentroid(poly)
-        const bunkerT  = holeProgress(tee, green, centroid)
-        const yards    = haversineYards(position, centroid)
-        return { idx, centroid, bunkerT, yards }
+        return { idx, centroid, bunkerT: holeProgress(tee, green, centroid), yards: haversineYards(position, centroid) }
       })
       .filter(b => playerT <= b.bunkerT)
   }, [currentHole, position])
 
-  // Landing zone — approximate 30-yard radius circle as a polygon
-  const landingZoneGeoJson = useMemo(() => {
-    const lz = currentHole?.landingZone
-    if (!lz) return null
-    const steps = 36
-    const radiusM = 27  // ~30 yards
-    const coords: [number, number][] = []
-    for (let i = 0; i <= steps; i++) {
-      const pt = offsetLatLng(lz, (i / steps) * 360, radiusM)
-      coords.push([pt.lng, pt.lat])
-    }
-    return {
-      type: 'Feature' as const,
-      geometry: { type: 'Polygon' as const, coordinates: [coords] },
-      properties: {},
-    }
-  }, [currentHole])
-
-  // Aim line: Player → Tap point (pre-set to landing zone if available)
-  const aimLineGeoJson = useMemo(() => {
-    if (!position || !tapPoint) return null
-    return {
-      type: 'Feature' as const,
-      geometry: { type: 'LineString' as const, coordinates: [[position.lng, position.lat], [tapPoint.lng, tapPoint.lat]] },
-      properties: {},
-    }
-  }, [position, tapPoint])
-
-  // Tap-to-green line: Tap point → Green center (remaining distance to flag)
-  const tapToGreenGeoJson = useMemo(() => {
-    const green = currentHole?.green.center
-    if (!tapPoint || !green) return null
-    return {
-      type: 'Feature' as const,
-      geometry: { type: 'LineString' as const, coordinates: [[tapPoint.lng, tapPoint.lat], [green.lng, green.lat]] },
-      properties: {},
-    }
-  }, [tapPoint, currentHole])
-
-  // Other players filtered to non-stale, non-self
   const activeOtherPositions = useMemo(() => {
     const now = Date.now()
     return otherPositions.filter(p =>
@@ -416,78 +403,49 @@ export default function GpsPage() {
     )
   }, [otherPositions, profile?.id])
 
-  // Orient the map so tee is at bottom, green at top (like 18Birdies)
+  // ── Map fly-to ────────────────────────────────────────────────────────────
+
   const flyToHole = useCallback((hole: HoleGps) => {
-    const green  = hole.green.center
-    const tee    = hole.tee
+    const green = hole.green.center, tee = hole.tee
     if (!green && !tee) return
-
-    // Bearing from tee → green so that direction points "up" on screen
     const bearing = tee && green ? calcBearing(tee, green) : 0
-
-    // Center on midpoint so both tee and green are visible
-    const center = tee && green
-      ? { lat: (tee.lat + green.lat) / 2, lng: (tee.lng + green.lng) / 2 }
-      : (green ?? tee!)
-
-    // Scale zoom to hole length: longer holes need a wider view
-    const yds = tee && green ? haversineYards(tee, green) : 200
-    const zoom = yds > 450 ? 16 : yds > 300 ? 16.5 : yds > 150 ? 17 : 17.5
-
-    mapRef.current?.flyTo({
-      center: [center.lng, center.lat],
-      zoom,
-      bearing,
-      pitch: 0,
-      duration: 800,
-    })
+    const center  = tee && green ? { lat: (tee.lat + green.lat) / 2, lng: (tee.lng + green.lng) / 2 } : (green ?? tee!)
+    const yds     = tee && green ? haversineYards(tee, green) : 200
+    const zoom    = yds > 450 ? 16 : yds > 300 ? 16.5 : yds > 150 ? 17 : 17.5
+    mapRef.current?.flyTo({ center: [center.lng, center.lat], zoom, bearing, pitch: 0, duration: 800 })
   }, [])
 
   const [mapLoaded, setMapLoaded] = useState(false)
   const initialFlyDone = useRef(false)
 
-  // Wait until BOTH map style is loaded AND course data is ready, then fly once.
-  // flyTo is silently ignored by Mapbox before the style finishes loading, so we
-  // must gate on mapLoaded rather than just waiting for course data.
   useEffect(() => {
     if (!mapLoaded || !currentHole || initialFlyDone.current) return
     initialFlyDone.current = true
     flyToHole(currentHole)
   }, [mapLoaded, currentHole, flyToHole])
 
-  // Fly on subsequent hole-strip taps (map is already loaded by this point)
   useEffect(() => {
     if (!initialFlyDone.current || !currentHole) return
     flyToHole(currentHole)
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset tip state when switching holes
   useEffect(() => { setTipOpen(false) }, [selectedHole])
 
-  // Pre-set tap point to the hole's designated landing zone (or clear it)
   useEffect(() => {
-    const hole = course?.holes.find(h => h.hole === selectedHole)
-    setTapPoint(hole?.landingZone ?? null)
+    setTapPoint(course?.holes.find(h => h.hole === selectedHole)?.landingZone ?? null)
   }, [selectedHole, course])
 
-  // Prevent iOS Safari pull-to-refresh on this fixed-layout page.
-  // The canvas carve-out was the bug: downward drags on the Mapbox canvas
-  // were passed through, letting iOS intercept them as a refresh gesture.
-  // Calling preventDefault() here does NOT block Mapbox panning — Mapbox's
-  // own touchmove listener on the canvas fires independently of this one.
+  // Prevent iOS pull-to-refresh on the map
   useEffect(() => {
     let startY = 0
     const onStart = (e: TouchEvent) => { startY = e.touches[0]?.clientY ?? 0 }
     const onMove  = (e: TouchEvent) => {
       if (!e.cancelable) return
-      if ((e.touches[0]?.clientY ?? 0) > startY) e.preventDefault() // block pull-to-refresh everywhere
+      if ((e.touches[0]?.clientY ?? 0) > startY) e.preventDefault()
     }
     document.addEventListener('touchstart', onStart, { passive: true })
     document.addEventListener('touchmove',  onMove,  { passive: false })
-    return () => {
-      document.removeEventListener('touchstart', onStart)
-      document.removeEventListener('touchmove',  onMove)
-    }
+    return () => { document.removeEventListener('touchstart', onStart); document.removeEventListener('touchmove', onMove) }
   }, [])
 
   const handleMapClick = (e: MapMouseEvent) => {
@@ -495,63 +453,67 @@ export default function GpsPage() {
     setSelectedCartPlayerId(null)
   }
 
+  // ── Distances ─────────────────────────────────────────────────────────────
+
   const frontDist      = dist(position, currentHole?.green.front)
   const centerDist     = dist(position, currentHole?.green.center)
   const backDist       = dist(position, currentHole?.green.back)
   const tapDist        = dist(position, tapPoint)
   const tapToGreenDist = dist(tapPoint, currentHole?.green.center)
 
-  const aimLineMid = position && tapPoint
-    ? { lat: (position.lat + tapPoint.lat) / 2, lng: (position.lng + tapPoint.lng) / 2 }
-    : null
+  const aimLineMid    = position && tapPoint
+    ? { lat: (position.lat + tapPoint.lat) / 2, lng: (position.lng + tapPoint.lng) / 2 } : null
   const tapToGreenMid = tapPoint && currentHole?.green.center
-    ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 }
-    : null
+    ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
 
-  // ── No token configured ─────────────────────────────────────────────────
+  // ── Early-exit renders ────────────────────────────────────────────────────
+
   if (!TOKEN) return (
     <div style={{ padding: 32, textAlign: 'center' }}>
       <div style={{ fontSize: 36, marginBottom: 12 }}>🗺️</div>
       <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#D4A53A', letterSpacing: 3 }}>Mapbox Not Configured</h2>
       <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-        Add your Mapbox public token to <code style={{ color: '#D4A53A' }}>VITE_MAPBOX_TOKEN</code> in your <code style={{ color: '#D4A53A' }}>.env.local</code> file.
+        Add <code style={{ color: '#D4A53A' }}>VITE_MAPBOX_TOKEN</code> to your <code style={{ color: '#D4A53A' }}>.env.local</code>.
       </p>
     </div>
   )
 
-  // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300 }}>
       <div className="animate-spin" style={{ width: 32, height: 32, border: '2.5px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
     </div>
   )
 
-  // ── No course set up ─────────────────────────────────────────────────────
   if (!course) return (
     <div style={{ padding: 32, textAlign: 'center' }}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>⛳</div>
       <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#D4A53A', letterSpacing: 3 }}>GPS Not Set Up</h2>
       <p style={{ color: 'var(--tx3)', marginTop: 8, fontSize: 13, lineHeight: 1.6 }}>
-        An admin needs to set up the course GPS in the Admin panel before distances will show here.
+        An admin needs to configure the course GPS before distances appear here.
       </p>
     </div>
   )
 
   const holeHasData = (h: number) => course.holes.some(hd => hd.hole === h && hd.green.center)
 
+  // Improvement 3: FAB/overlays sit above the floating glass HUD.
+  // HUD ≈ 140px (distance panel) + 70px (stats strip when team present)
+  const hasStats     = !!scoring.myTeam
+  const aboveHud     = hasStats ? '240px' : '168px'
+  const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + ${hasStats ? 166 : 96}px)`
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    // Full-screen layout: escape Layout's padding via fixed positioning
     <div style={{
       position: 'fixed', top: 56, left: 0, right: 0,
       bottom: 'env(safe-area-inset-bottom, 0px)',
       display: 'flex', flexDirection: 'column',
-      zIndex: 20, background: 'var(--bg)',
-      overscrollBehavior: 'none',
+      zIndex: 20, background: 'var(--bg)', overscrollBehavior: 'none',
     }}>
       {/* Hole selector strip */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', gap: 6 }}>
-          {/* Back to scores */}
           <button onClick={() => navigate('/scores')} style={{
             padding: '4px 8px', background: 'none', border: 'none',
             color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
@@ -559,8 +521,7 @@ export default function GpsPage() {
           }}>
             <X size={16} />
           </button>
-          <button onClick={() => setSelectedHole(h => Math.max(1, h - 1))}
-            disabled={selectedHole === 1}
+          <button onClick={() => setSelectedHole(h => Math.max(1, h - 1))} disabled={selectedHole === 1}
             style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 1 ? 0.3 : 1 }}>
             <ChevronLeft size={18} />
           </button>
@@ -568,8 +529,7 @@ export default function GpsPage() {
           <div style={{ flex: 1, overflowX: 'auto', scrollbarWidth: 'none' }}>
             <div style={{ display: 'flex', gap: 4, paddingBottom: 4 }}>
               {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
-                const active = selectedHole === hole
-                const hasData = holeHasData(hole)
+                const active = selectedHole === hole, hasData = holeHasData(hole)
                 return (
                   <button key={hole} onClick={() => setSelectedHole(hole)} style={{
                     minWidth: 36, height: 44, borderRadius: 9, flexShrink: 0,
@@ -589,15 +549,14 @@ export default function GpsPage() {
             </div>
           </div>
 
-          <button onClick={() => setSelectedHole(h => Math.min(18, h + 1))}
-            disabled={selectedHole === 18}
+          <button onClick={() => setSelectedHole(h => Math.min(18, h + 1))} disabled={selectedHole === 18}
             style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 18 ? 0.3 : 1 }}>
             <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
-      {/* Map */}
+      {/* Improvement 3: Map fills entire remaining space; HUD floats over the bottom */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         <Map
           ref={mapRef}
@@ -611,79 +570,63 @@ export default function GpsPage() {
         >
           <NavigationControl position="top-right" showCompass={false} />
 
-          {/* Fairway / hole corridor */}
+          {/* Fairway corridor */}
           {corridorGeoJson && (
             <Source id="corridor" type="geojson" data={corridorGeoJson}>
-              <Layer id="corridor-fill" type="fill"
-                paint={{ 'fill-color': 'rgba(255,255,255,0.05)' }} />
+              <Layer id="corridor-fill" type="fill" paint={{ 'fill-color': 'rgba(255,255,255,0.05)' }} />
               <Layer id="corridor-outline" type="line"
                 paint={{ 'line-color': 'rgba(255,255,255,0.40)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
             </Source>
           )}
 
-          {/* Bunkers — sand fills */}
+          {/* Bunkers */}
           {bunkersGeoJson && (
             <Source id="bunkers" type="geojson" data={bunkersGeoJson}>
-              <Layer id="bunkers-fill" type="fill"
-                paint={{ 'fill-color': '#D4B483', 'fill-opacity': 0.80 }} />
-              <Layer id="bunkers-outline" type="line"
-                paint={{ 'line-color': '#A0845C', 'line-width': 1.5 }} />
+              <Layer id="bunkers-fill" type="fill" paint={{ 'fill-color': '#D4B483', 'fill-opacity': 0.80 }} />
+              <Layer id="bunkers-outline" type="line" paint={{ 'line-color': '#A0845C', 'line-width': 1.5 }} />
             </Source>
           )}
 
-          {/* Bunker distance labels — sand-coloured pill at each bunker centroid */}
+          {/* Bunker distance labels */}
           {bunkerLabels.map(b => (
             <Marker key={`bunk-dist-${b.idx}`} longitude={b.centroid.lng} latitude={b.centroid.lat} anchor="center">
               <div style={{
-                background: 'rgba(212,180,131,0.92)',
-                backdropFilter: 'blur(4px)',
-                color: '#2a1400',
-                borderRadius: 5,
-                padding: '2px 6px',
-                fontSize: 11,
-                fontWeight: 700,
-                fontFamily: 'Inter, sans-serif',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.55)',
-                border: '1px solid #A0845C',
-                whiteSpace: 'nowrap',
-                pointerEvents: 'none',
-              }}>
-                {b.yards}
-              </div>
+                background: 'rgba(212,180,131,0.92)', backdropFilter: 'blur(4px)',
+                color: '#2a1400', borderRadius: 5, padding: '2px 6px',
+                fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.55)', border: '1px solid #A0845C',
+                whiteSpace: 'nowrap', pointerEvents: 'none',
+              }}>{b.yards}</div>
             </Marker>
           ))}
 
           {/* Water hazards */}
           {waterGeoJson && (
             <Source id="water-hazards" type="geojson" data={waterGeoJson}>
-              <Layer id="water-fill" type="fill"
-                paint={{ 'fill-color': 'rgba(59,130,246,0.55)' }} />
-              <Layer id="water-outline" type="line"
-                paint={{ 'line-color': 'rgba(37,99,235,0.85)', 'line-width': 1.5 }} />
+              <Layer id="water-fill" type="fill" paint={{ 'fill-color': 'rgba(59,130,246,0.55)' }} />
+              <Layer id="water-outline" type="line" paint={{ 'line-color': 'rgba(37,99,235,0.85)', 'line-width': 1.5 }} />
             </Source>
           )}
 
-          {/* Avoid zones — red danger overlays */}
+          {/* Avoid zones */}
           {avoidZonesGeoJson && (
             <Source id="avoid-zones" type="geojson" data={avoidZonesGeoJson}>
-              <Layer id="avoid-zones-fill" type="fill"
-                paint={{ 'fill-color': 'rgba(239,68,68,0.22)' }} />
+              <Layer id="avoid-zones-fill" type="fill" paint={{ 'fill-color': 'rgba(239,68,68,0.22)' }} />
               <Layer id="avoid-zones-outline" type="line"
                 paint={{ 'line-color': 'rgba(239,68,68,0.75)', 'line-width': 1.5, 'line-dasharray': [4, 3] }} />
             </Source>
           )}
 
-          {/* Landing zone — green glow circle */}
+          {/* Landing zone */}
           {landingZoneGeoJson && (
             <Source id="landing-zone" type="geojson" data={landingZoneGeoJson}>
-              <Layer id="landing-zone-fill" type="fill"
-                paint={{ 'fill-color': 'rgba(74,222,128,0.18)' }} />
+              <Layer id="landing-zone-fill" type="fill" paint={{ 'fill-color': 'rgba(74,222,128,0.18)' }} />
               <Layer id="landing-zone-outline" type="line"
                 paint={{ 'line-color': 'rgba(74,222,128,0.80)', 'line-width': 2, 'line-dasharray': [6, 3] }} />
             </Source>
           )}
 
-          {/* Aim line: Player → Tap point — neon white glow */}
+          {/* Aim line: Player → Tap */}
           {aimLineGeoJson && (
             <Source id="aimline" type="geojson" data={aimLineGeoJson}>
               <Layer id="aimline-glow-outer" type="line"
@@ -695,7 +638,7 @@ export default function GpsPage() {
             </Source>
           )}
 
-          {/* Tap-to-green line: Tap point → Green center — neon gold glow */}
+          {/* Tap-to-green line: Tap → Green */}
           {tapToGreenGeoJson && (
             <Source id="tap-to-green" type="geojson" data={tapToGreenGeoJson}>
               <Layer id="tap-to-green-glow-outer" type="line"
@@ -707,25 +650,17 @@ export default function GpsPage() {
             </Source>
           )}
 
-          {/* Player position */}
+          {/* Player position — Improvement 4: directional arrow */}
           {position && (
             <Marker longitude={position.lng} latitude={position.lat} anchor="center">
-              <PlayerDot />
+              <PlayerDot bearing={playerBearing} />
             </Marker>
           )}
 
-          {/* Green center marker — flag destination for the gold line */}
+          {/* Improvement 2: Flag pin at green center */}
           {currentHole?.green.center && (
-            <Marker longitude={currentHole.green.center.lng} latitude={currentHole.green.center.lat} anchor="center">
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%',
-                background: 'rgba(212,165,58,0.25)',
-                border: '2.5px solid #D4A53A',
-                boxShadow: '0 0 12px rgba(212,165,58,0.45), 0 2px 6px rgba(0,0,0,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#D4A53A' }} />
-              </div>
+            <Marker longitude={currentHole.green.center.lng} latitude={currentHole.green.center.lat} anchor="bottom">
+              <FlagPin />
             </Marker>
           )}
 
@@ -736,7 +671,7 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Landing zone center marker */}
+          {/* Landing zone center */}
           {currentHole?.landingZone && (
             <Marker longitude={currentHole.landingZone.lng} latitude={currentHole.landingZone.lat} anchor="center">
               <div style={{
@@ -747,73 +682,55 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Tap-to-measure point — crosshair ring */}
+          {/* Improvement 1: sniper reticle tap marker */}
           {tapPoint && (
             <Marker longitude={tapPoint.lng} latitude={tapPoint.lat} anchor="center">
-              <div style={{ position: 'relative', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {/* Outer ring */}
-                <div style={{
-                  position: 'absolute', width: 28, height: 28, borderRadius: '50%',
-                  border: '2px solid rgba(255,255,255,0.95)',
-                  boxShadow: '0 0 0 1px rgba(0,0,0,0.4), 0 0 10px rgba(255,255,255,0.4)',
-                }} />
-                {/* Center dot */}
-                <div style={{
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: '#ffffff',
-                  boxShadow: '0 0 4px rgba(255,255,255,0.8)',
-                }} />
-              </div>
+              <ReticleMarker />
             </Marker>
           )}
 
-          {/* Aim line distance label — midpoint of player → tap point */}
+          {/* Improvement 5: larger aim line distance label */}
           {aimLineMid && tapDist !== null && (
             <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
               <div style={{
-                background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(8px)',
-                color: '#ffffff', borderRadius: 20, padding: '3px 10px',
-                display: 'flex', alignItems: 'baseline', gap: 3,
+                background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
+                color: '#ffffff', borderRadius: 22, padding: '4px 13px',
+                display: 'flex', alignItems: 'baseline', gap: 4,
                 border: '1px solid rgba(255,255,255,0.22)',
-                boxShadow: '0 0 12px rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.6)',
+                boxShadow: '0 0 16px rgba(255,255,255,0.12), 0 2px 10px rgba(0,0,0,0.65)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, letterSpacing: 0.5, lineHeight: 1 }}>{tapDist}</span>
-                <span style={{ fontSize: 9, opacity: 0.6, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 0.5, lineHeight: 1 }}>{tapDist}</span>
+                <span style={{ fontSize: 10, opacity: 0.55, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
               </div>
             </Marker>
           )}
 
-          {/* Tap-to-green distance label — midpoint of tap point → green center */}
+          {/* Improvement 5: larger tap-to-green label — the "money" number */}
           {tapToGreenMid && tapToGreenDist !== null && (
             <Marker longitude={tapToGreenMid.lng} latitude={tapToGreenMid.lat} anchor="center">
               <div style={{
-                background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(8px)',
-                color: '#D4A53A', borderRadius: 20, padding: '3px 10px',
-                display: 'flex', alignItems: 'baseline', gap: 3,
-                border: '1px solid rgba(212,165,58,0.30)',
-                boxShadow: '0 0 12px rgba(212,165,58,0.15), 0 2px 8px rgba(0,0,0,0.6)',
+                background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
+                color: '#D4A53A', borderRadius: 22, padding: '5px 15px',
+                display: 'flex', alignItems: 'baseline', gap: 4,
+                border: '1px solid rgba(212,165,58,0.38)',
+                boxShadow: '0 0 20px rgba(212,165,58,0.22), 0 2px 10px rgba(0,0,0,0.65)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, letterSpacing: 0.5, lineHeight: 1 }}>{tapToGreenDist}</span>
-                <span style={{ fontSize: 9, opacity: 0.6, fontWeight: 600, letterSpacing: 0.5, color: '#D4A53A' }}>YDS</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 34, letterSpacing: 0.5, lineHeight: 1, color: '#D4A53A' }}>{tapToGreenDist}</span>
+                <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 600, letterSpacing: 0.5, color: '#D4A53A' }}>YDS</span>
               </div>
             </Marker>
           )}
 
-          {/* Other players — gold cart emoji markers */}
+          {/* Other players — gold cart markers */}
           {activeOtherPositions.map(p => (
             <Marker key={p.player_id} longitude={p.lng} latitude={p.lat} anchor="bottom">
               <button
                 onClick={e => { e.stopPropagation(); setSelectedCartPlayerId(p.player_id) }}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  fontSize: 24, lineHeight: 1,
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
-                }}
-              >
-                🛒
-              </button>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: 24, lineHeight: 1, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}
+              >🛒</button>
             </Marker>
           ))}
         </Map>
@@ -824,8 +741,7 @@ export default function GpsPage() {
             position: 'absolute', top: 8, left: 8,
             background: gpsStatus === 'acquiring' ? 'rgba(0,0,0,0.72)' : 'rgba(239,68,68,0.88)',
             color: 'white', padding: '5px 12px', borderRadius: 10,
-            fontSize: 12, fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
           }}>
             <Navigation size={12} />
             {gpsStatus === 'acquiring' ? 'Acquiring GPS…' : gpsStatus === 'denied' ? 'GPS permission denied' : 'GPS unavailable'}
@@ -838,7 +754,6 @@ export default function GpsPage() {
             position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
             color: 'white', padding: '6px 14px 6px 10px', borderRadius: 24,
-            fontSize: 14, fontWeight: 700,
             display: 'flex', alignItems: 'center', gap: 8,
             border: '1px solid rgba(255,255,255,0.12)',
           }}>
@@ -853,10 +768,10 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Tap hint — only show when no tap yet and no tip card */}
+        {/* Tap hint */}
         {!tapPoint && position && !currentHole?.tip && (
           <div style={{
-            position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', bottom: aboveHud, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(10,10,15,0.7)', color: 'rgba(255,255,255,0.6)',
             padding: '4px 12px', borderRadius: 20, fontSize: 11,
             whiteSpace: 'nowrap', pointerEvents: 'none',
@@ -868,25 +783,18 @@ export default function GpsPage() {
         {/* Hole tip card */}
         {currentHole?.tip && (
           <div style={{
-            position: 'absolute', bottom: 8, left: 8, right: 8,
+            position: 'absolute', bottom: aboveHud, left: 8, right: 8,
             background: 'rgba(8,8,12,0.88)', backdropFilter: 'blur(10px)',
             borderRadius: 12, padding: '9px 12px',
             border: '1px solid rgba(212,165,58,0.28)',
           }}>
-            <button
-              onClick={() => setTipOpen(v => !v)}
-              style={{
-                width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left',
-              }}
-            >
+            <button onClick={() => setTipOpen(v => !v)} style={{
+              width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left',
+            }}>
               <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.4 }}>💡</span>
               <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.82)', lineHeight: 1.5, flex: 1 }}>
-                {tipOpen
-                  ? currentHole.tip
-                  : currentHole.tip.length > 100
-                    ? currentHole.tip.slice(0, 97) + '…'
-                    : currentHole.tip}
+                {tipOpen ? currentHole.tip : currentHole.tip.length > 100 ? currentHole.tip.slice(0, 97) + '…' : currentHole.tip}
               </span>
               <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0, paddingTop: 3 }}>
                 {tipOpen ? '▲' : '▼'}
@@ -895,89 +803,60 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Recenter button — flies back to the current hole's framed view */}
+        {/* Recenter — above floating HUD */}
         {currentHole && (
-          <button
-            onClick={() => flyToHole(currentHole)}
-            style={{
-              position: 'absolute', bottom: 16, left: 16,
-              zIndex: 10,
-              background: 'rgba(8,8,12,0.80)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: 'white',
-              borderRadius: 12,
-              padding: '10px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 6,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-              cursor: 'pointer',
-            }}
-          >
+          <button onClick={() => flyToHole(currentHole)} style={{
+            position: 'absolute', bottom: aboveHudCalc, left: 16,
+            zIndex: 10,
+            background: 'rgba(8,8,12,0.80)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.15)', color: 'white',
+            borderRadius: 12, padding: '10px 14px', fontSize: 13, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.5)', cursor: 'pointer',
+          }}>
             <Target size={14} color="#D4A53A" />
             Hole
           </button>
         )}
 
-        {/* Enter Score FAB — shown to any logged-in user */}
+        {/* Enter Score FAB — above floating HUD */}
         {profile && (
-          <button
-            onClick={() => setSheetOpen(true)}
-            style={{
-              position: 'absolute', bottom: 16, right: 16,
-              zIndex: 10,
-              background: 'rgba(212,165,58,0.92)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#000',
-              borderRadius: 14,
-              padding: '12px 20px',
-              fontSize: 15,
-              fontWeight: 800,
-              letterSpacing: 0.5,
-              boxShadow: '0 4px 20px rgba(212,165,58,0.4)',
-              cursor: 'pointer',
-            }}
-          >
+          <button onClick={() => setSheetOpen(true)} style={{
+            position: 'absolute', bottom: aboveHudCalc, right: 16,
+            zIndex: 10,
+            background: 'rgba(212,165,58,0.92)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.15)', color: '#000',
+            borderRadius: 14, padding: '12px 20px', fontSize: 15, fontWeight: 800, letterSpacing: 0.5,
+            boxShadow: '0 4px 20px rgba(212,165,58,0.4)', cursor: 'pointer',
+          }}>
             ⛳ Enter Score
           </button>
         )}
 
-        {/* Cart player info popup — shown when a cart marker is tapped */}
+        {/* Cart player popup */}
         {(() => {
           if (!selectedCartPlayerId) return null
           const pos = activeOtherPositions.find(p => p.player_id === selectedCartPlayerId)
           if (!pos) return null
-          const player = localProfiles.find(p => p.id === selectedCartPlayerId)
-          const team = pos.team_id ? localTeams.find(t => t.id === pos.team_id) : null
-          const toPar = pos.team_id ? scoreToPar(pos.team_id, localScores) : null
-          const toParStr = toPar == null ? '—' : toPar > 0 ? `+${toPar}` : toPar === 0 ? 'E' : `${toPar}`
+          const player  = localProfiles.find(p => p.id === selectedCartPlayerId)
+          const team    = pos.team_id ? localTeams.find(t => t.id === pos.team_id) : null
+          const toPar   = pos.team_id ? scoreToPar(pos.team_id, localScores) : null
+          const toParStr   = toPar == null ? '—' : toPar > 0 ? `+${toPar}` : toPar === 0 ? 'E' : `${toPar}`
           const toParColor = toPar == null ? 'var(--tx3)' : toPar < 0 ? '#22c55e' : toPar > 0 ? '#ef4444' : '#D4A53A'
           return (
-            <div
-              onClick={() => setSelectedCartPlayerId(null)}
-              style={{
-                position: 'absolute', bottom: 70, left: '50%', transform: 'translateX(-50%)',
-                background: 'rgba(8,8,12,0.92)', backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(212,165,58,0.35)',
-                borderRadius: 14, padding: '14px 22px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                cursor: 'pointer', zIndex: 10, minWidth: 170,
-                boxShadow: '0 4px 24px rgba(0,0,0,0.7)',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <div onClick={() => setSelectedCartPlayerId(null)} style={{
+              position: 'absolute', bottom: `calc(${aboveHudCalc} + 56px)`, left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(8,8,12,0.92)', backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(212,165,58,0.35)', borderRadius: 14, padding: '14px 22px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              cursor: 'pointer', zIndex: 10, minWidth: 170,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.7)', whiteSpace: 'nowrap',
+            }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)' }}>
                 🛒 {player ? (player.nickname?.trim() || player.name || 'Player') : 'Player'}
               </div>
-              {team && (
-                <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{team.name}</div>
-              )}
-              <div style={{
-                fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 1, lineHeight: 1.1,
-                color: toParColor,
-              }}>
+              {team && <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{team.name}</div>}
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 1, lineHeight: 1.1, color: toParColor }}>
                 {toParStr}
               </div>
               <div style={{ fontSize: 10, color: 'var(--tx4)', marginTop: 2 }}>
@@ -986,91 +865,94 @@ export default function GpsPage() {
             </div>
           )
         })()}
-      </div>
 
-      {/* Round stats strip — drives + chulligans */}
-      {scoring.myTeam && (() => {
-        const p1 = scoring.myTeam!.player1
-        const p2 = scoring.myTeam!.player2
-        const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
-        if (players.length === 0) return null
-        return (
+        {/* Improvement 3: Floating glass HUD — stats strip + distance readout over the map */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}>
+
+          {/* Stats strip (drives + chulligans) */}
+          {scoring.myTeam && (() => {
+            const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
+            const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
+            if (players.length === 0) return null
+            return (
+              <div style={{
+                pointerEvents: 'all',
+                background: 'rgba(8,8,12,0.72)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                {players.map((player, idx) => {
+                  const f9 = scoring.countDrives(player.id, 1, 9)
+                  const b9 = scoring.countDrives(player.id, 10, 18)
+                  const chulligan = scoring.myChulligans.find(c => c.player_id === player.id)
+                  return (
+                    <>
+                      {idx > 0 && <div key={`div-${player.id}`} style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)' }} />}
+                      <div key={player.id} style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {displayName(player)}
+                          </span>
+                          <div style={{
+                            fontSize: 12, padding: '2px 8px', borderRadius: 8, flexShrink: 0, marginLeft: 8,
+                            background: chulligan ? 'rgba(212,165,58,0.15)' : 'rgba(255,255,255,0.05)',
+                            color: chulligan ? '#D4A53A' : 'var(--tx4)',
+                            border: `1px solid ${chulligan ? 'rgba(212,165,58,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                          }}>
+                            {chulligan ? `🍺 H${chulligan.hole}` : '🍺 —'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16 }}>F9</span>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <div key={i} style={{
+                                width: 9, height: 9, borderRadius: '50%',
+                                background: i < f9 ? '#D4A53A' : 'rgba(255,255,255,0.12)',
+                                boxShadow: i < f9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
+                              }} />
+                            ))}
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16, marginLeft: 4 }}>B9</span>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <div key={i} style={{
+                                width: 9, height: 9, borderRadius: '50%',
+                                background: i < b9 ? '#D4A53A' : 'rgba(255,255,255,0.12)',
+                                boxShadow: i < b9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
+                              }} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {/* Distance readout — glass panel with larger numbers */}
           <div style={{
-            background: 'var(--panel)', borderTop: '1px solid var(--bdr)',
-            padding: '10px 14px', flexShrink: 0,
-            display: 'flex', alignItems: 'center', gap: 10,
+            pointerEvents: 'all',
+            background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            padding: '14px 8px',
+            paddingBottom: 'max(14px, calc(env(safe-area-inset-bottom, 0px) + 60px))',
+            display: 'flex', alignItems: 'center',
           }}>
-            {players.map((player, idx) => {
-              const f9 = scoring.countDrives(player.id, 1, 9)
-              const b9 = scoring.countDrives(player.id, 10, 18)
-              const chulligan = scoring.myChulligans.find(c => c.player_id === player.id)
-              return (
-                <>
-                  {idx > 0 && <div key={`div-${player.id}`} style={{ width: 1, alignSelf: 'stretch', background: 'var(--bdr)' }} />}
-                  <div key={player.id} style={{ flex: 1, minWidth: 0 }}>
-                    {/* Name + chulligan */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {displayName(player)}
-                      </span>
-                      <div style={{
-                        fontSize: 12, padding: '2px 8px', borderRadius: 8, flexShrink: 0, marginLeft: 8,
-                        background: chulligan ? 'rgba(212,165,58,0.15)' : 'rgba(255,255,255,0.05)',
-                        color: chulligan ? '#D4A53A' : 'var(--tx4)',
-                        border: `1px solid ${chulligan ? 'rgba(212,165,58,0.3)' : 'var(--bdr)'}`,
-                      }}>
-                        {chulligan ? `🍺 H${chulligan.hole}` : '🍺 —'}
-                      </div>
-                    </div>
-                    {/* Drive dots */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16 }}>F9</span>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <div key={i} style={{
-                            width: 9, height: 9, borderRadius: '50%',
-                            background: i < f9 ? '#D4A53A' : 'var(--surf3)',
-                            boxShadow: i < f9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
-                          }} />
-                        ))}
-                      </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', width: 16, marginLeft: 4 }}>B9</span>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <div key={i} style={{
-                            width: 9, height: 9, borderRadius: '50%',
-                            background: i < b9 ? '#D4A53A' : 'var(--surf3)',
-                            boxShadow: i < b9 ? '0 0 5px rgba(212,165,58,0.55)' : 'none',
-                          }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )
-            })}
+            <YardagePanel label="Front"  yards={frontDist}  color="#22c55e" />
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
+            <YardagePanel label="Center" yards={centerDist} color="#D4A53A" />
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
+            <YardagePanel label="Back"   yards={backDist}   color="#dc2626" />
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 3 }}>Hole</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 42, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+              <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>of 18</div>
+            </div>
           </div>
-        )
-      })()}
-
-      {/* Distance readout panel */}
-      <div style={{
-        background: 'var(--panel)', borderTop: '1px solid var(--bdr)',
-        padding: '14px 8px 14px',
-        display: 'flex', alignItems: 'center',
-        flexShrink: 0,
-        paddingBottom: 'max(14px, calc(env(safe-area-inset-bottom, 0px) + 60px))',
-      }}>
-        <YardagePanel label="Front"  yards={frontDist}  color="#22c55e" />
-        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bdr)', margin: '0 4px' }} />
-        <YardagePanel label="Center" yards={centerDist} color="#D4A53A" />
-        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bdr)', margin: '0 4px' }} />
-        <YardagePanel label="Back"   yards={backDist}   color="#dc2626" />
-        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bdr)', margin: '0 4px' }} />
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 3 }}>Hole</div>
-          <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-          <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>of 18</div>
         </div>
       </div>
 
