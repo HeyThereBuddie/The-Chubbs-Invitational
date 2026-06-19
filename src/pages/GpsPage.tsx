@@ -876,7 +876,7 @@ export default function GpsPage() {
 
         {/* Yardage stack — bottom left */}
         <div style={{
-          position: 'absolute', bottom: navBase, left: 12, zIndex: 10,
+          position: 'absolute', bottom: navBase, left: 14, zIndex: 10,
           display: 'flex', flexDirection: 'column', gap: 5,
         }}>
           {[
@@ -887,13 +887,13 @@ export default function GpsPage() {
             const display = yards !== null && yards <= 9999 ? yards : '—'
             return (
               <div key={label} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
+                display: 'flex', alignItems: 'center', gap: 12,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: '9px 16px', minWidth: 120,
+                padding: '11px 20px', minWidth: 136,
               }}>
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 36, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 34 }}>{label}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 42, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
               </div>
             )
           })}
@@ -914,9 +914,9 @@ export default function GpsPage() {
           </button>
         )}
 
-        {/* Bottom-right: chulligans box + drives box + recenter */}
+        {/* Bottom-right: chulligans box + drives box */}
         <div style={{
-          position: 'absolute', bottom: navBase, right: 12, zIndex: 10,
+          position: 'absolute', bottom: navBase, right: 14, zIndex: 10,
           display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end',
         }}>
           {scoring.myTeam && (() => {
@@ -926,16 +926,16 @@ export default function GpsPage() {
 
             const panelStyle: React.CSSProperties = {
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-              padding: '8px 12px', minWidth: 148,
+              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
+              padding: '6px 10px', minWidth: 124,
             }
             const headerStyle: React.CSSProperties = {
-              fontSize: 9, fontWeight: 700, letterSpacing: 1.8,
-              color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 7,
+              fontSize: 8, fontWeight: 700, letterSpacing: 1.6,
+              color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 5,
             }
             const nameStyle: React.CSSProperties = {
-              fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.75)',
-              width: 54, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.75)',
+              width: 44, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }
 
             return (
@@ -947,7 +947,7 @@ export default function GpsPage() {
                     const ch = scoring.myChulligans.find(c => c.player_id === player.id)
                     const firstName = displayName(player).split(' ')[0]
                     return (
-                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                         <span style={nameStyle}>{firstName}</span>
                         {/* Beer mug: full = available; tappable faded = used (tap to undo) */}
                         <button
@@ -959,7 +959,7 @@ export default function GpsPage() {
                           title={ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
                         >
                           <span style={{
-                            fontSize: 18, lineHeight: 1,
+                            fontSize: 16, lineHeight: 1,
                             opacity: ch ? 0.28 : 1,
                             filter: ch ? 'grayscale(1)' : 'none',
                             transition: 'opacity 0.3s, filter 0.3s',
@@ -968,18 +968,18 @@ export default function GpsPage() {
                             /* Used: red badge with hole number — tap the whole button to undo */
                             <span style={{
                               position: 'absolute', top: -5, right: -8,
-                              fontSize: 8, fontWeight: 800, lineHeight: 1,
+                              fontSize: 7, fontWeight: 800, lineHeight: 1,
                               background: '#ef4444', color: 'white',
-                              borderRadius: 5, padding: '1px 3px',
+                              borderRadius: 4, padding: '1px 3px',
                               letterSpacing: 0.3,
                             }}>H{ch.hole}</span>
                           ) : (
                             /* Available: green dot */
                             <span style={{
-                              position: 'absolute', top: -3, right: -5,
-                              width: 6, height: 6, borderRadius: '50%',
+                              position: 'absolute', top: -2, right: -4,
+                              width: 5, height: 5, borderRadius: '50%',
                               background: '#22c55e',
-                              boxShadow: '0 0 5px rgba(34,197,94,0.8)',
+                              boxShadow: '0 0 4px rgba(34,197,94,0.8)',
                             }} />
                           )}
                         </button>
@@ -995,14 +995,14 @@ export default function GpsPage() {
                     const drivesUsed = scoring.countDrives(player.id, 1, 18)
                     const firstName = displayName(player).split(' ')[0]
                     return (
-                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                         <span style={nameStyle}>{firstName}</span>
-                        <div style={{ display: 'flex', gap: 5 }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
                           {Array.from({ length: 5 }, (_, i) => (
                             <div key={i} style={{
-                              width: 10, height: 10, borderRadius: '50%',
+                              width: 8, height: 8, borderRadius: '50%',
                               background: i < drivesUsed ? '#D4A53A' : 'rgba(255,255,255,0.12)',
-                              boxShadow: i < drivesUsed ? '0 0 6px rgba(212,165,58,0.75)' : 'none',
+                              boxShadow: i < drivesUsed ? '0 0 5px rgba(212,165,58,0.75)' : 'none',
                               border: i < drivesUsed ? 'none' : '1px solid rgba(255,255,255,0.22)',
                               transition: 'background 0.25s, box-shadow 0.25s',
                             }} />
