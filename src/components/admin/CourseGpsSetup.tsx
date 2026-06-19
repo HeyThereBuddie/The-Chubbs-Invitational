@@ -28,6 +28,8 @@ function kmBetween(lat1: number, lng1: number, lat2: number, lng2: number): numb
 }
 
 type PinMode = 'tee' | 'front' | 'center' | 'back'
+type DrawType = 'fairway' | 'bunker' | 'water'
+type EditTarget = { type: DrawType; index: number }
 
 // Pin placement order: tee first, then front/center/back green pins
 const MODES: PinMode[] = ['tee', 'front', 'center', 'back']
@@ -38,6 +40,8 @@ const PIN_META: Record<PinMode, { label: string; short: string; color: string; d
   center: { label: 'Center', short: 'C', color: '#D4A53A', desc: 'Middle of green' },
   back:   { label: 'Back',   short: 'B', color: '#dc2626', desc: 'Back edge' },
 }
+
+const DRAW_COLORS: Record<DrawType, string> = { fairway: '#22c55e', bunker: '#C4985A', water: '#3b82f6' }
 
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -461,6 +465,9 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const [saving, setSaving]         = useState(false)
   const [importingOsm, setImportingOsm] = useState(false)
   const [tracingAi,    setTracingAi]    = useState(false)
+  const [drawType,   setDrawType]   = useState<DrawType | null>(null)
+  const [draftPts,   setDraftPts]   = useState<LatLng[]>([])
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
   const [viewState, setViewState]   = useState({
     longitude: currentGps?.lng ?? -79.0,
     latitude:  currentGps?.lat ?? 43.85,
@@ -874,9 +881,63 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setTracingAi(false)
   }
 
+  // ── Draw helpers ─────────────────────────────────────────────────────────
+  const startDraw = (type: DrawType) => { setEditTarget(null); setDrawType(type); setDraftPts([]) }
+  const cancelDraw = () => { setDrawType(null); setDraftPts([]) }
+
+  const closeDraftPoly = () => {
+    if (draftPts.length < 3) { showToast('Draw at least 3 points first', 'error'); return }
+    const poly = [...draftPts]
+    setHoles(prev => prev.map(h => {
+      if (h.hole !== editingHole) return h
+      if (drawType === 'fairway') return { ...h, fairway: poly }
+      if (drawType === 'bunker')  return { ...h, bunkers: [...(h.bunkers ?? []), poly] }
+      if (drawType === 'water')   return { ...h, water:   [...(h.water   ?? []), poly] }
+      return h
+    }))
+    setDrawType(null); setDraftPts([])
+  }
+
+  const startEdit = (type: DrawType, index: number) => { setDrawType(null); setDraftPts([]); setEditTarget({ type, index }) }
+  const cancelEdit = () => setEditTarget(null)
+
+  const deleteEditTarget = () => {
+    if (!editTarget) return
+    setHoles(prev => prev.map(h => {
+      if (h.hole !== editingHole) return h
+      if (editTarget.type === 'fairway') return { ...h, fairway: null }
+      if (editTarget.type === 'bunker')  return { ...h, bunkers: (h.bunkers ?? []).filter((_, i) => i !== editTarget.index) }
+      return { ...h, water: (h.water ?? []).filter((_, i) => i !== editTarget.index) }
+    }))
+    setEditTarget(null)
+  }
+
+  const updateVertex = useCallback((vi: number, latlng: LatLng) => {
+    if (!editTarget) return
+    setHoles(prev => prev.map(h => {
+      if (h.hole !== editingHole) return h
+      const upd = (poly: LatLng[]) => poly.map((p, j) => j !== vi ? p : latlng)
+      if (editTarget.type === 'fairway') return { ...h, fairway: upd(h.fairway ?? []) }
+      if (editTarget.type === 'bunker')  return { ...h, bunkers: (h.bunkers ?? []).map((poly, i) => i !== editTarget.index ? poly : upd(poly)) }
+      return { ...h, water: (h.water ?? []).map((poly, i) => i !== editTarget.index ? poly : upd(poly)) }
+    }))
+  }, [editTarget, editingHole])
+
+  const clearLayer = (type: DrawType) => {
+    setHoles(prev => prev.map(h => {
+      if (h.hole !== editingHole) return h
+      if (type === 'fairway') return { ...h, fairway: null }
+      if (type === 'bunker')  return { ...h, bunkers: [] }
+      return { ...h, water: [] }
+    }))
+    if (editTarget?.type === type) setEditTarget(null)
+  }
+
   // ── Map click → place pin, then auto-advance ─────────────────────────────
   const handleMapClick = useCallback((e: MapMouseEvent) => {
     const { lat, lng } = e.lngLat
+    if (drawType) { setDraftPts(prev => [...prev, { lat, lng }]); return }
+    if (editTarget) return
     setHoles(prev => prev.map(h => {
       if (h.hole !== editingHole) return h
       switch (pinMode) {
@@ -888,7 +949,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     }))
     const idx = MODES.indexOf(pinMode)
     if (idx < MODES.length - 1) setPinMode(MODES[idx + 1])
-  }, [editingHole, pinMode])
+  }, [editingHole, pinMode, drawType, editTarget])
 
   const jumpToHole = (h: HoleGps) => {
     setEditingHole(h.hole)
@@ -979,6 +1040,35 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     )
     return features.length ? { type: 'FeatureCollection' as const, features } : null
   }, [holes])
+
+  const draftGeoJson = useMemo(() => {
+    if (!drawType || draftPts.length < 2) return null
+    if (draftPts.length >= 3) {
+      const coords = [...draftPts.map(p => [p.lng, p.lat] as [number, number]), [draftPts[0].lng, draftPts[0].lat]]
+      return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+    }
+    return { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: draftPts.map(p => [p.lng, p.lat] as [number, number]) }, properties: {} }
+  }, [drawType, draftPts])
+
+  const editTargetGeoJson = useMemo(() => {
+    if (!editTarget) return null
+    const h = holes.find(x => x.hole === editingHole)
+    let poly: LatLng[] | undefined
+    if (editTarget.type === 'fairway') poly = h?.fairway ?? undefined
+    else if (editTarget.type === 'bunker') poly = h?.bunkers?.[editTarget.index]
+    else poly = h?.water?.[editTarget.index]
+    if (!poly || poly.length < 3) return null
+    const coords = [...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]
+    return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+  }, [editTarget, holes, editingHole])
+
+  const editVertices = useMemo(() => {
+    if (!editTarget) return []
+    const h = holes.find(x => x.hole === editingHole)
+    if (editTarget.type === 'fairway') return h?.fairway ?? []
+    if (editTarget.type === 'bunker') return h?.bunkers?.[editTarget.index] ?? []
+    return h?.water?.[editTarget.index] ?? []
+  }, [editTarget, holes, editingHole])
 
   // ── No token ──────────────────────────────────────────────────────────────
   if (!TOKEN) return (
@@ -1197,6 +1287,98 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             )}
           </div>
 
+          {/* Overlay controls */}
+          <div className="glass" style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 2 }}>
+              Hole {editingHole} Overlays
+            </div>
+            {(['fairway', 'bunker', 'water'] as DrawType[]).map(type => {
+              const color = DRAW_COLORS[type]
+              const label = type === 'fairway' ? 'Fairway' : type === 'bunker' ? 'Bunkers' : 'Water'
+              const polys: LatLng[][] = type === 'fairway'
+                ? (currentH?.fairway ? [currentH.fairway] : [])
+                : type === 'bunker' ? (currentH?.bunkers ?? []) : (currentH?.water ?? [])
+              return (
+                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: type === 'bunker' ? 2 : '50%', background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--tx2)', fontWeight: 600, minWidth: 60 }}>
+                    {label}{polys.length > 0 && type !== 'fairway' ? ` (${polys.length})` : ''}
+                  </span>
+                  {polys.map((_, i) => (
+                    <button key={i} onClick={() => startEdit(type, i)} style={{
+                      padding: '3px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                      background: editTarget?.type === type && editTarget.index === i ? `${color}33` : 'var(--surf2)',
+                      border: `1px solid ${editTarget?.type === type && editTarget.index === i ? color : 'var(--bdr)'}`,
+                      color: editTarget?.type === type && editTarget.index === i ? color : 'var(--tx3)',
+                    }}>
+                      {type === 'fairway' ? 'Edit' : `#${i + 1}`}
+                    </button>
+                  ))}
+                  <button onClick={() => startDraw(type)} disabled={!!(drawType || editTarget)} style={{
+                    padding: '3px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                    background: drawType === type ? `${color}20` : 'var(--surf2)',
+                    border: `1px dashed ${drawType === type ? color : 'var(--bdr)'}`,
+                    color: drawType === type ? color : 'var(--tx3)',
+                    opacity: (drawType && drawType !== type) || editTarget ? 0.4 : 1,
+                  }}>
+                    + Draw
+                  </button>
+                  {polys.length > 0 && (
+                    <button onClick={() => clearLayer(type)} style={{
+                      padding: '3px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                      background: 'var(--surf2)', border: '1px solid var(--bdr)', color: '#ef4444',
+                    }}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Draw / Edit active banner */}
+          {(drawType || editTarget) && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 10,
+              background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.35)',
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#818cf8', flexShrink: 0,
+                boxShadow: '0 0 6px #818cf8', animation: 'gps-pulse 1.2s ease-in-out infinite' }} />
+              {drawType ? (
+                <>
+                  <span style={{ fontSize: 12, color: '#818cf8', flex: 1 }}>
+                    Drawing <strong>{drawType}</strong> — tap map to add points ({draftPts.length} so far)
+                  </span>
+                  {draftPts.length >= 3 && (
+                    <button onClick={closeDraftPoly} style={{
+                      padding: '4px 10px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e',
+                    }}>✓ Close Shape</button>
+                  )}
+                  <button onClick={cancelDraw} style={{
+                    padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer',
+                    background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx3)',
+                  }}>Cancel</button>
+                </>
+              ) : editTarget ? (
+                <>
+                  <span style={{ fontSize: 12, color: '#818cf8', flex: 1 }}>
+                    Editing <strong>{editTarget.type}</strong> {editTarget.type !== 'fairway' ? `#${editTarget.index + 1}` : ''} — drag white handles to adjust
+                  </span>
+                  <button onClick={deleteEditTarget} style={{
+                    padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer',
+                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444',
+                  }}>Delete</button>
+                  <button onClick={cancelEdit} style={{
+                    padding: '4px 10px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', color: '#22c55e',
+                  }}>✓ Done</button>
+                </>
+              ) : null}
+            </div>
+          )}
+
           {/* Hole tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={() => setEditingHole(h => { const nh = Math.max(1, h - 1); jumpToHole(holes.find(x => x.hole === nh)!); return nh })}
@@ -1219,32 +1401,34 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             </button>
           </div>
 
-          {/* Pin mode selector — order: Tee → Front → Center → Back */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-            {MODES.map(mode => {
-              const m = PIN_META[mode]
-              const hasPin = mode === 'tee' ? !!currentH?.tee : !!currentH?.green[mode as 'front' | 'center' | 'back']
-              const active = pinMode === mode
-              return (
-                <button key={mode} onClick={() => setPinMode(mode)} style={{
-                  padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
-                  border: active ? `2px solid ${m.color}` : '1px solid var(--bdr)',
-                  background: active ? `${m.color}1a` : 'var(--surf)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: mode === 'tee' ? 4 : '50%',
-                    background: hasPin ? m.color : 'var(--surf2)',
-                    border: `2px solid ${hasPin ? m.color : 'var(--bdr)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: hasPin ? 'white' : 'var(--tx4)', fontSize: 10, fontWeight: 800,
-                  }}>{m.short}</div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: active ? m.color : 'var(--tx3)' }}>{m.label}</span>
-                  <span style={{ fontSize: 9, color: 'var(--tx4)' }}>{hasPin ? '✓ set' : 'tap map'}</span>
-                </button>
-              )
-            })}
-          </div>
+          {/* Pin mode selector — hidden during draw/edit */}
+          {!drawType && !editTarget && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+              {MODES.map(mode => {
+                const m = PIN_META[mode]
+                const hasPin = mode === 'tee' ? !!currentH?.tee : !!currentH?.green[mode as 'front' | 'center' | 'back']
+                const active = pinMode === mode
+                return (
+                  <button key={mode} onClick={() => setPinMode(mode)} style={{
+                    padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
+                    border: active ? `2px solid ${m.color}` : '1px solid var(--bdr)',
+                    background: active ? `${m.color}1a` : 'var(--surf)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: mode === 'tee' ? 4 : '50%',
+                      background: hasPin ? m.color : 'var(--surf2)',
+                      border: `2px solid ${hasPin ? m.color : 'var(--bdr)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: hasPin ? 'white' : 'var(--tx4)', fontSize: 10, fontWeight: 800,
+                    }}>{m.short}</div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: active ? m.color : 'var(--tx3)' }}>{m.label}</span>
+                    <span style={{ fontSize: 9, color: 'var(--tx4)' }}>{hasPin ? '✓ set' : 'tap map'}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Map */}
           <div style={{ borderRadius: 14, overflow: 'hidden', height: 'min(640px, 60vh)', minHeight: 460, border: '1px solid var(--bdr)' }}>
@@ -1256,7 +1440,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               style={{ width: '100%', height: '100%' }}
               mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
               onClick={handleMapClick}
-              cursor="crosshair"
+              cursor={drawType ? 'crosshair' : editTarget ? 'default' : 'crosshair'}
             >
               <NavigationControl position="top-right" showCompass={false} />
 
@@ -1287,6 +1471,56 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                     paint={{ 'line-color': 'rgba(37,99,235,0.8)', 'line-width': 1.5 }} />
                 </Source>
               )}
+
+              {/* Draft polygon being drawn */}
+              {draftGeoJson && drawType && (
+                <Source id="setup-draft" type="geojson" data={draftGeoJson}>
+                  {draftGeoJson.geometry.type === 'Polygon' && (
+                    <Layer id="setup-draft-fill" type="fill"
+                      paint={{ 'fill-color': DRAW_COLORS[drawType], 'fill-opacity': 0.15 }} />
+                  )}
+                  <Layer id="setup-draft-outline" type="line"
+                    paint={{ 'line-color': DRAW_COLORS[drawType], 'line-width': 2, 'line-dasharray': [5, 3] }} />
+                </Source>
+              )}
+              {/* Draft vertices */}
+              {drawType && draftPts.map((pt, i) => (
+                <Marker key={`dv-${i}`} longitude={pt.lng} latitude={pt.lat} anchor="center">
+                  <div style={{
+                    width: i === 0 && draftPts.length >= 3 ? 14 : 10,
+                    height: i === 0 && draftPts.length >= 3 ? 14 : 10,
+                    borderRadius: '50%',
+                    background: i === 0 ? DRAW_COLORS[drawType] : 'white',
+                    border: `2px solid ${DRAW_COLORS[drawType]}`,
+                    cursor: i === 0 && draftPts.length >= 3 ? 'pointer' : 'default',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                  }}
+                  onClick={i === 0 && draftPts.length >= 3 ? closeDraftPoly : undefined}
+                  />
+                </Marker>
+              ))}
+              {/* Edit target highlight */}
+              {editTargetGeoJson && editTarget && (
+                <Source id="setup-edit-highlight" type="geojson" data={editTargetGeoJson}>
+                  <Layer id="setup-edit-highlight-fill" type="fill"
+                    paint={{ 'fill-color': DRAW_COLORS[editTarget.type], 'fill-opacity': 0.10 }} />
+                  <Layer id="setup-edit-highlight-outline" type="line"
+                    paint={{ 'line-color': 'white', 'line-width': 2.5 }} />
+                </Source>
+              )}
+              {/* Draggable edit vertices */}
+              {editTarget && editVertices.map((pt, vi) => (
+                <Marker key={`ev-${vi}`} longitude={pt.lng} latitude={pt.lat} anchor="center"
+                  draggable
+                  onDragEnd={e => updateVertex(vi, { lat: e.lngLat.lat, lng: e.lngLat.lng })}
+                >
+                  <div style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: 'white', border: '2.5px solid #6366f1',
+                    boxShadow: '0 1px 5px rgba(0,0,0,0.5)', cursor: 'grab',
+                  }} />
+                </Marker>
+              ))}
 
               {/* All holes with green centers — small numbered dots */}
               {holes.filter(h => h.green.center).map(h => (
@@ -1329,7 +1563,13 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
           {/* Legend */}
           <div style={{ fontSize: 11, color: 'var(--tx4)', textAlign: 'center' }}>
-            Tap the map to place the <strong style={{ color: PIN_META[pinMode].color }}>{PIN_META[pinMode].label}</strong> pin on hole {editingHole}
+            {drawType
+              ? `Drawing ${drawType} — tap map to add points, click first point or "Close Shape" to finish`
+              : editTarget
+              ? `Editing ${editTarget.type} — drag white handles to adjust vertices`
+              : `Tap the map to place the `}
+            {!drawType && !editTarget && <strong style={{ color: PIN_META[pinMode].color }}>{PIN_META[pinMode].label}</strong>}
+            {!drawType && !editTarget && ` pin on hole ${editingHole}`}
           </div>
 
           {/* Progress + save */}
