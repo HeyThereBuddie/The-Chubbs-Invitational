@@ -855,8 +855,8 @@ export default function GpsPage() {
           padding: '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
           boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
         }}>
-          <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 52, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
         </div>
 
         {/* Yardage stack — bottom left */}
