@@ -159,8 +159,8 @@ function YardagePanel({ label, yards, color }: { label: string; yards: number | 
       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
       <div style={{
         fontFamily: 'Bebas Neue', fontSize: 42, letterSpacing: 1, lineHeight: 1,
-        color: yards !== null ? 'var(--tx1)' : 'var(--tx5)',
-      }}>{yards ?? '—'}</div>
+        color: yards !== null && yards <= 9999 ? 'var(--tx1)' : 'var(--tx5)',
+      }}>{yards !== null && yards <= 9999 ? yards : '—'}</div>
       <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 2 }}>yds</div>
     </div>
   )
@@ -690,7 +690,7 @@ export default function GpsPage() {
           )}
 
           {/* Improvement 5: larger aim line distance label */}
-          {aimLineMid && tapDist !== null && (
+          {aimLineMid && tapDist !== null && tapDist <= 9999 && (
             <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
               <div style={{
                 background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
@@ -749,7 +749,7 @@ export default function GpsPage() {
         )}
 
         {/* Tap distance bubble */}
-        {tapDist !== null && (
+        {tapDist !== null && tapDist <= 9999 && (
           <div style={{
             position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
