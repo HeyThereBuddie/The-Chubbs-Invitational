@@ -43,19 +43,6 @@ function distToPolygon(pos: LatLng, poly: LatLng[]): number {
   return min
 }
 
-function GreenPin({ label, color }: { label: string; color: string }) {
-  return (
-    <div style={{
-      width: 30, height: 30, borderRadius: '50%',
-      background: color, border: '3px solid white',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-      color: 'white', fontWeight: 900, fontSize: 11,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Inter, sans-serif',
-      userSelect: 'none',
-    }}>{label}</div>
-  )
-}
 
 function TeePin() {
   return (
@@ -569,20 +556,18 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Green markers for current hole */}
-          {currentHole?.green.front && (
-            <Marker longitude={currentHole.green.front.lng} latitude={currentHole.green.front.lat} anchor="center">
-              <GreenPin label="F" color="#16a34a" />
-            </Marker>
-          )}
+          {/* Green center marker — flag destination for the gold line */}
           {currentHole?.green.center && (
             <Marker longitude={currentHole.green.center.lng} latitude={currentHole.green.center.lat} anchor="center">
-              <GreenPin label="C" color="#D4A53A" />
-            </Marker>
-          )}
-          {currentHole?.green.back && (
-            <Marker longitude={currentHole.green.back.lng} latitude={currentHole.green.back.lat} anchor="center">
-              <GreenPin label="B" color="#dc2626" />
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: 'rgba(212,165,58,0.25)',
+                border: '2.5px solid #D4A53A',
+                boxShadow: '0 0 12px rgba(212,165,58,0.45), 0 2px 6px rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#D4A53A' }} />
+              </div>
             </Marker>
           )}
 
