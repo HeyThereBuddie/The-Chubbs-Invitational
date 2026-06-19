@@ -898,33 +898,47 @@ export default function GpsPage() {
                   const chulligan = scoring.myChulligans.find(c => c.player_id === player.id)
                   return (
                     <div key={player.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
                       paddingTop: idx > 0 ? 9 : 0,
                       marginTop: idx > 0 ? 9 : 0,
                       borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.07)' : 'none',
                     }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'white', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {displayName(player)}
-                      </span>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 5,
-                        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)',
-                        borderRadius: 10, padding: '4px 10px', flexShrink: 0,
-                      }}>
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>F</span>
-                        <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, lineHeight: 1, color: f9 > 0 ? '#D4A53A' : 'rgba(255,255,255,0.3)' }}>{f9}</span>
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>·</span>
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>B</span>
-                        <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, lineHeight: 1, color: b9 > 0 ? '#D4A53A' : 'rgba(255,255,255,0.3)' }}>{b9}</span>
-                      </div>
-                      <div style={{
-                        background: chulligan ? 'rgba(212,165,58,0.14)' : 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${chulligan ? 'rgba(212,165,58,0.30)' : 'rgba(255,255,255,0.10)'}`,
-                        borderRadius: 10, padding: '4px 10px', flexShrink: 0,
-                      }}>
-                        <span style={{ fontSize: 12, color: chulligan ? '#D4A53A' : 'rgba(255,255,255,0.25)' }}>
-                          🍺 {chulligan ? `H${chulligan.hole}` : '—'}
+                      {/* Name + chulligan */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'white', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {displayName(player)}
                         </span>
+                        <div style={{
+                          background: chulligan ? 'rgba(212,165,58,0.14)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${chulligan ? 'rgba(212,165,58,0.30)' : 'rgba(255,255,255,0.10)'}`,
+                          borderRadius: 10, padding: '3px 9px', flexShrink: 0,
+                        }}>
+                          <span style={{ fontSize: 12, color: chulligan ? '#D4A53A' : 'rgba(255,255,255,0.25)' }}>
+                            🍺 {chulligan ? `H${chulligan.hole}` : '—'}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Drive dots */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5, width: 14 }}>F</span>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <div key={i} style={{
+                              width: 12, height: 12, borderRadius: '50%',
+                              background: i < f9 ? '#D4A53A' : 'rgba(255,255,255,0.15)',
+                              boxShadow: i < f9 ? '0 0 6px rgba(212,165,58,0.6)' : 'none',
+                            }} />
+                          ))}
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5, width: 14 }}>B</span>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <div key={i} style={{
+                              width: 12, height: 12, borderRadius: '50%',
+                              background: i < b9 ? '#D4A53A' : 'rgba(255,255,255,0.15)',
+                              boxShadow: i < b9 ? '0 0 6px rgba(212,165,58,0.6)' : 'none',
+                            }} />
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )
