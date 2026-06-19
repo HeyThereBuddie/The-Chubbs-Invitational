@@ -46,7 +46,10 @@ export async function precacheMapTiles(
 
   const fetches: Promise<unknown>[] = []
 
-  for (const z of [15, 16, 17]) {
+  // Z15 = course overview (~4 tiles), Z16 = hole-level detail (~16 tiles).
+  // Z17 is intentionally excluded — ~60 more tiles for marginal gain; those
+  // load and cache naturally when the user opens the GPS page while online.
+  for (const z of [15, 16]) {
     const { x: x0, y: y0 } = toTileXY(b.minLng, b.maxLat, z)
     const { x: x1, y: y1 } = toTileXY(b.maxLng, b.minLat, z)
     for (let x = x0; x <= x1; x++) {
