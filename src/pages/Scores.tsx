@@ -741,7 +741,9 @@ export default function Scores() {
   // ── Player view ───────────────────────────────────────────────
 
   const isViewingMyTeam = viewingTeamId === myTeamId
-  const displayTeam   = isViewingMyTeam ? myTeam   : viewTeam
+  const displayTeam   = isViewingMyTeam
+    ? (myTeam ?? allTeams.find(t => t.id === myTeamId) ?? null)
+    : viewTeam
   const displayScores = isViewingMyTeam ? myScores : viewScores
   const displayStats  = calcStats(displayScores)
 
