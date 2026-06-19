@@ -297,16 +297,16 @@ export default function GpsPage() {
   }, [selectedHole, course])
 
   // Prevent iOS Safari pull-to-refresh on this fixed-layout page.
-  // CSS overscroll-behavior:none is ignored by older iOS; the touchmove
-  // preventDefault is the reliable fallback. We skip events on the Mapbox
-  // canvas so pan/zoom still works.
+  // The canvas carve-out was the bug: downward drags on the Mapbox canvas
+  // were passed through, letting iOS intercept them as a refresh gesture.
+  // Calling preventDefault() here does NOT block Mapbox panning — Mapbox's
+  // own touchmove listener on the canvas fires independently of this one.
   useEffect(() => {
     let startY = 0
     const onStart = (e: TouchEvent) => { startY = e.touches[0]?.clientY ?? 0 }
     const onMove  = (e: TouchEvent) => {
       if (!e.cancelable) return
-      if ((e.target as HTMLElement)?.closest?.('canvas')) return // let Mapbox handle canvas touches
-      if ((e.touches[0]?.clientY ?? 0) > startY) e.preventDefault() // downward = pull-to-refresh
+      if ((e.touches[0]?.clientY ?? 0) > startY) e.preventDefault() // block pull-to-refresh everywhere
     }
     document.addEventListener('touchstart', onStart, { passive: true })
     document.addEventListener('touchmove',  onMove,  { passive: false })
@@ -371,6 +371,7 @@ export default function GpsPage() {
       bottom: 'env(safe-area-inset-bottom, 0px)',
       display: 'flex', flexDirection: 'column',
       zIndex: 20, background: 'var(--bg)',
+      overscrollBehavior: 'none',
     }}>
       {/* Hole selector strip */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
