@@ -120,7 +120,7 @@ Return ONLY valid JSON — no markdown, no explanation:
         'content-type':      'application/json',
       },
       body: JSON.stringify({
-        model:      'claude-sonnet-4-6',
+        model:      'claude-opus-4-8',
         max_tokens: 4096,
         messages: [{
           role: 'user',
