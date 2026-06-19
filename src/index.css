@@ -48,6 +48,8 @@ body {
   -webkit-font-smoothing: antialiased;
   /* Disable pull-to-refresh on all pages — this is a PWA, not a browser page */
   overscroll-behavior-y: none;
+  /* Prevent double-tap zoom without inflating text sizes (user-scalable=no does inflate on iOS) */
+  touch-action: manipulation;
 }
 
 #root { min-height: 100dvh; }
