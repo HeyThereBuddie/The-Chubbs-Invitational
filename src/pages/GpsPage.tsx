@@ -538,23 +538,27 @@ export default function GpsPage() {
             </Source>
           )}
 
-          {/* Aim line: Player → Tap point */}
+          {/* Aim line: Player → Tap point — neon white glow */}
           {aimLineGeoJson && (
             <Source id="aimline" type="geojson" data={aimLineGeoJson}>
-              <Layer id="aimline-bg" type="line"
-                paint={{ 'line-color': 'rgba(0,0,0,0.4)', 'line-width': 4 }} />
-              <Layer id="aimline-fg" type="line"
-                paint={{ 'line-color': 'rgba(255,255,255,0.85)', 'line-width': 2, 'line-dasharray': [8, 5] }} />
+              <Layer id="aimline-glow-outer" type="line"
+                paint={{ 'line-color': '#ffffff', 'line-width': 16, 'line-opacity': 0.06, 'line-blur': 6 }} />
+              <Layer id="aimline-glow-inner" type="line"
+                paint={{ 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 2 }} />
+              <Layer id="aimline-core" type="line"
+                paint={{ 'line-color': '#ffffff', 'line-width': 2.5, 'line-opacity': 0.95 }} />
             </Source>
           )}
 
-          {/* Tap-to-green line: Tap point → Green center */}
+          {/* Tap-to-green line: Tap point → Green center — neon gold glow */}
           {tapToGreenGeoJson && (
             <Source id="tap-to-green" type="geojson" data={tapToGreenGeoJson}>
-              <Layer id="tap-to-green-bg" type="line"
-                paint={{ 'line-color': 'rgba(0,0,0,0.35)', 'line-width': 3 }} />
-              <Layer id="tap-to-green-fg" type="line"
-                paint={{ 'line-color': 'rgba(212,165,58,0.80)', 'line-width': 1.5, 'line-dasharray': [5, 4] }} />
+              <Layer id="tap-to-green-glow-outer" type="line"
+                paint={{ 'line-color': '#D4A53A', 'line-width': 14, 'line-opacity': 0.08, 'line-blur': 5 }} />
+              <Layer id="tap-to-green-glow-inner" type="line"
+                paint={{ 'line-color': '#D4A53A', 'line-width': 6, 'line-opacity': 0.22, 'line-blur': 2 }} />
+              <Layer id="tap-to-green-core" type="line"
+                paint={{ 'line-color': '#D4A53A', 'line-width': 2, 'line-opacity': 0.92 }} />
             </Source>
           )}
 
@@ -600,16 +604,22 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Tap-to-measure point */}
+          {/* Tap-to-measure point — crosshair ring */}
           {tapPoint && (
             <Marker longitude={tapPoint.lng} latitude={tapPoint.lat} anchor="center">
-              <div style={{
-                width: 22, height: 22, borderRadius: '50%',
-                background: 'rgba(255,255,255,0.92)', border: '2px solid #6b7280',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-              }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#374151' }} />
+              <div style={{ position: 'relative', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Outer ring */}
+                <div style={{
+                  position: 'absolute', width: 28, height: 28, borderRadius: '50%',
+                  border: '2px solid rgba(255,255,255,0.95)',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.4), 0 0 10px rgba(255,255,255,0.4)',
+                }} />
+                {/* Center dot */}
+                <div style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: '#ffffff',
+                  boxShadow: '0 0 4px rgba(255,255,255,0.8)',
+                }} />
               </div>
             </Marker>
           )}
@@ -618,13 +628,16 @@ export default function GpsPage() {
           {aimLineMid && tapDist !== null && (
             <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
               <div style={{
-                background: 'rgba(10,10,15,0.82)', backdropFilter: 'blur(6px)',
-                color: 'white', borderRadius: 10, padding: '2px 8px',
-                fontSize: 13, fontFamily: 'Bebas Neue', letterSpacing: 0.5,
-                border: '1px solid rgba(255,255,255,0.18)',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.5)',
+                background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(8px)',
+                color: '#ffffff', borderRadius: 20, padding: '3px 10px',
+                display: 'flex', alignItems: 'baseline', gap: 3,
+                border: '1px solid rgba(255,255,255,0.22)',
+                boxShadow: '0 0 12px rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.6)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
-              }}>{tapDist} yds</div>
+              }}>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, letterSpacing: 0.5, lineHeight: 1 }}>{tapDist}</span>
+                <span style={{ fontSize: 9, opacity: 0.6, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
+              </div>
             </Marker>
           )}
 
@@ -632,13 +645,16 @@ export default function GpsPage() {
           {tapToGreenMid && tapToGreenDist !== null && (
             <Marker longitude={tapToGreenMid.lng} latitude={tapToGreenMid.lat} anchor="center">
               <div style={{
-                background: 'rgba(10,10,15,0.82)', backdropFilter: 'blur(6px)',
-                color: '#D4A53A', borderRadius: 10, padding: '2px 8px',
-                fontSize: 13, fontFamily: 'Bebas Neue', letterSpacing: 0.5,
-                border: '1px solid rgba(212,165,58,0.35)',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.5)',
+                background: 'rgba(8,8,12,0.78)', backdropFilter: 'blur(8px)',
+                color: '#D4A53A', borderRadius: 20, padding: '3px 10px',
+                display: 'flex', alignItems: 'baseline', gap: 3,
+                border: '1px solid rgba(212,165,58,0.30)',
+                boxShadow: '0 0 12px rgba(212,165,58,0.15), 0 2px 8px rgba(0,0,0,0.6)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
-              }}>{tapToGreenDist} yds</div>
+              }}>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, letterSpacing: 0.5, lineHeight: 1 }}>{tapToGreenDist}</span>
+                <span style={{ fontSize: 9, opacity: 0.6, fontWeight: 600, letterSpacing: 0.5, color: '#D4A53A' }}>YDS</span>
+              </div>
             </Marker>
           )}
         </Map>
