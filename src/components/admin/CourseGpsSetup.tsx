@@ -27,7 +27,7 @@ function kmBetween(lat1: number, lng1: number, lat2: number, lng2: number): numb
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10
 }
 
-type PinMode = 'tee' | 'front' | 'center' | 'back'
+type PinMode = 'tee' | 'front' | 'center' | 'back' | 'landing'
 type DrawType = 'fairway' | 'bunker' | 'water'
 type EditTarget = { type: DrawType; index: number }
 
@@ -35,10 +35,11 @@ type EditTarget = { type: DrawType; index: number }
 const MODES: PinMode[] = ['tee', 'front', 'center', 'back']
 
 const PIN_META: Record<PinMode, { label: string; short: string; color: string; desc: string }> = {
-  tee:    { label: 'Tee',    short: 'T', color: '#6b7280', desc: 'Tee box' },
-  front:  { label: 'Front',  short: 'F', color: '#16a34a', desc: 'Front edge' },
-  center: { label: 'Center', short: 'C', color: '#D4A53A', desc: 'Middle of green' },
-  back:   { label: 'Back',   short: 'B', color: '#dc2626', desc: 'Back edge' },
+  tee:     { label: 'Tee',     short: 'T',  color: '#6b7280', desc: 'Tee box' },
+  front:   { label: 'Front',   short: 'F',  color: '#16a34a', desc: 'Front edge' },
+  center:  { label: 'Center',  short: 'C',  color: '#D4A53A', desc: 'Middle of green' },
+  back:    { label: 'Back',    short: 'B',  color: '#dc2626', desc: 'Back edge' },
+  landing: { label: 'Landing', short: 'LZ', color: '#22c55e', desc: 'Ideal landing zone' },
 }
 
 const DRAW_COLORS: Record<DrawType, string> = { fairway: '#22c55e', bunker: '#C4985A', water: '#3b82f6' }
@@ -968,14 +969,15 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setHoles(prev => prev.map(h => {
       if (h.hole !== editingHole) return h
       switch (pinMode) {
-        case 'tee':    return { ...h, tee: { lat, lng } }
-        case 'front':  return { ...h, green: { ...h.green, front:  { lat, lng } } }
-        case 'center': return { ...h, green: { ...h.green, center: { lat, lng } } }
-        case 'back':   return { ...h, green: { ...h.green, back:   { lat, lng } } }
+        case 'tee':     return { ...h, tee: { lat, lng } }
+        case 'front':   return { ...h, green: { ...h.green, front:  { lat, lng } } }
+        case 'center':  return { ...h, green: { ...h.green, center: { lat, lng } } }
+        case 'back':    return { ...h, green: { ...h.green, back:   { lat, lng } } }
+        case 'landing': return { ...h, landingZone: { lat, lng } }
       }
     }))
     const idx = MODES.indexOf(pinMode)
-    if (idx < MODES.length - 1) setPinMode(MODES[idx + 1])
+    if (idx !== -1 && idx < MODES.length - 1) setPinMode(MODES[idx + 1])
   }, [editingHole, pinMode, drawType, editTarget])
 
   const jumpToHole = (h: HoleGps) => {
@@ -1457,6 +1459,28 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             </div>
           )}
 
+          {/* Landing Zone pin — separate from T/F/C/B auto-advance chain */}
+          {!drawType && !editTarget && (
+            <button onClick={() => setPinMode('landing')} style={{
+              padding: '8px 14px', borderRadius: 10, cursor: 'pointer', width: '100%',
+              border: pinMode === 'landing' ? '2px solid #22c55e' : '1px solid var(--bdr)',
+              background: pinMode === 'landing' ? 'rgba(34,197,94,0.1)' : 'var(--surf)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                background: currentH?.landingZone ? '#22c55e' : 'var(--surf2)',
+                border: `2px solid ${currentH?.landingZone ? '#22c55e' : 'var(--bdr)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: currentH?.landingZone ? 'white' : 'var(--tx4)', fontSize: 9, fontWeight: 800,
+              }}>LZ</div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: pinMode === 'landing' ? '#22c55e' : 'var(--tx3)' }}>Landing Zone</span>
+              <span style={{ fontSize: 10, color: 'var(--tx4)', marginLeft: 'auto' }}>
+                {currentH?.landingZone ? '✓ set' : 'tap map'}
+              </span>
+            </button>
+          )}
+
           {/* Map */}
           <div style={{ borderRadius: 14, overflow: 'hidden', height: 'min(640px, 60vh)', minHeight: 460, border: '1px solid var(--bdr)' }}>
             <Map
@@ -1583,6 +1607,17 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               {currentH?.green.back && (
                 <Marker longitude={currentH.green.back.lng} latitude={currentH.green.back.lat} anchor="center">
                   <AdminPin short="B" color="#dc2626" />
+                </Marker>
+              )}
+              {currentH?.landingZone && (
+                <Marker longitude={currentH.landingZone.lng} latitude={currentH.landingZone.lat} anchor="center">
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: 'rgba(34,197,94,0.35)', border: '2.5px solid #22c55e',
+                    boxShadow: '0 0 10px rgba(34,197,94,0.65)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', fontSize: 8, fontWeight: 900, userSelect: 'none',
+                  }}>LZ</div>
                 </Marker>
               )}
             </Map>

@@ -246,22 +246,15 @@ export default function GpsPage() {
     }
   }, [currentHole])
 
-  // Aim line: Tee → Player (faded) → Green center (bright)
+  // Aim line: Player → Tap point (pre-set to landing zone if available)
   const aimLineGeoJson = useMemo(() => {
-    const green = currentHole?.green.center
-    const tee   = currentHole?.tee
-    if (!green) return null
-    const coords: [number, number][] = []
-    if (tee)      coords.push([tee.lng, tee.lat])
-    if (position) coords.push([position.lng, position.lat])
-    coords.push([green.lng, green.lat])
-    if (coords.length < 2) return null
+    if (!position || !tapPoint) return null
     return {
       type: 'Feature' as const,
-      geometry: { type: 'LineString' as const, coordinates: coords },
+      geometry: { type: 'LineString' as const, coordinates: [[position.lng, position.lat], [tapPoint.lng, tapPoint.lat]] },
       properties: {},
     }
-  }, [currentHole, position])
+  }, [position, tapPoint])
 
   // Orient the map so tee is at bottom, green at top (like 18Birdies)
   const flyToHole = useCallback((hole: HoleGps) => {
@@ -310,6 +303,12 @@ export default function GpsPage() {
 
   // Reset tip state when switching holes
   useEffect(() => { setTipOpen(false) }, [selectedHole])
+
+  // Pre-set tap point to the hole's designated landing zone (or clear it)
+  useEffect(() => {
+    const hole = course?.holes.find(h => h.hole === selectedHole)
+    setTapPoint(hole?.landingZone ?? null)
+  }, [selectedHole, course])
 
   // Prevent iOS Safari pull-to-refresh on this fixed-layout page.
   // CSS overscroll-behavior:none is ignored by older iOS; the touchmove
@@ -614,7 +613,7 @@ export default function GpsPage() {
             <Target size={14} color="#D4A53A" />
             <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1 }}>{tapDist}</span>
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 400 }}>yds</span>
-            <button onClick={() => setTapPoint(null)} style={{
+            <button onClick={() => setTapPoint(currentHole?.landingZone ?? null)} style={{
               background: 'rgba(255,255,255,0.12)', border: 'none', color: 'rgba(255,255,255,0.7)',
               cursor: 'pointer', borderRadius: '50%', width: 18, height: 18,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, padding: 0,
