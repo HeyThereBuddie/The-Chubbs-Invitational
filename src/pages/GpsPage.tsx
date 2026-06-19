@@ -887,13 +887,13 @@ export default function GpsPage() {
             const display = yards !== null && yards <= 9999 ? yards : '—'
             return (
               <div key={label} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
+                display: 'flex', alignItems: 'center', gap: 10,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: '11px 20px', minWidth: 136,
+                padding: '10px 16px', minWidth: 128,
               }}>
-                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 34 }}>{label}</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 42, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 38, lineHeight: 1, color: display !== '—' ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
               </div>
             )
           })}
@@ -927,15 +927,15 @@ export default function GpsPage() {
             const panelStyle: React.CSSProperties = {
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
               border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-              padding: '6px 10px', minWidth: 124,
+              padding: '7px 12px', minWidth: 128,
             }
             const headerStyle: React.CSSProperties = {
-              fontSize: 8, fontWeight: 700, letterSpacing: 1.6,
-              color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 5,
+              fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
+              color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 6,
             }
             const nameStyle: React.CSSProperties = {
               fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.75)',
-              width: 44, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              width: 46, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }
 
             return (
@@ -1000,7 +1000,7 @@ export default function GpsPage() {
                         <div style={{ display: 'flex', gap: 4 }}>
                           {Array.from({ length: 5 }, (_, i) => (
                             <div key={i} style={{
-                              width: 8, height: 8, borderRadius: '50%',
+                              width: 9, height: 9, borderRadius: '50%',
                               background: i < drivesUsed ? '#D4A53A' : 'rgba(255,255,255,0.12)',
                               boxShadow: i < drivesUsed ? '0 0 5px rgba(212,165,58,0.75)' : 'none',
                               border: i < drivesUsed ? 'none' : '1px solid rgba(255,255,255,0.22)',
