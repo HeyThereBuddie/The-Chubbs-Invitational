@@ -55,7 +55,6 @@ export default function BottomNav() {
           key={to}
           to={to}
           end={to === '/'}
-          viewTransition
           onClick={() => navigator.vibrate?.(8)}
           style={{
             flex: 1,
