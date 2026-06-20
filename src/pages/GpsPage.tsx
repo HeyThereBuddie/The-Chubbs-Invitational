@@ -279,8 +279,8 @@ export default function GpsPage() {
   const isNarrow = useMediaQuery('(max-width: 430px)')
   const holeNumSize  = isNarrow ? 32 : 52
   const scoreNumSize = isNarrow ? 22 : 36
-  const yardageSize  = isNarrow ? 30 : 38
-  const panelPadding = isNarrow ? '5px 9px' : '10px 16px'
+  const yardageSize  = isNarrow ? 36 : 44
+  const panelPadding = isNarrow ? '9px 11px' : '12px 16px'
 
   // Refs for position publishing and bearing — avoid re-registering the GPS watch
   const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
@@ -1049,7 +1049,7 @@ export default function GpsPage() {
               const panelStyle: React.CSSProperties = {
                 background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-                padding: isNarrow ? '5px 8px' : '7px 10px', minWidth: isNarrow ? 120 : 158,
+                padding: isNarrow ? '9px 10px' : '12px 14px', minWidth: isNarrow ? 120 : 158,
               }
               const headerStyle: React.CSSProperties = {
                 fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
