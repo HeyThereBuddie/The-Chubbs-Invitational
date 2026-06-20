@@ -1051,9 +1051,9 @@ export default function GpsPage() {
               <button onClick={() => setSheetOpen(true)} style={{
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,0.15)', color: '#000',
-                borderRadius: 8,
-                padding: isNarrow ? '5px 9px' : '10px 18px',
-                fontSize: isNarrow ? 11 : 13,
+                borderRadius: 10,
+                padding: isNarrow ? '11px 18px' : '14px 26px',
+                fontSize: isNarrow ? 15 : 17,
                 fontWeight: 800, letterSpacing: 0.5,
                 boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
                 whiteSpace: 'nowrap',
