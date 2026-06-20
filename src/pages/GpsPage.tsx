@@ -917,6 +917,23 @@ export default function GpsPage() {
           }
           const scorLabel = holesPlayed === 0 ? 'E' : totalVsPar === 0 ? 'E' : totalVsPar > 0 ? `+${totalVsPar}` : `${totalVsPar}`
           const scorColor = totalVsPar < 0 ? '#22c55e' : totalVsPar > 0 ? '#ef4444' : 'rgba(255,255,255,0.5)'
+          // Leaderboard position
+          const ranked = localTeams
+            .map(t => ({ id: t.id, toPar: scoreToPar(t.id, localScores) }))
+            .filter((t): t is { id: string; toPar: number } => t.toPar !== null)
+            .sort((a, b) => a.toPar - b.toPar)
+          const myTeamId = scoring.myTeam?.id
+          const myToPar  = myTeamId ? scoreToPar(myTeamId, localScores) : null
+          let posLabel: string | null = null
+          if (myTeamId && myToPar !== null) {
+            const posIdx = ranked.findIndex(t => t.id === myTeamId)
+            if (posIdx >= 0) {
+              const pos  = posIdx + 1
+              const tied = ranked.filter(t => t.toPar === myToPar).length > 1
+              const sfx  = pos === 1 ? 'st' : pos === 2 ? 'nd' : pos === 3 ? 'rd' : 'th'
+              posLabel   = `${tied ? 'T' : ''}${pos}${sfx}`
+            }
+          }
           return (
             <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Hole + Currently chip */}
@@ -930,7 +947,15 @@ export default function GpsPage() {
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
                 <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.15)', margin: '5px 0' }} />
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
-                <div style={{ fontFamily: 'Bebas Neue', fontSize: scoreNumSize, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: scoreNumSize, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+                  {posLabel && (
+                    <>
+                      <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.2)', margin: '2px 0' }} />
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.3 }}>{posLabel}</div>
+                    </>
+                  )}
+                </div>
               </div>
               {/* Recenter button — separate, below chip */}
               {currentHole && (
@@ -979,12 +1004,12 @@ export default function GpsPage() {
                     fontSize: 9, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2,
                     color: headwind > 0 ? '#ef4444' : '#22c55e',
                   }}>
-                    {headwind > 0 ? '▲' : '▼'}{Math.abs(Math.round(headwind))}y
+                    {headwind > 0 ? '▲' : '▼'}{Math.abs(Math.round(headwind))}
                   </span>
                 )}
                 {Math.abs(driftYards) >= 1 && (
                   <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2, color: '#60a5fa' }}>
-                    {driftYards > 0 ? '→' : '←'}{Math.abs(driftYards)}y
+                    {driftYards > 0 ? '→' : '←'}{Math.abs(driftYards)}
                   </span>
                 )}
               </div>
