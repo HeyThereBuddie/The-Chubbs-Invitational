@@ -1020,7 +1020,7 @@ export default function GpsPage() {
         {/* Bottom HUD — single flex row: yardage | enter score | chulligans/drives */}
         <div style={{
           position: 'absolute', bottom: navBase, left: 8, right: 8, zIndex: 10,
-          display: 'flex', alignItems: 'flex-end', gap: isNarrow ? 10 : 16,
+          display: 'flex', alignItems: 'flex-end', gap: 6,
         }}>
           {/* Left: yardage stack */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
@@ -1045,15 +1045,15 @@ export default function GpsPage() {
             })}
           </div>
 
-          {/* Center: Enter Score — flex:1 keeps equal visual gap on both sides */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+          {/* Center: Enter Score — stretches to full row height, fills available width */}
+          <div style={{ flex: 1, alignSelf: 'stretch', display: 'flex' }}>
             {profile && (
               <button onClick={() => setSheetOpen(true)} style={{
+                flex: 1,
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,0.15)', color: '#000',
                 borderRadius: 10,
-                padding: isNarrow ? '11px 18px' : '14px 26px',
-                fontSize: isNarrow ? 15 : 17,
+                fontSize: isNarrow ? 14 : 16,
                 fontWeight: 800, letterSpacing: 0.5,
                 boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
                 whiteSpace: 'nowrap',
