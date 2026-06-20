@@ -285,7 +285,6 @@ export default function GpsPage() {
   const holeNumSize  = isNarrow ? 32 : 52
   const scoreNumSize = isNarrow ? 22 : 36
   const yardageSize  = isNarrow ? 30 : 38
-  const panelMinW    = isNarrow ? 84 : 128
   const panelPadding = isNarrow ? '5px 9px' : '10px 16px'
 
   // Refs for position publishing and bearing — avoid re-registering the GPS watch
@@ -1001,11 +1000,11 @@ export default function GpsPage() {
 
         {/* Bottom HUD — single flex row: yardage | enter score | chulligans/drives */}
         <div style={{
-          position: 'absolute', bottom: navBase, left: 8, zIndex: 10,
+          position: 'absolute', bottom: navBase, left: 8, right: 8, zIndex: 10,
           display: 'flex', alignItems: 'flex-end', gap: isNarrow ? 10 : 16,
         }}>
           {/* Left: yardage stack */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
             {[
               { label: 'Back', yards: backDist,   color: '#ef4444' },
               { label: 'Ctr',  yards: centerDist, color: '#D4A53A' },
@@ -1038,8 +1037,8 @@ export default function GpsPage() {
             })}
           </div>
 
-          {/* Center: Enter Score */}
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          {/* Center: Enter Score — flex:1 keeps equal visual gap on both sides */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
             {profile && (
               <button onClick={() => setSheetOpen(true)} style={{
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
@@ -1057,7 +1056,7 @@ export default function GpsPage() {
           </div>
 
           {/* Right: chulligans box + drives box */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
             {scoring.myTeam && (() => {
               const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
               const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
@@ -1066,7 +1065,7 @@ export default function GpsPage() {
               const panelStyle: React.CSSProperties = {
                 background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-                padding: isNarrow ? '5px 8px' : '7px 10px', minWidth: panelMinW,
+                padding: isNarrow ? '5px 8px' : '7px 10px', minWidth: isNarrow ? 120 : 158,
               }
               const headerStyle: React.CSSProperties = {
                 fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
