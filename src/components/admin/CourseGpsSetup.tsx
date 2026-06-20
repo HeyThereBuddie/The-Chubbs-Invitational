@@ -432,6 +432,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const mapRef = useRef<MapRef>(null)
 
   const [gpsSubTab, setGpsSubTab] = useState<'selection' | 'setup'>(() => currentGps ? 'setup' : 'selection')
+  const [existingCourses, setExistingCourses] = useState<{ id: string; name: string; lat: number | null; lng: number | null }[]>([])
 
   // Switch to setup tab as soon as the async currentGps prop arrives (DB fetch in AdminPanel
   // completes after the component first renders, so the lazy initializer above isn't enough)
@@ -522,11 +523,10 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fromOverpassEl = (el: any, userLat?: number, userLng?: number): CourseResult | null => {
-    const name = el.tags?.name
-    if (!name) return null
     const lat = el.type === 'node' ? el.lat : (el.center?.lat ?? null)
     const lng = el.type === 'node' ? el.lon : (el.center?.lon ?? null)
     if (lat == null || lng == null) return null
+    const name = el.tags?.name || 'Unnamed Golf Course'
     return {
       id: el.id,
       name,
@@ -537,6 +537,14 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     }
   }
 
+  // ── Load existing courses from DB ────────────────────────────────────────
+  useEffect(() => {
+    if (currentGps) return
+    supabase.from('course_gps').select('id, name, lat, lng').order('created_at', { ascending: false })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(({ data }: { data: any }) => { if (data?.length) setExistingCourses(data) })
+  }, [currentGps])
+
   // ── Get user location + auto-load nearby golf courses ───────────────────
   useEffect(() => {
     if (!navigator.geolocation || currentGps) return
@@ -546,9 +554,10 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       setViewState({ longitude: lng, latitude: lat, zoom: 11 })
       setNearbyLoading(true)
       try {
+        // No ["name"] filter — so unnamed courses on OSM still appear
         const q = `[out:json][timeout:8];(
-          way["leisure"="golf_course"]["name"](around:25000,${lat},${lng});
-          relation["leisure"="golf_course"]["name"](around:25000,${lat},${lng});
+          way["leisure"="golf_course"](around:25000,${lat},${lng});
+          relation["leisure"="golf_course"](around:25000,${lat},${lng});
         );out center 20;`
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data = await overpassQuery(q, 9000) as any
@@ -629,6 +638,13 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       showToast('Search failed — check your connection', 'error')
     }
     setSearching(false)
+  }
+
+  const linkExisting = async (c: { id: string; name: string; lat: number | null; lng: number | null }) => {
+    if (!tournamentId) return
+    await supabase.from('tournaments').update({ course_gps_id: c.id }).eq('id', tournamentId)
+    const { data: gpsRow } = await supabase.from('course_gps').select('*').eq('id', c.id).single()
+    if (gpsRow) onSaved(gpsRow as CourseGps)
   }
 
   const selectResult = async (r: CourseResult) => {
@@ -1170,6 +1186,34 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           ) : (
             /* Unlocked state — search and select a course */
             <>
+              {/* Existing courses already in the database */}
+              {existingCourses.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Already in database
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {existingCourses.map(c => (
+                      <button key={c.id} onClick={() => linkExisting(c)} style={{
+                        padding: '9px 12px', borderRadius: 9, textAlign: 'left', width: '100%',
+                        background: 'rgba(212,165,58,0.07)', border: '1px solid rgba(212,165,58,0.2)',
+                        cursor: 'pointer', color: 'var(--tx1)', fontSize: 13,
+                        display: 'flex', alignItems: 'center', gap: 10,
+                      }}>
+                        <span style={{ fontSize: 16 }}>📋</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.name || 'Unnamed Course'}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>Tap to link to this tournament</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ height: 1, background: 'var(--bdr)', margin: '16px 0' }} />
+                </div>
+              )}
+
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 12 }}>
                 Find Course
               </div>
