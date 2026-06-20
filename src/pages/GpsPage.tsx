@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import Map, { Marker, NavigationControl, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
+import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
@@ -599,14 +599,14 @@ export default function GpsPage() {
 
   return (
     <div style={{
-      position: 'fixed', top: 56, left: 0, right: 0,
+      position: 'fixed', top: 0, left: 0, right: 0,
       bottom: 'env(safe-area-inset-bottom, 0px)',
       display: 'flex', flexDirection: 'column',
-      zIndex: 20, background: 'var(--bg)', overscrollBehavior: 'none',
+      zIndex: 60, background: 'var(--bg)', overscrollBehavior: 'none',
     }}>
       {/* Hole selector strip */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', gap: 4 }}>
           <button onClick={() => navigate('/scores')} style={{
             padding: '4px 8px', background: 'none', border: 'none',
             color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
@@ -625,7 +625,7 @@ export default function GpsPage() {
                 const active = selectedHole === hole, hasData = holeHasData(hole)
                 return (
                   <button key={hole} onClick={() => setSelectedHole(hole)} style={{
-                    minWidth: isNarrow ? 28 : 36, height: isNarrow ? 36 : 44, borderRadius: 7, flexShrink: 0,
+                    minWidth: isNarrow ? 32 : 38, height: isNarrow ? 28 : 38, borderRadius: 6, flexShrink: 0,
                     border: active ? '2px solid #D4A53A' : '1px solid var(--bdr)',
                     background: active ? 'rgba(212,165,58,0.15)' : 'var(--surf)',
                     cursor: 'pointer',
@@ -661,8 +661,6 @@ export default function GpsPage() {
           onLoad={() => setMapLoaded(true)}
           onClick={handleMapClick}
         >
-          <NavigationControl position="top-right" showCompass={false} />
-
           {/* Fairway corridor */}
           {corridorGeoJson && (
             <Source id="corridor" type="geojson" data={corridorGeoJson}>
@@ -909,7 +907,7 @@ export default function GpsPage() {
           )
         })()}
 
-        {/* Hole + Par chip — top left */}
+        {/* Hole chip + recenter button — top left column */}
         {(() => {
           let totalVsPar = 0
           let holesPlayed = 0
@@ -920,17 +918,33 @@ export default function GpsPage() {
           const scorLabel = holesPlayed === 0 ? 'E' : totalVsPar === 0 ? 'E' : totalVsPar > 0 ? `+${totalVsPar}` : `${totalVsPar}`
           const scorColor = totalVsPar < 0 ? '#22c55e' : totalVsPar > 0 ? '#ef4444' : 'rgba(255,255,255,0.5)'
           return (
-            <div style={{
-              position: 'absolute', top: 8, left: 8, zIndex: 10,
-              background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
-              padding: isNarrow ? '6px 10px' : '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-            }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: holeNumSize, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
-              <div style={{ marginTop: 6, fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: scoreNumSize, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+            <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {/* Hole + Currently chip */}
+              <div style={{
+                background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
+                padding: isNarrow ? '6px 8px' : '8px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+              }}>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: holeNumSize, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
+                <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.15)', margin: '5px 0' }} />
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: scoreNumSize, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+              </div>
+              {/* Recenter button — separate, below chip */}
+              {currentHole && (
+                <button onClick={() => flyToHole(currentHole)} style={{
+                  background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                  border: '1px solid rgba(255,255,255,0.14)', color: 'white',
+                  borderRadius: 12, padding: isNarrow ? '7px 10px' : '10px 14px', fontSize: 12, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                }}>
+                  <Target size={14} color="#D4A53A" />
+                  Hole
+                </button>
+              )}
             </div>
           )
         })()}
@@ -978,21 +992,6 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Recenter button — top right */}
-        {currentHole && (
-          <button onClick={() => flyToHole(currentHole)} style={{
-            position: 'absolute', top: 8, right: 8, zIndex: 10,
-            background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-            border: '1px solid rgba(255,255,255,0.14)', color: 'white',
-            borderRadius: 12, padding: '10px 14px', fontSize: 12, fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-          }}>
-            <Target size={14} color="#D4A53A" />
-            Hole
-          </button>
-        )}
-
         {/* Bottom HUD — single flex row: yardage | enter score | chulligans/drives */}
         <div style={{
           position: 'absolute', bottom: navBase, left: 8, right: 8, zIndex: 10,
@@ -1012,7 +1011,7 @@ export default function GpsPage() {
                   display: 'flex', alignItems: 'center', gap: 6,
                   background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                  padding: panelPadding, minWidth: isNarrow ? 140 : 185,
+                  padding: panelPadding, minWidth: isNarrow ? 110 : 150,
                 }}>
                   <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase' }}>{label}</span>
                   <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: raw !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5, marginLeft: 'auto' }}>{display}</span>
@@ -1049,7 +1048,7 @@ export default function GpsPage() {
               const panelStyle: React.CSSProperties = {
                 background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-                padding: isNarrow ? '7px 10px' : '10px 14px', minWidth: isNarrow ? 140 : 185,
+                padding: isNarrow ? '7px 10px' : '10px 14px', minWidth: isNarrow ? 110 : 150,
               }
               const headerStyle: React.CSSProperties = {
                 fontSize: 9, fontWeight: 700, letterSpacing: 1.6,

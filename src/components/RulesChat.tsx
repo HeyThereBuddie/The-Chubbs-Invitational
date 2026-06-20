@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { X, Send } from 'lucide-react'
@@ -17,6 +18,8 @@ const SUGGESTED = [
 
 export default function RulesChat() {
   const isDesktop = useMediaQuery('(min-width: 768px)')
+  const location = useLocation()
+  const isGps = location.pathname === '/gps'
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -56,7 +59,7 @@ export default function RulesChat() {
     setMessages(prev => [...prev, { role: 'assistant', content: reply }])
   }
 
-  const btnBottom = isDesktop ? 32 : 90
+  const btnBottom = isDesktop ? 32 : isGps ? 220 : 90
   const btnRight  = isDesktop ? 40 : 16
 
   return (
