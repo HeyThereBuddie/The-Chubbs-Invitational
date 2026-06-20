@@ -1014,8 +1014,8 @@ export default function GpsPage() {
                   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
                   padding: panelPadding, minWidth: isNarrow ? 120 : 158,
                 }}>
-                  <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 24 : 30 }}>{label}</span>
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: raw !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                  <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase' }}>{label}</span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: raw !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5, marginLeft: 'auto' }}>{display}</span>
                 </div>
               )
             })}
