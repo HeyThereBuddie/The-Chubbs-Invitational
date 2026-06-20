@@ -161,66 +161,6 @@ function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, nu
   return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
 }
 
-// Progress along tee→green axis (0=tee, 1=green). Flat-earth OK at hole scale.
-function holeProgress(tee: LatLng, green: LatLng, point: LatLng): number {
-  const vx = green.lng - tee.lng, vy = green.lat - tee.lat
-  const px = point.lng - tee.lng, py = point.lat - tee.lat
-  const lenSq = vx * vx + vy * vy
-  return lenSq === 0 ? 0 : (px * vx + py * vy) / lenSq
-}
-
-// Place a bunker label on the outer side of the bunker (away from fairway).
-// Greenside bunkers (last 35% of hole) use "away from green center" because
-// their polygon centroid can end up on the wrong side of the straight tee→green
-// axis when the bunker wraps a corner. Fairway bunkers use the dual-perpendicular
-// method: try both axis perpendiculars and pick whichever is further from the axis.
-function bunkerLabelPos(poly: LatLng[], centroid: LatLng, tee: LatLng, green: LatLng): LatLng {
-  const dx = green.lng - tee.lng, dy = green.lat - tee.lat
-  const lenSq = dx * dx + dy * dy
-  if (lenSq === 0) return centroid
-  const len = Math.sqrt(lenSq)
-  const gapDeg = 15 * 0.9144 / 111111
-
-  // Projection parameter along tee→green (0=tee, 1=green)
-  const t = ((centroid.lng - tee.lng) * dx + (centroid.lat - tee.lat) * dy) / lenSq
-
-  let unitLng: number, unitLat: number
-  if (t > 0.65) {
-    // Greenside: push directly away from green center
-    const dLng = centroid.lng - green.lng, dLat = centroid.lat - green.lat
-    const dLen = Math.sqrt(dLng * dLng + dLat * dLat)
-    if (dLen === 0) return centroid
-    unitLng = dLng / dLen; unitLat = dLat / dLen
-  } else {
-    // Fairway: try both axis perpendiculars, pick the one further from the axis
-    const aLng = -dy / len, aLat = dx / len
-    const bLng =  dy / len, bLat = -dx / len
-    const bigDeg = 100 * 0.9144 / 111111
-    const pA = { lat: centroid.lat + aLat * bigDeg, lng: centroid.lng + aLng * bigDeg }
-    const pB = { lat: centroid.lat + bLat * bigDeg, lng: centroid.lng + bLng * bigDeg }
-    const cA = Math.abs(dx * (pA.lat - tee.lat) - dy * (pA.lng - tee.lng))
-    const cB = Math.abs(dx * (pB.lat - tee.lat) - dy * (pB.lng - tee.lng))
-    ;[unitLng, unitLat] = cA > cB ? [aLng, aLat] : [bLng, bLat]
-  }
-
-  // Find the furthest polygon vertex in the chosen outward direction, then add gap
-  let edgeDeg = 0
-  for (const v of poly) {
-    const proj = (v.lng - centroid.lng) * unitLng + (v.lat - centroid.lat) * unitLat
-    if (proj > edgeDeg) edgeDeg = proj
-  }
-  return {
-    lat: centroid.lat + unitLat * (edgeDeg + gapDeg),
-    lng: centroid.lng + unitLng * (edgeDeg + gapDeg),
-  }
-}
-
-function polygonCentroid(poly: LatLng[]): LatLng {
-  return {
-    lat: poly.reduce((s, p) => s + p.lat, 0) / poly.length,
-    lng: poly.reduce((s, p) => s + p.lng, 0) / poly.length,
-  }
-}
 
 interface PlayerPosition {
   player_id: string
@@ -445,7 +385,6 @@ export default function GpsPage() {
         properties: {},
       })) }
   }
-  const bunkersGeoJson    = useMemo(() => makePolyCollection(currentHole?.bunkers),    [currentHole])
   const waterGeoJson      = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
   const avoidZonesGeoJson = useMemo(() => makePolyCollection(currentHole?.avoidZones), [currentHole])
 
@@ -519,19 +458,6 @@ export default function GpsPage() {
       geometry: { type: 'LineString' as const, coordinates: [[tapPoint.lng, tapPoint.lat], [green.lng, green.lat]] },
       properties: {} }
   }, [tapPoint, currentHole])
-
-  const bunkerLabels = useMemo(() => {
-    const bunkers = currentHole?.bunkers, tee = currentHole?.tee, green = currentHole?.green.center
-    if (!bunkers?.length || !tee || !green || !position) return []
-    const playerT = holeProgress(tee, green, position)
-    return bunkers
-      .map((poly, idx) => {
-        const centroid = polygonCentroid(poly)
-        const labelPos = bunkerLabelPos(poly, centroid, tee, green)
-        return { idx, centroid, labelPos, bunkerT: holeProgress(tee, green, centroid), yards: haversineYards(position, centroid) }
-      })
-      .filter(b => playerT <= b.bunkerT)
-  }, [currentHole, position])
 
   const activeOtherPositions = useMemo(() => {
     const now = Date.now()
@@ -725,27 +651,6 @@ export default function GpsPage() {
                 paint={{ 'line-color': 'rgba(255,255,255,0.40)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
             </Source>
           )}
-
-          {/* Bunkers */}
-          {bunkersGeoJson && (
-            <Source id="bunkers" type="geojson" data={bunkersGeoJson}>
-              <Layer id="bunkers-fill" type="fill" paint={{ 'fill-color': '#D4B483', 'fill-opacity': 0.80 }} />
-              <Layer id="bunkers-outline" type="line" paint={{ 'line-color': '#A0845C', 'line-width': 1.5 }} />
-            </Source>
-          )}
-
-          {/* Bunker distance labels — positioned outside the bunker edge, away from fairway */}
-          {bunkerLabels.map(b => (
-            <Marker key={`bunk-dist-${b.idx}`} longitude={b.labelPos.lng} latitude={b.labelPos.lat} anchor="center">
-              <div style={{
-                background: 'rgba(212,180,131,0.92)', backdropFilter: 'blur(4px)',
-                color: '#2a1400', borderRadius: 5, padding: '2px 6px',
-                fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.55)', border: '1px solid #A0845C',
-                whiteSpace: 'nowrap', pointerEvents: 'none',
-              }}>{b.yards}</div>
-            </Marker>
-          ))}
 
           {/* Water hazards */}
           {waterGeoJson && (
