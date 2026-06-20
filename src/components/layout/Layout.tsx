@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isNarrow  = useMediaQuery('(max-width: 430px)')
   const { isDark, toggleTheme } = useTheme()
   const { isCurrentYear, tournaments, viewingTournamentId } = useYear()
   const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
@@ -62,11 +63,11 @@ export default function Layout({ children }: { children: ReactNode }) {
             background: 'var(--panel)',
             backdropFilter: 'blur(20px)',
             borderBottom: '1px solid rgba(212,165,58,0.14)',
-            padding: '10px 18px',
-            display: 'flex', alignItems: 'center', gap: 12,
+            padding: isNarrow ? '8px 14px' : '10px 18px',
+            display: 'flex', alignItems: 'center', gap: isNarrow ? 8 : 12,
           }}>
             <div style={{
-              width: 34, height: 34, borderRadius: '50%',
+              width: isNarrow ? 28 : 34, height: isNarrow ? 28 : 34, borderRadius: '50%',
               border: '2px solid #D4A53A',
               boxShadow: '0 0 10px rgba(212,165,58,0.45)',
               overflow: 'hidden', flexShrink: 0,
@@ -78,7 +79,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: isNarrow ? 17 : 20, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
                 The Chubbs Memorial
               </div>
               <div style={{ fontSize: 9, color: 'var(--tx5)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>

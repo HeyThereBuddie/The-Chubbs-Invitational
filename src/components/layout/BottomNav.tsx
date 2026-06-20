@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
 import {
   LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
   Target, Shield, UserCircle, Star, Images, MapPin
@@ -38,6 +39,7 @@ export default function BottomNav() {
   const { isAdmin } = useAuth()
   const location = useLocation()
   const navItems = isAdmin ? adminNav : playerNav
+  const isNarrow = useMediaQuery('(max-width: 430px)')
 
   return (
     <nav style={{
@@ -76,17 +78,17 @@ export default function BottomNav() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 40,
-                  height: 26,
+                  width: isNarrow ? 34 : 40,
+                  height: isNarrow ? 22 : 26,
                   borderRadius: 999,
                   background: isActive ? 'rgba(212,165,58,0.18)' : 'transparent',
                   transition: 'background 0.2s',
                   marginBottom: 2,
                 }}>
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#D4A53A' : 'var(--tx3)'} />
+                <Icon size={isNarrow ? 17 : 20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#D4A53A' : 'var(--tx3)'} />
               </div>
               <span style={{
-                fontSize: 10,
+                fontSize: isNarrow ? 9 : 10,
                 fontWeight: isActive ? 700 : 500,
                 letterSpacing: 0.3,
                 color: isActive ? '#D4A53A' : 'var(--tx3)',
