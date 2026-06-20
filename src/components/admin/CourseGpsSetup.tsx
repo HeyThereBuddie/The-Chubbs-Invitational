@@ -767,7 +767,6 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       // Build hole anchors from golf=hole routing ways (full geometry — first node=tee, last=green)
       const holeAnchors: Array<{ ref: number; midLat: number; midLon: number }> = []
       // Also store every node along each routing way — used for tighter fairway/hazard matching
-      // (a fairway centroid matched to the nearest midpoint can pick the wrong hole when courses loop back)
       const holeRoutePts: Record<string, { lat: number; lon: number }[]> = {}
       for (const el of elements) {
         if (el.tags?.golf !== 'hole' || !el.geometry || el.geometry.length < 2) continue
@@ -779,14 +778,76 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         holeRoutePts[String(num)] = el.geometry
       }
 
+      // Auto-chain unnumbered golf=hole ways when no ref tags exist
+      if (holeAnchors.length === 0) {
+        const unrefed = elements.filter(el =>
+          el.tags?.golf === 'hole' && el.geometry && el.geometry.length >= 2
+        )
+        if (unrefed.length > 0) {
+          // Sort into a chain: each hole's last point (green) → nearest next tee
+          const remaining = [...unrefed]
+          const chain: typeof remaining = []
+          // Start with the hole whose tee is farthest from any other hole's green (most isolated ≈ hole 1)
+          let startIdx = 0, maxMinDist = 0
+          for (let i = 0; i < remaining.length; i++) {
+            const tee = remaining[i].geometry![0]
+            let minDist = Infinity
+            for (let j = 0; j < remaining.length; j++) {
+              if (i === j) continue
+              const g = remaining[j].geometry![remaining[j].geometry!.length - 1]
+              const d = (tee.lat - g.lat) ** 2 + (tee.lon - g.lon) ** 2
+              if (d < minDist) minDist = d
+            }
+            if (minDist > maxMinDist) { maxMinDist = minDist; startIdx = i }
+          }
+          chain.push(remaining.splice(startIdx, 1)[0])
+          while (remaining.length > 0) {
+            const last = chain[chain.length - 1]
+            const lastGreen = last.geometry![last.geometry!.length - 1]
+            let bestIdx = 0, bestDist = Infinity
+            for (let i = 0; i < remaining.length; i++) {
+              const tee = remaining[i].geometry![0]
+              const d = (lastGreen.lat - tee.lat) ** 2 + (lastGreen.lon - tee.lon) ** 2
+              if (d < bestDist) { bestDist = d; bestIdx = i }
+            }
+            chain.push(remaining.splice(bestIdx, 1)[0])
+          }
+          chain.forEach((el, idx) => {
+            const ref = idx + 1
+            const geo = el.geometry!
+            holeAnchors.push({ ref, midLat: (geo[0].lat + geo[geo.length - 1].lat) / 2, midLon: (geo[0].lon + geo[geo.length - 1].lon) / 2 })
+            holeRoutePts[String(ref)] = geo
+          })
+        }
+      }
+
       const newHoles = emptyHoles()
 
-      // Greens and tees — have center centroid
+      // Seed tee+green from routing way endpoints when anchors were auto-chained
+      for (const anchor of holeAnchors) {
+        const pts = holeRoutePts[String(anchor.ref)]
+        if (!pts || pts.length < 2) continue
+        if (!newHoles[anchor.ref - 1].tee)
+          newHoles[anchor.ref - 1].tee = { lat: pts[0].lat, lng: pts[0].lon }
+        if (!newHoles[anchor.ref - 1].green.center)
+          newHoles[anchor.ref - 1].green.center = { lat: pts[pts.length - 1].lat, lng: pts[pts.length - 1].lon }
+      }
+
+      // Greens and tees — use ref tag if present, otherwise proximity-match to nearest anchor
       for (const el of elements) {
         if (!el.center) continue
         const c: LatLng = { lat: el.center.lat, lng: el.center.lon }
         const golf = el.tags?.golf
-        const num = parseInt(el.tags?.ref ?? '0')
+        if (golf !== 'green' && golf !== 'tee') continue
+        let num = parseInt(el.tags?.ref ?? '0')
+        if ((num < 1 || num > 18) && holeAnchors.length > 0) {
+          let bestD = Infinity
+          for (const anchor of holeAnchors) {
+            const d = (c.lat - anchor.midLat) ** 2 + (c.lng - anchor.midLon) ** 2
+            if (d < bestD) { bestD = d; num = anchor.ref }
+          }
+          if (bestD > 0.004 * 0.004) num = 0 // ~440m — reject if too far
+        }
         if (num < 1 || num > 18) continue
         if (golf === 'green') newHoles[num - 1].green.center = c
         else if (golf === 'tee') newHoles[num - 1].tee = c
@@ -905,10 +966,11 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         setImportingOsm(false)
         return
       }
+      const autoChained = holeAnchors.length > 0 && !elements.some(el => el.tags?.golf === 'hole' && parseInt(el.tags?.ref ?? '0') >= 1)
       setHoles(newHoles)
       showToast(
         `OSM: ${greensFound}G ${teesFound}T ${fairwaysFound}FW ${bunkersFound}BNK ${waterFound}H₂O` +
-        (greensFound < 18 ? ' — set missing holes manually' : '')
+        (autoChained ? ' — no ref tags, holes auto-numbered spatially, verify order!' : greensFound < 18 ? ' — set missing holes manually' : '')
       )
     } catch (err) {
       console.error('OSM import error:', err)
