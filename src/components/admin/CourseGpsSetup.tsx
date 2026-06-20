@@ -459,6 +459,8 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const [manualLat, setManualLat]   = useState('')
   const [manualLng, setManualLng]   = useState('')
   const [showManual, setShowManual] = useState(false)
+  const [osmId, setOsmId]           = useState('')
+  const [searchingOsmId, setSearchingOsmId] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [nearbyLoading, setNearbyLoading] = useState(false)
   const [holes, setHoles]           = useState<HoleGps[]>(currentGps?.holes?.length ? currentGps.holes : emptyHoles())
@@ -671,6 +673,31 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         onSaved(gpsRow as CourseGps)
       }
     } catch { /* non-fatal — user can still place pins and Save manually */ }
+  }
+
+  const searchByOsmId = async () => {
+    const id = osmId.trim().replace(/\D/g, '')
+    if (!id) { showToast('Enter an OSM Way or Relation ID', 'error'); return }
+    setSearchingOsmId(true)
+    try {
+      // Try way first, then relation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let el: any = null
+      for (const type of ['way', 'relation']) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = await overpassQuery(`[out:json][timeout:8];${type}(${id});out center tags;`, 9000) as any
+        if (data.elements?.length) { el = data.elements[0]; break }
+      }
+      if (!el) { showToast('OSM ID not found — check the number and try again', 'error'); setSearchingOsmId(false); return }
+      const lat = el.type === 'node' ? el.lat : (el.center?.lat ?? null)
+      const lng = el.type === 'node' ? el.lon : (el.center?.lon ?? null)
+      if (lat == null || lng == null) { showToast('Could not determine course location from OSM ID', 'error'); setSearchingOsmId(false); return }
+      const name = el.tags?.name || 'Unnamed Golf Course'
+      await selectResult({ id: parseInt(id), name, lat, lng })
+    } catch {
+      showToast('OSM lookup failed — check your connection', 'error')
+    }
+    setSearchingOsmId(false)
   }
 
   const applyManualCoords = () => {
@@ -1276,6 +1303,29 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                   ))}
                 </div>
               )}
+
+              {/* OSM ID lookup */}
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6 }}>
+                  Have an OSM Way/Relation ID? (tap the course on openstreetmap.org to find it)
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={osmId}
+                    onChange={e => setOsmId(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && searchByOsmId()}
+                    placeholder="e.g. 1528332308"
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', fontSize: 13, outline: 'none' }}
+                  />
+                  <button onClick={searchByOsmId} disabled={searchingOsmId} style={{
+                    padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    background: 'rgba(212,165,58,0.14)', border: '1px solid rgba(212,165,58,0.3)', color: '#D4A53A',
+                    opacity: searchingOsmId ? 0.6 : 1,
+                  }}>
+                    {searchingOsmId ? '…' : 'Lookup →'}
+                  </button>
+                </div>
+              </div>
 
               {/* Manual coordinate fallback */}
               <div style={{ marginTop: 10 }}>
