@@ -257,7 +257,10 @@ export default function GpsPage() {
 
   const [course, setCourse]   = useState<CourseGps | null>(null)
   const [loading, setLoading] = useState(true)
-  const [position, setPosition] = useState<LatLng | null>(null)
+  const [realPosition, setRealPosition] = useState<LatLng | null>(null)
+  const [simMode, setSimMode] = useState(false)
+  const [simPosition, setSimPosition] = useState<LatLng | null>(null)
+  const position = simMode ? simPosition : realPosition
   const [playerBearing, setPlayerBearing] = useState<number | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'acquiring' | 'ok' | 'denied' | 'unavailable'>('acquiring')
   const [selectedHole, setSelectedHole] = useState(() => {
@@ -333,7 +336,7 @@ export default function GpsPage() {
     const id = navigator.geolocation.watchPosition(
       pos => {
         const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        setPosition(newPos)
+        setRealPosition(newPos)
         setGpsStatus('ok')
 
         // Improvement 4: track heading between updates (>2 yds moved to filter jitter)
@@ -816,9 +819,29 @@ export default function GpsPage() {
           )}
 
           {/* Player position — Improvement 4: directional arrow */}
-          {position && (
+          {position && !simMode && (
             <Marker longitude={position.lng} latitude={position.lat} anchor="center">
               <PlayerDot bearing={playerBearing} />
+            </Marker>
+          )}
+
+          {/* Sim mode: draggable player pin */}
+          {simMode && simPosition && (
+            <Marker
+              longitude={simPosition.lng}
+              latitude={simPosition.lat}
+              anchor="center"
+              draggable
+              onDragEnd={e => setSimPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
+            >
+              <div style={{
+                width: 34, height: 34, borderRadius: '50%',
+                background: 'rgba(251,191,36,0.25)',
+                border: '2.5px dashed #fbbf24',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16, cursor: 'grab',
+                boxShadow: '0 0 12px rgba(251,191,36,0.5)',
+              }}>📍</div>
             </Marker>
           )}
 
@@ -900,18 +923,56 @@ export default function GpsPage() {
           ))}
         </Map>
 
-        {/* GPS status badge */}
-        {gpsStatus !== 'ok' && (
-          <div style={{
-            position: 'absolute', top: 8, right: 8,
-            background: gpsStatus === 'acquiring' ? 'rgba(0,0,0,0.72)' : 'rgba(239,68,68,0.88)',
-            color: 'white', padding: '5px 12px', borderRadius: 10,
-            fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <Navigation size={12} />
-            {gpsStatus === 'acquiring' ? 'Acquiring GPS…' : gpsStatus === 'denied' ? 'GPS permission denied' : 'GPS unavailable'}
-          </div>
-        )}
+        {/* Top-right badges: GPS status + sim mode toggle */}
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+          {gpsStatus !== 'ok' && !simMode && (
+            <div style={{
+              background: gpsStatus === 'acquiring' ? 'rgba(0,0,0,0.72)' : 'rgba(239,68,68,0.88)',
+              color: 'white', padding: '5px 12px', borderRadius: 10,
+              fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <Navigation size={12} />
+              {gpsStatus === 'acquiring' ? 'Acquiring GPS…' : gpsStatus === 'denied' ? 'GPS permission denied' : 'GPS unavailable'}
+            </div>
+          )}
+
+          {/* Sim mode toggle */}
+          <button
+            onClick={() => {
+              if (simMode) {
+                setSimMode(false)
+                setSimPosition(null)
+              } else {
+                const startPos = currentHole?.tee
+                  ?? (currentHole?.green.center)
+                  ?? { lat: viewState.latitude, lng: viewState.longitude }
+                setSimPosition(startPos)
+                setSimMode(true)
+              }
+            }}
+            style={{
+              padding: '5px 11px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+              background: simMode ? 'rgba(251,191,36,0.88)' : 'rgba(0,0,0,0.62)',
+              color: simMode ? '#000' : 'rgba(255,255,255,0.75)',
+              border: simMode ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(8px)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              letterSpacing: 0.5,
+            }}
+          >
+            📍 {simMode ? 'Exit Sim' : 'Sim GPS'}
+          </button>
+          {simMode && (
+            <div style={{
+              padding: '4px 10px', borderRadius: 8, fontSize: 11,
+              background: 'rgba(251,191,36,0.12)', color: '#fbbf24',
+              border: '1px solid rgba(251,191,36,0.25)',
+              backdropFilter: 'blur(8px)', textAlign: 'center',
+            }}>
+              Drag 📍 to simulate position
+            </div>
+          )}
+        </div>
 
         {/* Tap hint */}
         {!tapPoint && position && !currentHole?.tip && (
