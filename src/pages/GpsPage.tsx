@@ -284,7 +284,7 @@ export default function GpsPage() {
   const isNarrow = useMediaQuery('(max-width: 430px)')
   const holeNumSize  = isNarrow ? 32 : 52
   const scoreNumSize = isNarrow ? 22 : 36
-  const yardageSize  = isNarrow ? 26 : 38
+  const yardageSize  = isNarrow ? 30 : 38
   const panelMinW    = isNarrow ? 84 : 128
   const panelPadding = isNarrow ? '5px 9px' : '10px 16px'
 
@@ -999,160 +999,162 @@ export default function GpsPage() {
           </button>
         )}
 
-        {/* Yardage stack — bottom left */}
+        {/* Bottom HUD — single flex row: yardage | enter score (centered) | chulligans/drives */}
         <div style={{
-          position: 'absolute', bottom: navBase, left: 14, zIndex: 10,
-          display: 'flex', flexDirection: 'column', gap: 5,
+          position: 'absolute', bottom: navBase, left: 10, right: 10, zIndex: 10,
+          display: 'flex', alignItems: 'flex-end',
         }}>
-          {[
-            { label: 'Back', yards: backDist,   color: '#ef4444' },
-            { label: 'Ctr',  yards: centerDist, color: '#D4A53A' },
-            { label: 'Frt',  yards: frontDist,  color: '#22c55e' },
-          ].map(({ label, yards, color }) => {
-            const raw = yards !== null && yards <= 9999 ? yards : null
-            const adj = raw !== null && wind ? windAdjYards(raw, headwind) : raw
-            const delta = raw !== null && wind ? (windAdjYards(raw, headwind) - raw) : 0
-            const display = adj ?? '—'
-            return (
-              <div key={label} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: panelPadding, minWidth: panelMinW, position: 'relative',
+          {/* Left: yardage stack */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {[
+              { label: 'Back', yards: backDist,   color: '#ef4444' },
+              { label: 'Ctr',  yards: centerDist, color: '#D4A53A' },
+              { label: 'Frt',  yards: frontDist,  color: '#22c55e' },
+            ].map(({ label, yards, color }) => {
+              const raw = yards !== null && yards <= 9999 ? yards : null
+              const adj = raw !== null && wind ? windAdjYards(raw, headwind) : raw
+              const delta = raw !== null && wind ? (windAdjYards(raw, headwind) - raw) : 0
+              const display = adj ?? '—'
+              return (
+                <div key={label} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
+                  padding: panelPadding, minWidth: panelMinW, position: 'relative',
+                }}>
+                  <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 22 : 28 }}>{label}</span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                  {delta !== 0 && (
+                    <span style={{
+                      position: 'absolute', top: 4, right: 8,
+                      fontSize: 9, fontWeight: 800, letterSpacing: 0.3,
+                      color: delta > 0 ? '#ef4444' : '#22c55e',
+                    }}>
+                      {delta > 0 ? '+' : ''}{delta}w
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Center: Enter Score — flex:1 creates equal gap on both sides */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: 2 }}>
+            {profile && (
+              <button onClick={() => setSheetOpen(true)} style={{
+                background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.15)', color: '#000',
+                borderRadius: 10,
+                padding: isNarrow ? '7px 12px' : '12px 22px',
+                fontSize: isNarrow ? 12 : 15,
+                fontWeight: 800, letterSpacing: 0.5,
+                boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}>
-                <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 22 : 28 }}>{label}</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
-                {delta !== 0 && (
-                  <span style={{
-                    position: 'absolute', top: 4, right: 8,
-                    fontSize: 9, fontWeight: 800, letterSpacing: 0.3,
-                    color: delta > 0 ? '#ef4444' : '#22c55e',
-                  }}>
-                    {delta > 0 ? '+' : ''}{delta}w
-                  </span>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                ⛳ Enter Score
+              </button>
+            )}
+          </div>
 
-        {/* Enter Score — bottom center */}
-        {profile && (
-          <button onClick={() => setSheetOpen(true)} style={{
-            position: 'absolute', bottom: navBase, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 10,
-            background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.15)', color: '#000',
-            borderRadius: 14, padding: '12px 22px', fontSize: 15, fontWeight: 800, letterSpacing: 0.5,
-            boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}>
-            ⛳ Enter Score
-          </button>
-        )}
+          {/* Right: chulligans box + drives box */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+            {scoring.myTeam && (() => {
+              const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
+              const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
+              if (players.length === 0) return null
 
-        {/* Bottom-right: chulligans box + drives box */}
-        <div style={{
-          position: 'absolute', bottom: navBase, right: 14, zIndex: 10,
-          display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end',
-        }}>
-          {scoring.myTeam && (() => {
-            const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
-            const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
-            if (players.length === 0) return null
+              const panelStyle: React.CSSProperties = {
+                background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
+                padding: isNarrow ? '5px 8px' : '7px 10px', minWidth: panelMinW,
+              }
+              const headerStyle: React.CSSProperties = {
+                fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
+                color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 6,
+              }
+              const nameStyle: React.CSSProperties = {
+                fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.75)',
+                width: 46, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }
 
-            const panelStyle: React.CSSProperties = {
-              background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-              padding: isNarrow ? '5px 8px' : '7px 10px', minWidth: panelMinW,
-            }
-            const headerStyle: React.CSSProperties = {
-              fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
-              color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 6,
-            }
-            const nameStyle: React.CSSProperties = {
-              fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.75)',
-              width: 46, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }
-
-            return (
-              <>
-                {/* Chulligans box */}
-                <div style={panelStyle}>
-                  <div style={headerStyle}>🍺 Chulligans</div>
-                  {players.map(player => {
-                    const ch = scoring.myChulligans.find(c => c.player_id === player.id)
-                    const firstName = displayName(player).split(' ')[0]
-                    return (
-                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={nameStyle}>{firstName}</span>
-                        {/* Beer mug: full = available; tappable faded = used (tap to undo) */}
-                        <button
-                          onClick={ch ? () => scoring.toggleMyChulligan(player.id, ch.hole) : undefined}
-                          style={{
-                            position: 'relative', display: 'inline-flex', alignItems: 'center',
-                            background: 'none', border: 'none', padding: 0, cursor: ch ? 'pointer' : 'default',
-                          }}
-                          title={ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
-                        >
-                          <span style={{
-                            fontSize: 16, lineHeight: 1,
-                            opacity: ch ? 0.28 : 1,
-                            filter: ch ? 'grayscale(1)' : 'none',
-                            transition: 'opacity 0.3s, filter 0.3s',
-                          }}>🍺</span>
-                          {ch ? (
-                            /* Used: red badge with hole number — tap the whole button to undo */
+              return (
+                <>
+                  {/* Chulligans box */}
+                  <div style={panelStyle}>
+                    <div style={headerStyle}>🍺 Chulligans</div>
+                    {players.map(player => {
+                      const ch = scoring.myChulligans.find(c => c.player_id === player.id)
+                      const firstName = displayName(player).split(' ')[0]
+                      return (
+                        <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                          <span style={nameStyle}>{firstName}</span>
+                          {/* Beer mug: full = available; tappable faded = used (tap to undo) */}
+                          <button
+                            onClick={ch ? () => scoring.toggleMyChulligan(player.id, ch.hole) : undefined}
+                            style={{
+                              position: 'relative', display: 'inline-flex', alignItems: 'center',
+                              background: 'none', border: 'none', padding: 0, cursor: ch ? 'pointer' : 'default',
+                            }}
+                            title={ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
+                          >
                             <span style={{
-                              position: 'absolute', top: -5, right: -8,
-                              fontSize: 7, fontWeight: 800, lineHeight: 1,
-                              background: '#ef4444', color: 'white',
-                              borderRadius: 4, padding: '1px 3px',
-                              letterSpacing: 0.3,
-                            }}>H{ch.hole}</span>
-                          ) : (
-                            /* Available: green dot */
-                            <span style={{
-                              position: 'absolute', top: -2, right: -4,
-                              width: 5, height: 5, borderRadius: '50%',
-                              background: '#22c55e',
-                              boxShadow: '0 0 4px rgba(34,197,94,0.8)',
-                            }} />
-                          )}
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Drives box */}
-                <div style={panelStyle}>
-                  <div style={headerStyle}>🏌️ Drives</div>
-                  {players.map(player => {
-                    const drivesUsed = scoring.countDrives(player.id, 1, 18)
-                    const firstName = displayName(player).split(' ')[0]
-                    return (
-                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={nameStyle}>{firstName}</span>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <div key={i} style={{
-                              width: 9, height: 9, borderRadius: '50%',
-                              background: i < drivesUsed ? '#D4A53A' : 'rgba(255,255,255,0.12)',
-                              boxShadow: i < drivesUsed ? '0 0 5px rgba(212,165,58,0.75)' : 'none',
-                              border: i < drivesUsed ? 'none' : '1px solid rgba(255,255,255,0.22)',
-                              transition: 'background 0.25s, box-shadow 0.25s',
-                            }} />
-                          ))}
+                              fontSize: 16, lineHeight: 1,
+                              opacity: ch ? 0.28 : 1,
+                              filter: ch ? 'grayscale(1)' : 'none',
+                              transition: 'opacity 0.3s, filter 0.3s',
+                            }}>🍺</span>
+                            {ch ? (
+                              /* Used: red badge with hole number — tap the whole button to undo */
+                              <span style={{
+                                position: 'absolute', top: -5, right: -8,
+                                fontSize: 7, fontWeight: 800, lineHeight: 1,
+                                background: '#ef4444', color: 'white',
+                                borderRadius: 4, padding: '1px 3px',
+                                letterSpacing: 0.3,
+                              }}>H{ch.hole}</span>
+                            ) : (
+                              /* Available: green dot */
+                              <span style={{
+                                position: 'absolute', top: -2, right: -4,
+                                width: 5, height: 5, borderRadius: '50%',
+                                background: '#22c55e',
+                                boxShadow: '0 0 4px rgba(34,197,94,0.8)',
+                              }} />
+                            )}
+                          </button>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )
-          })()}
+                      )
+                    })}
+                  </div>
 
+                  {/* Drives box */}
+                  <div style={panelStyle}>
+                    <div style={headerStyle}>🏌️ Drives</div>
+                    {players.map(player => {
+                      const drivesUsed = scoring.countDrives(player.id, 1, 18)
+                      const firstName = displayName(player).split(' ')[0]
+                      return (
+                        <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                          <span style={nameStyle}>{firstName}</span>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <div key={i} style={{
+                                width: 9, height: 9, borderRadius: '50%',
+                                background: i < drivesUsed ? '#D4A53A' : 'rgba(255,255,255,0.12)',
+                                boxShadow: i < drivesUsed ? '0 0 5px rgba(212,165,58,0.75)' : 'none',
+                                border: i < drivesUsed ? 'none' : '1px solid rgba(255,255,255,0.22)',
+                                transition: 'background 0.25s, box-shadow 0.25s',
+                              }} />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+          </div>
         </div>
       </div>
 
