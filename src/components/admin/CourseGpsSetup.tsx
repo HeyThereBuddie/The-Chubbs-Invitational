@@ -680,42 +680,29 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (!id) { showToast('Enter an OSM Way or Relation ID', 'error'); return }
     setSearchingOsmId(true)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let name = 'Unnamed Golf Course', lat: number | null = null, lng: number | null = null
 
-      // Primary: direct OSM API — no Overpass dependency, always works for a known ID
+      // Use /full endpoint — returns the element + all member nodes with coordinates
       for (const type of ['way', 'relation']) {
         try {
-          const res = await fetch(`https://api.openstreetmap.org/api/0.6/${type}/${id}.json`)
+          const res = await fetch(`https://api.openstreetmap.org/api/0.6/${type}/${id}/full.json`)
           if (!res.ok) continue
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const json = await res.json() as any
-          const el = json?.elements?.[0]
-          if (!el) continue
-          name = el.tags?.name || 'Unnamed Golf Course'
-          // ways give bounds; use center of bounds
-          if (el.bounds) {
-            lat = (el.bounds.minlat + el.bounds.maxlat) / 2
-            lng = (el.bounds.minlon + el.bounds.maxlon) / 2
+          const els: any[] = json?.elements ?? []
+          if (!els.length) continue
+
+          const root = els.find((e: any) => e.type === type && e.id === parseInt(id))
+          name = root?.tags?.name || 'Unnamed Golf Course'
+
+          // Average all node coordinates for the center
+          const nodes = els.filter((e: any) => e.type === 'node' && e.lat != null)
+          if (nodes.length) {
+            lat = nodes.reduce((s: number, n: any) => s + n.lat, 0) / nodes.length
+            lng = nodes.reduce((s: number, n: any) => s + n.lon, 0) / nodes.length
           }
           break
         } catch { continue }
-      }
-
-      // Fallback: Overpass (fix: out center; not out center tags;)
-      if (lat == null) {
-        for (const type of ['way', 'relation']) {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data = await overpassQuery(`[out:json][timeout:8];${type}(${id});out center;`, 9000) as any
-            const el = data?.elements?.[0]
-            if (!el) continue
-            name = el.tags?.name || name
-            lat = el.center?.lat ?? null
-            lng = el.center?.lon ?? null
-            if (lat != null) break
-          } catch { continue }
-        }
       }
 
       if (lat == null || lng == null) {
