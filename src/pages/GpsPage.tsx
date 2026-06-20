@@ -261,6 +261,7 @@ export default function GpsPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const mapRef = useRef<MapRef>(null)
+  const [headerH, setHeaderH] = useState(56)
 
   const scoring = usePlayerScoring()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -388,6 +389,17 @@ export default function GpsPage() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [effectiveTournamentId])
+
+  // Measure the real Layout header height so the map container starts exactly below it
+  useEffect(() => {
+    const measure = () => {
+      const header = document.querySelector('header')
+      if (header) setHeaderH(Math.ceil(header.getBoundingClientRect().bottom))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
 
   // ── Local DB snapshot for score-to-par in cart popups ────────────────────
 
@@ -638,7 +650,7 @@ export default function GpsPage() {
 
   return (
     <div style={{
-      position: 'fixed', top: 56, left: 0, right: 0,
+      position: 'fixed', top: headerH, left: 0, right: 0,
       bottom: 'env(safe-area-inset-bottom, 0px)',
       display: 'flex', flexDirection: 'column',
       zIndex: 20, background: 'var(--bg)', overscrollBehavior: 'none',
