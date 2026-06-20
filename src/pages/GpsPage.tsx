@@ -145,12 +145,6 @@ function cardinalDir(deg: number): string {
   return dirs[Math.round(deg / 45) % 8]
 }
 
-function ordinal(n: number): string {
-  const s = ['th','st','nd','rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
-
 function offsetLatLng(origin: LatLng, bearingDeg: number, meters: number): LatLng {
   const R = 6371000, d = meters / R, b = (bearingDeg * Math.PI) / 180
   const lat1 = (origin.lat * Math.PI) / 180, lng1 = (origin.lng * Math.PI) / 180
@@ -261,7 +255,6 @@ export default function GpsPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const mapRef = useRef<MapRef>(null)
-  const [headerH, setHeaderH] = useState(56)
 
   const scoring = usePlayerScoring()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -389,17 +382,6 @@ export default function GpsPage() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [effectiveTournamentId])
-
-  // Measure the real Layout header height so the map container starts exactly below it
-  useEffect(() => {
-    const measure = () => {
-      const header = document.querySelector('header')
-      if (header) setHeaderH(Math.ceil(header.getBoundingClientRect().bottom))
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
 
   // ── Local DB snapshot for score-to-par in cart popups ────────────────────
 
@@ -567,41 +549,6 @@ export default function GpsPage() {
   const tapToGreenMid = tapPoint && currentHole?.green.center
     ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
 
-  // Leaderboard rank — live for my team, cached for others
-  // Must be before early returns to satisfy Rules of Hooks
-  const myRank = useMemo(() => {
-    if (!scoring.myTeamId || !effectiveTournamentId) return null
-    const tournTeams = localTeams.filter(t => t.tournament_id === effectiveTournamentId)
-    if (tournTeams.length === 0) return null
-
-    const standings = tournTeams.map(team => {
-      let gross = 0, thru = 0
-      if (team.id === scoring.myTeamId) {
-        const scores = Object.values(scoring.myScores)
-        gross = scores.reduce((a, s) => a + s.score, 0)
-        thru = scores.length
-      } else {
-        const ts = localScores.filter(s => s.team_id === team.id)
-        gross = ts.reduce((a, s) => a + s.score, 0)
-        thru = ts.length
-      }
-      const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
-      return { teamId: team.id, toPar: gross - parSoFar, thru }
-    })
-
-    standings.sort((a, b) => {
-      if (a.thru === 0 && b.thru > 0) return 1
-      if (b.thru === 0 && a.thru > 0) return -1
-      return a.toPar - b.toPar || b.thru - a.thru
-    })
-
-    const myIdx = standings.findIndex(t => t.teamId === scoring.myTeamId)
-    if (myIdx === -1) return null
-    const myEntry = standings[myIdx]
-    const tied = myEntry.thru > 0 && standings.filter(t => t.thru > 0 && t.toPar === myEntry.toPar).length > 1
-    return { pos: myIdx + 1, outOf: tournTeams.length, tied, thru: myEntry.thru }
-  }, [localTeams, localScores, scoring.myScores, scoring.myTeamId, effectiveTournamentId])
-
   // ── Early-exit renders ────────────────────────────────────────────────────
 
   if (!TOKEN) return (
@@ -650,7 +597,7 @@ export default function GpsPage() {
 
   return (
     <div style={{
-      position: 'fixed', top: headerH, left: 0, right: 0,
+      position: 'fixed', top: 56, left: 0, right: 0,
       bottom: 'env(safe-area-inset-bottom, 0px)',
       display: 'flex', flexDirection: 'column',
       zIndex: 20, background: 'var(--bg)', overscrollBehavior: 'none',
@@ -980,22 +927,8 @@ export default function GpsPage() {
             }}>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 52, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
-              {/* divider */}
-              <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.12)', margin: '6px 0' }} />
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
+              <div style={{ marginTop: 6, fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
-              {myRank && myRank.thru > 0 && (
-                <>
-                  <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.12)', margin: '6px 0' }} />
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Position</div>
-                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, lineHeight: 1, letterSpacing: 0.5, color: 'white' }}>
-                    {myRank.tied ? 'T' : ''}{ordinal(myRank.pos)}
-                  </div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5 }}>
-                    of {myRank.outOf}
-                  </div>
-                </>
-              )}
             </div>
           )
         })()}
@@ -1077,7 +1010,7 @@ export default function GpsPage() {
                 display: 'flex', alignItems: 'center', gap: 10,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: '10px 14px', minWidth: 110, position: 'relative',
+                padding: '10px 16px', minWidth: 128, position: 'relative',
               }}>
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
                 <span style={{ fontFamily: 'Bebas Neue', fontSize: 38, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
@@ -1123,7 +1056,7 @@ export default function GpsPage() {
             const panelStyle: React.CSSProperties = {
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
               border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-              padding: '7px 10px', minWidth: 110,
+              padding: '7px 12px', minWidth: 128,
             }
             const headerStyle: React.CSSProperties = {
               fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
