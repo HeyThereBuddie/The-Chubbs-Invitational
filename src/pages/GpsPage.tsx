@@ -131,11 +131,6 @@ function windComponents(speedMph: number, windDirDeg: number, holeBearingDeg: nu
   }
 }
 
-function windAdjYards(baseYards: number, headwind: number): number {
-  // +1 yd per mph headwind; only −0.5 per mph tailwind (ball lands before full assist)
-  return Math.round(baseYards + (headwind >= 0 ? headwind : headwind * 0.5))
-}
-
 function windDriftYards(baseYards: number, crosswind: number): number {
   // ≈1 yd drift per 10 mph crosswind per 100 yards of carry
   return Math.round(crosswind * baseYards / 100)
@@ -1011,27 +1006,16 @@ export default function GpsPage() {
               { label: 'Frt',  yards: frontDist,  color: '#22c55e' },
             ].map(({ label, yards, color }) => {
               const raw = yards !== null && yards <= 9999 ? yards : null
-              const adj = raw !== null && wind ? windAdjYards(raw, headwind) : raw
-              const delta = raw !== null && wind ? (windAdjYards(raw, headwind) - raw) : 0
-              const display = adj ?? '—'
+              const display = raw ?? '—'
               return (
                 <div key={label} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  display: 'flex', alignItems: 'center', gap: 6,
                   background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                  padding: panelPadding, minWidth: isNarrow ? 120 : 158, position: 'relative',
+                  padding: panelPadding, minWidth: isNarrow ? 120 : 158,
                 }}>
-                  <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 22 : 28 }}>{label}</span>
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
-                  {delta !== 0 && (
-                    <span style={{
-                      position: 'absolute', top: 4, right: 8,
-                      fontSize: 9, fontWeight: 800, letterSpacing: 0.3,
-                      color: delta > 0 ? '#ef4444' : '#22c55e',
-                    }}>
-                      {delta > 0 ? '+' : ''}{delta}w
-                    </span>
-                  )}
+                  <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 24 : 30 }}>{label}</span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: raw !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
                 </div>
               )
             })}
