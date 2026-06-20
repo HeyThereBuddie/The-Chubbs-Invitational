@@ -59,7 +59,7 @@ export default function RulesChat() {
     setMessages(prev => [...prev, { role: 'assistant', content: reply }])
   }
 
-  const btnBottom = isDesktop ? 32 : isGps ? 220 : 90
+  const btnBottom = isDesktop ? 32 : isGps ? 'calc(env(safe-area-inset-bottom, 0px) + 210px)' : 90
   const btnRight  = isDesktop ? 40 : 16
 
   return (
