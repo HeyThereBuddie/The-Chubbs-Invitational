@@ -657,7 +657,7 @@ export default function GpsPage() {
           {...viewState}
           onMove={(e: { viewState: typeof viewState }) => setViewState(e.viewState)}
           style={{ width: '100%', height: '100%' }}
-          mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+          mapStyle="mapbox://styles/mapbox/satellite-v9"
           onLoad={() => setMapLoaded(true)}
           onClick={handleMapClick}
         >
