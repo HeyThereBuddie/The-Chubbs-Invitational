@@ -282,11 +282,11 @@ export default function GpsPage() {
   const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
 
   const isNarrow = useMediaQuery('(max-width: 430px)')
-  const holeNumSize  = isNarrow ? 40 : 52
-  const scoreNumSize = isNarrow ? 28 : 36
-  const yardageSize  = isNarrow ? 30 : 38
-  const panelMinW    = isNarrow ? 100 : 128
-  const panelPadding = isNarrow ? '7px 11px' : '10px 16px'
+  const holeNumSize  = isNarrow ? 32 : 52
+  const scoreNumSize = isNarrow ? 22 : 36
+  const yardageSize  = isNarrow ? 26 : 38
+  const panelMinW    = isNarrow ? 84 : 128
+  const panelPadding = isNarrow ? '5px 9px' : '10px 16px'
 
   // Refs for position publishing and bearing — avoid re-registering the GPS watch
   const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
@@ -631,17 +631,17 @@ export default function GpsPage() {
                 const active = selectedHole === hole, hasData = holeHasData(hole)
                 return (
                   <button key={hole} onClick={() => setSelectedHole(hole)} style={{
-                    minWidth: 36, height: 44, borderRadius: 9, flexShrink: 0,
+                    minWidth: isNarrow ? 28 : 36, height: isNarrow ? 36 : 44, borderRadius: 7, flexShrink: 0,
                     border: active ? '2px solid #D4A53A' : '1px solid var(--bdr)',
                     background: active ? 'rgba(212,165,58,0.15)' : 'var(--surf)',
                     cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                     transform: active ? 'scale(1.08)' : 'scale(1)',
                     transition: 'transform 0.15s, border-color 0.15s',
                     opacity: hasData ? 1 : 0.5,
                   }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: active ? '#D4A53A' : 'var(--tx2)', lineHeight: 1 }}>{hole}</span>
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: hasData ? '#22c55e' : 'var(--bdr)', flexShrink: 0 }} />
+                    <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, color: active ? '#D4A53A' : 'var(--tx2)', lineHeight: 1 }}>{hole}</span>
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: hasData ? '#22c55e' : 'var(--bdr)', flexShrink: 0 }} />
                   </button>
                 )
               })}
@@ -929,8 +929,8 @@ export default function GpsPage() {
             <div style={{
               position: 'absolute', top: 8, left: 8, zIndex: 10,
               background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 14,
-              padding: '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
+              padding: isNarrow ? '6px 10px' : '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
               boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
             }}>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: holeNumSize, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
@@ -946,15 +946,15 @@ export default function GpsPage() {
           <div style={{
             position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.14)', borderRadius: 13,
-            padding: '8px 15px', display: 'flex', alignItems: 'center', gap: 10,
+            border: '1px solid rgba(255,255,255,0.14)', borderRadius: 11,
+            padding: isNarrow ? '5px 10px' : '8px 15px', display: 'flex', alignItems: 'center', gap: isNarrow ? 6 : 10,
             boxShadow: '0 4px 16px rgba(0,0,0,0.3)', whiteSpace: 'nowrap',
           }}>
             {/* Arrow pointing in the direction wind is travelling TO */}
             <div style={{ transform: `rotate(${wind.direction}deg)`, display: 'flex', lineHeight: 1 }}>
               <Navigation size={15} color="#D4A53A" fill="#D4A53A" />
             </div>
-            <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, lineHeight: 1, color: 'white', letterSpacing: 0.5 }}>
+            <span style={{ fontFamily: 'Bebas Neue', fontSize: isNarrow ? 18 : 24, lineHeight: 1, color: 'white', letterSpacing: 0.5 }}>
               {wind.speed}
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
@@ -1020,7 +1020,7 @@ export default function GpsPage() {
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
                 padding: panelPadding, minWidth: panelMinW, position: 'relative',
               }}>
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 28 }}>{label}</span>
+                <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 22 : 28 }}>{label}</span>
                 <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
                 {delta !== 0 && (
                   <span style={{
@@ -1063,8 +1063,8 @@ export default function GpsPage() {
 
             const panelStyle: React.CSSProperties = {
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-              padding: '7px 10px', minWidth: panelMinW,
+              border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
+              padding: isNarrow ? '5px 8px' : '7px 10px', minWidth: panelMinW,
             }
             const headerStyle: React.CSSProperties = {
               fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
