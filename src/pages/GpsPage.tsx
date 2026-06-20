@@ -12,6 +12,7 @@ import type { CourseGps, HoleGps, LatLng } from '../lib/types'
 import { displayName, HOLE_PARS } from '../lib/types'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const STALE_MS = 30 * 60 * 1000
@@ -279,6 +280,13 @@ export default function GpsPage() {
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
   const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
+
+  const isNarrow = useMediaQuery('(max-width: 430px)')
+  const holeNumSize  = isNarrow ? 40 : 52
+  const scoreNumSize = isNarrow ? 28 : 36
+  const yardageSize  = isNarrow ? 30 : 38
+  const panelMinW    = isNarrow ? 100 : 128
+  const panelPadding = isNarrow ? '7px 11px' : '10px 16px'
 
   // Refs for position publishing and bearing — avoid re-registering the GPS watch
   const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
@@ -925,10 +933,10 @@ export default function GpsPage() {
               padding: '8px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center',
               boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
             }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 52, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: holeNumSize, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
               <div style={{ marginTop: 6, fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: scoreNumSize, lineHeight: 1, letterSpacing: 0.5, color: scorColor }}>{scorLabel}</div>
             </div>
           )
         })()}
@@ -1007,13 +1015,13 @@ export default function GpsPage() {
             const display = adj ?? '—'
             return (
               <div key={label} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
+                display: 'flex', alignItems: 'center', gap: 8,
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                padding: '10px 16px', minWidth: 128, position: 'relative',
+                padding: panelPadding, minWidth: panelMinW, position: 'relative',
               }}>
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 30 }}>{label}</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 38, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: 28 }}>{label}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
                 {delta !== 0 && (
                   <span style={{
                     position: 'absolute', top: 4, right: 8,
@@ -1056,7 +1064,7 @@ export default function GpsPage() {
             const panelStyle: React.CSSProperties = {
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
               border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-              padding: '7px 12px', minWidth: 128,
+              padding: '7px 10px', minWidth: panelMinW,
             }
             const headerStyle: React.CSSProperties = {
               fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
