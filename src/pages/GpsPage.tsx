@@ -513,6 +513,10 @@ export default function GpsPage() {
   }, [])
 
   const handleMapClick = (e: MapMouseEvent) => {
+    if (simMode) {
+      setSimPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      return
+    }
     setTapPoint({ lat: e.lngLat.lat, lng: e.lngLat.lng })
     setSelectedCartPlayerId(null)
   }
@@ -732,19 +736,13 @@ export default function GpsPage() {
 
           {/* Sim mode: draggable player pin */}
           {simMode && simPosition && (
-            <Marker
-              longitude={simPosition.lng}
-              latitude={simPosition.lat}
-              anchor="center"
-              draggable
-              onDragEnd={e => setSimPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
-            >
+            <Marker longitude={simPosition.lng} latitude={simPosition.lat} anchor="center">
               <div style={{
                 width: 34, height: 34, borderRadius: '50%',
                 background: 'rgba(251,191,36,0.25)',
                 border: '2.5px dashed #fbbf24',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16, cursor: 'grab',
+                fontSize: 16, pointerEvents: 'none',
                 boxShadow: '0 0 12px rgba(251,191,36,0.5)',
               }}>📍</div>
             </Marker>
@@ -874,7 +872,7 @@ export default function GpsPage() {
               border: '1px solid rgba(251,191,36,0.25)',
               backdropFilter: 'blur(8px)', textAlign: 'center',
             }}>
-              Drag 📍 to simulate position
+              Tap map to move sim position
             </div>
           )}
         </div>
