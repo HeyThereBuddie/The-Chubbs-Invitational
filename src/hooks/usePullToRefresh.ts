@@ -62,7 +62,7 @@ export function usePullToRefresh(onRefresh: () => void | Promise<void>, enabled 
       document.removeEventListener('touchmove', onTouchMove)
       document.removeEventListener('touchend', onTouchEnd)
     }
-  }, [onRefresh])
+  }, [onRefresh, enabled])
 
   return { pullDistance, isRefreshing }
 }
