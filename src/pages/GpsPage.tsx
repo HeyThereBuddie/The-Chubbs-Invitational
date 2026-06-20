@@ -999,10 +999,10 @@ export default function GpsPage() {
           </button>
         )}
 
-        {/* Bottom HUD — single flex row: yardage | enter score (centered) | chulligans/drives */}
+        {/* Bottom HUD — single flex row: yardage | enter score | chulligans/drives */}
         <div style={{
-          position: 'absolute', bottom: navBase, left: 10, right: 10, zIndex: 10,
-          display: 'flex', alignItems: 'flex-end',
+          position: 'absolute', bottom: navBase, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
+          display: 'flex', alignItems: 'flex-end', gap: isNarrow ? 10 : 16,
         }}>
           {/* Left: yardage stack */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -1038,15 +1038,15 @@ export default function GpsPage() {
             })}
           </div>
 
-          {/* Center: Enter Score — flex:1 creates equal gap on both sides */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: 2 }}>
+          {/* Center: Enter Score */}
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             {profile && (
               <button onClick={() => setSheetOpen(true)} style={{
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,0.15)', color: '#000',
-                borderRadius: 10,
-                padding: isNarrow ? '7px 12px' : '12px 22px',
-                fontSize: isNarrow ? 12 : 15,
+                borderRadius: 8,
+                padding: isNarrow ? '5px 9px' : '10px 18px',
+                fontSize: isNarrow ? 11 : 13,
                 fontWeight: 800, letterSpacing: 0.5,
                 boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
                 whiteSpace: 'nowrap',
