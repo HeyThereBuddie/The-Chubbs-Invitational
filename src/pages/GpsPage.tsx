@@ -1045,11 +1045,12 @@ export default function GpsPage() {
             })}
           </div>
 
-          {/* Center: Enter Score — stretches to full row height, fills available width */}
-          <div style={{ flex: 1, alignSelf: 'stretch', display: 'flex' }}>
+          {/* Center: Enter Score — same height as one yardage tile, fills available width */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
             {profile && (
               <button onClick={() => setSheetOpen(true)} style={{
                 flex: 1,
+                height: isNarrow ? 50 : 64,
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,0.15)', color: '#000',
                 borderRadius: 10,
