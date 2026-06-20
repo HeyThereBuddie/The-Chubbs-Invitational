@@ -680,22 +680,52 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (!id) { showToast('Enter an OSM Way or Relation ID', 'error'); return }
     setSearchingOsmId(true)
     try {
-      // Try way first, then relation
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let el: any = null
+      let name = 'Unnamed Golf Course', lat: number | null = null, lng: number | null = null
+
+      // Primary: direct OSM API — no Overpass dependency, always works for a known ID
       for (const type of ['way', 'relation']) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = await overpassQuery(`[out:json][timeout:8];${type}(${id});out center tags;`, 9000) as any
-        if (data.elements?.length) { el = data.elements[0]; break }
+        try {
+          const res = await fetch(`https://api.openstreetmap.org/api/0.6/${type}/${id}.json`)
+          if (!res.ok) continue
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const json = await res.json() as any
+          const el = json?.elements?.[0]
+          if (!el) continue
+          name = el.tags?.name || 'Unnamed Golf Course'
+          // ways give bounds; use center of bounds
+          if (el.bounds) {
+            lat = (el.bounds.minlat + el.bounds.maxlat) / 2
+            lng = (el.bounds.minlon + el.bounds.maxlon) / 2
+          }
+          break
+        } catch { continue }
       }
-      if (!el) { showToast('OSM ID not found — check the number and try again', 'error'); setSearchingOsmId(false); return }
-      const lat = el.type === 'node' ? el.lat : (el.center?.lat ?? null)
-      const lng = el.type === 'node' ? el.lon : (el.center?.lon ?? null)
-      if (lat == null || lng == null) { showToast('Could not determine course location from OSM ID', 'error'); setSearchingOsmId(false); return }
-      const name = el.tags?.name || 'Unnamed Golf Course'
+
+      // Fallback: Overpass (fix: out center; not out center tags;)
+      if (lat == null) {
+        for (const type of ['way', 'relation']) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = await overpassQuery(`[out:json][timeout:8];${type}(${id});out center;`, 9000) as any
+            const el = data?.elements?.[0]
+            if (!el) continue
+            name = el.tags?.name || name
+            lat = el.center?.lat ?? null
+            lng = el.center?.lon ?? null
+            if (lat != null) break
+          } catch { continue }
+        }
+      }
+
+      if (lat == null || lng == null) {
+        showToast('OSM ID not found — double-check the number from openstreetmap.org', 'error')
+        setSearchingOsmId(false)
+        return
+      }
       await selectResult({ id: parseInt(id), name, lat, lng })
     } catch {
-      showToast('OSM lookup failed — check your connection', 'error')
+      showToast('Lookup failed — check your connection', 'error')
     }
     setSearchingOsmId(false)
   }
