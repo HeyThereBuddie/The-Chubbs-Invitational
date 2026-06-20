@@ -280,7 +280,7 @@ export default function GpsPage() {
   const holeNumSize  = isNarrow ? 32 : 52
   const scoreNumSize = isNarrow ? 22 : 36
   const yardageSize  = isNarrow ? 36 : 44
-  const panelPadding = isNarrow ? '9px 11px' : '12px 16px'
+  const panelPadding = isNarrow ? '7px 11px' : '10px 16px'
 
   // Refs for position publishing and bearing — avoid re-registering the GPS watch
   const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
@@ -1012,7 +1012,7 @@ export default function GpsPage() {
                   display: 'flex', alignItems: 'center', gap: 6,
                   background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                  padding: panelPadding, minWidth: isNarrow ? 120 : 158,
+                  padding: panelPadding, minWidth: isNarrow ? 140 : 185,
                 }}>
                   <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase' }}>{label}</span>
                   <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: raw !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5, marginLeft: 'auto' }}>{display}</span>
@@ -1049,7 +1049,7 @@ export default function GpsPage() {
               const panelStyle: React.CSSProperties = {
                 background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-                padding: isNarrow ? '9px 10px' : '12px 14px', minWidth: isNarrow ? 120 : 158,
+                padding: isNarrow ? '7px 10px' : '10px 14px', minWidth: isNarrow ? 140 : 185,
               }
               const headerStyle: React.CSSProperties = {
                 fontSize: 9, fontWeight: 700, letterSpacing: 1.6,
