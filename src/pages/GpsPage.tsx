@@ -952,7 +952,7 @@ export default function GpsPage() {
                   {posLabel && (
                     <>
                       <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.2)', margin: '2px 0' }} />
-                      <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.3 }}>{posLabel}</div>
+                      <div style={{ fontFamily: 'Bebas Neue', fontSize: scoreNumSize, lineHeight: 1, letterSpacing: 0.5, color: 'rgba(255,255,255,0.65)' }}>{posLabel}</div>
                     </>
                   )}
                 </div>
