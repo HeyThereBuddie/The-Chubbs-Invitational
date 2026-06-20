@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 const THRESHOLD = 72 // px of pull needed to trigger
 
-export function usePullToRefresh(onRefresh: () => void | Promise<void>) {
+export function usePullToRefresh(onRefresh: () => void | Promise<void>, enabled = true) {
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const startYRef = useRef(0)
@@ -11,6 +11,8 @@ export function usePullToRefresh(onRefresh: () => void | Promise<void>) {
   const isRefreshingRef = useRef(false)
 
   useEffect(() => {
+    if (!enabled) return
+
     const onTouchStart = (e: TouchEvent) => {
       if (window.scrollY > 0) return
       startYRef.current = e.touches[0].clientY

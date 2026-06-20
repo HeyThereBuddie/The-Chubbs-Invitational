@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { useTheme } from '../../context/ThemeContext'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
@@ -21,8 +21,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const viewingYear = viewingTournament?.year ?? null
 
   const { profile } = useAuth()
+  const location = useLocation()
   const handleRefresh = useCallback(() => { window.location.reload() }, [])
-  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh)
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, location.pathname !== '/gps')
 
   const avatarInitial = (profile?.nickname || profile?.name || '?')[0].toUpperCase()
 
