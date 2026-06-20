@@ -448,9 +448,59 @@ export default function GpsPage() {
 
   const landingZoneGeoJson = useMemo(() => {
     const lz = currentHole?.landingZone; if (!lz) return null
-    const coords: [number, number][] = []
-    for (let i = 0; i <= 36; i++) { const pt = offsetLatLng(lz, (i / 36) * 360, 27); coords.push([pt.lng, pt.lat]) }
-    return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+
+    // Collect fairway polygon coords for containment check
+    let fairwayCoords: [number, number][] | null = null
+    if (currentHole.fairway && currentHole.fairway.length >= 3) {
+      fairwayCoords = currentHole.fairway.map(p => [p.lng, p.lat] as [number, number])
+    } else if (currentHole.tee && currentHole.green.center) {
+      fairwayCoords = buildCorridor(currentHole.tee, currentHole.green.center,
+        calcBearing(currentHole.tee, currentHole.green.center))
+    }
+
+    // Ray-casting point-in-polygon test (lng/lat coords are fine at this scale)
+    function inPoly(pt: [number, number], poly: [number, number][]): boolean {
+      let inside = false
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i], [xj, yj] = poly[j]
+        if (((yi > pt[1]) !== (yj > pt[1])) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)
+          inside = !inside
+      }
+      return inside
+    }
+
+    // Binary-search for the largest radius (up to 27m) where all 36 boundary
+    // points sit inside the fairway polygon. Floor at 8m; skip if center is outside.
+    const MAX_R = 27, MIN_R = 8
+    let radius = MAX_R
+    if (fairwayCoords) {
+      const center: [number, number] = [lz.lng, lz.lat]
+      if (inPoly(center, fairwayCoords)) {
+        let lo = MIN_R, hi = MAX_R
+        for (let iter = 0; iter < 20; iter++) {
+          const mid = (lo + hi) / 2
+          const allIn = Array.from({ length: 36 }, (_, i) => {
+            const pt = offsetLatLng(lz, (i / 36) * 360, mid)
+            return inPoly([pt.lng, pt.lat], fairwayCoords!)
+          }).every(Boolean)
+          if (allIn) lo = mid; else hi = mid
+        }
+        radius = lo
+      }
+    }
+
+    const circle: [number, number][] = []
+    for (let i = 0; i <= 36; i++) { const pt = offsetLatLng(lz, (i / 36) * 360, radius); circle.push([pt.lng, pt.lat]) }
+
+    // Label arc: slightly inside circle so text sits within the boundary
+    const labelR = Math.max(MIN_R, radius - 5)
+    const labelArc: [number, number][] = []
+    for (let i = 0; i <= 72; i++) { const pt = offsetLatLng(lz, (i / 72) * 360, labelR); labelArc.push([pt.lng, pt.lat]) }
+
+    return {
+      circle: { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [circle] }, properties: {} },
+      label:  { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: labelArc }, properties: {} },
+    }
   }, [currentHole])
 
   const aimLineGeoJson = useMemo(() => {
@@ -545,6 +595,9 @@ export default function GpsPage() {
   const backDist       = dist(position, currentHole?.green.back)
   const tapDist        = dist(position, tapPoint)
   const tapToGreenDist = dist(tapPoint, currentHole?.green.center)
+  const distToTee      = dist(position, currentHole?.tee)
+  // Hide landing zone once player has walked >75 yds from tee (no longer relevant)
+  const showLandingZone = !!currentHole?.landingZone && (!position || distToTee === null || distToTee <= 75)
 
   const aimLineMid    = position && tapPoint
     ? { lat: (position.lat + tapPoint.lat) / 2, lng: (position.lng + tapPoint.lng) / 2 } : null
@@ -709,12 +762,33 @@ export default function GpsPage() {
           )}
 
           {/* Landing zone */}
-          {landingZoneGeoJson && (
-            <Source id="landing-zone" type="geojson" data={landingZoneGeoJson}>
-              <Layer id="landing-zone-fill" type="fill" paint={{ 'fill-color': 'rgba(74,222,128,0.18)' }} />
-              <Layer id="landing-zone-outline" type="line"
-                paint={{ 'line-color': 'rgba(74,222,128,0.80)', 'line-width': 2, 'line-dasharray': [6, 3] }} />
-            </Source>
+          {showLandingZone && landingZoneGeoJson && (
+            <>
+              <Source id="landing-zone" type="geojson" data={landingZoneGeoJson.circle}>
+                <Layer id="landing-zone-fill" type="fill" paint={{ 'fill-color': 'rgba(74,222,128,0.18)' }} />
+                <Layer id="landing-zone-outline" type="line"
+                  paint={{ 'line-color': 'rgba(74,222,128,0.80)', 'line-width': 2, 'line-dasharray': [6, 3] }} />
+              </Source>
+              <Source id="landing-zone-label" type="geojson" data={landingZoneGeoJson.label}>
+                <Layer
+                  id="landing-zone-label-text"
+                  type="symbol"
+                  layout={{
+                    'symbol-placement': 'line',
+                    'text-field': 'SUGGESTED LANDING ZONE',
+                    'text-size': 10,
+                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                    'text-letter-spacing': 0.1,
+                    'symbol-spacing': 250,
+                  }}
+                  paint={{
+                    'text-color': 'rgba(74,222,128,0.85)',
+                    'text-halo-color': 'rgba(0,0,0,0.5)',
+                    'text-halo-width': 1,
+                  }}
+                />
+              </Source>
+            </>
           )}
 
           {/* Aim line: Player → Tap */}
@@ -763,7 +837,7 @@ export default function GpsPage() {
           )}
 
           {/* Landing zone center */}
-          {currentHole?.landingZone && (
+          {showLandingZone && currentHole?.landingZone && (
             <Marker longitude={currentHole.landingZone.lng} latitude={currentHole.landingZone.lat} anchor="center">
               <div style={{
                 width: 18, height: 18, borderRadius: '50%',
