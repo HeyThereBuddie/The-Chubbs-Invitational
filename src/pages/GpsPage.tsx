@@ -1001,7 +1001,7 @@ export default function GpsPage() {
 
         {/* Bottom HUD — single flex row: yardage | enter score | chulligans/drives */}
         <div style={{
-          position: 'absolute', bottom: navBase, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
+          position: 'absolute', bottom: navBase, left: 8, zIndex: 10,
           display: 'flex', alignItems: 'flex-end', gap: isNarrow ? 10 : 16,
         }}>
           {/* Left: yardage stack */}
@@ -1020,7 +1020,7 @@ export default function GpsPage() {
                   display: 'flex', alignItems: 'center', gap: 8,
                   background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
                   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                  padding: panelPadding, minWidth: panelMinW, position: 'relative',
+                  padding: panelPadding, minWidth: isNarrow ? 120 : 158, position: 'relative',
                 }}>
                   <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, letterSpacing: 1.2, color, textTransform: 'uppercase', width: isNarrow ? 22 : 28 }}>{label}</span>
                   <span style={{ fontFamily: 'Bebas Neue', fontSize: yardageSize, lineHeight: 1, color: adj !== null ? 'white' : 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>{display}</span>
