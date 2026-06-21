@@ -41,6 +41,17 @@ export function ScoreBottomSheet({
   const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
   const par = HOLE_PARS[hole - 1]
 
+  const prevScore = locked ? myScores[hole - 1] : undefined
+  const missingItems: string[] = []
+  if (locked) {
+    if (!prevScore) {
+      missingItems.push('score')
+    } else {
+      if (prevScore.putts == null) missingItems.push('putts')
+      if (twoPlayers && !prevScore.drive_used_id) missingItems.push('drive selection')
+    }
+  }
+
   const hFrom = hole <= 9 ? 1 : 10
   const hTo   = hole <= 9 ? 9 : 18
   const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo)
@@ -124,6 +135,27 @@ export function ScoreBottomSheet({
             />
           )}
         </div>
+
+        {/* Lock reason blurb */}
+        {locked && missingItems.length > 0 && (
+          <div style={{
+            margin: '4px 12px 0',
+            padding: '12px 16px',
+            borderRadius: 10,
+            background: 'rgba(239,68,68,0.08)',
+            border: '1px solid rgba(239,68,68,0.18)',
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>
+              Hole {hole - 1} isn't complete yet
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.6 }}>
+              Go back and finish hole {hole - 1} — still missing:{' '}
+              <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>
+                {missingItems.join(' · ')}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{
