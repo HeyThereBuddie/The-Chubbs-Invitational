@@ -2,8 +2,16 @@ import { supabase } from './supabase'
 import { localDb } from './localDb'
 
 export async function syncAll(tournamentId: string): Promise<void> {
+  // Step 1: Fetch teams first — other tables need team IDs for scoping
+  const { data: teams } = await supabase.from('teams')
+    .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
+    .eq('tournament_id', tournamentId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teamIds = (teams ?? []).map((t: any) => t.id as string)
+
+  // Step 2: Fetch everything else in parallel, scoping scores/chulligans to this tournament's teams
   const [
-    { data: teams },
     { data: profiles },
     { data: scores },
     { data: chulligans },
@@ -14,12 +22,13 @@ export async function syncAll(tournamentId: string): Promise<void> {
     { data: pairings },
     { data: tournamentRow },
   ] = await Promise.all([
-    supabase.from('teams')
-      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-      .eq('tournament_id', tournamentId),
     supabase.from('profiles').select('*').eq('status', 'active'),
-    supabase.from('scores').select('*'),
-    supabase.from('chulligans').select('id, team_id, player_id, hole'),
+    teamIds.length > 0
+      ? supabase.from('scores').select('*').in('team_id', teamIds)
+      : Promise.resolve({ data: [] as never[] }),
+    teamIds.length > 0
+      ? supabase.from('chulligans').select('id, team_id, player_id, hole').in('team_id', teamIds)
+      : Promise.resolve({ data: [] as never[] }),
     supabase.from('tee_times')
       .select('*, team:teams(*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*))')
       .order('tee_time'),
@@ -64,6 +73,13 @@ export async function syncAll(tournamentId: string): Promise<void> {
       })))
     }
     if (profiles?.length) await localDb.profiles.bulkPut(profiles)
+
+    // Purge any scores/chulligans from other tournaments before writing current ones.
+    // This prevents ghost rows (from deleted+recreated score UUIDs) inflating totals.
+    if (teamIds.length > 0) {
+      await localDb.scores.where('team_id').noneOf(teamIds).delete()
+      await localDb.chulligans.where('team_id').noneOf(teamIds).delete()
+    }
     if (scores?.length)   await localDb.scores.bulkPut(scores)
     if (chulligans?.length) await localDb.chulligans.bulkPut(chulligans)
     if (teeTimes?.length) {

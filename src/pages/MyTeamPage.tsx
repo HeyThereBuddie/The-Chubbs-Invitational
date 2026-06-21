@@ -80,7 +80,10 @@ export default function MyTeamPage() {
           player2: parseJson(t.player2_json) as Player | undefined,
         })) as unknown as TeamFull[]
         setAllTeams(cached)
-        const defaultId = myTeamId ?? (cached[0]?.id ?? null)
+        const cachedIds = new Set(cached.map(t => t.id))
+        // Only use myTeamId if it belongs to THIS tournament — avoids showing last year's scores
+        const validMyId = myTeamId && cachedIds.has(myTeamId) ? myTeamId : null
+        const defaultId = validMyId ?? (cached[0]?.id ?? null)
         setViewingTeamId(defaultId)
         if (!defaultId) setLoading(false)
       }
@@ -93,7 +96,13 @@ export default function MyTeamPage() {
         if (data) {
           const teams = data as unknown as TeamFull[]
           setAllTeams(teams)
-          setViewingTeamId(prev => prev ?? (myTeamId ?? (teams[0]?.id ?? null)))
+          const freshIds = new Set(teams.map(t => t.id))
+          const validMyIdFresh = myTeamId && freshIds.has(myTeamId) ? myTeamId : null
+          setViewingTeamId(prev => {
+            // Keep existing selection only if it's valid for this tournament
+            if (prev && freshIds.has(prev)) return prev
+            return validMyIdFresh ?? (teams[0]?.id ?? null)
+          })
         }
       } catch { /* offline — cached data already shown */ }
     })()
