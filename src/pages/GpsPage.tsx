@@ -1227,7 +1227,9 @@ export default function GpsPage() {
                   <div style={panelStyle}>
                     <div style={headerStyle}>🏌️ Drives</div>
                     {players.map(player => {
-                      const drivesUsed = scoring.countDrives(player.id, 1, 18)
+                      const driveFrom = selectedHole <= 9 ? 1 : 10
+                      const driveTo   = selectedHole <= 9 ? 9 : 18
+                      const drivesUsed = scoring.countDrives(player.id, driveFrom, driveTo)
                       const firstName = displayName(player).split(' ')[0]
                       return (
                         <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
