@@ -204,8 +204,10 @@ export default function GpsPage() {
   const [playerBearing, setPlayerBearing] = useState<number | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'acquiring' | 'ok' | 'denied' | 'unavailable'>('acquiring')
   const [selectedHole, setSelectedHole] = useState(() => {
-    const h = parseInt(searchParams.get('hole') ?? '1')
-    return h >= 1 && h <= 18 ? h : 1
+    const urlH = parseInt(searchParams.get('hole') ?? '0')
+    if (urlH >= 1 && urlH <= 18) return urlH
+    const stored = parseInt(localStorage.getItem('gps_last_hole') ?? '0')
+    return stored >= 1 && stored <= 18 ? stored : 1
   })
   const [tapPoint, setTapPoint] = useState<LatLng | null>(null)
   const [tipOpen, setTipOpen]   = useState(false)
@@ -226,8 +228,11 @@ export default function GpsPage() {
   const panelPadding = isNarrow ? '7px 11px' : '10px 16px'
 
   // Refs for position publishing and bearing — avoid re-registering the GPS watch
-  const lastPublishRef = useRef<{ lat: number; lng: number; at: number } | null>(null)
-  const lastPosRef     = useRef<LatLng | null>(null)
+  const lastPublishRef    = useRef<{ lat: number; lng: number; at: number } | null>(null)
+  const lastPosRef        = useRef<LatLng | null>(null)
+  const followPausedRef   = useRef(false)
+  const followPauseTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoOpenedHoleRef = useRef(0)
   const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
@@ -446,11 +451,13 @@ export default function GpsPage() {
   }, [currentHole])
 
   const aimLineGeoJson = useMemo(() => {
-    if (!position || !tapPoint) return null
+    if (!position) return null
+    const target = tapPoint ?? currentHole?.green.center
+    if (!target) return null
     return { type: 'Feature' as const,
-      geometry: { type: 'LineString' as const, coordinates: [[position.lng, position.lat], [tapPoint.lng, tapPoint.lat]] },
+      geometry: { type: 'LineString' as const, coordinates: [[position.lng, position.lat], [target.lng, target.lat]] },
       properties: {} }
-  }, [position, tapPoint])
+  }, [position, tapPoint, currentHole])
 
   const tapToGreenGeoJson = useMemo(() => {
     const green = currentHole?.green.center; if (!tapPoint || !green) return null
@@ -499,6 +506,31 @@ export default function GpsPage() {
     setTapPoint(course?.holes.find(h => h.hole === selectedHole)?.landingZone ?? null)
   }, [selectedHole, course])
 
+  // Persist last hole so navigation away and back restores the same hole
+  useEffect(() => { localStorage.setItem('gps_last_hole', String(selectedHole)) }, [selectedHole])
+
+  // Follow-cam: keep green at top, player pin centered in available space
+  useEffect(() => {
+    if (!position || !currentHole?.green.center || followPausedRef.current) return
+    const green = currentHole.green.center
+    const bearing = calcBearing(position, green)
+    const distMeters = haversineYards(position, green) * 0.9144
+    const vh = window.innerHeight
+    // Available vertical space between hole strip (~40px) and HUD (~230px)
+    const pixelsForGreen = Math.max(80, (vh - 270) / 2 * 0.85)
+    const metersPerPx = distMeters / pixelsForGreen
+    const rawZoom = Math.log2(156543.03 * Math.cos(position.lat * Math.PI / 180) / metersPerPx)
+    const zoom = Math.max(14.5, Math.min(18.5, rawZoom))
+    mapRef.current?.easeTo({
+      center: [position.lng, position.lat],
+      bearing,
+      zoom,
+      padding: { top: 40, bottom: 230, left: 0, right: 0 },
+      duration: 600,
+      essential: false,
+    })
+  }, [position, currentHole]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Prevent iOS pull-to-refresh on the map
   useEffect(() => {
     let startY = 0
@@ -532,10 +564,21 @@ export default function GpsPage() {
   // Hide landing zone once player has walked >75 yds from tee (no longer relevant)
   const showLandingZone = !!currentHole?.landingZone && (!position || distToTee === null || distToTee <= 75)
 
-  const aimLineMid    = position && tapPoint
-    ? { lat: (position.lat + tapPoint.lat) / 2, lng: (position.lng + tapPoint.lng) / 2 } : null
+  const aimLineTarget = tapPoint ?? currentHole?.green.center ?? null
+  const aimLineDist   = tapPoint ? tapDist : centerDist
+  const aimLineMid    = position && aimLineTarget
+    ? { lat: (position.lat + aimLineTarget.lat) / 2, lng: (position.lng + aimLineTarget.lng) / 2 } : null
   const tapToGreenMid = tapPoint && currentHole?.green.center
     ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
+
+  // Auto-open score sheet once per hole when player reaches the green (~20 yds)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!profile || sheetOpen || centerDist === null || centerDist > 20) return
+    if (autoOpenedHoleRef.current === selectedHole) return
+    autoOpenedHoleRef.current = selectedHole
+    setSheetOpen(true)
+  }, [centerDist, selectedHole, profile, sheetOpen])
 
   // ── Early-exit renders ────────────────────────────────────────────────────
 
@@ -646,6 +689,13 @@ export default function GpsPage() {
           mapStyle="mapbox://styles/mapbox/satellite-v9"
           onLoad={() => setMapLoaded(true)}
           onClick={handleMapClick}
+          onDragStart={() => {
+            followPausedRef.current = true
+            if (followPauseTimer.current) clearTimeout(followPauseTimer.current)
+          }}
+          onDragEnd={() => {
+            followPauseTimer.current = setTimeout(() => { followPausedRef.current = false }, 8000)
+          }}
         >
           {/* Fairway corridor */}
           {corridorGeoJson && (
@@ -773,15 +823,15 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Improvement 1: sniper reticle tap marker */}
-          {tapPoint && (
-            <Marker longitude={tapPoint.lng} latitude={tapPoint.lat} anchor="center">
+          {/* Sniper reticle — at tap point if set, otherwise at green center */}
+          {position && aimLineTarget && (
+            <Marker longitude={aimLineTarget.lng} latitude={aimLineTarget.lat} anchor="center">
               <ReticleMarker />
             </Marker>
           )}
 
-          {/* Improvement 5: larger aim line distance label */}
-          {aimLineMid && tapDist !== null && tapDist <= 9999 && (
+          {/* Aim line distance label */}
+          {aimLineMid && aimLineDist !== null && aimLineDist <= 9999 && (
             <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
               <div style={{
                 background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
@@ -791,7 +841,7 @@ export default function GpsPage() {
                 boxShadow: '0 0 16px rgba(255,255,255,0.12), 0 2px 10px rgba(0,0,0,0.65)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 0.5, lineHeight: 1 }}>{tapDist}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 0.5, lineHeight: 1 }}>{aimLineDist}</span>
                 <span style={{ fontSize: 10, opacity: 0.55, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
               </div>
             </Marker>
