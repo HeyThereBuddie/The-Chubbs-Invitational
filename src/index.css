@@ -10,13 +10,32 @@
   --surf2:       rgba(255,255,255,0.07);
   --surf3:       rgba(255,255,255,0.11);
   --tx1:         #f8f5ef;
-  --tx2:         rgba(248,245,239,0.65);
-  --tx3:         rgba(248,245,239,0.42);
-  --tx4:         rgba(248,245,239,0.26);
-  --tx5:         rgba(248,245,239,0.13);
+  --tx2:         rgba(248,245,239,0.70);
+  --tx3:         rgba(248,245,239,0.48);
+  --tx4:         rgba(248,245,239,0.30);
+  --tx5:         rgba(248,245,239,0.15);
   --bdr:         rgba(255,255,255,0.11);
   --bdr2:        rgba(255,255,255,0.18);
   --score-fill:  #18140a;
+
+  /* Gold ramp */
+  --gold:        #D4A53A;
+  --gold-bright: #ffd966;
+  --gold-dim:    rgba(212,165,58,0.55);
+  --gold-08:     rgba(212,165,58,0.08);
+  --gold-15:     rgba(212,165,58,0.15);
+  --gold-25:     rgba(212,165,58,0.25);
+  --gold-40:     rgba(212,165,58,0.40);
+
+  /* Motion */
+  --spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:    cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Elevation — layered shadow + border, not background alone */
+  --elev-1: 0 1px 2px rgba(0,0,0,0.35), 0 2px 8px -2px rgba(0,0,0,0.30);
+  --elev-2: 0 2px 4px rgba(0,0,0,0.35), 0 8px 24px -6px rgba(0,0,0,0.45);
+  --elev-3: 0 4px 8px rgba(0,0,0,0.40), 0 16px 48px -8px rgba(0,0,0,0.55);
+  --elev-gold: 0 2px 12px -2px rgba(212,165,58,0.35);
 }
 
 html[data-theme="light"] {
@@ -35,6 +54,9 @@ html[data-theme="light"] {
   --bdr:         #ddd0b8;
   --bdr2:        #c9b898;
   --score-fill:  #ffffff;
+  --elev-1: 0 1px 2px rgba(0,0,0,0.06), 0 2px 8px -2px rgba(0,0,0,0.08);
+  --elev-2: 0 2px 4px rgba(0,0,0,0.06), 0 8px 24px -6px rgba(0,0,0,0.12);
+  --elev-3: 0 4px 8px rgba(0,0,0,0.08), 0 16px 48px -8px rgba(0,0,0,0.16);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -109,6 +131,10 @@ body {
   background-size: 800px 100%;
   animation: skeletonShimmer 1.4s ease-in-out infinite;
 }
+.skeleton-line   { height: 12px; border-radius: 6px; }
+.skeleton-title  { height: 20px; border-radius: 8px; width: 55%; }
+.skeleton-circle { border-radius: 50%; }
+.skeleton-card   { border-radius: 20px; }
 
 /* ── Score button press ── */
 .score-btn {
@@ -137,7 +163,7 @@ body {
   from { transform: translateY(0); }
   to   { transform: translateY(100%); }
 }
-.sheet-enter { animation: sheetSlideUp   0.28s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.sheet-enter { animation: sheetSlideUp   0.38s cubic-bezier(0.22, 1.2, 0.36, 1) both; }
 .sheet-exit  { animation: sheetSlideDown 0.22s cubic-bezier(0.32, 0.72, 0, 1) both; }
 
 .animate-fadeUp    { animation: fadeUp 0.4s ease both; }
@@ -191,8 +217,8 @@ body {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(212,165,58,0.20);
-  border-radius: 18px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  border-radius: 20px;
+  box-shadow: var(--elev-2), inset 0 1px 0 rgba(255,255,255,0.07);
 }
 
 .glass-strong {
@@ -200,8 +226,30 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(212,165,58,0.30);
-  border-radius: 18px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  border-radius: 20px;
+  box-shadow: var(--elev-3), inset 0 1px 0 rgba(255,255,255,0.10);
+}
+
+/* Flat glass for nested cards — avoids blur stacking on older iPhones */
+.glass-flat {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 14px;
+  box-shadow: var(--elev-1);
+}
+
+/* ── Pressed-state feedback for any tappable element ── */
+.pressable {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.15s var(--spring), opacity 0.15s ease;
+}
+.pressable:active { transform: scale(0.97); }
+
+/* ── Focus ring (keyboard / accessibility) ── */
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--gold-40);
+  outline-offset: 2px;
 }
 
 /* ── Gold glow text ── */
@@ -231,53 +279,62 @@ body {
 
 /* ── Buttons ── */
 .btn-gold {
-  background: linear-gradient(135deg, #D4A53A, #e0a010);
+  background: linear-gradient(160deg, #e8bc55 0%, #D4A53A 45%, #c4941f 100%);
   color: #080808;
   font-weight: 700;
   border-radius: 999px;
-  padding: 10px 24px;
+  padding: 12px 24px;
+  min-height: 44px;
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  transition: transform 0.15s var(--spring), box-shadow 0.2s ease, opacity 0.2s;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
+  box-shadow: var(--elev-gold), inset 0 1px 0 rgba(255,255,255,0.35);
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-gold:hover   { opacity: 0.9; transform: scale(1.02); }
-.btn-gold:active  { transform: scale(0.98); }
-.btn-gold:disabled{ opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-gold:hover   { box-shadow: 0 4px 20px -2px rgba(212,165,58,0.5), inset 0 1px 0 rgba(255,255,255,0.35); transform: translateY(-1px); }
+.btn-gold:active  { transform: scale(0.97); box-shadow: var(--elev-gold), inset 0 1px 2px rgba(0,0,0,0.15); }
+.btn-gold:disabled{ opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .btn-outline {
   background: transparent;
-  color: #D4A53A;
+  color: var(--gold);
   font-weight: 600;
   border-radius: 999px;
-  padding: 10px 24px;
-  border: 1px solid rgba(212,165,58,0.4);
+  padding: 12px 24px;
+  min-height: 44px;
+  border: 1px solid var(--gold-40);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.15s var(--spring), border-color 0.2s;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-outline:hover { background: rgba(212,165,58,0.08); }
+.btn-outline:hover  { background: var(--gold-08); border-color: var(--gold); }
+.btn-outline:active { transform: scale(0.97); }
 
 .btn-ghost {
   background: transparent;
   color: var(--tx2);
   border-radius: 999px;
-  padding: 8px 16px;
+  padding: 10px 16px;
+  min-height: 40px;
   border: 1px solid var(--bdr2);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, transform 0.15s var(--spring);
   font-family: 'Inter', sans-serif;
   font-size: 13px;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-ghost:hover { background: var(--surf2); color: var(--tx1); }
+.btn-ghost:hover  { background: var(--surf2); color: var(--tx1); }
+.btn-ghost:active { transform: scale(0.97); }
 
 /* ── Toast ── */
 .toast {
@@ -304,45 +361,52 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="time"],
+input[type="tel"],
 select,
 textarea {
   background: var(--surf);
   border: 1px solid rgba(212,165,58,0.2);
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--tx1);
-  padding: 10px 14px;
+  padding: 12px 14px;
+  min-height: 44px;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 16px; /* ≥16px prevents iOS zoom-on-focus */
   width: 100%;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: rgba(212,165,58,0.6);
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 0 3px var(--gold-08);
+  background: var(--surf2);
 }
 input::placeholder, textarea::placeholder { color: var(--tx4); }
 select option { background: var(--bg); color: var(--tx1); }
 
 /* ── Pill tab ── */
 .pill-tab {
-  padding: 6px 18px;
+  padding: 9px 18px;
+  min-height: 38px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--bdr);
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s var(--spring), box-shadow 0.2s;
   white-space: nowrap;
   background: var(--surf);
   color: var(--tx3);
+  -webkit-tap-highlight-color: transparent;
 }
 .pill-tab.active {
-  background: rgba(212,165,58,0.15);
-  border-color: rgba(212,165,58,0.4);
-  color: #D4A53A;
-  transform: scale(1.03);
+  background: var(--gold-15);
+  border-color: var(--gold-40);
+  color: var(--gold);
+  box-shadow: var(--elev-gold);
 }
-.pill-tab:hover:not(.active) { color: var(--tx2); }
+.pill-tab:hover:not(.active) { color: var(--tx2); background: var(--surf2); }
+.pill-tab:active { transform: scale(0.96); }
 
 /* ── Score bubble ── */
 .score-bubble {
@@ -452,4 +516,39 @@ html[data-theme="light"] .glass-strong {
 }
 .gps-pulse-ring {
   animation: gpsRingPulse 2s ease-out infinite;
+}
+
+/* ── Stat tile — consistent numeric display block ── */
+.stat-tile {
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: var(--elev-1);
+}
+
+/* ── Section label — consistent uppercase eyebrow ── */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+
+/* ── List row — tappable row with press feedback ── */
+.list-row {
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.15s var(--spring);
+}
+.list-row:active { background: var(--surf2); transform: scale(0.99); }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

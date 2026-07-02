@@ -45,10 +45,13 @@ export default function BottomNav() {
       position: 'fixed',
       bottom: 0, left: 0, right: 0,
       background: 'var(--panel)',
-      backdropFilter: 'blur(16px)',
-      borderTop: '1px solid rgba(212,165,58,0.12)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderTop: '1px solid rgba(212,165,58,0.14)',
+      boxShadow: '0 -8px 32px -8px rgba(0,0,0,0.5)',
       display: 'flex',
       zIndex: 100,
+      paddingTop: 4,
       paddingBottom: 'env(safe-area-inset-bottom, 8px)',
     }}>
       {navItems.map(({ to, icon: Icon, label }) => (
@@ -57,6 +60,7 @@ export default function BottomNav() {
           to={to}
           end={to === '/'}
           onClick={() => navigator.vibrate?.(8)}
+          className="pressable"
           style={{
             flex: 1,
             display: 'flex',
@@ -77,11 +81,12 @@ export default function BottomNav() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: isNarrow ? 34 : 40,
-                  height: isNarrow ? 22 : 26,
+                  width: isNarrow ? 36 : 42,
+                  height: isNarrow ? 24 : 28,
                   borderRadius: 999,
                   background: isActive ? 'rgba(212,165,58,0.18)' : 'transparent',
-                  transition: 'background 0.2s',
+                  boxShadow: isActive ? '0 0 12px rgba(212,165,58,0.25)' : 'none',
+                  transition: 'background 0.25s, box-shadow 0.25s',
                   marginBottom: 2,
                 }}>
                 <Icon size={isNarrow ? 17 : 20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#D4A53A' : 'var(--tx3)'} />
