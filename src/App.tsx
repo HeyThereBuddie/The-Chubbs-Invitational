@@ -34,11 +34,13 @@ function Spinner() {
   )
 }
 
-function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+function ProtectedRoute({ children, adminOnly = false, playerRedirect }: { children: React.ReactNode; adminOnly?: boolean; playerRedirect?: string }) {
   const { user, loading, isAdmin } = useAuth()
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/auth" replace />
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />
+  // Scores is admin-only in the nav; players who deep-link land on GPS instead
+  if (playerRedirect && !isAdmin) return <Navigate to={playerRedirect} replace />
   return <>{children}</>
 }
 
@@ -57,7 +59,7 @@ function AppRoutes() {
       <Route path="/my-team" element={<ProtectedRoute><Layout><MyTeamPage /></Layout></ProtectedRoute>} />
       <Route path="/course" element={<ProtectedRoute><Layout><CoursePage /></Layout></ProtectedRoute>} />
       <Route path="/live-feed" element={<ProtectedRoute><Layout><LiveFeed /></Layout></ProtectedRoute>} />
-      <Route path="/scores" element={<ProtectedRoute><Layout><Scores /></Layout></ProtectedRoute>} />
+      <Route path="/scores" element={<ProtectedRoute playerRedirect="/gps"><Layout><Scores /></Layout></ProtectedRoute>} />
       <Route path="/gps" element={<ProtectedRoute><Layout><GpsPage /></Layout></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
       <Route path="/hall-of-fame" element={<ProtectedRoute><Layout><HallOfFame /></Layout></ProtectedRoute>} />

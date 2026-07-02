@@ -8,7 +8,6 @@ import {
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
-  { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },

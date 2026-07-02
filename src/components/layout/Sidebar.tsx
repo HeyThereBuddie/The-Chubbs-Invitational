@@ -12,7 +12,6 @@ const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/C
 
 const playerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'My Team' },

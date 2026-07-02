@@ -650,7 +650,7 @@ export default function GpsPage() {
       {/* Hole selector strip */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', gap: 4 }}>
-          <button onClick={() => navigate('/scores')} style={{
+          <button onClick={() => navigate('/')} style={{
             padding: '4px 8px', background: 'none', border: 'none',
             color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
             fontSize: 12, flexShrink: 0,
