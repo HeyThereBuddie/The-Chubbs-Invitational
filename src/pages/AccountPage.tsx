@@ -243,91 +243,121 @@ export default function AccountPage() {
     }
   }
 
-  if (!profile) return null
+  if (!profile) return (
+    <div style={{ maxWidth: 560, margin: '0 auto' }}>
+      <div className="skeleton skeleton-title" style={{ width: 160, height: 32, marginBottom: 24 }} />
+      <div className="glass" style={{ padding: 20, marginBottom: 28, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="skeleton skeleton-circle" style={{ width: 84, height: 84, flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="skeleton skeleton-title" style={{ width: '60%', marginBottom: 10 }} />
+          <div className="skeleton skeleton-line" style={{ width: '80%', marginBottom: 12 }} />
+          <div className="skeleton" style={{ width: 120, height: 32, borderRadius: 999 }} />
+        </div>
+      </div>
+      {[0, 1, 2].map(i => (
+        <div key={i} style={{ marginBottom: 24 }}>
+          <div className="skeleton skeleton-line" style={{ width: 96, marginBottom: 8, marginLeft: 4 }} />
+          <div className="skeleton skeleton-card" style={{ height: 152 }} />
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4, margin: 0 }}>
-          My Account
-        </h1>
-        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
-          {displayName(profile)} · {profile.email}
-        </p>
-      </div>
+      <h1 className="animate-fadeUp" style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: 'var(--gold)', letterSpacing: 4, margin: '0 0 20px' }}>
+        My Account
+      </h1>
 
-      {/* ── Profile Photo ── */}
-      <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
-          Profile Photo
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            border: '2px solid rgba(212,165,58,0.35)',
-            overflow: 'hidden', flexShrink: 0,
-            background: 'var(--surf)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative',
-          }}>
-            {(avatarPreview || profile.avatar_url) ? (
-              <img
-                src={avatarPreview || profile.avatar_url!}
-                alt="Profile"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={() => setAvatarPreview(null)}
-              />
-            ) : (
-              <span style={{ fontSize: 30, color: 'var(--tx4)', fontFamily: 'Bebas Neue' }}>
-                {displayName(profile).charAt(0).toUpperCase()}
-              </span>
-            )}
-            {uploadingAvatar && (
-              <div style={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                background: 'rgba(0,0,0,0.55)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div className="animate-spin" style={{ width: 24, height: 24, border: '2px solid rgba(212,165,58,0.3)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
-              </div>
-            )}
-          </div>
+      {/* ── Hero: avatar + identity ── */}
+      <section className="glass-strong animate-fadeUp delay-100" style={{ padding: 20, marginBottom: 28, position: 'relative', overflow: 'hidden' }}>
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse 80% 90% at 18% -20%, var(--gold-08) 0%, transparent 65%)',
+        }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative' }}>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            style={{ display: 'none' }}
+            onChange={handleAvatarChange}
+          />
+          <button
+            className="pressable"
+            onClick={() => !uploadingAvatar && fileRef.current?.click()}
+            aria-label={profile.avatar_url ? 'Change profile photo' : 'Upload profile photo'}
+            style={{
+              width: 84, height: 84, borderRadius: '50%', flexShrink: 0,
+              padding: 3, border: 'none', cursor: uploadingAvatar ? 'wait' : 'pointer',
+              background: 'linear-gradient(150deg, var(--gold) 0%, var(--gold-25) 70%)',
+              boxShadow: 'var(--elev-gold)',
+            }}
+          >
+            <span style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '100%', borderRadius: '50%',
+              overflow: 'hidden', position: 'relative',
+              background: 'var(--surf3)', border: '2px solid var(--bg)',
+            }}>
+              {(avatarPreview || profile.avatar_url) ? (
+                <img
+                  src={avatarPreview || profile.avatar_url!}
+                  alt="Profile"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={() => setAvatarPreview(null)}
+                />
+              ) : (
+                <span style={{ fontSize: 32, color: 'var(--gold)', fontFamily: 'Bebas Neue', lineHeight: 1 }}>
+                  {displayName(profile).charAt(0).toUpperCase()}
+                </span>
+              )}
+              {uploadingAvatar && (
+                <span style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.55)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span className="animate-spin" style={{ width: 24, height: 24, border: '2px solid var(--gold-25)', borderTopColor: 'var(--gold)', borderRadius: '50%', display: 'block' }} />
+                </span>
+              )}
+            </span>
+          </button>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-              style={{ display: 'none' }}
-              onChange={handleAvatarChange}
-            />
-            <button
-              className="btn-gold"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploadingAvatar}
-              style={{ fontSize: 13 }}
-            >
-              {uploadingAvatar ? 'Uploading…' : profile.avatar_url ? 'Change Photo' : 'Upload Photo'}
-            </button>
-            {(profile.avatar_url || avatarPreview) && !uploadingAvatar && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 1.5, color: 'var(--tx1)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {displayName(profile)}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {profile.email}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
               <button
-                onClick={removeAvatar}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx4)', fontSize: 12, padding: 0, textAlign: 'left' }}
+                className="btn-outline pressable"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploadingAvatar}
+                style={{ fontSize: 12, padding: '6px 16px', minHeight: 32 }}
               >
-                Remove photo
+                {uploadingAvatar ? 'Uploading…' : profile.avatar_url ? 'Change Photo' : 'Upload Photo'}
               </button>
-            )}
+              {(profile.avatar_url || avatarPreview) && !uploadingAvatar && (
+                <button
+                  className="pressable"
+                  onClick={removeAvatar}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx4)', fontSize: 12, padding: '6px 0', textAlign: 'left' }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ── Profile info ── */}
-      <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
-          Profile
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <section className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
+        <div className="section-label" style={{ margin: '0 4px 8px' }}>Profile</div>
+        <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={labelStyle}>Full Name</label>
             <input value={profile.name} disabled style={{ ...inputStyle, opacity: 0.4, cursor: 'not-allowed' }} />
@@ -369,11 +399,11 @@ export default function AccountPage() {
             />
           </div>
 
-          <button className="btn-gold" onClick={saveProfile} disabled={savingProfile} style={{ alignSelf: 'flex-start', minWidth: 120 }}>
+          <button className="btn-gold pressable" onClick={saveProfile} disabled={savingProfile} style={{ width: '100%', justifyContent: 'center' }}>
             {savingProfile ? 'Saving…' : 'Save Profile'}
           </button>
         </div>
-      </div>
+      </section>
 
       {/* ── Career Highlights ── */}
       {careerStats.length > 0 && (() => {
@@ -388,36 +418,125 @@ export default function AccountPage() {
         const rows = cats.map(c => ({ ...c, years: careerStats.filter(s => s.category === c.key).map(s => s.year).sort() })).filter(r => r.years.length > 0)
         if (!rows.length) return null
         return (
-          <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 16 }}>
-              Career Highlights
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <section className="animate-fadeUp delay-300" style={{ marginBottom: 24 }}>
+            <div className="section-label" style={{ margin: '0 4px 8px' }}>Career Highlights</div>
+            <div className="glass" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rows.map(r => (
-                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: r.key === 'champion' ? 'rgba(212,165,58,0.06)' : 'var(--surf2)', border: r.key === 'champion' ? '1px solid rgba(212,165,58,0.2)' : '1px solid var(--bdr)' }}>
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>{r.emoji}</span>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? '#D4A53A' : 'var(--tx1)' }}>
+                <div
+                  key={r.key}
+                  className="glass-flat list-row"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 14px', minHeight: 48,
+                    background: r.key === 'champion' ? 'var(--gold-08)' : undefined,
+                    borderColor: r.key === 'champion' ? 'var(--gold-25)' : undefined,
+                  }}
+                >
+                  <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{r.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: r.key === 'champion' ? 'var(--gold)' : 'var(--tx1)' }}>
                       {r.label}
                     </span>
                     {r.years.length > 1 && <span style={{ fontSize: 12, color: 'var(--tx3)', marginLeft: 8 }}>×{r.years.length}</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                     {r.years.join(', ')}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )
       })()}
 
-      {/* ── Email ── */}
-      <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
-          Email Address
+      {/* ── Push Notifications ── */}
+      <section className="animate-fadeUp delay-400" style={{ marginBottom: 24 }}>
+        <div className="section-label" style={{ margin: '0 4px 8px' }}>Notifications</div>
+        <div className="glass" style={{ padding: '8px 20px' }}>
+          <div className="list-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 56, padding: '8px 0', borderBottom: pushStatus === 'subscribed' ? '1px solid var(--bdr)' : 'none' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>Push Alerts</div>
+              {pushStatus === 'unsupported' && (
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Push notifications aren't supported in this browser.</div>
+              )}
+              {pushStatus === 'denied' && (
+                <div style={{ fontSize: 12, color: '#ef4444', marginTop: 2 }}>Blocked — enable in browser settings, then reload.</div>
+              )}
+              {pushStatus === 'unsubscribed' && (
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Turn on to get alerts during the round.</div>
+              )}
+              {pushStatus === 'subscribed' && (
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Pick which alerts hit your phone.</div>
+              )}
+            </div>
+            {(pushStatus === 'subscribed' || pushStatus === 'unsubscribed') && (
+              <button
+                className={`pill-tab pressable${pushStatus === 'unsubscribed' ? ' active' : ''}`}
+                onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+                disabled={pushLoading}
+                style={{ flexShrink: 0, fontSize: 12, opacity: pushLoading ? 0.6 : 1, cursor: pushLoading ? 'not-allowed' : 'pointer' }}
+              >
+                {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
+              </button>
+            )}
+          </div>
+
+          {pushStatus === 'subscribed' && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {NOTIF_TYPES.filter(t => !t.adminOnly || isAdmin).map((t, i, arr) => {
+                const on = notifPrefs[t.key] !== false
+                const saving = prefSaving === t.key
+                return (
+                  <div
+                    key={t.key}
+                    className="list-row"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      minHeight: 56, padding: '8px 0',
+                      borderBottom: i < arr.length - 1 ? '1px solid var(--bdr)' : 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{t.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>{t.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{t.desc}</div>
+                    </div>
+                    <button
+                      className="pressable"
+                      role="switch"
+                      aria-checked={on}
+                      aria-label={t.label}
+                      onClick={() => !saving && togglePref(t.key, !on)}
+                      style={{
+                        flexShrink: 0, width: 48, height: 28, borderRadius: 999,
+                        background: on ? 'linear-gradient(160deg, #e8bc55 0%, #c4941f 100%)' : 'var(--surf2)',
+                        border: `1px solid ${on ? 'var(--gold-40)' : 'var(--bdr2)'}`,
+                        boxShadow: on ? 'var(--elev-gold)' : 'none',
+                        cursor: saving ? 'wait' : 'pointer',
+                        position: 'relative', transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: 3, left: on ? 23 : 3,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: on ? '#fffdf6' : 'var(--tx4)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                        transition: 'left 0.2s var(--spring), background 0.2s',
+                        display: 'block',
+                      }} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      </section>
+
+      {/* ── Email ── */}
+      <section className="animate-fadeUp delay-500" style={{ marginBottom: 24 }}>
+        <div className="section-label" style={{ margin: '0 4px 8px' }}>Email Address</div>
+        <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={labelStyle}>New Email</label>
             <input
@@ -431,51 +550,51 @@ export default function AccountPage() {
             </div>
           </div>
           <button
-            className="btn-gold"
+            className="btn-gold pressable"
             onClick={saveEmail}
             disabled={savingEmail || emailForm.email === profile.email}
-            style={{ alignSelf: 'flex-start', minWidth: 140 }}
+            style={{ width: '100%', justifyContent: 'center' }}
           >
             {savingEmail ? 'Sending…' : 'Update Email'}
           </button>
         </div>
-      </div>
+      </section>
 
       {/* ── Tournament RSVP ── */}
       {profile.invite_response && (
-        <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 14 }}>
-            Tournament RSVP
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ fontSize: 36 }}>{profile.invite_response === 'yes' ? '⛳' : '😔'}</div>
-            <div>
-              <div style={{
-                fontSize: 15, fontWeight: 700,
-                color: profile.invite_response === 'yes' ? '#22c55e' : '#ef4444',
-              }}>
-                {profile.invite_response === 'yes' ? 'You\'re In — see you on the course!' : 'You declined this year\'s tournament'}
+        <section className="animate-fadeUp delay-600" style={{ marginBottom: 24 }}>
+          <div className="section-label" style={{ margin: '0 4px 8px' }}>Tournament RSVP</div>
+          <div className="glass" style={{ padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="glass-flat" style={{ width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
+                {profile.invite_response === 'yes' ? '⛳' : '😔'}
               </div>
-              {profile.invite_response_at && (
-                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 3 }}>
-                  Responded {new Date(profile.invite_response_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  fontSize: 14, fontWeight: 700,
+                  color: profile.invite_response === 'yes' ? '#22c55e' : '#ef4444',
+                }}>
+                  {profile.invite_response === 'yes' ? 'You\'re In — see you on the course!' : 'You declined this year\'s tournament'}
                 </div>
-              )}
-              <div style={{ fontSize: 12, color: 'var(--tx4)', marginTop: 6 }}>
-                To change your response, contact the organizer.
+                {profile.invite_response_at && (
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4 }}>
+                    Responded {new Date(profile.invite_response_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: 'var(--tx4)', marginTop: 4 }}>
+                  To change your response, contact the organizer.
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* ── Password ── */}
       {user?.app_metadata?.provider !== 'google' && (
-        <div className="glass" style={{ padding: '24px 26px', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
-            Change Password
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <section className="animate-fadeUp delay-700" style={{ marginBottom: 24 }}>
+          <div className="section-label" style={{ margin: '0 4px 8px' }}>Change Password</div>
+          <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={labelStyle}>New Password</label>
               <input
@@ -497,107 +616,33 @@ export default function AccountPage() {
               />
             </div>
             <button
-              className="btn-gold"
+              className="btn-gold pressable"
               onClick={savePassword}
               disabled={savingPassword || !passwordForm.password}
-              style={{ alignSelf: 'flex-start', minWidth: 160 }}
+              style={{ width: '100%', justifyContent: 'center' }}
             >
               {savingPassword ? 'Saving…' : 'Change Password'}
             </button>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* ── Sign Out ── */}
-      <div style={{ marginTop: 24, paddingBottom: 8 }}>
+      {/* ── Sign Out (destructive zone) ── */}
+      <section className="animate-fadeUp delay-800" style={{ marginTop: 32, paddingBottom: 8 }}>
+        <hr className="divider-gold" style={{ marginBottom: 24 }} />
         <button
+          className="pressable"
           onClick={signOut}
           style={{
-            width: '100%', padding: '13px 0', borderRadius: 12, fontSize: 14, fontWeight: 600,
+            width: '100%', minHeight: 48, padding: '12px 0', borderRadius: 14,
+            fontSize: 14, fontWeight: 600, letterSpacing: 0.5,
             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
-            color: 'rgba(239,68,68,0.75)', cursor: 'pointer', letterSpacing: 0.5,
+            color: '#f87171', cursor: 'pointer',
           }}
         >
           Sign Out
         </button>
-      </div>
-
-      {/* ── Push Notifications ── */}
-      <div className="glass" style={{ padding: '24px 26px', marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase' }}>
-            Notifications
-          </div>
-          {(pushStatus === 'subscribed' || pushStatus === 'unsubscribed') && (
-            <button
-              onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
-              disabled={pushLoading}
-              style={{
-                padding: '5px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                background: pushStatus === 'subscribed' ? 'var(--surf2)' : 'rgba(212,165,58,0.15)',
-                border: `1px solid ${pushStatus === 'subscribed' ? 'var(--bdr)' : 'rgba(212,165,58,0.4)'}`,
-                color: pushStatus === 'subscribed' ? 'var(--tx2)' : '#D4A53A',
-                cursor: pushLoading ? 'not-allowed' : 'pointer', opacity: pushLoading ? 0.6 : 1,
-              }}
-            >
-              {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
-            </button>
-          )}
-        </div>
-
-        {pushStatus === 'unsupported' && (
-          <p style={{ fontSize: 13, color: 'var(--tx3)' }}>Push notifications aren't supported in this browser.</p>
-        )}
-        {pushStatus === 'denied' && (
-          <p style={{ fontSize: 13, color: '#ef4444' }}>Notifications are blocked. Enable them in your browser settings, then reload.</p>
-        )}
-        {pushStatus === 'unsubscribed' && (
-          <p style={{ fontSize: 13, color: 'var(--tx3)' }}>Turn on notifications to get alerts during the round.</p>
-        )}
-
-        {pushStatus === 'subscribed' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {NOTIF_TYPES.filter(t => !t.adminOnly || isAdmin).map((t, i, arr) => {
-              const on = notifPrefs[t.key] !== false
-              const saving = prefSaving === t.key
-              return (
-                <div
-                  key={t.key}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 0',
-                    borderBottom: i < arr.length - 1 ? '1px solid var(--bdr)' : 'none',
-                  }}
-                >
-                  <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{t.icon}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx1)' }}>{t.label}</div>
-                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>{t.desc}</div>
-                  </div>
-                  <button
-                    onClick={() => !saving && togglePref(t.key, !on)}
-                    style={{
-                      flexShrink: 0, width: 44, height: 26, borderRadius: 999,
-                      background: on ? 'rgba(212,165,58,0.2)' : 'var(--surf2)',
-                      border: `1.5px solid ${on ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
-                      cursor: saving ? 'wait' : 'pointer',
-                      position: 'relative', transition: 'background 0.2s, border-color 0.2s',
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute', top: 3, left: on ? 20 : 3,
-                      width: 18, height: 18, borderRadius: '50%',
-                      background: on ? '#D4A53A' : 'var(--tx4)',
-                      transition: 'left 0.2s, background 0.2s',
-                      display: 'block',
-                    }} />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      </section>
     </div>
   )
 }
