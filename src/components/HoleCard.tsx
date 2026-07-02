@@ -36,21 +36,23 @@ export function HoleCard({
 
   return (
     <div className="glass animate-fadeUp" style={{
-      padding: '14px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
+      padding: '16px 20px', opacity: isSaving ? 0.7 : 1, transition: 'opacity 0.2s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{
-            width: 52, height: 52, borderRadius: 12, flexShrink: 0,
-            background: 'rgba(212,165,58,0.12)', border: '2px solid rgba(212,165,58,0.35)',
+            width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+            background: 'linear-gradient(160deg, rgba(212,165,58,0.20), rgba(212,165,58,0.06))',
+            border: '1px solid var(--gold-40)',
+            boxShadow: 'var(--elev-1), inset 0 1px 0 rgba(255,255,255,0.08)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, fontWeight: 900, color: '#D4A53A',
-            letterSpacing: -0.5,
+            fontFamily: 'Bebas Neue', fontSize: 28, color: 'var(--gold)',
+            fontVariantNumeric: 'tabular-nums',
           }}>{hole}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx1)', lineHeight: 1 }}>Par {par}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--tx1)', lineHeight: 1 }}>Par {par}</span>
             {holeInfo && (
-              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx2)', lineHeight: 1 }}>{holeInfo.yards} yds</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx2)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{holeInfo.yards} yds</span>
             )}
           </div>
         </div>
@@ -75,24 +77,25 @@ export function HoleCard({
               className="score-btn"
               style={{
                 width: 44, height: 44, borderRadius: '50%',
-                background: 'var(--surf2)', border: '1px solid var(--bdr)',
+                background: 'var(--surf2)', border: '1px solid var(--bdr2)',
                 color: 'var(--tx1)', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                boxShadow: 'var(--elev-1)',
               }}
-            ><Minus size={16} /></button>
+            ><Minus size={18} /></button>
             <button
               onClick={() => { navigator.vibrate?.(10); onPlus?.(); }}
               disabled={isSaving}
               className="score-btn"
               style={{
                 width: 44, height: 44, borderRadius: '50%',
-                background: 'rgba(212,165,58,0.18)', border: '1px solid rgba(212,165,58,0.4)',
-                color: '#D4A53A', cursor: isSaving ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(160deg, rgba(212,165,58,0.28), rgba(212,165,58,0.14))',
+                border: '1px solid var(--gold-40)',
+                color: 'var(--gold)', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(212,165,58,0.15)',
+                boxShadow: 'var(--elev-gold), inset 0 1px 0 rgba(255,255,255,0.12)',
               }}
-            ><Plus size={16} /></button>
+            ><Plus size={18} /></button>
             {hasScore && onReset && (
               <button
                 onClick={onReset}
@@ -145,16 +148,18 @@ export function HoleCard({
               return (
                 <button key={p.id} onClick={() => !disabled && onSetDrive(p.id)}
                   disabled={disabled}
+                  className="pressable"
                   title={disabled ? 'Max 5 drives per half reached' : undefined}
                   style={{
-                    padding: '4px 12px', borderRadius: 999,
+                    padding: '8px 14px', minHeight: 34, borderRadius: 999,
                     fontSize: 12, fontWeight: 600, border: '1px solid',
-                    background: active ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
-                    borderColor: active ? '#D4A53A' : 'var(--bdr)',
-                    color: active ? '#D4A53A' : 'var(--tx3)',
+                    background: active ? 'var(--gold-15)' : 'var(--surf2)',
+                    borderColor: active ? 'var(--gold)' : 'var(--bdr)',
+                    color: active ? 'var(--gold)' : 'var(--tx3)',
+                    boxShadow: active ? 'var(--elev-gold)' : 'none',
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     opacity: disabled ? 0.3 : 1,
-                    transition: 'all 0.15s',
+                    transition: 'background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s',
                   }}>
                   {displayName(p)}
                 </button>
@@ -171,17 +176,19 @@ export function HoleCard({
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>Putts:</span>
-          <div style={{ display: 'flex', gap: 5 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
             {[0, 1, 2, 3, 4, 5].map(n => {
               const active = putts === n
               return (
-                <button key={n} onClick={() => onSetPutts(n)} style={{
-                  width: 32, height: 28, borderRadius: 6,
-                  fontSize: 13, fontWeight: 700, border: '1px solid',
-                  background: active ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
-                  borderColor: active ? '#D4A53A' : 'var(--bdr)',
-                  color: active ? '#D4A53A' : 'var(--tx3)',
-                  cursor: 'pointer', transition: 'all 0.15s',
+                <button key={n} onClick={() => onSetPutts(n)} className="pressable" style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  fontSize: 14, fontWeight: 700, border: '1px solid',
+                  fontVariantNumeric: 'tabular-nums',
+                  background: active ? 'var(--gold-15)' : 'var(--surf2)',
+                  borderColor: active ? 'var(--gold)' : 'var(--bdr)',
+                  color: active ? 'var(--gold)' : 'var(--tx3)',
+                  boxShadow: active ? 'var(--elev-gold)' : 'none',
+                  cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s',
                 }}>
                   {n}
                 </button>
@@ -202,12 +209,13 @@ export function HoleCard({
               return (
                 <button key={p.id}
                   onClick={() => !usedElsewhere && onToggleChulligan(p.id, hole)}
+                  className="pressable"
                   title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
                   style={{
-                    padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: usedHere ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
-                    border: `1px solid ${usedHere ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
-                    color: usedHere ? '#D4A53A' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
+                    padding: '7px 12px', minHeight: 32, borderRadius: 999, fontSize: 11, fontWeight: 600,
+                    background: usedHere ? 'var(--gold-15)' : 'var(--surf2)',
+                    border: `1px solid ${usedHere ? 'var(--gold-dim)' : 'var(--bdr)'}`,
+                    color: usedHere ? 'var(--gold)' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
                     cursor: usedElsewhere ? 'not-allowed' : 'pointer',
                     textDecoration: usedElsewhere ? 'line-through' : 'none',
                   }}>
@@ -226,22 +234,23 @@ export function HoleCard({
         return (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', gap: 6 }}>
             {gpsReady && (
-              <button type="button" onClick={onOpenGps} style={{
-                flex: 1, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+              <button type="button" onClick={onOpenGps} className="pressable" style={{
+                flex: 1, padding: '10px 14px', minHeight: 40, borderRadius: 10, cursor: 'pointer',
                 background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.32)',
                 color: '#22c55e', fontSize: 13, fontWeight: 600,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                boxShadow: 'var(--elev-1)',
               }}>
                 <MapPin size={14} />
                 Open GPS
               </button>
             )}
             {hasGuide && (
-              <button type="button" onClick={onToggleInfo} style={{
-                flex: 1, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                background: infoExpanded ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
-                border: `1px solid ${infoExpanded ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
-                color: infoExpanded ? '#D4A53A' : 'var(--tx2)',
+              <button type="button" onClick={onToggleInfo} className="pressable" style={{
+                flex: 1, padding: '10px 14px', minHeight: 40, borderRadius: 10, cursor: 'pointer',
+                background: infoExpanded ? 'var(--gold-08)' : 'var(--surf2)',
+                border: `1px solid ${infoExpanded ? 'var(--gold-40)' : 'var(--bdr)'}`,
+                color: infoExpanded ? 'var(--gold)' : 'var(--tx2)',
                 fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}>
                 <span style={{ fontSize: 15 }}>⛳</span>
