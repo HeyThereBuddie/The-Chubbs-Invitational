@@ -222,13 +222,11 @@ export default function Dashboard() {
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
       {/* ── Year Selector ─────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18,
-        padding: '10px 16px', borderRadius: 12,
-        background: 'var(--surf)',
-        border: '1px solid var(--bdr)',
+      <div className="glass-flat" style={{
+        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
+        padding: '12px 16px',
       }}>
-        <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>
+        <span className="section-label" style={{ flexShrink: 0 }}>
           📅 Year
         </span>
         <select
@@ -242,12 +240,12 @@ export default function Dashboard() {
           ))}
         </select>
         {otherTournaments.length === 0 && (
-          <span style={{ fontSize: 11, color: 'var(--tx5)', fontStyle: 'italic' }}>
+          <span style={{ fontSize: 11, color: 'var(--tx4)', fontStyle: 'italic' }}>
             Past years appear here after archiving
           </span>
         )}
         {!isCurrentYear && viewingTournament && (
-          <span style={{ fontSize: 11, color: 'rgba(212,165,58,0.6)', fontWeight: 600 }}>
+          <span style={{ fontSize: 11, color: 'var(--gold-dim)', fontWeight: 600 }}>
             🔒 {viewingTournament.name} ({viewingTournament.year})
           </span>
         )}
@@ -257,8 +255,9 @@ export default function Dashboard() {
       {profile?.status === 'waitlist' && isCurrentYear && (
         <div style={{
           background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
-          borderRadius: 14, padding: '14px 20px', marginBottom: 20,
+          borderRadius: 16, padding: '16px 20px', marginBottom: 20,
           display: 'flex', gap: 12, alignItems: 'center',
+          boxShadow: 'var(--elev-1)',
         }}>
           <span style={{ fontSize: 20 }}>⏳</span>
           <div>
@@ -272,24 +271,25 @@ export default function Dashboard() {
 
       {/* ── Compact Hero ─────────────────────────────────────── */}
       <div className="animate-fadeUp" style={{
-        marginBottom: 14, borderRadius: 12, overflow: 'hidden',
-        border: '1px solid rgba(212,165,58,0.22)',
+        marginBottom: 16, borderRadius: 16, overflow: 'hidden',
+        border: '1px solid var(--gold-25)',
+        boxShadow: 'var(--elev-2)',
         background: isDark
           ? 'linear-gradient(135deg, #0e0a02 0%, #1a1000 50%, #0e0a02 100%)'
           : 'linear-gradient(135deg, #fffbef 0%, #fff8e1 50%, #fffbef 100%)',
       }}>
-        <div style={{ padding: isMobile ? '8px 12px' : '12px 18px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
+        <div style={{ padding: isMobile ? '12px' : '12px 16px', display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
           {!isMobile && (
-            <div className="animate-glow-pulse" style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid rgba(212,165,58,0.6)', overflow: 'hidden', flexShrink: 0 }}>
+            <div className="animate-glow-pulse" style={{ width: 40, height: 40, borderRadius: '50%', border: '2px solid var(--gold-dim)', overflow: 'hidden', flexShrink: 0 }}>
               <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 20, letterSpacing: isMobile ? 2 : 3, lineHeight: 1 }}>
+            <div className="text-shimmer" style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, letterSpacing: isMobile ? 2 : 3, lineHeight: 1 }}>
               The Chubbs Memorial
             </div>
-            <div style={{ display: 'flex', gap: isMobile ? 6 : 10, flexWrap: 'wrap', fontSize: isMobile ? 10 : 11, color: 'var(--tx3)', marginTop: 3 }}>
+            <div style={{ display: 'flex', gap: isMobile ? 8 : 12, flexWrap: 'wrap', fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
               <span>⛳ {COURSE_NAME}</span>
               <span>📅 {TOURNAMENT_DATE}</span>
               {!isMobile && <span>🕗 {FIRST_TEE_TIME}</span>}
@@ -297,36 +297,36 @@ export default function Dashboard() {
           </div>
 
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
-            {!isMobile && <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 1 }}>Welcome</div>}
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 15 : 19, color: '#D4A53A', letterSpacing: 2, lineHeight: 1 }}>
+            {!isMobile && <div style={{ fontSize: 11, color: 'var(--tx3)', letterSpacing: 1, textTransform: 'uppercase', fontWeight: 600, marginBottom: 2 }}>Welcome</div>}
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, color: 'var(--gold)', letterSpacing: 2, lineHeight: 1 }}>
               {profile ? displayName(profile) : 'Player'}
             </div>
           </div>
         </div>
 
         {!isMobile && (
-          <div style={{ borderTop: '1px solid rgba(212,165,58,0.08)', padding: '5px 18px', background: 'rgba(0,0,0,0.2)', fontSize: 11 }}>
+          <div style={{ borderTop: '1px solid var(--gold-08)', padding: '8px 16px', background: 'rgba(0,0,0,0.2)', fontSize: 12 }}>
             <span style={{ color: 'var(--tx3)', fontStyle: 'italic' }}>💬 "{currentQuote.quote}"</span>
-            <span style={{ color: 'rgba(212,165,58,0.4)', marginLeft: 6 }}>— {currentQuote.by}</span>
+            <span style={{ color: 'var(--gold-dim)', marginLeft: 8 }}>— {currentQuote.by}</span>
           </div>
         )}
       </div>
 
       {/* ── Defending Champions ──────────────────────────────── */}
       {defendingChamp && (
-        <div className="animate-fadeUp" style={{
-          marginBottom: 14, borderRadius: 12,
-          border: '1px solid rgba(212,165,58,0.2)',
-          background: 'linear-gradient(135deg, rgba(212,165,58,0.06) 0%, rgba(12,8,0,0.0) 100%)',
-          padding: isMobile ? '10px 14px' : '12px 18px',
+        <div className="glass-flat animate-fadeUp" style={{
+          marginBottom: 16, borderRadius: 16,
+          borderColor: 'var(--gold-25)',
+          background: 'var(--gold-08)',
+          padding: '12px 16px',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>🏆</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(212,165,58,0.55)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: 'var(--gold-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
               {defendingChamp.year} Defending Champions
             </div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, color: '#D4A53A', letterSpacing: 2, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: isMobile ? 16 : 20, color: 'var(--gold)', letterSpacing: 2, lineHeight: 1 }}>
               {defendingChamp.teamName}
             </div>
             {(defendingChamp.player1Name || defendingChamp.player2Name) && (
@@ -338,7 +338,7 @@ export default function Dashboard() {
           {defendingChamp.toPar != null && (
             <div style={{
               fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, flexShrink: 0,
-              color: defendingChamp.toPar < 0 ? '#34d399' : defendingChamp.toPar > 0 ? '#f87171' : '#D4A53A',
+              color: defendingChamp.toPar < 0 ? '#34d399' : defendingChamp.toPar > 0 ? '#f87171' : 'var(--gold)',
             }}>
               {defendingChamp.toPar === 0 ? 'E' : defendingChamp.toPar > 0 ? `+${defendingChamp.toPar}` : defendingChamp.toPar}
             </div>
@@ -361,7 +361,7 @@ export default function Dashboard() {
             {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', marginLeft: 'auto', display: 'inline-block' }} />}
           </div>
           {leaders.length === 0 ? (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>⛳</div>
               No scores yet — may the best ball win.
             </div>
@@ -379,15 +379,15 @@ export default function Dashboard() {
                   <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#D4A53A' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {row.team.name}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)' }}>
                     {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: row.toPar <= 0 ? '#D4A53A' : 'var(--tx2)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums', color: row.toPar <= 0 ? 'var(--gold)' : 'var(--tx2)' }}>
                     {toPar(Math.round(row.toPar))}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--tx3)' }}>thru {row.thru}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>thru {row.thru}</div>
                 </div>
               </div>
             ))
@@ -396,8 +396,9 @@ export default function Dashboard() {
 
         {/* Live Scoring Feed */}
         <div
-          className="glass animate-fadeUp delay-200"
+          className="glass pressable animate-fadeUp delay-200"
           onClick={() => navigate('/live-feed')}
+          role="button"
           style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }}
         >
           <div style={{
@@ -407,8 +408,8 @@ export default function Dashboard() {
           }}>
             <span style={{ fontSize: 15 }}>⚡</span>
             <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Live Feed</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 11, color: 'rgba(212,165,58,0.5)' }}>View all →</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold-dim)' }}>View all →</span>
               <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
               <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
             </div>
