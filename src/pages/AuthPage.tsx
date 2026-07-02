@@ -86,41 +86,63 @@ export default function AuthPage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(212,165,58,0.1) 0%, transparent 70%), #080808',
+      background: 'radial-gradient(ellipse 85% 55% at 50% -8%, var(--gold-15) 0%, transparent 62%), var(--bg)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px',
     }}>
-      <div className="glass animate-fadeUp" style={{ width: '100%', maxWidth: 420, padding: '40px 36px' }}>
+      <div className="glass animate-fadeUp" style={{ width: '100%', maxWidth: 420, padding: '36px 24px 32px' }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div className="animate-wiggle" style={{
-            width: 80, height: 80, borderRadius: '50%',
-            border: '3px solid #D4A53A',
-            boxShadow: '0 0 20px rgba(212,165,58,0.5)',
-            overflow: 'hidden', margin: '0 auto 16px',
+        <div className="animate-fadeUp delay-100" style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{
+            width: 88, height: 88, borderRadius: '50%',
+            padding: 3, margin: '0 auto 16px',
+            background: 'linear-gradient(160deg, var(--gold-40), var(--gold-08))',
+            boxShadow: 'var(--elev-gold)',
           }}>
-            <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div className="animate-wiggle" style={{
+              width: '100%', height: '100%', borderRadius: '50%',
+              border: '2px solid var(--gold)',
+              overflow: 'hidden',
+            }}>
+              <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
           </div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, color: '#D4A53A', textShadow: '0 0 20px rgba(212,165,58,0.5)', margin: 0 }}>
+          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 34, letterSpacing: 3, lineHeight: 1.1, margin: 0 }}>
             The Chubbs Memorial
           </h1>
-          <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
+          <p className="section-label" style={{ marginTop: 8 }}>
             It's all in the hips
           </p>
         </div>
 
         {/* Tab toggle */}
-        <div style={{ display: 'flex', background: 'var(--surf)', borderRadius: 999, padding: 3, marginBottom: 24 }}>
+        <div className="animate-fadeUp delay-200" style={{
+          position: 'relative', display: 'flex',
+          background: 'var(--surf)', border: '1px solid var(--bdr)',
+          borderRadius: 999, padding: 3, marginBottom: 24,
+        }}>
+          {/* Sliding pill */}
+          <div aria-hidden style={{
+            position: 'absolute', top: 3, bottom: 3, left: 3,
+            width: 'calc(50% - 3px)', borderRadius: 999,
+            background: 'var(--gold-15)',
+            border: '1px solid var(--gold-25)',
+            boxShadow: 'var(--elev-1), inset 0 1px 0 rgba(255,255,255,0.06)',
+            transform: mode === 'register' ? 'translateX(100%)' : 'translateX(0)',
+            transition: 'transform 0.3s var(--spring)',
+          }} />
           {(['login', 'register'] as const).map(m => (
             <button
               key={m}
               onClick={() => setMode(m)}
+              className="pressable"
               style={{
-                flex: 1, padding: '8px', borderRadius: 999, border: 'none',
-                background: mode === m ? 'rgba(212,165,58,0.15)' : 'transparent',
-                color: mode === m ? '#D4A53A' : 'var(--tx2)',
-                fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                transition: 'all 0.2s',
+                position: 'relative', zIndex: 1,
+                flex: 1, minHeight: 38, padding: '8px', borderRadius: 999, border: 'none',
+                background: 'transparent',
+                color: mode === m ? 'var(--gold)' : 'var(--tx3)',
+                fontWeight: 600, fontSize: 13, letterSpacing: 0.3, cursor: 'pointer',
+                transition: 'color 0.2s ease',
               }}
             >
               {m === 'login' ? 'Sign In' : 'Register'}
@@ -128,7 +150,7 @@ export default function AuthPage() {
           ))}
         </div>
 
-        <form onSubmit={mode === 'login' ? handleLogin : handleRegister}>
+        <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="animate-fadeUp delay-300">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {mode === 'register' && (
               <input
@@ -176,7 +198,7 @@ export default function AuthPage() {
                 required
               />
             )}
-            <button type="submit" className="btn-gold" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+            <button type="submit" className="btn-gold pressable" disabled={loading} style={{ width: '100%', justifyContent: 'center', minHeight: 48, marginTop: 8 }}>
               {loading ? (
                 <span className="animate-spin" style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000', borderRadius: '50%', display: 'inline-block' }} />
               ) : mode === 'login' ? '⛳ Sign In' : '🏌️ Join the Tournament'}
@@ -184,18 +206,18 @@ export default function AuthPage() {
           </div>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(212,165,58,0.1)' }} />
-          <span style={{ color: 'var(--tx4)', fontSize: 12 }}>or</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(212,165,58,0.1)' }} />
+        <div className="animate-fadeUp delay-400" style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+          <div className="divider-gold" style={{ flex: 1 }} />
+          <span className="section-label" style={{ color: 'var(--tx4)' }}>or</span>
+          <div className="divider-gold" style={{ flex: 1 }} />
         </div>
 
-        <button onClick={handleGoogle} className="btn-outline" style={{ width: '100%', justifyContent: 'center' }}>
+        <button onClick={handleGoogle} className="btn-outline pressable animate-fadeUp delay-400" style={{ width: '100%', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           Continue with Google
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--tx4)', marginTop: 24 }}>
+        <p className="animate-fadeUp delay-500" style={{ textAlign: 'center', fontSize: 12, lineHeight: 1.5, fontStyle: 'italic', color: 'var(--tx4)', marginTop: 24 }}>
           "You're gonna be a golf legend, Happy." — Chubbs Peterson
         </p>
       </div>
