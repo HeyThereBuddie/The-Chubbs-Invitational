@@ -265,23 +265,28 @@ export default function HappysPlace() {
         >
           {/* Close */}
           <button
+            className="pressable"
             onClick={() => setLightboxIdx(null)}
-            style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 40, height: 40, color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >×</button>
+            aria-label="Close"
+            style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top, 0px))', right: 16, zIndex: 10, background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '50%', width: 40, height: 40, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          ><X size={18} /></button>
 
           {/* Delete + Download row (top-left) */}
-          <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', gap: 8 }}>
+          <div style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top, 0px))', left: 16, zIndex: 10, display: 'flex', gap: 8 }}>
             {canDeleteLightbox && (
               <button
+                className="pressable"
                 onClick={e => { e.stopPropagation(); deletePhoto(lightboxPhoto.id) }}
-                style={{ background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '50%', width: 40, height: 40, color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                aria-label="Delete photo"
+                style={{ background: 'rgba(239,68,68,0.20)', border: '1px solid rgba(239,68,68,0.45)', borderRadius: '50%', width: 40, height: 40, color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <Trash2 size={16} />
               </button>
             )}
             <button
+              className="pressable"
               onClick={e => { e.stopPropagation(); downloadPhoto(lightboxPhoto) }}
-              style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: 40, height: 40, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '50%', width: 40, height: 40, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               title="Save to camera roll"
             >
               <Download size={16} />
@@ -290,14 +295,16 @@ export default function HappysPlace() {
 
           {/* Prev / Next */}
           {lightboxIdx > 0 && (
-            <button onClick={e => { e.stopPropagation(); navigator.vibrate?.(6); setLightboxIdx(lightboxIdx - 1) }}
-              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 44, height: 44, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button className="pressable" aria-label="Previous photo"
+              onClick={e => { e.stopPropagation(); navigator.vibrate?.(6); setLightboxIdx(lightboxIdx - 1) }}
+              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '50%', width: 44, height: 44, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ChevronLeft size={22} />
             </button>
           )}
           {lightboxIdx < photos.length - 1 && (
-            <button onClick={e => { e.stopPropagation(); navigator.vibrate?.(6); setLightboxIdx(lightboxIdx + 1) }}
-              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: 44, height: 44, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button className="pressable" aria-label="Next photo"
+              onClick={e => { e.stopPropagation(); navigator.vibrate?.(6); setLightboxIdx(lightboxIdx + 1) }}
+              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '50%', width: 44, height: 44, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ChevronRight size={22} />
             </button>
           )}
@@ -307,22 +314,24 @@ export default function HappysPlace() {
             src={lightboxPhoto.photo_url}
             alt=""
             onClick={e => e.stopPropagation()}
-            style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }}
+            style={{ maxWidth: '100%', maxHeight: '78vh', objectFit: 'contain', borderRadius: 12, boxShadow: 'var(--elev-3)' }}
           />
 
           {/* Caption + uploader */}
-          <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, textAlign: 'center', padding: '0 24px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, textAlign: 'center', padding: '0 24px', maxWidth: 480 }}>
             {lightboxPhoto.caption && (
-              <p style={{ color: '#fff', fontSize: 15, fontStyle: 'italic', marginBottom: 6 }}>"{lightboxPhoto.caption}"</p>
+              <p style={{ color: '#f8f5ef', fontSize: 16, fontStyle: 'italic', lineHeight: 1.5, marginBottom: 8 }}>"{lightboxPhoto.caption}"</p>
             )}
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>
-              {lightboxPhoto.uploader
-                ? displayName(lightboxPhoto.uploader as { name: string; nickname: string | null })
-                : 'Unknown'}
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>
+              <span style={{ color: 'var(--gold)', fontWeight: 600 }}>
+                {lightboxPhoto.uploader
+                  ? displayName(lightboxPhoto.uploader as { name: string; nickname: string | null })
+                  : 'Unknown'}
+              </span>
               {' · '}
               {formatDistanceToNow(new Date(lightboxPhoto.created_at), { addSuffix: true })}
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>
+            <p style={{ color: 'rgba(255,255,255,0.30)', fontSize: 11, letterSpacing: 1, fontVariantNumeric: 'tabular-nums', marginTop: 8 }}>
               {lightboxIdx + 1} / {photos.length}
             </p>
           </div>
@@ -336,14 +345,19 @@ export default function HappysPlace() {
           style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
         >
           <div
+            className="sheet-enter"
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 500, background: 'var(--panel)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: '20px 20px calc(20px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid rgba(212,165,58,0.2)' }}
+            style={{ width: '100%', maxWidth: 500, background: 'var(--panel)', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '12px 20px calc(20px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid var(--gold-25)', boxShadow: 'var(--elev-3)' }}
           >
+            {/* Grab handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 999, background: 'var(--surf3)', margin: '0 auto 12px' }} />
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3 }}>Add Your Shot</span>
-              <button onClick={() => { if (!uploading) { setShowUpload(false); clearFile(); setCaption('') } }}
-                style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 20 }}>
-                <X size={20} />
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--gold)', letterSpacing: 3 }}>Add Your Shot</span>
+              <button className="pressable" aria-label="Close"
+                onClick={() => { if (!uploading) { setShowUpload(false); clearFile(); setCaption('') } }}
+                style={{ background: 'var(--surf2)', border: '1px solid var(--bdr)', borderRadius: '50%', width: 32, height: 32, color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
               </button>
             </div>
 
@@ -352,24 +366,26 @@ export default function HappysPlace() {
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) pickFile(f); e.target.value = '' }} />
 
             {!preview ? (
-              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                <button className="btn-ghost" onClick={() => cameraRef.current?.click()}
-                  style={{ flex: 1, justifyContent: 'center', padding: '14px', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-                  <Camera size={22} />
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <button className="glass-flat pressable" onClick={() => cameraRef.current?.click()}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 12px', fontSize: 13, fontWeight: 600, color: 'var(--tx2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  <Camera size={22} color="var(--gold)" />
                   Take Photo
                 </button>
-                <button className="btn-ghost" onClick={() => fileRef.current?.click()}
-                  style={{ flex: 1, justifyContent: 'center', padding: '14px', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-                  <Upload size={22} />
+                <button className="glass-flat pressable" onClick={() => fileRef.current?.click()}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 12px', fontSize: 13, fontWeight: 600, color: 'var(--tx2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  <Upload size={22} color="var(--gold)" />
                   Choose Photo
                 </button>
               </div>
             ) : (
-              <div style={{ position: 'relative', marginBottom: 14, borderRadius: 12, overflow: 'hidden', background: 'var(--surf2)' }}>
+              <div style={{ position: 'relative', marginBottom: 16, borderRadius: 14, overflow: 'hidden', background: 'var(--surf2)', border: '1px solid var(--bdr)', boxShadow: 'var(--elev-1)' }}>
                 <img src={preview} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'cover', display: 'block' }} />
                 <button
+                  className="pressable"
                   onClick={clearFile}
-                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 32, height: 32, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  aria-label="Remove photo"
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.60)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '50%', width: 32, height: 32, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -381,14 +397,14 @@ export default function HappysPlace() {
               onChange={e => setCaption(e.target.value)}
               maxLength={160}
               rows={2}
-              style={{ width: '100%', resize: 'none', fontSize: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none', marginBottom: 14, boxSizing: 'border-box' }}
+              style={{ width: '100%', resize: 'none', fontSize: 16, padding: '12px 14px', borderRadius: 12, background: 'var(--surf)', border: '1px solid var(--gold-15)', color: 'var(--tx1)', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }}
             />
 
             <button
               className="btn-gold"
               onClick={handleUpload}
               disabled={!photoFile || uploading}
-              style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: '14px', opacity: !photoFile ? 0.4 : 1 }}
+              style={{ width: '100%', justifyContent: 'center', fontSize: 14, padding: '14px', minHeight: 48 }}
             >
               {uploading ? 'Uploading…' : '📸 Post to Happy\'s Place'}
             </button>
