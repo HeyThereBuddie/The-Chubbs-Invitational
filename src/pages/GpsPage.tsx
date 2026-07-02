@@ -650,14 +650,14 @@ export default function GpsPage() {
       {/* Hole selector strip */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', gap: 4 }}>
-          <button onClick={() => navigate('/')} style={{
+          <button className="pressable" onClick={() => navigate('/')} style={{
             padding: '4px 8px', background: 'none', border: 'none',
             color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
             fontSize: 12, flexShrink: 0,
           }}>
             <X size={16} />
           </button>
-          <button onClick={() => setSelectedHole(h => Math.max(1, h - 1))} disabled={selectedHole === 1}
+          <button className="pressable" onClick={() => setSelectedHole(h => Math.max(1, h - 1))} disabled={selectedHole === 1}
             style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 1 ? 0.3 : 1 }}>
             <ChevronLeft size={18} />
           </button>
@@ -667,17 +667,20 @@ export default function GpsPage() {
               {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
                 const active = selectedHole === hole, hasData = holeHasData(hole)
                 return (
-                  <button key={hole} onClick={() => setSelectedHole(hole)} style={{
-                    minWidth: isNarrow ? 32 : 38, height: isNarrow ? 28 : 38, borderRadius: 6, flexShrink: 0,
-                    border: active ? '2px solid #D4A53A' : '1px solid var(--bdr)',
-                    background: active ? 'rgba(212,165,58,0.15)' : 'var(--surf)',
+                  <button key={hole} className="pressable" onClick={() => setSelectedHole(hole)} style={{
+                    minWidth: isNarrow ? 32 : 38, height: isNarrow ? 28 : 38, borderRadius: 10, flexShrink: 0,
+                    border: active ? '1px solid var(--gold)' : '1px solid var(--bdr)',
+                    background: active
+                      ? 'linear-gradient(180deg, var(--gold-25), var(--gold-15))'
+                      : 'var(--surf)',
+                    boxShadow: active ? '0 0 10px var(--gold-25), var(--elev-1)' : 'none',
                     cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                     transform: active ? 'scale(1.08)' : 'scale(1)',
-                    transition: 'transform 0.15s, border-color 0.15s',
+                    transition: 'transform 0.15s var(--spring), border-color 0.15s, background 0.15s, box-shadow 0.15s',
                     opacity: hasData ? 1 : 0.5,
                   }}>
-                    <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, color: active ? '#D4A53A' : 'var(--tx2)', lineHeight: 1 }}>{hole}</span>
+                    <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: active ? 'var(--gold)' : 'var(--tx2)', lineHeight: 1 }}>{hole}</span>
                     <div style={{ width: 4, height: 4, borderRadius: '50%', background: hasData ? '#22c55e' : 'var(--bdr)', flexShrink: 0 }} />
                   </button>
                 )
@@ -685,7 +688,7 @@ export default function GpsPage() {
             </div>
           </div>
 
-          <button onClick={() => setSelectedHole(h => Math.min(18, h + 1))} disabled={selectedHole === 18}
+          <button className="pressable" onClick={() => setSelectedHole(h => Math.min(18, h + 1))} disabled={selectedHole === 18}
             style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 18 ? 0.3 : 1 }}>
             <ChevronRight size={18} />
           </button>
@@ -894,8 +897,9 @@ export default function GpsPage() {
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
           {gpsStatus !== 'ok' && !simMode && (
             <div style={{
-              background: gpsStatus === 'acquiring' ? 'rgba(0,0,0,0.72)' : 'rgba(239,68,68,0.88)',
-              color: 'white', padding: '5px 12px', borderRadius: 10,
+              background: gpsStatus === 'acquiring' ? 'rgba(8,8,12,0.72)' : 'rgba(239,68,68,0.88)',
+              color: 'white', padding: '5px 12px', borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.14)', boxShadow: 'var(--elev-1)',
               fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
             }}>
               <Navigation size={12} />
@@ -917,14 +921,16 @@ export default function GpsPage() {
                 setSimMode(true)
               }
             }}
+            className="pressable"
             style={{
-              padding: '5px 11px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-              background: simMode ? 'rgba(251,191,36,0.88)' : 'rgba(0,0,0,0.62)',
-              color: simMode ? '#000' : 'rgba(255,255,255,0.75)',
-              border: simMode ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.12)',
+              padding: '5px 11px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+              background: simMode ? 'rgba(251,191,36,0.88)' : 'rgba(8,8,12,0.62)',
+              color: simMode ? '#000' : 'rgba(255,255,255,0.78)',
+              border: simMode ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.14)',
               backdropFilter: 'blur(8px)',
+              boxShadow: 'var(--elev-1)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-              letterSpacing: 0.5,
+              letterSpacing: 0.8, textTransform: 'uppercase',
             }}
           >
             📍 {simMode ? 'Exit Sim' : 'Sim GPS'}
