@@ -7,7 +7,7 @@ import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload, UpsertLeaheyVotePayload, SubmitContestEntryPayload } from '../lib/writeQueue'
 import BottomSheetPicker from '../components/BottomSheetPicker'
-import { SkeletonContestRow } from '../components/Skeleton'
+import { Skeleton } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
@@ -15,6 +15,19 @@ import { Camera, Target, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 type ContestType = 'ctp' | 'ld' | 'lahey'
+
+function SkeletonContestRow() {
+  return (
+    <div className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+      <Skeleton width={36} height={36} radius={18} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <Skeleton height={14} width="50%" />
+        <Skeleton height={11} width="30%" />
+      </div>
+      <Skeleton width={48} height={20} radius={6} />
+    </div>
+  )
+}
 
 interface JackassFeedEvent {
   id: string
@@ -406,29 +419,30 @@ export default function Contests() {
           >×</button>
         </div>
       )}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Contests</h1>
-        <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
-      </div>
+      <header className="animate-fadeUp" style={{ marginBottom: 20 }}>
+        <div className="section-label" style={{ marginBottom: 4 }}>Side Action</div>
+        <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, lineHeight: 1 }}>Contests</h1>
+        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
+      </header>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button onClick={() => { navigator.vibrate?.(8); setTab('ctp') }} className={`pill-tab ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
-        <button onClick={() => { navigator.vibrate?.(8); setTab('ld') }}  className={`pill-tab ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
-        <button onClick={() => { navigator.vibrate?.(8); setTab('lahey') }} className={`pill-tab ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
+      <div className="animate-fadeUp delay-100" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <button onClick={() => { navigator.vibrate?.(8); setTab('ctp') }} className={`pill-tab pressable ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
+        <button onClick={() => { navigator.vibrate?.(8); setTab('ld') }}  className={`pill-tab pressable ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
+        <button onClick={() => { navigator.vibrate?.(8); setTab('lahey') }} className={`pill-tab pressable ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
       </div>
 
       {/* ── CTP / LD ─────────────────────────────────────────────── */}
       {(tab === 'ctp' || tab === 'ld') && (
         <>
 
-          {isCurrentYear && <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
-            <div style={{ fontWeight: 700, color: '#D4A53A', marginBottom: 14, fontSize: 14 }}>
-              <Target size={14} style={{ display: 'inline', marginRight: 6 }} />
+          {isCurrentYear && <div className="glass animate-fadeUp delay-100" style={{ padding: 20, marginBottom: 16 }}>
+            <div className="section-label" style={{ color: 'var(--gold)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Target size={12} style={{ flexShrink: 0 }} />
               Submit Entry
             </div>
             <form onSubmit={submitContest}>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 6 }}>Player *</label>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, color: 'var(--tx3)', display: 'block', marginBottom: 8 }}>Player *</label>
                 <BottomSheetPicker
                   options={contestPlayers.map(p => ({ value: p.id, label: displayName(p) }))}
                   value={form.player_id}
@@ -437,9 +451,9 @@ export default function Contests() {
                   searchable={contestPlayers.length > 6}
                 />
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 6 }}>
-                  Photo (optional){!form.player_id && <span style={{ marginLeft: 6, color: 'var(--tx4)' }}>— select a player first</span>}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, color: 'var(--tx3)', display: 'block', marginBottom: 8 }}>
+                  Photo (optional){!form.player_id && <span style={{ marginLeft: 6, fontWeight: 400, color: 'var(--tx4)' }}>— select a player first</span>}
                 </label>
                 {/* File picker — any image from library */}
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
