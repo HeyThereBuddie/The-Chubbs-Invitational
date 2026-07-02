@@ -9,7 +9,7 @@ import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
-import { displayName, HOLE_PARS } from '../lib/types'
+import { displayName, HOLE_PARS, normalizeFairways } from '../lib/types'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -244,7 +244,7 @@ export default function GpsPage() {
     if (!effectiveTournamentId) { setLoading(false); return }
 
     const applyGps = (gps: CourseGps) => {
-      setCourse(gps)
+      setCourse({ ...gps, holes: normalizeFairways(gps.holes ?? []) })
       if (gps.lat && gps.lng)
         setViewState(v => ({ ...v, latitude: gps.lat!, longitude: gps.lng!, zoom: 16 }))
     }
@@ -376,16 +376,21 @@ export default function GpsPage() {
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
 
   const corridorGeoJson = useMemo(() => {
-    if (currentHole?.fairway && currentHole.fairway.length >= 3) {
-      const coords = currentHole.fairway.map(p => [p.lng, p.lat] as [number, number])
-      coords.push(coords[0])
-      return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+    const fairways = (currentHole?.fairway ?? []).filter(p => p.length >= 3)
+    if (fairways.length > 0) {
+      return { type: 'FeatureCollection' as const,
+        features: fairways.map((poly, i) => {
+          const coords = poly.map(p => [p.lng, p.lat] as [number, number])
+          return { type: 'Feature' as const, id: i,
+            geometry: { type: 'Polygon' as const, coordinates: [[...coords, coords[0]]] }, properties: {} }
+        }) }
     }
     const tee = currentHole?.tee, green = currentHole?.green.center
     if (!tee || !green) return null
-    return { type: 'Feature' as const,
-      geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, calcBearing(tee, green))] },
-      properties: {} }
+    return { type: 'FeatureCollection' as const,
+      features: [{ type: 'Feature' as const,
+        geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, calcBearing(tee, green))] },
+        properties: {} }] }
   }, [currentHole])
 
   const makePolyCollection = (polys: import('../lib/types').LatLng[][] | null | undefined) => {
@@ -404,13 +409,13 @@ export default function GpsPage() {
   const landingZoneGeoJson = useMemo(() => {
     const lz = currentHole?.landingZone; if (!lz) return null
 
-    // Collect fairway polygon coords for containment check
-    let fairwayCoords: [number, number][] | null = null
-    if (currentHole.fairway && currentHole.fairway.length >= 3) {
-      fairwayCoords = currentHole.fairway.map(p => [p.lng, p.lat] as [number, number])
+    // Collect all fairway polygon coords for containment check (union — any polygon counts)
+    let fairwayPolygons: [number, number][][] = []
+    if (currentHole.fairway && currentHole.fairway.length > 0) {
+      fairwayPolygons = currentHole.fairway.filter(p => p.length >= 3).map(p => p.map(pt => [pt.lng, pt.lat] as [number, number]))
     } else if (currentHole.tee && currentHole.green.center) {
-      fairwayCoords = buildCorridor(currentHole.tee, currentHole.green.center,
-        calcBearing(currentHole.tee, currentHole.green.center))
+      fairwayPolygons = [buildCorridor(currentHole.tee, currentHole.green.center,
+        calcBearing(currentHole.tee, currentHole.green.center))]
     }
 
     // Ray-casting point-in-polygon test (lng/lat coords are fine at this scale)
@@ -423,20 +428,21 @@ export default function GpsPage() {
       }
       return inside
     }
+    const inAnyFairway = (pt: [number, number]) => fairwayPolygons.some(poly => inPoly(pt, poly))
 
     // Binary-search for the largest radius (up to 27m) where all 36 boundary
-    // points sit inside the fairway polygon. Floor at 8m; skip if center is outside.
+    // points sit inside any fairway polygon. Floor at 8m; skip if center is outside.
     const MAX_R = 27, MIN_R = 8
     let radius = MAX_R
-    if (fairwayCoords) {
+    if (fairwayPolygons.length > 0) {
       const center: [number, number] = [lz.lng, lz.lat]
-      if (inPoly(center, fairwayCoords)) {
+      if (inAnyFairway(center)) {
         let lo = MIN_R, hi = MAX_R
         for (let iter = 0; iter < 20; iter++) {
           const mid = (lo + hi) / 2
           const allIn = Array.from({ length: 36 }, (_, i) => {
             const pt = offsetLatLng(lz, (i / 36) * 360, mid)
-            return inPoly([pt.lng, pt.lat], fairwayCoords!)
+            return inAnyFairway([pt.lng, pt.lat])
           }).every(Boolean)
           if (allIn) lo = mid; else hi = mid
         }

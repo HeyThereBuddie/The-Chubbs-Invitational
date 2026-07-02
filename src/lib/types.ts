@@ -174,12 +174,21 @@ export interface HoleGps {
     center: LatLng | null
     back:   LatLng | null
   }
-  fairway?: LatLng[] | null
+  fairway?: LatLng[][] | null
   bunkers?: LatLng[][] | null
   water?:   LatLng[][] | null
   landingZone?: LatLng | null      // center of ideal tee-shot landing area
   avoidZones?:  LatLng[][] | null  // danger areas beyond mapped hazards
   tip?: string | null              // AI-generated playing tip
+}
+
+// Upgrades holes saved before fairway became LatLng[][] (old format was LatLng[])
+export function normalizeFairways(holes: HoleGps[]): HoleGps[] {
+  return holes.map(h => {
+    if (!h.fairway || h.fairway.length === 0) return h
+    const isOldFormat = !Array.isArray((h.fairway as unknown[])[0])
+    return isOldFormat ? { ...h, fairway: [h.fairway as unknown as LatLng[]] } : h
+  })
 }
 
 export interface CourseGps {

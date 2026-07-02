@@ -6,6 +6,7 @@ import { Search, Save, Download, ChevronLeft, ChevronRight, Lock, MapPin, Wand2 
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import type { CourseGps, HoleGps, LatLng } from '../../lib/types'
+import { normalizeFairways } from '../../lib/types'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
@@ -442,7 +443,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       setCourseName(currentGps.name)
       setCourseLat(currentGps.lat ?? null)
       setCourseLng(currentGps.lng ?? null)
-      setHoles(currentGps.holes?.length ? currentGps.holes : emptyHoles())
+      setHoles(currentGps.holes?.length ? normalizeFairways(currentGps.holes) : emptyHoles())
       if (currentGps.lat && currentGps.lng) {
         setViewState(v => ({ ...v, latitude: currentGps.lat!, longitude: currentGps.lng!, zoom: 16 }))
       }
@@ -463,7 +464,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const [searchingOsmId, setSearchingOsmId] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [nearbyLoading, setNearbyLoading] = useState(false)
-  const [holes, setHoles]           = useState<HoleGps[]>(currentGps?.holes?.length ? currentGps.holes : emptyHoles())
+  const [holes, setHoles]           = useState<HoleGps[]>(currentGps?.holes?.length ? normalizeFairways(currentGps.holes) : emptyHoles())
   const [editingHole, setEditingHole] = useState(1)
   const [pinMode, setPinMode]       = useState<PinMode>('tee')
   const [saving, setSaving]         = useState(false)
@@ -889,7 +890,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
           if (bestD > MAX_FAIRWAY_D2) holeNum = 0
         }
         if (holeNum >= 1 && holeNum <= 18)
-          newHoles[holeNum - 1].fairway = el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
+          newHoles[holeNum - 1].fairway = [...(newHoles[holeNum - 1].fairway ?? []), el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))]
       }
 
       // Bunkers and water hazards — full geometry, multiple per hole
@@ -1009,7 +1010,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
       }
       setHoles(prev => prev.map(hole => hole.hole !== editingHole ? hole : {
         ...hole,
-        fairway:     data.fairway?.length     ? data.fairway     : hole.fairway,
+        fairway:     data.fairway?.length     ? [...(hole.fairway ?? []), data.fairway] : hole.fairway,
         bunkers:     data.bunkers?.length     ? data.bunkers     : hole.bunkers,
         water:       data.water?.length       ? data.water       : hole.water,
         avoidZones:  data.avoidZones?.length  ? data.avoidZones  : hole.avoidZones,
@@ -1040,7 +1041,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     const poly = [...draftPts]
     setHoles(prev => prev.map(h => {
       if (h.hole !== editingHole) return h
-      if (drawType === 'fairway') return { ...h, fairway: poly }
+      if (drawType === 'fairway') return { ...h, fairway: [...(h.fairway ?? []), poly] }
       if (drawType === 'bunker')  return { ...h, bunkers: [...(h.bunkers ?? []), poly] }
       if (drawType === 'water')   return { ...h, water:   [...(h.water   ?? []), poly] }
       return h
@@ -1055,7 +1056,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (!editTarget) return
     setHoles(prev => prev.map(h => {
       if (h.hole !== editingHole) return h
-      if (editTarget.type === 'fairway') return { ...h, fairway: null }
+      if (editTarget.type === 'fairway') return { ...h, fairway: (h.fairway ?? []).filter((_, i) => i !== editTarget.index) }
       if (editTarget.type === 'bunker')  return { ...h, bunkers: (h.bunkers ?? []).filter((_, i) => i !== editTarget.index) }
       return { ...h, water: (h.water ?? []).filter((_, i) => i !== editTarget.index) }
     }))
@@ -1067,7 +1068,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setHoles(prev => prev.map(h => {
       if (h.hole !== editingHole) return h
       const upd = (poly: LatLng[]) => poly.map((p, j) => j !== vi ? p : latlng)
-      if (editTarget.type === 'fairway') return { ...h, fairway: upd(h.fairway ?? []) }
+      if (editTarget.type === 'fairway') return { ...h, fairway: (h.fairway ?? []).map((poly, i) => i !== editTarget.index ? poly : upd(poly)) }
       if (editTarget.type === 'bunker')  return { ...h, bunkers: (h.bunkers ?? []).map((poly, i) => i !== editTarget.index ? poly : upd(poly)) }
       return { ...h, water: (h.water ?? []).map((poly, i) => i !== editTarget.index ? poly : upd(poly)) }
     }))
@@ -1152,21 +1153,21 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
 
   // Corridor polygon for the currently-editing hole
   const corridorGeoJson = useMemo(() => {
-    // Use actual OSM fairway polygon if available
-    if (currentH?.fairway && currentH.fairway.length >= 3) {
-      const coords = currentH.fairway.map(p => [p.lng, p.lat] as [number, number])
-      coords.push(coords[0])  // close the ring
-      return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} }
+    const fairways = (currentH?.fairway ?? []).filter(p => p.length >= 3)
+    if (fairways.length > 0) {
+      return { type: 'FeatureCollection' as const,
+        features: fairways.map((poly, i) => {
+          const coords = poly.map(p => [p.lng, p.lat] as [number, number])
+          return { type: 'Feature' as const, id: i,
+            geometry: { type: 'Polygon' as const, coordinates: [[...coords, coords[0]]] }, properties: {} }
+        }) }
     }
-    const tee   = currentH?.tee
-    const green = currentH?.green.center
+    const tee = currentH?.tee, green = currentH?.green.center
     if (!tee || !green) return null
     const bearing = calcBearing(tee, green)
-    return {
-      type: 'Feature' as const,
-      geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, bearing)] },
-      properties: {},
-    }
+    return { type: 'FeatureCollection' as const,
+      features: [{ type: 'Feature' as const,
+        geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, bearing)] }, properties: {} }] }
   }, [currentH])
 
   // GeoJSON for all bunkers across all holes (admin map overview)
@@ -1205,7 +1206,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (!editTarget) return null
     const h = holes.find(x => x.hole === editingHole)
     let poly: LatLng[] | undefined
-    if (editTarget.type === 'fairway') poly = h?.fairway ?? undefined
+    if (editTarget.type === 'fairway') poly = h?.fairway?.[editTarget.index]
     else if (editTarget.type === 'bunker') poly = h?.bunkers?.[editTarget.index]
     else poly = h?.water?.[editTarget.index]
     if (!poly || poly.length < 3) return null
@@ -1216,7 +1217,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const editVertices = useMemo(() => {
     if (!editTarget) return []
     const h = holes.find(x => x.hole === editingHole)
-    if (editTarget.type === 'fairway') return h?.fairway ?? []
+    if (editTarget.type === 'fairway') return h?.fairway?.[editTarget.index] ?? []
     if (editTarget.type === 'bunker') return h?.bunkers?.[editTarget.index] ?? []
     return h?.water?.[editTarget.index] ?? []
   }, [editTarget, holes, editingHole])
@@ -1498,13 +1499,13 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               const color = DRAW_COLORS[type]
               const label = type === 'fairway' ? 'Fairway' : type === 'bunker' ? 'Bunkers' : 'Water'
               const polys: LatLng[][] = type === 'fairway'
-                ? (currentH?.fairway ? [currentH.fairway] : [])
+                ? (currentH?.fairway ?? [])
                 : type === 'bunker' ? (currentH?.bunkers ?? []) : (currentH?.water ?? [])
               return (
                 <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <div style={{ width: 8, height: 8, borderRadius: type === 'bunker' ? 2 : '50%', background: color, flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: 'var(--tx2)', fontWeight: 600, minWidth: 60 }}>
-                    {label}{polys.length > 0 && type !== 'fairway' ? ` (${polys.length})` : ''}
+                    {label}{polys.length > 0 ? ` (${polys.length})` : ''}
                   </span>
                   {polys.map((_, i) => (
                     <button key={i} onClick={() => startEdit(type, i)} style={{
@@ -1513,7 +1514,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                       border: `1px solid ${editTarget?.type === type && editTarget.index === i ? color : 'var(--bdr)'}`,
                       color: editTarget?.type === type && editTarget.index === i ? color : 'var(--tx3)',
                     }}>
-                      {type === 'fairway' ? 'Edit' : `#${i + 1}`}
+                      {`#${i + 1}`}
                     </button>
                   ))}
                   <button onClick={() => startDraw(type)} disabled={!!(drawType || editTarget)} style={{
@@ -1566,7 +1567,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
               ) : editTarget ? (
                 <>
                   <span style={{ fontSize: 12, color: '#818cf8', flex: 1 }}>
-                    Editing <strong>{editTarget.type}</strong> {editTarget.type !== 'fairway' ? `#${editTarget.index + 1}` : ''} — drag white handles to adjust
+                    Editing <strong>{editTarget.type}</strong> #{editTarget.index + 1} — drag white handles to adjust
                   </span>
                   <button onClick={deleteEditTarget} style={{
                     padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer',
