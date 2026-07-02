@@ -72,8 +72,9 @@ export function ScoreBottomSheet({
             position: 'fixed',
             inset: 0,
             zIndex: 200,
-            background: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(2px)',
+            background: 'rgba(0,0,0,0.58)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
           }}
         />
       )}
@@ -87,22 +88,38 @@ export function ScoreBottomSheet({
           right: 0,
           zIndex: 201,
           background: 'var(--panel)',
-          borderRadius: '20px 20px 0 0',
+          borderRadius: '24px 24px 0 0',
+          border: '1px solid var(--bdr)',
+          borderBottom: 'none',
+          boxShadow: 'var(--elev-3), 0 -12px 48px -12px rgba(0,0,0,0.6)',
           maxHeight: '88vh',
           overflowY: 'auto',
           transform: open ? 'translateY(0)' : 'translateY(110%)',
-          transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
+          transition: 'transform 0.4s cubic-bezier(0.26, 1, 0.32, 1)',
         }}
       >
+        {/* Top border-glow line */}
+        <div style={{
+          height: 1,
+          background: 'linear-gradient(90deg, transparent 8%, var(--gold-40) 50%, transparent 92%)',
+        }} />
+
         {/* Drag handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--bdr2)', margin: '12px auto 0' }} />
+        <div style={{ width: 40, height: 5, borderRadius: 999, background: 'var(--surf3)', margin: '10px auto 0' }} />
 
         {/* Header */}
         <div style={{ padding: '12px 20px 8px', textAlign: 'center' }}>
-          <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 2 }}>
+          <span style={{
+            fontFamily: 'Bebas Neue', fontSize: 34, color: 'var(--gold)', letterSpacing: 3,
+            lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+            textShadow: '0 0 24px var(--gold-25)',
+          }}>
             HOLE {hole}
           </span>
-          <span style={{ fontSize: 14, color: 'var(--tx3)', marginLeft: 10 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: 'var(--tx3)', marginLeft: 12,
+            letterSpacing: 2, textTransform: 'uppercase', verticalAlign: '4px',
+          }}>
             PAR {par}
           </span>
         </div>
@@ -139,13 +156,17 @@ export function ScoreBottomSheet({
         {/* Lock reason blurb */}
         {locked && missingItems.length > 0 && (
           <div style={{
-            margin: '4px 12px 0',
+            margin: '8px 12px 0',
             padding: '12px 16px',
-            borderRadius: 10,
-            background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.18)',
+            borderRadius: 12,
+            background: 'rgba(239,68,68,0.07)',
+            border: '1px solid rgba(239,68,68,0.20)',
+            boxShadow: 'var(--elev-1)',
           }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: '#f87171',
+              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6,
+            }}>
               Hole {hole - 1} isn't complete yet
             </div>
             <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.6 }}>
