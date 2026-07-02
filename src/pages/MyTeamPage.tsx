@@ -44,6 +44,18 @@ function scoreColor(score: number, par: number) {
   return '#ef4444'
 }
 
+// ── Scorecard cell styles (presentational) ────────────────
+const CARD_GRID_COLS = '44px repeat(9, 1fr) 38px'
+const cellNum: React.CSSProperties = {
+  textAlign: 'center', padding: '5px 0', lineHeight: 1,
+  fontVariantNumeric: 'tabular-nums',
+}
+const rowLabel: React.CSSProperties = {
+  fontSize: 9, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase',
+  color: 'var(--tx4)', padding: '5px 4px 5px 6px', lineHeight: 1,
+  display: 'flex', alignItems: 'center',
+}
+
 // ── Component ─────────────────────────────────────────────
 export default function MyTeamPage() {
   const { profile } = useAuth()
@@ -192,10 +204,10 @@ export default function MyTeamPage() {
 
   // ── No team, no teams in DB ───────────────────────────────
   if (!loading && allTeams.length === 0) return (
-    <div className="glass animate-fadeUp" style={{ padding: '40px', textAlign: 'center', maxWidth: 480, margin: '40px auto' }}>
+    <div className="glass animate-fadeUp" style={{ padding: '44px 32px', textAlign: 'center', maxWidth: 480, margin: '40px auto' }}>
       <div style={{ fontSize: 40, marginBottom: 16 }}>⛳</div>
-      <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--tx1)', marginBottom: 8 }}>No teams yet</div>
-      <div style={{ color: 'var(--tx3)', fontSize: 14 }}>Teams will appear here once the tournament is set up.</div>
+      <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 2, color: 'var(--tx1)', marginBottom: 8 }}>No teams yet</div>
+      <div style={{ color: 'var(--tx3)', fontSize: 13, lineHeight: 1.5 }}>Teams will appear here once the&nbsp;tournament is set up.</div>
     </div>
   )
 
@@ -237,17 +249,17 @@ export default function MyTeamPage() {
 
       {/* ── Team selector tabs ── */}
       {allTeams.length > 1 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 20 }}>
+        <div className="animate-fadeUp" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
           {tabTeams.map(t => (
             <button
               key={t.id}
               onClick={() => { setViewingTeamId(t.id); setEditingName(false) }}
-              className={`pill-tab ${viewingTeamId === t.id ? 'active' : ''}`}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
+              className={`pill-tab pressable ${viewingTeamId === t.id ? 'active' : ''}`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}
             >
               <span>{t.name}{t.id === myTeamId ? ' ⭐' : ''}</span>
               {(t.player1 || t.player2) && (
-                <span style={{ fontSize: 9, opacity: 0.55, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 9, opacity: 0.55, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
                   {[t.player1 && displayName(t.player1), t.player2 && displayName(t.player2)].filter(Boolean).join(' & ')}
                 </span>
               )}
@@ -256,25 +268,55 @@ export default function MyTeamPage() {
         </div>
       )}
 
-      {/* ── Loading ── */}
+      {/* ── Loading skeleton — mirrors page layout ── */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-          <div className="animate-spin" style={{ width: 36, height: 36, border: '3px solid rgba(212,165,58,0.2)', borderTopColor: '#D4A53A', borderRadius: '50%' }} />
+        <div aria-busy="true" className="animate-fadeUp">
+          {/* Team header */}
+          <div style={{ marginBottom: 24 }}>
+            <div className="skeleton skeleton-line" style={{ width: 72, height: 10, marginBottom: 12 }} />
+            <div className="skeleton skeleton-title" style={{ width: 200, height: 28, marginBottom: 10 }} />
+            <div className="skeleton skeleton-line" style={{ width: 150 }} />
+          </div>
+          {/* Player cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+            {[0, 1].map(i => (
+              <div key={i} className="glass" style={{ padding: 20 }}>
+                <div className="skeleton skeleton-circle" style={{ width: 72, height: 72, marginBottom: 14 }} />
+                <div className="skeleton skeleton-line" style={{ width: '70%', marginBottom: 10 }} />
+                <div className="skeleton skeleton-line" style={{ width: '45%' }} />
+              </div>
+            ))}
+          </div>
+          {/* Stats row */}
+          <div className="glass" style={{ padding: 20, marginBottom: 12 }}>
+            <div className="skeleton skeleton-line" style={{ width: 120, height: 10, marginBottom: 16 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} className="skeleton" style={{ height: 80, borderRadius: 14 }} />
+              ))}
+            </div>
+          </div>
+          {/* Scorecard block */}
+          <div className="glass" style={{ padding: 20 }}>
+            <div className="skeleton skeleton-line" style={{ width: 90, height: 10, marginBottom: 16 }} />
+            <div className="skeleton skeleton-card" style={{ height: 128, borderRadius: 14, marginBottom: 12 }} />
+            <div className="skeleton skeleton-card" style={{ height: 128, borderRadius: 14 }} />
+          </div>
         </div>
       ) : !team ? null : (
         <>
           {/* ── Read-only banner ── */}
           {!isOwnTeam && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 14px', borderRadius: 10, background: 'var(--surf)', border: '1px solid var(--bdr)' }}>
-              <span style={{ fontSize: 13 }}>👁</span>
-              <span style={{ fontSize: 12, color: 'var(--tx3)' }}>Read-only — you can only edit your own team</span>
+            <div className="glass-flat animate-fadeUp" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 14px' }}>
+              <span style={{ fontSize: 13, lineHeight: 1 }}>👁</span>
+              <span style={{ fontSize: 12, color: 'var(--tx3)', letterSpacing: 0.2 }}>Read-only — you can only edit your own&nbsp;team</span>
             </div>
           )}
 
           {/* ── Team header ── */}
-          <div style={{ marginBottom: 28 }}>
+          <div className="animate-fadeUp" style={{ marginBottom: 28 }}>
             {isOwnTeam && editingName ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <input
                   ref={nameInputRef}
                   value={nameInput}
@@ -283,54 +325,57 @@ export default function MyTeamPage() {
                   maxLength={50}
                   autoFocus
                   style={{
-                    fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: '#D4A53A',
-                    background: 'rgba(212,165,58,0.07)', border: '1px solid rgba(212,165,58,0.4)',
-                    borderRadius: 8, padding: '4px 12px', outline: 'none', minWidth: 0, flex: 1,
+                    fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: 'var(--gold)',
+                    background: 'var(--gold-08)', border: '1px solid var(--gold-40)',
+                    borderRadius: 10, padding: '4px 12px', outline: 'none', minWidth: 0, flex: 1,
                   }}
                 />
-                <button onClick={saveName} disabled={saving} title="Save" style={{ background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#D4A53A', display: 'flex', alignItems: 'center' }}>
+                <button className="pressable" onClick={saveName} disabled={saving} title="Save" style={{ background: 'var(--gold-15)', border: '1px solid var(--gold-25)', borderRadius: 10, padding: 10, minWidth: 40, minHeight: 40, cursor: 'pointer', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Check size={16} />
                 </button>
-                <button onClick={() => setEditingName(false)} title="Cancel" style={{ background: 'var(--surf)', border: '1px solid var(--bdr)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'var(--tx3)', display: 'flex', alignItems: 'center' }}>
+                <button className="pressable" onClick={() => setEditingName(false)} title="Cancel" style={{ background: 'var(--surf)', border: '1px solid var(--bdr)', borderRadius: 10, padding: 10, minWidth: 40, minHeight: 40, cursor: 'pointer', color: 'var(--tx3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <X size={16} />
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginRight: 4 }}>
-                  {isOwnTeam ? 'Your Team' : 'Viewing'}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                  <div className="section-label" style={{ fontSize: 10, letterSpacing: 2.5, color: 'var(--tx4)' }}>
+                    {isOwnTeam ? 'Your Team' : 'Viewing'}
+                  </div>
+                  <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 3, margin: 0, lineHeight: 0.95 }}>
+                    {team.name}
+                  </h1>
                 </div>
-                <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4, margin: 0 }}>
-                  {team.name}
-                </h1>
                 {isOwnTeam && (
                   <button
+                    className="pressable"
                     onClick={() => { setNameInput(team.name); setEditingName(true) }}
                     title="Rename team"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(212,165,58,0.35)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gold-40)', padding: 6, display: 'flex', alignItems: 'center', flexShrink: 0, alignSelf: 'flex-end' }}
                   >
                     <Pencil size={14} />
                   </button>
                 )}
               </div>
             )}
-            <p style={{ color: 'var(--tx3)', fontSize: 13, margin: 0 }}>
+            <p style={{ color: 'var(--tx3)', fontSize: 13, letterSpacing: 0.2, margin: 0 }}>
               {players.map(p => displayName(p)).join(' & ')}
             </p>
           </div>
 
           {/* ── Player cards ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: players.length > 1 ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
+          <div className="animate-fadeUp delay-100" style={{ display: 'grid', gridTemplateColumns: players.length > 1 ? '1fr 1fr' : '1fr', gap: 12, marginBottom: 20 }}>
             {players.map(p => (
-              <div key={p.id} className="glass animate-fadeUp" style={{ padding: '22px 20px' }}>
+              <div key={p.id} className="glass" style={{ padding: 20 }}>
                 <div style={{ marginBottom: 12 }}>
-                  <AvatarCircle player={p} size={80} />
+                  <AvatarCircle player={p} size={72} />
                 </div>
-                <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--tx1)', marginBottom: p.nickname ? 2 : 6 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: -0.2, color: 'var(--tx1)', marginBottom: p.nickname ? 2 : 8 }}>
                   {displayName(p)}
                 </div>
                 {p.nickname && (
-                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 6 }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 8 }}>{p.name}</div>
                 )}
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                   <StatChip label="All Drives" value={driveCount(p.id)} />
@@ -344,11 +389,9 @@ export default function MyTeamPage() {
           {stats.played > 0 ? (
             <>
               {/* Round Summary */}
-              <div className="glass animate-fadeUp" style={{ padding: '22px 26px', marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
-                  Round Summary
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginBottom: 20 }}>
+              <div className="glass animate-fadeUp delay-200" style={{ padding: 20, marginBottom: 12 }}>
+                <div className="section-label" style={{ marginBottom: 16 }}>Round Summary</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: 8, marginBottom: 16 }}>
                   <BigStat label="Score"    value={`${stats.gross}`}            sub={`${toParStr(stats.toPar)} to par`} color={toParColor(stats.toPar)} />
                   <BigStat label="Thru"     value={`${stats.played}`}           sub="of 18 holes" />
                   <BigStat label="Putts"    value={`${stats.putts}`}            sub="total" />
@@ -356,20 +399,20 @@ export default function MyTeamPage() {
                     <BigStat label="Under Par" value={`${stats.birdies + stats.eagles}`} sub="holes" color="#22c55e" />
                   )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid var(--bdr)', paddingTop: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, borderTop: '1px solid var(--bdr)', paddingTop: 16 }}>
                   {[
                     { label: 'Front 9', st: frontStats },
                     { label: 'Back 9',  st: backStats  },
                   ].map(({ label, st }) => (
-                    <div key={label} style={{ textAlign: 'center', padding: '10px 8px', borderRadius: 10, background: 'var(--surf)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                    <div key={label} className="stat-tile">
+                      <div className="section-label" style={{ fontSize: 10, letterSpacing: 1.5, color: 'var(--tx4)', marginBottom: 6 }}>{label}</div>
                       {st.played > 0 ? (
                         <>
-                          <div style={{ fontSize: 22, fontWeight: 900, color: toParColor(st.toPar), fontFamily: 'Bebas Neue', letterSpacing: 2, lineHeight: 1 }}>
+                          <div style={{ fontSize: 24, fontWeight: 400, color: toParColor(st.toPar), fontFamily: 'Bebas Neue', letterSpacing: 2, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                             {st.gross}
                           </div>
-                          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 3 }}>
-                            {toParStr(st.toPar)} · {st.played} holes
+                          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                            {toParStr(st.toPar)} · {st.played}&nbsp;holes
                           </div>
                         </>
                       ) : (
@@ -381,10 +424,8 @@ export default function MyTeamPage() {
               </div>
 
               {/* Scorecard */}
-              <div className="glass animate-fadeUp" style={{ padding: '20px 22px', marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 14 }}>
-                  Scorecard
-                </div>
+              <div className="glass animate-fadeUp delay-300" style={{ padding: '20px 14px', marginBottom: 12 }}>
+                <div className="section-label" style={{ marginBottom: 14, paddingLeft: 6 }}>Scorecard</div>
                 {scorecardHalves.map(({ label, tag, holes }) => {
                   const holePars  = holes.map(h => HOLE_PARS[h - 1])
                   const totalPar  = holePars.reduce((a, p) => a + p, 0)
@@ -393,69 +434,70 @@ export default function MyTeamPage() {
                   const playedPar = played.reduce((a, h) => a + HOLE_PARS[h - 1], 0)
                   const toPar     = subtotal - playedPar
                   return (
-                    <div key={label} style={{ marginBottom: 16 }}>
-                      <div style={{ overflowX: 'auto' }}>
-                        <div style={{ minWidth: 340 }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
-                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 700, padding: '2px 4px', letterSpacing: 1 }}>{label}</div>
-                            {holes.map(h => (
-                              <div key={h} style={{ fontSize: 10, color: 'var(--tx3)', textAlign: 'center', padding: '2px 0' }}>{h}</div>
-                            ))}
-                            <div style={{ fontSize: 9, color: 'var(--tx4)', textAlign: 'center', fontWeight: 700, padding: '2px 0' }}>{tag}</div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
-                            <div style={{ fontSize: 9, color: 'var(--tx4)', padding: '2px 4px' }}>PAR</div>
-                            {holePars.map((par, i) => (
-                              <div key={i} style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', padding: '2px 0' }}>{par}</div>
-                            ))}
-                            <div style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', fontWeight: 700, padding: '2px 0' }}>{totalPar}</div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
-                            <div style={{ fontSize: 9, color: 'var(--tx4)', padding: '2px 4px' }}>SCORE</div>
-                            {holes.map((h, i) => {
-                              const s = scoreMap[h]?.score ?? null
-                              if (s === null) return (
-                                <div key={h} style={{ fontSize: 10, color: 'var(--tx5)', textAlign: 'center', padding: '3px 0' }}>—</div>
-                              )
-                              return (
-                                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: scoreColor(s, holePars[i]), textAlign: 'center', padding: '3px 0' }}>{s}</div>
-                              )
-                            })}
-                            <div style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', padding: '3px 0', color: played.length > 0 ? toParColor(toPar) : 'var(--tx4)' }}>
-                              {played.length > 0 ? `${subtotal}` : '—'}
-                            </div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2, marginBottom: 3 }}>
-                            <div style={{ fontSize: 9, color: 'var(--tx4)', padding: '2px 4px' }}>PUTTS</div>
-                            {holes.map(h => {
-                              const p = scoreMap[h]?.putts ?? null
-                              return (
-                                <div key={h} style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', padding: '3px 0' }}>
-                                  {p !== null ? p : <span style={{ color: 'var(--tx5)' }}>—</span>}
-                                </div>
-                              )
-                            })}
-                            <div style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', padding: '3px 0', fontWeight: 700 }}>
-                              {played.length > 0 ? played.reduce((a, h) => a + (scoreMap[h]?.putts ?? 0), 0) : '—'}
-                            </div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: `60px repeat(9, 1fr) 52px`, gap: 2 }}>
-                            <div style={{ fontSize: 9, color: 'var(--tx4)', padding: '2px 4px' }}>🍺</div>
-                            {holes.map(h => {
-                              const hit = chulligans.find(c => c.hole === h)
-                              return (
-                                <div key={h} style={{ textAlign: 'center', padding: '2px 0', fontSize: 11 }}>
-                                  {hit ? '🍺' : <span style={{ color: 'var(--tx5)', fontSize: 9 }}>·</span>}
-                                </div>
-                              )
-                            })}
-                            <div />
-                          </div>
+                    <div key={label} className="glass-flat" style={{ marginBottom: 12, padding: '8px 6px 6px', overflow: 'hidden' }}>
+                      {/* Header row — hole numbers */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS, borderBottom: '1px solid var(--bdr)', paddingBottom: 2, marginBottom: 2 }}>
+                        <div style={{ ...rowLabel, color: 'var(--tx2)', letterSpacing: 1.5 }}>{label}</div>
+                        {holes.map(h => (
+                          <div key={h} style={{ ...cellNum, fontSize: 10, fontWeight: 600, color: 'var(--tx3)' }}>{h}</div>
+                        ))}
+                        <div style={{ ...cellNum, fontSize: 9, fontWeight: 700, letterSpacing: 1, color: 'var(--tx3)' }}>{tag}</div>
+                      </div>
+                      {/* Par row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS }}>
+                        <div style={rowLabel}>Par</div>
+                        {holePars.map((par, i) => (
+                          <div key={i} style={{ ...cellNum, fontSize: 10, color: 'var(--tx4)' }}>{par}</div>
+                        ))}
+                        <div style={{ ...cellNum, fontSize: 10, fontWeight: 700, color: 'var(--tx4)' }}>{totalPar}</div>
+                      </div>
+                      {/* Score row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS, background: 'var(--surf)', borderRadius: 8 }}>
+                        <div style={{ ...rowLabel, color: 'var(--tx3)' }}>Score</div>
+                        {holes.map((h, i) => {
+                          const s = scoreMap[h]?.score ?? null
+                          if (s === null) return (
+                            <div key={h} style={{ ...cellNum, fontSize: 10, color: 'var(--tx5)' }}>—</div>
+                          )
+                          return (
+                            <div key={h} style={{ ...cellNum, fontSize: 12, fontWeight: 700, color: scoreColor(s, holePars[i]) }}>{s}</div>
+                          )
+                        })}
+                        <div style={{ ...cellNum, fontSize: 12, fontWeight: 800, color: played.length > 0 ? toParColor(toPar) : 'var(--tx4)' }}>
+                          {played.length > 0 ? `${subtotal}` : '—'}
                         </div>
                       </div>
+                      {/* Putts row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS }}>
+                        <div style={rowLabel}>Putts</div>
+                        {holes.map(h => {
+                          const p = scoreMap[h]?.putts ?? null
+                          return (
+                            <div key={h} style={{ ...cellNum, fontSize: 10, color: 'var(--tx4)' }}>
+                              {p !== null ? p : <span style={{ color: 'var(--tx5)' }}>—</span>}
+                            </div>
+                          )
+                        })}
+                        <div style={{ ...cellNum, fontSize: 10, fontWeight: 700, color: 'var(--tx4)' }}>
+                          {played.length > 0 ? played.reduce((a, h) => a + (scoreMap[h]?.putts ?? 0), 0) : '—'}
+                        </div>
+                      </div>
+                      {/* Chulligan row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS }}>
+                        <div style={rowLabel}>🍺</div>
+                        {holes.map(h => {
+                          const hit = chulligans.find(c => c.hole === h)
+                          return (
+                            <div key={h} style={{ ...cellNum, fontSize: 11, padding: '3px 0' }}>
+                              {hit ? '🍺' : <span style={{ color: 'var(--tx5)', fontSize: 9 }}>·</span>}
+                            </div>
+                          )
+                        })}
+                        <div />
+                      </div>
                       {played.length > 0 && (
-                        <div style={{ marginTop: 6, fontSize: 11, color: toParColor(toPar), textAlign: 'right', fontWeight: 600 }}>
-                          {toParStr(toPar)} ({played.length} holes)
+                        <div style={{ marginTop: 4, padding: '2px 6px 2px 0', fontSize: 11, fontWeight: 600, color: toParColor(toPar), textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {toParStr(toPar)} ({played.length}&nbsp;holes)
                         </div>
                       )}
                     </div>
@@ -465,15 +507,16 @@ export default function MyTeamPage() {
 
               {/* Drive Usage */}
               {players.length === 2 && (
-                <div className="glass animate-fadeUp" style={{ padding: '20px 26px', marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 14 }}>
-                    Drive Usage — min 4 per player per nine
+                <div className="glass animate-fadeUp delay-400" style={{ padding: 20, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <div className="section-label">Drive Usage</div>
+                    <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 0.3 }}>min 4 per player per&nbsp;nine</div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[{ label: 'Front 9', from: 1, to: 9 }, { label: 'Back 9', from: 10, to: 18 }].map(({ label, from, to }) => (
-                      <div key={label}>
-                        <div style={{ fontSize: 10, color: 'var(--tx4)', marginBottom: 8, fontWeight: 600 }}>{label}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      <div key={label} className="glass-flat" style={{ padding: '10px 12px' }}>
+                        <div className="section-label" style={{ fontSize: 10, letterSpacing: 1.5, color: 'var(--tx4)', marginBottom: 10 }}>{label}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {players.map(p => {
                             const c  = driveCount(p.id, from, to)
                             const ok = c >= 4
@@ -484,7 +527,7 @@ export default function MyTeamPage() {
                                   {displayName(p)}
                                 </div>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                                  <div style={{ fontSize: 16, fontWeight: 700, color: ok ? '#22c55e' : c > 0 ? '#D4A53A' : 'var(--tx4)', minWidth: 20, textAlign: 'right' }}>{c}</div>
+                                  <div style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? '#22c55e' : c > 0 ? 'var(--gold)' : 'var(--tx4)', minWidth: 20, textAlign: 'right' }}>{c}</div>
                                   {ok && <span style={{ fontSize: 10, color: '#22c55e' }}>✓</span>}
                                 </div>
                               </div>
@@ -499,18 +542,23 @@ export default function MyTeamPage() {
 
               {/* Chulligans */}
               {players.length === 2 && (
-                <div className="glass animate-fadeUp" style={{ padding: '20px 26px', marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 14 }}>
-                    🍺 Chulligans — 1 per player per round (must chug)
+                <div className="glass animate-fadeUp delay-500" style={{ padding: 20, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <div className="section-label">🍺 Chulligans</div>
+                    <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 0.3 }}>1 per player per round · must&nbsp;chug</div>
                   </div>
-                  <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     {players.map(p => {
                       const c = chulligans.find(ch => ch.player_id === p.id)
                       return (
-                        <div key={p.id} style={{
-                          flex: 1, textAlign: 'center', padding: '12px 10px', borderRadius: 12,
-                          background: c ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
-                          border: `1px solid ${c ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
+                        <div key={p.id} className={c ? undefined : 'glass-flat'} style={{
+                          flex: 1, textAlign: 'center', padding: '14px 10px',
+                          ...(c ? {
+                            borderRadius: 14,
+                            background: 'var(--gold-08)',
+                            border: '1px solid var(--gold-25)',
+                            boxShadow: 'var(--elev-1)',
+                          } : {}),
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                             <AvatarCircle player={p} size={36} />
@@ -518,8 +566,8 @@ export default function MyTeamPage() {
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--tx2)', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {displayName(p)}
                           </div>
-                          <div style={{ fontSize: 22, marginBottom: 4 }}>{c ? '✅' : '🍺'}</div>
-                          <div style={{ fontSize: 11, color: c ? '#D4A53A' : 'var(--tx4)', fontWeight: 600 }}>
+                          <div style={{ fontSize: 22, marginBottom: 4, lineHeight: 1 }}>{c ? '✅' : '🍺'}</div>
+                          <div style={{ fontSize: 11, color: c ? 'var(--gold)' : 'var(--tx4)', fontWeight: 600, letterSpacing: 0.3 }}>
                             {c ? `Used H${c.hole}` : 'Available'}
                           </div>
                         </div>
@@ -530,28 +578,26 @@ export default function MyTeamPage() {
               )}
 
               {/* Scoring Breakdown */}
-              <div className="glass animate-fadeUp" style={{ padding: '22px 26px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 18 }}>
-                  Scoring Breakdown
-                </div>
+              <div className="glass animate-fadeUp delay-500" style={{ padding: 20 }}>
+                <div className="section-label" style={{ marginBottom: 16 }}>Scoring Breakdown</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {breakdown.map(({ label, count, color }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 70, fontSize: 12, color: 'var(--tx2)', textAlign: 'right', flexShrink: 0 }}>{label}</div>
+                      <div style={{ width: 72, fontSize: 12, color: 'var(--tx2)', textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{label}</div>
                       <div style={{ flex: 1, height: 8, borderRadius: 999, background: 'var(--surf2)', overflow: 'hidden' }}>
                         <div style={{ height: '100%', borderRadius: 999, width: `${(count / maxBreakdown) * 100}%`, background: color, transition: 'width 0.6s ease' }} />
                       </div>
-                      <div style={{ width: 20, fontSize: 13, fontWeight: 700, color, textAlign: 'right', flexShrink: 0 }}>{count}</div>
+                      <div style={{ width: 20, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color, textAlign: 'right', flexShrink: 0 }}>{count}</div>
                     </div>
                   ))}
                 </div>
               </div>
             </>
           ) : (
-            <div className="glass animate-fadeUp" style={{ padding: '32px', textAlign: 'center', color: 'var(--tx3)' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>🏌️</div>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>Round hasn't started yet</div>
-              <div style={{ fontSize: 13, marginTop: 6 }}>Stats will appear once scores are entered.</div>
+            <div className="glass animate-fadeUp delay-200" style={{ padding: '36px 24px', textAlign: 'center', color: 'var(--tx3)' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🏌️</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1.5, color: 'var(--tx1)' }}>Round hasn't started yet</div>
+              <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>Stats will appear once scores are&nbsp;entered.</div>
             </div>
           )}
         </>
@@ -567,10 +613,11 @@ const AvatarCircle = memo(function AvatarCircle({ player, size }: { player: Play
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      border: '2px solid rgba(212,165,58,0.4)',
+      border: '2px solid var(--gold-40)',
+      boxShadow: 'var(--elev-1)',
       overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: hasPhoto ? '#111' : 'linear-gradient(135deg, rgba(212,165,58,0.3), rgba(212,165,58,0.1))',
-      fontSize: size * 0.4, fontWeight: 800, color: '#D4A53A',
+      fontSize: size * 0.4, fontWeight: 800, color: 'var(--gold)',
       fontFamily: 'Bebas Neue', letterSpacing: 1,
     }}>
       {hasPhoto ? (
@@ -587,19 +634,19 @@ const AvatarCircle = memo(function AvatarCircle({ player, size }: { player: Play
 
 function StatChip({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: '#D4A53A', fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
-      <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+    <div>
+      <div style={{ fontSize: 20, color: 'var(--gold)', fontFamily: 'Bebas Neue', letterSpacing: 1, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div className="section-label" style={{ fontSize: 9, letterSpacing: 1.2, color: 'var(--tx4)', marginTop: 3 }}>{label}</div>
     </div>
   )
 }
 
 function BigStat({ label, value, sub, color = 'var(--tx1)' }: { label: string; value: string; sub: string; color?: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 12, background: 'var(--surf)' }}>
-      <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, color, fontFamily: 'Bebas Neue', letterSpacing: 2, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>{sub}</div>
+    <div className="stat-tile">
+      <div className="section-label" style={{ fontSize: 10, letterSpacing: 1.5, color: 'var(--tx4)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 32, color, fontFamily: 'Bebas Neue', letterSpacing: 1.5, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 5, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{sub}</div>
     </div>
   )
 }
