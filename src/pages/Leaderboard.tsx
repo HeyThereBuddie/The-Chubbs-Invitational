@@ -27,6 +27,28 @@ interface LeaderRow {
   holeScores: (number | null)[]
 }
 
+// Podium metal treatments — 1st gold, 2nd silver, 3rd bronze
+const PODIUM: Record<number, { bg: string; color: string; ring: string; glow: string }> = {
+  1: {
+    bg: 'linear-gradient(160deg, #f2d27a 0%, #D4A53A 52%, #9c7418 100%)',
+    color: '#1a1204',
+    ring: 'rgba(212,165,58,0.55)',
+    glow: '0 2px 14px -2px rgba(212,165,58,0.55)',
+  },
+  2: {
+    bg: 'linear-gradient(160deg, #d8e0ea 0%, #94a3b8 52%, #5d6c80 100%)',
+    color: '#101826',
+    ring: 'rgba(148,163,184,0.5)',
+    glow: '0 2px 12px -2px rgba(148,163,184,0.4)',
+  },
+  3: {
+    bg: 'linear-gradient(160deg, #d9853b 0%, #b45309 52%, #7c3a04 100%)',
+    color: '#fff3e4',
+    ring: 'rgba(180,83,9,0.55)',
+    glow: '0 2px 12px -2px rgba(180,83,9,0.45)',
+  },
+}
+
 export default function Leaderboard() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline } = useSyncContext()
@@ -112,40 +134,63 @@ export default function Leaderboard() {
     const under = toPar < 0, over = toPar > 0
     return (
       <div style={{
-        padding: large ? '5px 14px' : '3px 9px',
-        borderRadius: 9,
-        background: under ? 'rgba(34,197,94,0.18)' : over ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.07)',
-        border: `1px solid ${under ? 'rgba(34,197,94,0.4)' : over ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.14)'}`,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: large ? 52 : 40,
+        padding: large ? '6px 14px' : '4px 9px',
+        borderRadius: 10,
+        background: under ? 'rgba(34,197,94,0.16)' : over ? 'rgba(239,68,68,0.16)' : 'var(--surf2)',
+        border: `1px solid ${under ? 'rgba(34,197,94,0.45)' : over ? 'rgba(239,68,68,0.45)' : 'var(--bdr2)'}`,
+        boxShadow: under ? '0 2px 12px -4px rgba(34,197,94,0.45)' : over ? '0 2px 12px -4px rgba(239,68,68,0.4)' : 'var(--elev-1)',
         fontFamily: 'Bebas Neue',
         fontSize: large ? 30 : 20,
         letterSpacing: 1,
+        fontVariantNumeric: 'tabular-nums',
         color: under ? '#4ade80' : over ? '#f87171' : 'var(--tx2)',
         lineHeight: 1,
       }}>{text}</div>
     )
   }
 
+  const StatCol = ({ value, label }: { value: string | number; label: string }) => (
+    <div style={{ textAlign: 'center', minWidth: 30 }}>
+      <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 0.5, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <div className="animate-fadeUp" style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Leaderboard</h1>
-          <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{isCurrentYear ? 'Live standings' : 'Final standings'} • Best Ball Format • Par {COURSE_PAR}</p>
+          <div className="section-label" style={{ marginBottom: 4 }}>{isCurrentYear ? 'Live standings' : 'Final standings'}</div>
+          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 4, lineHeight: 1 }}>Leaderboard</h1>
+          <p style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 4 }}>Best Ball Format • Par <span style={{ fontVariantNumeric: 'tabular-nums' }}>{COURSE_PAR}</span></p>
         </div>
         {isCurrentYear && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--tx3)', fontSize: 12 }}>
-            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block' }} />
+          <div className="glass-flat" style={{
+            display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0,
+            padding: '6px 12px', borderRadius: 999,
+            borderColor: 'var(--gold-25)', background: 'var(--gold-08)',
+            color: 'var(--gold)', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase',
+          }}>
+            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)', boxShadow: '0 0 8px var(--gold-40)', display: 'inline-block' }} />
             Live
           </div>
         )}
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {Array.from({ length: 8 }).map((_, i) => <SkeletonLeaderRow key={i} />)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="animate-fadeUp" style={{ animationDelay: `${i * 60}ms` }}>
+              <SkeletonLeaderRow />
+            </div>
+          ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {(() => {
             // Two rows are truly tied only if toPar AND putts are equal
             // (putts only act as tiebreaker when both teams have putts recorded)
@@ -173,49 +218,51 @@ export default function Leaderboard() {
               const back = pos > 1 && rows[0].thru > 0 && row.thru > 0 ? row.toPar - rows[0].toPar : null
 
               const rankIndicator = (() => {
-                const emoji = pos === 1 ? '🏆' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null
-                if (emoji) return (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                    <span style={{ fontSize: tied ? 26 : 34, lineHeight: 1 }}>{emoji}</span>
-                    {tied && (
-                      <span style={{
-                        fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 1, lineHeight: 1,
-                        color: pos === 1 ? '#D4A53A' : 'var(--tx3)',
-                        width: 42, textAlign: 'center', display: 'block',
-                      }}>T{pos}</span>
-                    )}
+                const metal = PODIUM[pos]
+                if (metal) return (
+                  <div style={{
+                    width: 34, height: 34, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: metal.bg,
+                    border: `1px solid ${metal.ring}`,
+                    boxShadow: `${metal.glow}, inset 0 1px 0 rgba(255,255,255,0.35)`,
+                  }}>
+                    <span style={{
+                      fontFamily: 'Bebas Neue', fontSize: tied ? 15 : 18, letterSpacing: 0.5, lineHeight: 1,
+                      color: metal.color, fontVariantNumeric: 'tabular-nums',
+                      transform: 'translateY(1px)',
+                    }}>{tied ? 'T' : ''}{pos}</span>
                   </div>
                 )
                 return (
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: 'var(--tx2)', letterSpacing: 1 }}>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--tx3)', letterSpacing: 1, fontVariantNumeric: 'tabular-nums' }}>
                     {tied ? 'T' : ''}{pos}
                   </span>
                 )
               })()
 
               return (
-              <div key={row.team.id} className="glass animate-fadeUp" style={{
-                padding: isLeader ? '20px 24px' : '14px 20px',
-                borderColor: isLeader ? 'rgba(212,165,58,0.5)' : undefined,
-                boxShadow: isLeader ? '0 0 32px rgba(212,165,58,0.18), 0 2px 16px rgba(0,0,0,0.4)' : undefined,
-                animationDelay: `${Math.min(i * 60, 480)}ms`,
+              <div key={row.team.id} className={`glass pressable${i < 6 ? ' animate-fadeUp' : ''}`} style={{
+                padding: isLeader ? '20px 20px' : '14px 16px',
+                borderColor: isLeader ? 'var(--gold-40)' : undefined,
+                boxShadow: isLeader ? '0 0 32px rgba(212,165,58,0.16), var(--elev-gold), 0 2px 16px rgba(0,0,0,0.4)' : undefined,
+                backgroundImage: isLeader ? 'linear-gradient(135deg, var(--gold-08) 0%, transparent 55%)' : undefined,
+                animationDelay: i < 6 ? `${i * 70}ms` : undefined,
               }}>
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 46, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                     {rankIndicator}
                     {back !== null && back > 0 && (
                       <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                        padding: '3px 6px', borderRadius: 6,
-                        background: 'rgba(239,68,68,0.09)',
+                        display: 'flex', alignItems: 'baseline', gap: 3,
+                        padding: '2px 6px', borderRadius: 999,
+                        background: 'rgba(239,68,68,0.10)',
                         border: '1px solid rgba(239,68,68,0.22)',
+                        lineHeight: 1,
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, lineHeight: 1 }}>
-                          <span style={{ fontSize: 8, color: '#f87171', lineHeight: 1 }}>▲</span>
-                          <span style={{ fontFamily: 'Bebas Neue', fontSize: 15, color: '#f87171', letterSpacing: 0.5, lineHeight: 1 }}>{back}</span>
-                        </div>
-                        <span style={{ fontSize: 7, color: 'rgba(248,113,113,0.6)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1 }}>back</span>
+                        <span style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: '#f87171', letterSpacing: 0.5, fontVariantNumeric: 'tabular-nums' }}>{back}</span>
+                        <span style={{ fontSize: 7, color: 'rgba(248,113,113,0.7)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>back</span>
                       </div>
                     )}
                   </div>
@@ -226,41 +273,34 @@ export default function Leaderboard() {
                       fontWeight: isLeader ? undefined : 700,
                       fontSize: isLeader ? 22 : 15,
                       letterSpacing: isLeader ? 2 : undefined,
-                      color: isLeader ? '#D4A53A' : 'var(--tx1)',
+                      color: isLeader ? 'var(--gold)' : 'var(--tx1)',
+                      textShadow: isLeader ? '0 0 20px var(--gold-25)' : undefined,
+                      lineHeight: 1.2,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
                       {row.team.name}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <ScorePill toPar={row.toPar} thru={row.thru} large={isLeader} />
-                      <div style={{ fontSize: 9, color: 'var(--tx4)', marginTop: 3, letterSpacing: 0.5 }}>TO PAR</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--tx4)', marginTop: 3, letterSpacing: 1, textTransform: 'uppercase' }}>To Par</div>
                     </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums' }}>{row.gross || '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 0.5 }}>GROSS</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums' }}>
-                        {row.thru === 18 ? 'F' : row.thru || '—'}
-                      </div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 0.5 }}>THRU</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums' }}>{row.putts || '—'}</div>
-                      <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 0.5 }}>PUTTS</div>
-                    </div>
+                    <StatCol value={row.gross || '—'} label="Gross" />
+                    <StatCol value={row.thru === 18 ? 'F' : row.thru || '—'} label="Thru" />
+                    <StatCol value={row.putts || '—'} label="Putts" />
                   </div>
                 </div>
 
                 {/* Hole grid: hole numbers on top, score bubbles below */}
                 {row.thru > 0 && (
-                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--bdr)', overflowX: 'auto', overflowY: 'visible' }}>
+                  <div style={{ marginTop: 12 }}>
+                    <div className={isLeader ? 'divider-gold' : ''} style={isLeader ? { marginBottom: 8 } : { height: 1, background: 'var(--bdr)', marginBottom: 8 }} />
+                    <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
                     <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 'max-content' }}>
                       {/* Hole number row */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -269,7 +309,7 @@ export default function Leaderboard() {
                         </div>
                         {row.holeScores.map((_, holeIdx) => (
                           <div key={holeIdx}
-                            style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--tx3)' }}>
+                            style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--tx4)', fontVariantNumeric: 'tabular-nums' }}>
                             {holeIdx + 1}
                           </div>
                         ))}
@@ -299,6 +339,7 @@ export default function Leaderboard() {
                         })}
                       </div>
                     </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -309,12 +350,13 @@ export default function Leaderboard() {
       )}
 
       {/* Alligator divider */}
-      <div style={{ textAlign: 'center', marginTop: 40, padding: '24px', borderTop: '1px solid rgba(212,165,58,0.1)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>🐊</div>
+      <div style={{ textAlign: 'center', marginTop: 40, paddingBottom: 24 }}>
+        <div className="divider-gold" style={{ marginBottom: 24 }} />
+        <div className="animate-float" style={{ fontSize: 32, marginBottom: 8 }}>🐊</div>
         <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
           "I would have been a pro if it wasn't for those damn alligators."
         </p>
-        <p style={{ color: 'rgba(212,165,58,0.4)', fontSize: 11, marginTop: 4 }}>— Chubbs Peterson</p>
+        <p style={{ color: 'var(--gold-40)', fontSize: 11, marginTop: 4, letterSpacing: 0.5 }}>— Chubbs Peterson</p>
       </div>
     </div>
   )
