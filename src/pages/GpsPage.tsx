@@ -336,11 +336,19 @@ export default function GpsPage() {
   // ── Local DB snapshot for score-to-par in cart popups ────────────────────
 
   useEffect(() => {
-    Promise.all([localDb.scores.toArray(), localDb.teams.toArray(), localDb.profiles.toArray()])
-      .then(([scores, teams, profiles]) => {
-        setLocalScores(scores); setLocalTeams(teams); setLocalProfiles(profiles)
+    if (!effectiveTournamentId) return
+    Promise.all([
+      localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray(),
+      localDb.profiles.toArray(),
+    ]).then(([teams, profiles]) => {
+      const teamIds = new Set(teams.map(t => t.id))
+      localDb.scores.toArray().then(scores => {
+        setLocalScores(scores.filter(s => teamIds.has(s.team_id)))
+        setLocalTeams(teams)
+        setLocalProfiles(profiles)
       })
-  }, [])
+    })
+  }, [effectiveTournamentId])
 
   // ── Wind data (Open-Meteo, refreshes every 10 min) ────────────────────────
 

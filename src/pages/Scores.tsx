@@ -89,7 +89,7 @@ function calcStats(scoreMap: Record<number, ScoreRow>) {
   const entries = Object.values(scoreMap)
   const gross = entries.reduce((a, s) => a + s.score, 0)
   const thru  = entries.length
-  const toPar = gross - HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
+  const toPar = gross - entries.reduce((a, s) => a + HOLE_PARS[s.hole - 1], 0)
   const putts = entries.reduce((a, s) => a + (s.putts ?? 0), 0)
   return { gross, thru, toPar, putts, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
 }
