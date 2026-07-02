@@ -114,12 +114,16 @@ export default function Groups() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Groups & Pairings</h1>
-        <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{players.length} confirmed players</p>
+      {/* Header */}
+      <div className="animate-fadeUp" style={{ marginBottom: 20 }}>
+        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: 'var(--gold)', letterSpacing: 4, lineHeight: 1.1, margin: 0 }}>
+          Groups & Pairings
+        </h1>
+        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>{players.length} confirmed players</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      {/* Tabs */}
+      <div className="animate-fadeUp delay-100" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {([['groups', 'Groups'], ['pairings', 'Pairings']] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
@@ -127,29 +131,34 @@ export default function Groups() {
 
       {/* Groups tab */}
       {tab === 'groups' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           {[
-            { label: 'Group A', subtitle: `Low HCP (≤ ${Math.round(medianHcp)})`, players: groupA, color: '#D4A53A' },
+            { label: 'Group A', subtitle: `Low HCP (≤ ${Math.round(medianHcp)})`, players: groupA, color: 'var(--gold)' },
             { label: 'Group B', subtitle: `High HCP (> ${Math.round(medianHcp)})`, players: groupB, color: '#60a5fa' },
-          ].map(({ label, subtitle, players: grpPlayers, color }) => (
-            <div key={label} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, color, fontSize: 15 }}>{label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{subtitle}</div>
+          ].map(({ label, subtitle, players: grpPlayers, color }, gi) => (
+            <div key={label} className={`glass animate-fadeUp ${gi === 0 ? 'delay-200' : 'delay-300'}`} style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2, color, lineHeight: 1.1 }}>{label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{subtitle}</div>
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 700, color }}>{grpPlayers.length}</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color, lineHeight: 1, flexShrink: 0 }}>{grpPlayers.length}</div>
               </div>
               {grpPlayers.map((p, i) => (
                 <div key={p.id} style={{
-                  padding: '10px 18px',
+                  padding: '12px 16px',
                   borderBottom: i < grpPlayers.length - 1 ? '1px solid var(--bdr)' : 'none',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
                 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tx1)' }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)' }}>HCP {p.handicap ?? '—'}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tx1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx3)', background: 'var(--surf2)', border: '1px solid var(--bdr)', borderRadius: 999, padding: '2px 8px', flexShrink: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    HCP {p.handicap ?? '—'}
+                  </div>
                 </div>
               ))}
+              {grpPlayers.length === 0 && (
+                <div style={{ padding: 16, fontSize: 13, color: 'var(--tx4)', textAlign: 'center' }}>No players yet</div>
+              )}
             </div>
           ))}
         </div>
@@ -159,7 +168,7 @@ export default function Groups() {
       {tab === 'pairings' && (
         <div>
           {isAdmin && isCurrentYear && (
-            <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div className="animate-fadeUp delay-200" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
               <button className="btn-gold" onClick={generatePairings}>
                 <Shuffle size={14} /> Generate Pairings
               </button>
@@ -173,18 +182,20 @@ export default function Groups() {
 
           {/* Draft pairings preview */}
           {draftPairings.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: 'rgba(212,165,58,0.7)', marginBottom: 10, fontWeight: 600 }}>
+            <div className="animate-fadeUp" style={{ marginBottom: 20 }}>
+              <div className="section-label" style={{ color: 'var(--gold)', marginBottom: 12 }}>
                 📋 Draft — Not Yet Released
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {draftPairings.map((p, i) => (
-                  <div key={i} className="glass" style={{ padding: '12px 18px', borderColor: 'rgba(212,165,58,0.2)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 12, color: 'var(--tx3)', width: 20 }}>{i + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 14 }}>{p.name}</div>
-                      <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 2 }}>
-                        {p.a.name} (HCP {p.a.handicap}) & {p.b.name} (HCP {p.b.handicap})
+                  <div key={i} className="glass-flat" style={{ padding: '12px 16px', border: '1px dashed var(--gold-25)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: 'var(--tx4)', width: 20, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: 13, letterSpacing: 0.5 }}>{p.name}</div>
+                      <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 4 }}>
+                        {p.a.name} <span style={{ fontSize: 11, color: 'var(--tx4)' }}>HCP {p.a.handicap}</span>
+                        <span style={{ color: 'var(--tx4)' }}> & </span>
+                        {p.b.name} <span style={{ fontSize: 11, color: 'var(--tx4)' }}>HCP {p.b.handicap}</span>
                       </div>
                     </div>
                   </div>
@@ -195,9 +206,11 @@ export default function Groups() {
 
           {/* Released pairings or locked */}
           {!pairingsReleased && draftPairings.length === 0 && !isAdmin && (
-            <div className="glass" style={{ padding: 48, textAlign: 'center' }}>
-              <Lock size={40} color="var(--tx4)" style={{ margin: '0 auto 16px' }} />
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--tx3)', letterSpacing: 3 }}>
+            <div className="glass animate-fadeUp delay-200" style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surf2)', border: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Lock size={26} color="var(--tx3)" />
+              </div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: 'var(--tx2)', letterSpacing: 3 }}>
                 Pairings Not Yet Released
               </div>
               <p style={{ color: 'var(--tx4)', fontSize: 13, marginTop: 8 }}>
@@ -207,20 +220,35 @@ export default function Groups() {
           )}
 
           {pairingsReleased && draftPairings.length === 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {pairings.map((p, i) => (
-                <div key={p.id} className="glass" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 20, width: 24 }}>
-                    {i === 0 ? '⛳' : i === 1 ? '🏌️' : i === 2 ? '🎯' : `${i+1}`}
-                  </span>
+                <div key={p.id} className="glass animate-fadeUp" style={{ padding: '14px 16px', animationDelay: `${Math.min(i, 6) * 0.06 + 0.2}s` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <span style={{
+                      width: 32, height: 32, borderRadius: 10, background: 'var(--gold-08)', border: '1px solid var(--gold-15)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: i < 3 ? 16 : 14, fontFamily: "'Bebas Neue', sans-serif", color: 'var(--gold)', flexShrink: 0,
+                    }}>
+                      {i === 0 ? '⛳' : i === 1 ? '🏌️' : i === 2 ? '🎯' : i + 1}
+                    </span>
+                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 2, color: 'var(--gold)', lineHeight: 1.1 }}>
+                      {p.team_name}
+                    </div>
+                  </div>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 14 }}>{p.team_name}</div>
-                    <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 2 }}>
-                      {p.player_a?.name} & {p.player_b?.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 1 }}>
-                      HCP {p.player_a?.handicap ?? '—'} & HCP {p.player_b?.handicap ?? '—'}
-                    </div>
+                    {[p.player_a, p.player_b].map((pl, j) => (
+                      <div key={j} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                        padding: '8px 0', borderTop: j === 1 ? '1px solid var(--bdr)' : 'none',
+                      }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {pl?.name ?? '—'}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--tx4)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                          HCP {pl?.handicap ?? '—'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
