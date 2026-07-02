@@ -91,21 +91,26 @@ export default function HallOfFame() {
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
+      <div className="animate-fadeUp" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-          <span style={{ fontSize: 28 }}>🏆</span>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 4, margin: 0 }}>
+          <span className="animate-float" style={{ fontSize: 28 }}>🏆</span>
+          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 4, margin: 0 }}>
             Hall of Fame
           </h1>
         </div>
-        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
+        <p className="section-label" style={{ marginTop: 4 }}>
           The Chubbs Memorial — Tournament History
         </p>
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', color: 'var(--tx4)', padding: 60, fontSize: 14 }}>
-          Loading history…
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="skeleton" style={{ width: 76, height: 36, borderRadius: 999 }} />
+            <div className="skeleton" style={{ width: 76, height: 36, borderRadius: 999 }} />
+          </div>
+          <div className="skeleton skeleton-card" style={{ height: 120 }} />
+          <div className="skeleton skeleton-card" style={{ height: 220 }} />
         </div>
       )}
 
@@ -124,23 +129,22 @@ export default function HallOfFame() {
       {records.length > 0 && (
         <>
           {/* ── Year Toggle ───────────────────────────────────────── */}
-          <div style={{
-            display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22,
-            padding: '12px 16px', borderRadius: 12,
-            background: 'var(--surf2)',
-            border: '1px solid var(--bdr)',
+          <div className="glass-flat animate-fadeUp" style={{
+            display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24,
+            padding: '12px 16px',
           }}>
             {records.map(r => (
               <button
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
+                className="pressable"
                 style={{
                   fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 2,
-                  padding: '6px 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  background: selectedId === r.id ? '#D4A53A' : 'var(--surf2)',
+                  padding: '8px 20px', minHeight: 40, borderRadius: 999, border: 'none', cursor: 'pointer',
+                  transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
+                  background: selectedId === r.id ? 'linear-gradient(160deg, #e8bc55, #D4A53A)' : 'var(--surf2)',
                   color: selectedId === r.id ? '#0a0800' : 'var(--tx2)',
-                  boxShadow: selectedId === r.id ? '0 0 12px rgba(212,165,58,0.35)' : 'none',
+                  boxShadow: selectedId === r.id ? 'var(--elev-gold)' : 'none',
                 }}
               >
                 {r.year}
@@ -189,19 +193,20 @@ export default function HallOfFame() {
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 12 }}>
                         Final Standings
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {selected.final_standings.map((s, i) => (
                           <div key={i} style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '9px 14px', borderRadius: 10,
-                            background: i === 0 ? 'rgba(212,165,58,0.07)' : i < 3 ? 'var(--surf2)' : 'transparent',
-                            border: i === 0 ? '1px solid rgba(212,165,58,0.2)' : i < 3 ? '1px solid var(--bdr)' : '1px solid transparent',
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '10px 14px', borderRadius: 12,
+                            background: i === 0 ? 'linear-gradient(135deg, rgba(212,165,58,0.12), rgba(212,165,58,0.04))' : i < 3 ? 'var(--surf2)' : 'transparent',
+                            border: i === 0 ? '1px solid var(--gold-40)' : i < 3 ? '1px solid var(--bdr)' : '1px solid transparent',
+                            boxShadow: i === 0 ? 'var(--elev-gold)' : 'none',
                           }}>
-                            <span style={{ width: 26, textAlign: 'center', flexShrink: 0, fontSize: i < 3 ? 16 : 13, color: i === 0 ? '#D4A53A' : 'var(--tx4)', fontWeight: 700 }}>
+                            <span style={{ width: 26, textAlign: 'center', flexShrink: 0, fontSize: i < 3 ? 16 : 13, color: i === 0 ? 'var(--gold)' : 'var(--tx4)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                               {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                             </span>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#D4A53A' : 'var(--tx2)' }}>
+                              <span className={i === 0 ? 'text-shimmer' : undefined} style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? undefined : 'var(--tx2)' }}>
                                 {s.teamName}
                               </span>
                               {(s.p1Name || s.p2Name) && (
@@ -247,22 +252,22 @@ export default function HallOfFame() {
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 10 }}>Awards</div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         {jackass && (
-                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'rgba(212,165,58,0.04)', border: '1px solid rgba(212,165,58,0.18)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>🤠 Jackass of the Day</div>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: '#D4A53A' }}>{jackass.player1_name ?? '—'}</div>
+                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 12, background: 'var(--gold-08)', border: '1px solid rgba(212,165,58,0.18)', boxShadow: 'var(--elev-1)' }}>
+                            <div className="section-label" style={{ fontSize: 10, marginBottom: 4 }}>🤠 Jackass of the Day</div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>{jackass.player1_name ?? '—'}</div>
                             {jackass.detail && <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>{jackass.detail}</div>}
                           </div>
                         )}
                         {ctp && (
-                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'var(--surf2)', border: '1px solid var(--bdr)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>🎯 Closest to Pin</div>
+                          <div className="glass-flat" style={{ flex: '1 1 180px', padding: '12px 16px' }}>
+                            <div className="section-label" style={{ fontSize: 10, marginBottom: 4 }}>🎯 Closest to Pin</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{ctp.player1_name ?? '—'}</div>
                             {ctp.detail && <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>{ctp.detail}</div>}
                           </div>
                         )}
                         {ld && (
-                          <div style={{ flex: '1 1 180px', padding: '12px 16px', borderRadius: 10, background: 'var(--surf2)', border: '1px solid var(--bdr)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>💥 Longest Drive</div>
+                          <div className="glass-flat" style={{ flex: '1 1 180px', padding: '12px 16px' }}>
+                            <div className="section-label" style={{ fontSize: 10, marginBottom: 4 }}>💥 Longest Drive</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx1)' }}>{ld.player1_name ?? '—'}</div>
                             {ld.detail && <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 2 }}>{ld.detail}</div>}
                           </div>
