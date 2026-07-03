@@ -210,7 +210,6 @@ export default function GpsPage() {
     return stored >= 1 && stored <= 18 ? stored : 1
   })
   const [tapPoint, setTapPoint] = useState<LatLng | null>(null)
-  const [tipOpen, setTipOpen]   = useState(false)
   const [viewState, setViewState] = useState({ longitude: -79.0, latitude: 43.85, zoom: 15, bearing: 0, pitch: 0 })
 
   const [otherPositions, setOtherPositions] = useState<PlayerPosition[]>([])
@@ -513,8 +512,6 @@ export default function GpsPage() {
     if (!initialFlyDone.current || !currentHole) return
     flyToHole(currentHole)
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { setTipOpen(false) }, [selectedHole])
 
   useEffect(() => {
     setTapPoint(course?.holes.find(h => h.hole === selectedHole)?.landingZone ?? null)
@@ -948,7 +945,7 @@ export default function GpsPage() {
         </div>
 
         {/* Tap hint */}
-        {!tapPoint && position && !currentHole?.tip && (
+        {!tapPoint && position && (
           <div style={{
             position: 'absolute', bottom: aboveHudCalc, left: '50%', transform: 'translateX(-50%)',
             background: 'rgba(10,10,15,0.7)', color: 'rgba(255,255,255,0.6)',
@@ -956,29 +953,6 @@ export default function GpsPage() {
             whiteSpace: 'nowrap', pointerEvents: 'none',
           }}>
             Tap map to measure distance
-          </div>
-        )}
-
-        {/* Hole tip card */}
-        {currentHole?.tip && (
-          <div style={{
-            position: 'absolute', bottom: aboveHudCalc, left: 8, right: 8,
-            background: 'rgba(8,8,12,0.88)', backdropFilter: 'blur(10px)',
-            borderRadius: 12, padding: '9px 12px',
-            border: '1px solid rgba(212,165,58,0.28)',
-          }}>
-            <button onClick={() => setTipOpen(v => !v)} style={{
-              width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left',
-            }}>
-              <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.4 }}>💡</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.82)', lineHeight: 1.5, flex: 1 }}>
-                {tipOpen ? currentHole.tip : currentHole.tip.length > 100 ? currentHole.tip.slice(0, 97) + '…' : currentHole.tip}
-              </span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0, paddingTop: 3 }}>
-                {tipOpen ? '▲' : '▼'}
-              </span>
-            </button>
           </div>
         )}
 
