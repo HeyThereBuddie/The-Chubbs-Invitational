@@ -109,6 +109,11 @@ function FlagPin() {
 
 // ─── Geometry helpers ────────────────────────────────────────────────────────
 
+// Hole framing padding: clearance below the top chips (green sits here) and
+// above the bottom HUD (the player/tee pin sits here).
+const HUD_TOP_PAD = 76
+const HUD_BOTTOM_PAD = 230
+
 function calcBearing(a: LatLng, b: LatLng): number {
   const lat1 = (a.lat * Math.PI) / 180, lat2 = (b.lat * Math.PI) / 180
   const dLng  = ((b.lng - a.lng) * Math.PI) / 180
@@ -489,15 +494,44 @@ export default function GpsPage() {
 
   // ── Map fly-to ────────────────────────────────────────────────────────────
 
+  // Shared hole framing: rotate so the hole points "up", then fill the space
+  // between the top chips and the HUD — green pinned near the top, the player/tee
+  // pin sitting just above the HUD (over the Enter Score button, between the side
+  // dashboards), with the whole hole visible in between. Centering on the
+  // anchor↔green midpoint and matching the zoom to the available height keeps both
+  // endpoints where we want them regardless of hole length.
+  const frameHole = useCallback((anchor: LatLng, green: LatLng, durationMs: number) => {
+    const bearing = calcBearing(anchor, green)
+    const distMeters = haversineYards(anchor, green) * 0.9144
+    const vh = window.innerHeight
+    // Vertical pixels available for the hole, top chips → HUD.
+    const span = Math.max(140, vh - HUD_TOP_PAD - HUD_BOTTOM_PAD)
+    const metersPerPx = distMeters / span
+    const rawZoom = Math.log2(156543.03 * Math.cos(anchor.lat * Math.PI / 180) / metersPerPx)
+    const zoom = Math.max(14.5, Math.min(18.5, rawZoom))
+    const center = { lat: (anchor.lat + green.lat) / 2, lng: (anchor.lng + green.lng) / 2 }
+    mapRef.current?.easeTo({
+      center: [center.lng, center.lat],
+      bearing,
+      zoom,
+      padding: { top: HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 0, right: 0 },
+      duration: durationMs,
+      essential: false,
+    })
+  }, [])
+
   const flyToHole = useCallback((hole: HoleGps) => {
     const green = hole.green.center, tee = hole.tee
     if (!green && !tee) return
-    const bearing = tee && green ? calcBearing(tee, green) : 0
-    const center  = tee && green ? { lat: (tee.lat + green.lat) / 2, lng: (tee.lng + green.lng) / 2 } : (green ?? tee!)
-    const yds     = tee && green ? haversineYards(tee, green) : 200
-    const zoom    = yds > 450 ? 16 : yds > 300 ? 16.5 : yds > 150 ? 17 : 17.5
-    mapRef.current?.flyTo({ center: [center.lng, center.lat], zoom, bearing, pitch: 0, duration: 800 })
-  }, [])
+    // Anchor on the live player/sim position when available, else the tee.
+    const anchor = position ?? tee ?? green!
+    // If we only have one reference point, just center on it.
+    if (!green || !tee) {
+      mapRef.current?.flyTo({ center: [anchor.lng, anchor.lat], zoom: 16.5, pitch: 0, duration: 800 })
+      return
+    }
+    frameHole(anchor, green, 800)
+  }, [position, frameHole])
 
   const [mapLoaded, setMapLoaded] = useState(false)
   const initialFlyDone = useRef(false)
@@ -523,24 +557,8 @@ export default function GpsPage() {
   // Follow-cam: keep green at top, player pin centered in available space
   useEffect(() => {
     if (!position || !currentHole?.green.center || followPausedRef.current) return
-    const green = currentHole.green.center
-    const bearing = calcBearing(position, green)
-    const distMeters = haversineYards(position, green) * 0.9144
-    const vh = window.innerHeight
-    // Available vertical space between hole strip (~40px) and HUD (~230px)
-    const pixelsForGreen = Math.max(80, (vh - 270) / 2 * 0.85)
-    const metersPerPx = distMeters / pixelsForGreen
-    const rawZoom = Math.log2(156543.03 * Math.cos(position.lat * Math.PI / 180) / metersPerPx)
-    const zoom = Math.max(14.5, Math.min(18.5, rawZoom))
-    mapRef.current?.easeTo({
-      center: [position.lng, position.lat],
-      bearing,
-      zoom,
-      padding: { top: 40, bottom: 230, left: 0, right: 0 },
-      duration: 600,
-      essential: false,
-    })
-  }, [position, currentHole]) // eslint-disable-line react-hooks/exhaustive-deps
+    frameHole(position, currentHole.green.center, 600)
+  }, [position, currentHole, frameHole])
 
   // Prevent iOS pull-to-refresh on the map
   useEffect(() => {
