@@ -398,17 +398,6 @@ export default function GpsPage() {
         properties: {} }] }
   }, [currentHole])
 
-  const makePolyCollection = (polys: import('../lib/types').LatLng[][] | null | undefined) => {
-    if (!polys?.length) return null
-    return { type: 'FeatureCollection' as const,
-      features: polys.map((poly, i) => ({
-        type: 'Feature' as const, id: i,
-        geometry: { type: 'Polygon' as const,
-          coordinates: [[...poly.map(p => [p.lng, p.lat] as [number, number]), [poly[0].lng, poly[0].lat]]] },
-        properties: {},
-      })) }
-  }
-  const waterGeoJson      = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
 
   const landingZoneGeoJson = useMemo(() => {
     const lz = currentHole?.landingZone; if (!lz) return null
@@ -520,15 +509,15 @@ export default function GpsPage() {
   const flyToHole = useCallback((hole: HoleGps) => {
     const green = hole.green.center, tee = hole.tee
     if (!green && !tee) return
-    // Anchor on the live player/sim position when available, else the tee.
-    const anchor = position ?? tee ?? green!
-    // If we only have one reference point, just center on it.
+    // Always frame the selected hole itself (its own tee → green), regardless of
+    // where the player currently is, so selecting a hole always centers on it.
     if (!green || !tee) {
-      mapRef.current?.flyTo({ center: [anchor.lng, anchor.lat], zoom: 16.5, pitch: 0, duration: 800 })
+      const only = green ?? tee!
+      mapRef.current?.flyTo({ center: [only.lng, only.lat], zoom: 16.5, pitch: 0, duration: 800 })
       return
     }
-    frameHole(anchor, green, 800)
-  }, [position, frameHole])
+    frameHole(tee, green, 800)
+  }, [frameHole])
 
   const [mapLoaded, setMapLoaded] = useState(false)
   const initialFlyDone = useRef(false)
@@ -541,6 +530,10 @@ export default function GpsPage() {
 
   useEffect(() => {
     if (!initialFlyDone.current || !currentHole) return
+    // A prior map pan pauses the follow-cam; selecting a hole should always
+    // re-center, so clear the pause and frame the newly selected hole.
+    followPausedRef.current = false
+    if (followPauseTimer.current) clearTimeout(followPauseTimer.current)
     flyToHole(currentHole)
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -560,11 +553,13 @@ export default function GpsPage() {
   // Persist last hole so navigation away and back restores the same hole
   useEffect(() => { localStorage.setItem('gps_last_hole', String(selectedHole)) }, [selectedHole])
 
-  // Follow-cam: keep green at top, player pin centered in available space
+  // Follow-cam: track live position changes (hole-select framing is flyToHole's
+  // job). Depending only on position avoids a stale-position frame the instant
+  // the hole changes, which would fight the flyToHole re-center.
   useEffect(() => {
     if (!position || !currentHole?.green.center || followPausedRef.current) return
     frameHole(position, currentHole.green.center, 600)
-  }, [position, currentHole, frameHole])
+  }, [position, frameHole]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prevent iOS pull-to-refresh on the map
   useEffect(() => {
@@ -742,14 +737,6 @@ export default function GpsPage() {
               <Layer id="corridor-fill" type="fill" paint={{ 'fill-color': 'rgba(255,255,255,0.05)' }} />
               <Layer id="corridor-outline" type="line"
                 paint={{ 'line-color': 'rgba(255,255,255,0.40)', 'line-width': 1.5, 'line-dasharray': [5, 5] }} />
-            </Source>
-          )}
-
-          {/* Water hazards */}
-          {waterGeoJson && (
-            <Source id="water-hazards" type="geojson" data={waterGeoJson}>
-              <Layer id="water-fill" type="fill" paint={{ 'fill-color': 'rgba(59,130,246,0.55)' }} />
-              <Layer id="water-outline" type="line" paint={{ 'line-color': 'rgba(37,99,235,0.85)', 'line-width': 1.5 }} />
             </Source>
           )}
 
