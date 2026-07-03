@@ -191,7 +191,7 @@ function scoreToPar(teamId: string, scores: LocalScore[]): number | null {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function GpsPage() {
-  const { profile } = useAuth()
+  const { profile, isAdmin } = useAuth()
   const { effectiveTournamentId } = useYear()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -204,6 +204,7 @@ export default function GpsPage() {
   const [loading, setLoading] = useState(true)
   const [realPosition, setRealPosition] = useState<LatLng | null>(null)
   const [simMode, setSimMode] = useState(false)
+  const [simMoveMode, setSimMoveMode] = useState(false)
   const [simPosition, setSimPosition] = useState<LatLng | null>(null)
   const position = simMode ? simPosition : realPosition
   const [playerBearing, setPlayerBearing] = useState<number | null>(null)
@@ -551,6 +552,15 @@ export default function GpsPage() {
     setTapPoint(course?.holes.find(h => h.hole === selectedHole)?.landingZone ?? null)
   }, [selectedHole, course])
 
+  // Sim mode: lock the sim pin to the current hole's tee. Re-locks (and disarms
+  // "Move Location") whenever the selected hole changes so it jumps to the new tee.
+  useEffect(() => {
+    if (!simMode) return
+    const tee = currentHole?.tee ?? currentHole?.green.center
+    if (tee) setSimPosition(tee)
+    setSimMoveMode(false)
+  }, [selectedHole, simMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Persist last hole so navigation away and back restores the same hole
   useEffect(() => { localStorage.setItem('gps_last_hole', String(selectedHole)) }, [selectedHole])
 
@@ -574,7 +584,8 @@ export default function GpsPage() {
   }, [])
 
   const handleMapClick = (e: MapMouseEvent) => {
-    if (simMode) {
+    // In sim mode, only relocate the sim pin while "Move Location" is armed.
+    if (simMode && simMoveMode) {
       setSimPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })
       return
     }
@@ -922,43 +933,71 @@ export default function GpsPage() {
             </div>
           )}
 
-          {/* Sim mode toggle */}
-          <button
-            onClick={() => {
-              if (simMode) {
-                setSimMode(false)
-                setSimPosition(null)
-              } else {
-                const startPos = currentHole?.tee
-                  ?? (currentHole?.green.center)
-                  ?? { lat: viewState.latitude, lng: viewState.longitude }
-                setSimPosition(startPos)
-                setSimMode(true)
-              }
-            }}
-            className="pressable"
-            style={{
-              padding: '5px 11px', borderRadius: 12, fontSize: 11, fontWeight: 700,
-              background: simMode ? 'rgba(251,191,36,0.88)' : 'rgba(8,8,12,0.62)',
-              color: simMode ? '#000' : 'rgba(255,255,255,0.78)',
-              border: simMode ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.14)',
-              backdropFilter: 'blur(8px)',
-              boxShadow: 'var(--elev-1)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-              letterSpacing: 0.8, textTransform: 'uppercase',
-            }}
-          >
-            📍 {simMode ? 'Exit Sim' : 'Sim GPS'}
-          </button>
-          {simMode && (
-            <div style={{
-              padding: '4px 10px', borderRadius: 8, fontSize: 11,
-              background: 'rgba(251,191,36,0.12)', color: '#fbbf24',
-              border: '1px solid rgba(251,191,36,0.25)',
-              backdropFilter: 'blur(8px)', textAlign: 'center',
-            }}>
-              Tap map to move sim position
-            </div>
+          {/* Sim mode controls — admins only */}
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => {
+                  if (simMode) {
+                    setSimMode(false)
+                    setSimMoveMode(false)
+                    setSimPosition(null)
+                  } else {
+                    // Lock to the current hole's tee; the hole-change effect keeps it there.
+                    const startPos = currentHole?.tee
+                      ?? (currentHole?.green.center)
+                      ?? { lat: viewState.latitude, lng: viewState.longitude }
+                    setSimPosition(startPos)
+                    setSimMoveMode(false)
+                    setSimMode(true)
+                  }
+                }}
+                className="pressable"
+                style={{
+                  padding: '5px 11px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+                  background: simMode ? 'rgba(251,191,36,0.88)' : 'rgba(8,8,12,0.62)',
+                  color: simMode ? '#000' : 'rgba(255,255,255,0.78)',
+                  border: simMode ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.14)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: 'var(--elev-1)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                  letterSpacing: 0.8, textTransform: 'uppercase',
+                }}
+              >
+                📍 {simMode ? 'Exit Sim' : 'Sim GPS'}
+              </button>
+
+              {simMode && (
+                <button
+                  onClick={() => setSimMoveMode(v => !v)}
+                  className="pressable"
+                  style={{
+                    padding: '5px 11px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+                    background: simMoveMode ? 'rgba(96,165,250,0.90)' : 'rgba(8,8,12,0.62)',
+                    color: simMoveMode ? '#000' : 'rgba(255,255,255,0.78)',
+                    border: simMoveMode ? '1.5px solid rgba(96,165,250,0.5)' : '1px solid rgba(255,255,255,0.14)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'var(--elev-1)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                    letterSpacing: 0.8, textTransform: 'uppercase',
+                  }}
+                >
+                  {simMoveMode ? '✓ Done Moving' : '✋ Move Location'}
+                </button>
+              )}
+
+              {simMode && (
+                <div style={{
+                  padding: '4px 10px', borderRadius: 8, fontSize: 11,
+                  background: simMoveMode ? 'rgba(96,165,250,0.14)' : 'rgba(251,191,36,0.12)',
+                  color: simMoveMode ? '#60a5fa' : '#fbbf24',
+                  border: `1px solid ${simMoveMode ? 'rgba(96,165,250,0.30)' : 'rgba(251,191,36,0.25)'}`,
+                  backdropFilter: 'blur(8px)', textAlign: 'center', maxWidth: 160,
+                }}>
+                  {simMoveMode ? 'Tap map to move the sim pin' : `Locked to hole ${selectedHole} tee`}
+                </div>
+              )}
+            </>
           )}
         </div>
 
