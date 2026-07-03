@@ -127,13 +127,13 @@ function calcBearing(a: LatLng, b: LatLng): number {
 
 interface WindData { speed: number; direction: number; fetchedAt: number }
 
-function windComponents(speedMph: number, windDirDeg: number, holeBearingDeg: number) {
-  // meteorological: direction wind comes FROM → convert to "going to" by +180
-  const windToDeg = (windDirDeg + 180) % 360
-  const relRad = ((windToDeg - holeBearingDeg) * Math.PI) / 180
+function windComponents(speedMph: number, windDirDeg: number, shotBearingDeg: number) {
+  // windDirDeg is meteorological (the direction the wind blows FROM). Wind coming
+  // from the direction you're aiming is a headwind, so decompose against windFrom.
+  const rel = ((windDirDeg - shotBearingDeg) * Math.PI) / 180
   return {
-    headwind:  speedMph * Math.cos(relRad),  // + = into face, - = at back
-    crosswind: speedMph * Math.sin(relRad),  // + = pushes right, - = pushes left
+    headwind:  speedMph * Math.cos(rel),   // + = into your face (plays longer)
+    crosswind: -speedMph * Math.sin(rel),  // + = pushes the ball to the right
   }
 }
 
@@ -141,6 +141,17 @@ function windDriftYards(baseYards: number, crosswind: number): number {
   // ≈1 yd drift per 10 mph crosswind per 100 yards of carry
   return Math.round(crosswind * baseYards / 100)
 }
+
+// Wind "plays-like": headwind makes a shot play longer, tailwind shorter (a
+// tailwind helps less than a headwind hurts). Coefficients are tunable.
+function windPlaysLikeYards(headwindMph: number, baseYards: number): number {
+  const factor = headwindMph >= 0 ? 0.6 : 0.35
+  return Math.round(headwindMph * (baseYards / 100) * factor)
+}
+
+// Elevation "plays-like": uphill plays longer, downhill shorter. ~1 yd per 3 ft.
+const ELEV_YARDS_PER_FOOT = 1 / 3
+const METERS_TO_FEET = 3.28084
 
 function cardinalDir(deg: number): string {
   const dirs = ['N','NE','E','SE','S','SW','W','NW']
@@ -208,6 +219,8 @@ export default function GpsPage() {
   const [simMoveMode, setSimMoveMode] = useState(false)
   const [simPosition, setSimPosition] = useState<LatLng | null>(null)
   const position = simMode ? simPosition : realPosition
+  const [elevM, setElevM] = useState<{ player: number | null; target: number | null }>({ player: null, target: null })
+  const elevCacheRef = useRef<Record<string, number>>({})
   const [playerBearing, setPlayerBearing] = useState<number | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'acquiring' | 'ok' | 'denied' | 'unavailable'>('acquiring')
   const [selectedHole, setSelectedHole] = useState(() => {
@@ -612,6 +625,39 @@ export default function GpsPage() {
     setSheetOpen(true)
   }, [centerDist, selectedHole, profile, sheetOpen])
 
+  // Elevation for the player and the aim target (Open-Meteo, no key). Cached per
+  // rounded coordinate so walking around doesn't spam the API; used for the
+  // elevation "plays-like" adjustment.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!position || !aimLineTarget) { setElevM({ player: null, target: null }); return }
+    const cache = elevCacheRef.current
+    const pKey = `${position.lat.toFixed(4)},${position.lng.toFixed(4)}`
+    const tKey = `${aimLineTarget.lat.toFixed(5)},${aimLineTarget.lng.toFixed(5)}`
+    const apply = () => setElevM({ player: cache[pKey] ?? null, target: cache[tKey] ?? null })
+
+    const need: { key: string; lat: number; lng: number }[] = []
+    if (!(pKey in cache)) need.push({ key: pKey, lat: +position.lat.toFixed(4), lng: +position.lng.toFixed(4) })
+    if (!(tKey in cache)) need.push({ key: tKey, lat: +aimLineTarget.lat.toFixed(5), lng: +aimLineTarget.lng.toFixed(5) })
+    if (need.length === 0) { apply(); return }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const lats = need.map(n => n.lat).join(',')
+        const lngs = need.map(n => n.lng).join(',')
+        const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
+        if (res.ok) {
+          const json = await res.json()
+          const arr = json?.elevation as number[] | undefined
+          if (Array.isArray(arr)) need.forEach((n, i) => { if (typeof arr[i] === 'number') cache[n.key] = arr[i] })
+        }
+      } catch { /* offline — elevation adjustment just won't show */ }
+      if (!cancelled) apply()
+    })()
+    return () => { cancelled = true }
+  }, [position?.lat, position?.lng, aimLineTarget?.lat, aimLineTarget?.lng])
+
   // ── Early-exit renders ────────────────────────────────────────────────────
 
   if (!TOKEN) return (
@@ -657,6 +703,18 @@ export default function GpsPage() {
     : { headwind: 0, crosswind: 0 }
   const driftYards = (wind && centerDist !== null && centerDist <= 9999)
     ? windDriftYards(centerDist, crosswind) : 0
+
+  // ── "Plays like" — wind + elevation adjustment on the shot to the aim target ─
+  const validAim = aimLineDist !== null && aimLineDist <= 9999
+  const shotBearing = (position && aimLineTarget) ? calcBearing(position, aimLineTarget) : holeBearing
+  const shotHeadwind = (wind && shotBearing !== null)
+    ? windComponents(wind.speed, wind.direction, shotBearing).headwind : 0
+  const windAdjYds = (wind && validAim) ? windPlaysLikeYards(shotHeadwind, aimLineDist!) : 0
+  const elevDeltaFt = (elevM.player !== null && elevM.target !== null)
+    ? (elevM.target - elevM.player) * METERS_TO_FEET : null
+  const elevAdjYds = elevDeltaFt !== null ? Math.round(elevDeltaFt * ELEV_YARDS_PER_FOOT) : 0
+  const playsLikeYds = validAim ? Math.max(1, aimLineDist! + windAdjYds + elevAdjYds) : null
+  const playsLikeDelta = playsLikeYds !== null ? playsLikeYds - aimLineDist! : 0
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -850,19 +908,30 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Aim line distance label */}
+          {/* Aim line distance label (+ plays-like for wind & elevation) */}
           {aimLineMid && aimLineDist !== null && aimLineDist <= 9999 && (
             <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
               <div style={{
                 background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
-                color: '#ffffff', borderRadius: 22, padding: '4px 13px',
-                display: 'flex', alignItems: 'baseline', gap: 4,
+                color: '#ffffff', borderRadius: 18, padding: '5px 13px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
                 border: '1px solid rgba(255,255,255,0.22)',
                 boxShadow: '0 0 16px rgba(255,255,255,0.12), 0 2px 10px rgba(0,0,0,0.65)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 0.5, lineHeight: 1 }}>{aimLineDist}</span>
-                <span style={{ fontSize: 10, opacity: 0.55, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 0.5, lineHeight: 1 }}>{aimLineDist}</span>
+                  <span style={{ fontSize: 10, opacity: 0.55, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
+                </div>
+                {playsLikeYds !== null && Math.abs(playsLikeDelta) >= 2 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.45)' }}>PLAYS</span>
+                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, lineHeight: 1, letterSpacing: 0.5, color: playsLikeDelta > 0 ? '#f87171' : '#4ade80' }}>{playsLikeYds}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }}>
+                      {[windAdjYds ? `W${windAdjYds > 0 ? '+' : ''}${windAdjYds}` : '', elevAdjYds ? `E${elevAdjYds > 0 ? '+' : ''}${elevAdjYds}` : ''].filter(Boolean).join(' ')}
+                    </span>
+                  </div>
+                )}
               </div>
             </Marker>
           )}
