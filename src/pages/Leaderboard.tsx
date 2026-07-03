@@ -6,7 +6,7 @@ import { useYear } from '../context/YearContext'
 import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
-import { HOLE_PARS } from '../lib/scoreTypes'
+import { useCourse } from '../context/CourseContext'
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
@@ -51,6 +51,7 @@ const PODIUM: Record<number, { bg: string; color: string; ring: string; glow: st
 export default function Leaderboard() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline } = useSyncContext()
+  const { parOf, holes: courseHoles } = useCourse()
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -65,7 +66,7 @@ export default function Leaderboard() {
 
     return () => { supabase.removeChannel(sub) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTournamentId, isCurrentYear])
+  }, [effectiveTournamentId, isCurrentYear, courseHoles])
 
   const fetchData = async () => {
     if (!effectiveTournamentId) { setRows([]); setLoading(false); return }
@@ -106,7 +107,7 @@ export default function Leaderboard() {
       const played = holeScores.filter(s => s !== null) as number[]
       const gross = played.reduce((a, b) => a + b, 0)
       const thru = played.length
-      const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
+      const parSoFar = holeScores.reduce((a, s, i) => s !== null ? a + parOf(i + 1) : a, 0)
       const toPar = gross - parSoFar
       const putts = Object.values(puttsMap).reduce((a, b) => a + b, 0)
 
@@ -319,7 +320,7 @@ export default function Leaderboard() {
                           Score:
                         </div>
                         {row.holeScores.map((score, holeIdx) => {
-                          const par = HOLE_PARS[holeIdx]
+                          const par = parOf(holeIdx + 1)
                           if (score === null) {
                             return (
                               <div key={holeIdx}

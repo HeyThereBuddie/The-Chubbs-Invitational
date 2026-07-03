@@ -1,5 +1,6 @@
 import { HoleCard } from './HoleCard'
-import { type TeamFull, type ScoreRow, type ChulliganRow, HOLE_PARS, isHoleComplete } from '../lib/scoreTypes'
+import { type TeamFull, type ScoreRow, type ChulliganRow, isHoleComplete } from '../lib/scoreTypes'
+import { useCourse } from '../context/CourseContext'
 
 interface ScoreBottomSheetProps {
   open: boolean
@@ -39,7 +40,8 @@ export function ScoreBottomSheet({
   const mp2 = myTeam?.player2
   const twoPlayers = !!(mp1 && mp2)
   const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
-  const par = HOLE_PARS[hole - 1]
+  const { parOf } = useCourse()
+  const par = parOf(hole)
 
   const prevScore = locked ? myScores[hole - 1] : undefined
   const missingItems: string[] = []

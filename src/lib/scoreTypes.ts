@@ -1,19 +1,13 @@
 import type { Team, Player } from './types'
-import { DEFAULT_PARS } from './pars'
 
 export type TeamFull = Team & { player1?: Player; player2?: Player }
 export type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
 export type ChulliganRow = { id: string; player_id: string; hole: number }
 
-// Fallback par table — single source lives in ./pars. Prefer resolvePar()/
-// the course par where a course context is available.
-export const HOLE_PARS = DEFAULT_PARS
-
 export const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
-export function scoreFeedInfo(score: number, hole: number): { label: string; emoji: string } {
+export function scoreFeedInfo(score: number, par: number): { label: string; emoji: string } {
   if (score === 1) return { emoji: '🕳️', label: 'Hole in One!' }
-  const par = HOLE_PARS[hole - 1]
   const d = score - par
   if (d <= -2) return { emoji: '🦅', label: 'Eagle' }
   if (d === -1) return { emoji: '🐦', label: 'Birdie' }

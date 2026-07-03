@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { localDb, parseJson } from '../lib/localDb'
-import { displayName, HOLE_PARS } from '../lib/types'
+import { displayName } from '../lib/types'
+import { useCourse } from '../context/CourseContext'
 import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
 
@@ -12,16 +13,16 @@ type ChulliganRow = { id: string; player_id: string; hole: number }
 type TeamFull     = Team & { player1?: Player; player2?: Player }
 
 // ── Stats helpers ─────────────────────────────────────────
-function calcStats(scores: ScoreRow[]) {
+function calcStats(scores: ScoreRow[], parOf: (hole: number) => number) {
   const played = scores.filter(s => s.score > 0)
   const gross = played.reduce((a, s) => a + s.score, 0)
-  const parSoFar = played.reduce((a, s) => a + HOLE_PARS[s.hole - 1], 0)
+  const parSoFar = played.reduce((a, s) => a + parOf(s.hole), 0)
   const toPar = gross - parSoFar
   const putts = played.reduce((a, s) => a + (s.putts ?? 0), 0)
 
   let eagles = 0, birdies = 0, pars = 0, bogeys = 0, doubles = 0
   for (const s of played) {
-    const diff = s.score - HOLE_PARS[s.hole - 1]
+    const diff = s.score - parOf(s.hole)
     if (diff <= -2) eagles++
     else if (diff === -1) birdies++
     else if (diff === 0) pars++
@@ -59,6 +60,7 @@ const rowLabel: React.CSSProperties = {
 // ── Component ─────────────────────────────────────────────
 export default function MyTeamPage() {
   const { profile } = useAuth()
+  const { parOf } = useCourse()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const myTeamId = isCurrentYear ? (profile?.team_id ?? null) : null
 
@@ -219,10 +221,10 @@ export default function MyTeamPage() {
   const isOwnTeam = viewingTeamId === myTeamId && myTeamId !== null && isCurrentYear
 
   // ── Stats ─────────────────────────────────────────────────
-  const stats      = calcStats(scores)
+  const stats      = calcStats(scores, parOf)
   const players    = [team?.player1, team?.player2].filter(Boolean) as Player[]
-  const frontStats = calcStats(scores.filter(s => s.hole <= 9))
-  const backStats  = calcStats(scores.filter(s => s.hole >= 10))
+  const frontStats = calcStats(scores.filter(s => s.hole <= 9), parOf)
+  const backStats  = calcStats(scores.filter(s => s.hole >= 10), parOf)
 
   const driveCount = (pid: string, from = 1, to = 18) =>
     scores.filter(s => s.hole >= from && s.hole <= to && s.drive_used_id === pid).length
@@ -427,11 +429,11 @@ export default function MyTeamPage() {
               <div className="glass animate-fadeUp delay-300" style={{ padding: '20px 14px', marginBottom: 12 }}>
                 <div className="section-label" style={{ marginBottom: 14, paddingLeft: 6 }}>Scorecard</div>
                 {scorecardHalves.map(({ label, tag, holes }) => {
-                  const holePars  = holes.map(h => HOLE_PARS[h - 1])
+                  const holePars  = holes.map(h => parOf(h))
                   const totalPar  = holePars.reduce((a, p) => a + p, 0)
                   const played    = holes.filter(h => scoreMap[h])
                   const subtotal  = played.reduce((a, h) => a + scoreMap[h].score, 0)
-                  const playedPar = played.reduce((a, h) => a + HOLE_PARS[h - 1], 0)
+                  const playedPar = played.reduce((a, h) => a + parOf(h), 0)
                   const toPar     = subtotal - playedPar
                   return (
                     <div key={label} className="glass-flat" style={{ marginBottom: 12, padding: '8px 6px 6px', overflow: 'hidden' }}>

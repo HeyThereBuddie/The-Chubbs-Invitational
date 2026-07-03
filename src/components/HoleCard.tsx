@@ -1,7 +1,8 @@
 import { Minus, Plus, MapPin } from 'lucide-react'
 import { displayName } from '../lib/types'
 import type { HoleGps, Player } from '../lib/types'
-import { type ScoreRow, type ChulliganRow, HOLE_PARS, scoreBubbleClass } from '../lib/scoreTypes'
+import { type ScoreRow, type ChulliganRow, scoreBubbleClass } from '../lib/scoreTypes'
+import { useCourse } from '../context/CourseContext'
 
 export function HoleCard({
   hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, gpsHole, onOpenGps,
@@ -25,7 +26,8 @@ export function HoleCard({
   gpsHole?: HoleGps
   onOpenGps?: () => void
 }) {
-  const par      = HOLE_PARS[hole - 1]
+  const { parOf } = useCourse()
+  const par      = parOf(hole)
   const score    = scoreRow?.score
   const hasScore = score !== undefined
   const cls      = hasScore ? scoreBubbleClass(score, par) : 'score-empty'

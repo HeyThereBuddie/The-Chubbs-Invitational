@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
+import { useCourse } from '../context/CourseContext'
 import type { Profile, Team, CourseGps } from '../lib/types'
-import { displayName, HOLE_PARS } from '../lib/types'
+import { displayName } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
 import CourseGpsSetup from '../components/admin/CourseGpsSetup'
@@ -43,6 +44,7 @@ interface THistoryEntry {
 export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
+  const { parOf } = useCourse()
   const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores'>('teams')
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
@@ -343,7 +345,7 @@ export default function AdminPanel() {
       const played = Array.from({ length: 18 }, (_, i) => scoreMap[i + 1] ?? null).filter(Boolean) as number[]
       const thru = played.length
       const gross = played.reduce((a, b) => a + b, 0)
-      const parSoFar = HOLE_PARS.slice(0, thru).reduce((a, b) => a + b, 0)
+      const parSoFar = Object.keys(scoreMap).reduce((a, h) => a + parOf(Number(h)), 0)
       return {
         teamName: team.name || '(unnamed)',
         p1Name: team.player1 ? displayName(team.player1) : null,

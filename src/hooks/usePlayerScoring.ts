@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
+import { useCourse } from '../context/CourseContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue, getPendingCount } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
@@ -12,7 +13,6 @@ import {
   type TeamFull,
   type ScoreRow,
   type ChulliganRow,
-  HOLE_PARS,
   SCORE_SELECT,
   scoreFeedInfo,
   puttFeedInfo,
@@ -30,6 +30,7 @@ export function usePlayerScoring() {
   const { profile } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline, refreshPendingCount } = useSyncContext()
+  const { parOf } = useCourse()
 
   const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
 
@@ -109,7 +110,7 @@ export function usePlayerScoring() {
   const adjustMyScore = async (hole: number, delta: number) => {
     if (!myTeamId) return
     navigator.vibrate?.(8)
-    const cur  = myScores[hole]?.score ?? HOLE_PARS[hole - 1]
+    const cur  = myScores[hole]?.score ?? parOf(hole)
     const next = Math.max(1, cur + delta)
     const existing = myScores[hole]
     const isNew = !existing?.id || String(existing.id).startsWith('offline-')
@@ -135,7 +136,7 @@ export function usePlayerScoring() {
     await enqueue('set_score', { team_id: myTeamId, hole, score: next }, { team_id: myTeamId, hole })
 
     // Queue the feed event (same conflict key ensures only the final score is posted)
-    const feedInfo = scoreFeedInfo(next, hole)
+    const feedInfo = scoreFeedInfo(next, parOf(hole))
     await enqueue('log_feed_event', {
       id: crypto.randomUUID(),
       event_type: 'score',

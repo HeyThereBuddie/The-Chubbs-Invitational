@@ -9,7 +9,8 @@ import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
-import { displayName, HOLE_PARS, normalizeFairways } from '../lib/types'
+import { displayName, normalizeFairways } from '../lib/types'
+import { resolvePar } from '../lib/pars'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -641,8 +642,8 @@ export default function GpsPage() {
 
   const holeHasData = (h: number) => course.holes.some(hd => hd.hole === h && hd.green.center)
 
-  // Prefer the course's own par (set in admin GPS setup) over the built-in table.
-  const parOf = (holeNum: number) => course.holes.find(h => h.hole === holeNum)?.par ?? HOLE_PARS[holeNum - 1] ?? 4
+  // Prefer the course's own par (set in admin GPS setup) over the default table.
+  const parOf = (holeNum: number) => resolvePar(holeNum, course.holes)
   const parForHole = parOf(selectedHole)
   // Elements above the nav bar sit at this base; tip/hint cards go higher
   const navBase      = `calc(env(safe-area-inset-bottom, 0px) + 68px)`

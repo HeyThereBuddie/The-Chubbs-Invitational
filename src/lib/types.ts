@@ -125,7 +125,6 @@ export interface Database {
   }
 }
 
-export const HOLE_PARS = DEFAULT_PARS
 export const COURSE_PAR = DEFAULT_PARS.reduce((a, b) => a + b, 0)
 export const COURSE_NAME = 'TBD Golf Club'
 export const TOURNAMENT_DATE = 'Summer 2025'
@@ -170,7 +169,7 @@ export interface LatLng { lat: number; lng: number }
 
 export interface HoleGps {
   hole: number
-  par?: number | null              // course-specific par (falls back to HOLE_PARS)
+  par?: number | null              // course-specific par (falls back to DEFAULT_PARS)
   tee: LatLng | null
   green: {
     front:  LatLng | null

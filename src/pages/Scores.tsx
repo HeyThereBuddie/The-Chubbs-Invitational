@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
+import { useCourse } from '../context/CourseContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
@@ -16,7 +17,6 @@ import {
   type TeamFull,
   type ScoreRow,
   type ChulliganRow,
-  HOLE_PARS,
   SCORE_SELECT,
   scoreFeedInfo,
   puttFeedInfo,
@@ -28,6 +28,7 @@ async function logFeedEvent(
   teamId: string,
   teamName: string,
   hole: number,
+  par: number,
   score: number | null,
   playerName: string | null,
   putts?: number,
@@ -39,7 +40,7 @@ async function logFeedEvent(
   } else if (eventType === 'putt' && putts != null) {
     const info = puttFeedInfo(putts); label = info.label; emoji = info.emoji
   } else {
-    const info = scoreFeedInfo(score!, hole); label = info.label; emoji = info.emoji
+    const info = scoreFeedInfo(score!, par); label = info.label; emoji = info.emoji
   }
   const { error } = await supabase.from('feed_events').insert({
     event_type: eventType,
@@ -85,17 +86,18 @@ async function pingLeadCheck(payload?: { team_id: string; hole: number; score: n
   }).catch(() => { /* fire and forget */ })
 }
 
-function calcStats(scoreMap: Record<number, ScoreRow>) {
+function calcStats(scoreMap: Record<number, ScoreRow>, parOf: (hole: number) => number) {
   const entries = Object.values(scoreMap)
   const gross = entries.reduce((a, s) => a + s.score, 0)
   const thru  = entries.length
-  const toPar = gross - entries.reduce((a, s) => a + HOLE_PARS[s.hole - 1], 0)
+  const toPar = gross - entries.reduce((a, s) => a + parOf(s.hole), 0)
   const putts = entries.reduce((a, s) => a + (s.putts ?? 0), 0)
   return { gross, thru, toPar, putts, toParStr: toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}` }
 }
 
 export default function Scores() {
   const { profile, isAdmin } = useAuth()
+  const { parOf } = useCourse()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { refreshPendingCount } = useSyncContext()
   const navigate = useNavigate()
@@ -254,7 +256,7 @@ export default function Scores() {
       const ts = scores.filter(s => s.team_id === team.id)
       if (!ts.length) continue
       const gross = ts.reduce((a, s) => a + s.score, 0)
-      const parSoFar = HOLE_PARS.slice(0, ts.length).reduce((a, b) => a + b, 0)
+      const parSoFar = ts.reduce((a, s) => a + parOf(s.hole), 0)
       const toPar = gross - parSoFar
       if (best === null || toPar < best) best = toPar
     }
@@ -323,7 +325,7 @@ export default function Scores() {
   const adjustAdminScore = async (hole: number, delta: number) => {
     if (!adminTeamId) return
     navigator.vibrate?.(8)
-    const cur  = adminScores[hole]?.score ?? HOLE_PARS[hole - 1]
+    const cur  = adminScores[hole]?.score ?? parOf(hole)
     const next = Math.max(1, cur + delta)
     setAdminSaving(hole)
     const existing = adminScores[hole]
@@ -338,7 +340,7 @@ export default function Scores() {
     setAdminSaving(null)
     pingLeadCheck({ team_id: adminTeamId, hole, score: next, is_admin_edit: !!existing?.id })
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
-    logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, next, null, undefined, effectiveTournamentId)
+    logFeedEvent('score', adminTeamId, adminTeam?.name ?? '', hole, parOf(hole), next, null, undefined, effectiveTournamentId)
   }
 
   const setAdminDrive = async (hole: number, playerId: string) => {
@@ -357,7 +359,7 @@ export default function Scores() {
     setAdminScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
     if (newPutts != null && newPutts >= 3) {
       const adminTeam = allTeams.find(t => t.id === adminTeamId)
-      logFeedEvent('putt', adminTeamId!, adminTeam?.name ?? '', hole, null, null, newPutts, effectiveTournamentId)
+      logFeedEvent('putt', adminTeamId!, adminTeam?.name ?? '', hole, parOf(hole), null, null, newPutts, effectiveTournamentId)
     }
   }
 
@@ -584,7 +586,7 @@ export default function Scores() {
       {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
         const isLocked = applyLock && hole > 1 && !isHoleComplete(scoreMap[hole - 1], twoPlayers)
         const sr  = scoreMap[hole]
-        const par = HOLE_PARS[hole - 1]
+        const par = parOf(hole)
         const hasScore = sr?.score !== undefined
         const diff = hasScore ? sr!.score - par : null
         const isActive = selectedHole === hole
@@ -639,7 +641,7 @@ export default function Scores() {
 
   if (isAdmin && isCurrentYear) {
     const adminTeam = allTeams.find(t => t.id === adminTeamId)
-    const stats = adminTeam ? calcStats(adminScores) : null
+    const stats = adminTeam ? calcStats(adminScores, parOf) : null
     const adminTabTeams = myTeamId
       ? [...allTeams].sort((a, b) => (a.id === myTeamId ? -1 : b.id === myTeamId ? 1 : 0))
       : allTeams
@@ -736,7 +738,7 @@ export default function Scores() {
     ? (myTeam ?? allTeams.find(t => t.id === myTeamId) ?? null)
     : viewTeam
   const displayScores = isViewingMyTeam ? myScores : viewScores
-  const displayStats  = calcStats(displayScores)
+  const displayStats  = calcStats(displayScores, parOf)
 
   // Own team always pinned to the left
   const tabTeams = myTeamId
