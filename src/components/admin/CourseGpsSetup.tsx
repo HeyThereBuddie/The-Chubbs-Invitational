@@ -432,7 +432,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
   const { showToast } = useToast()
   const mapRef = useRef<MapRef>(null)
 
-  const [gpsSubTab, setGpsSubTab] = useState<'selection' | 'setup'>(() => currentGps ? 'setup' : 'selection')
+  const [gpsSubTab, setGpsSubTab] = useState<'selection' | 'setup' | 'pars'>(() => currentGps ? 'setup' : 'selection')
   const [existingCourses, setExistingCourses] = useState<{ id: string; name: string; lat: number | null; lng: number | null }[]>([])
 
   // Switch to setup tab as soon as the async currentGps prop arrives (DB fetch in AdminPanel
@@ -1084,6 +1084,10 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     if (editTarget?.type === type) setEditTarget(null)
   }
 
+  const setHolePar = (hole: number, par: number) => {
+    setHoles(prev => prev.map(h => h.hole === hole ? { ...h, par } : h))
+  }
+
   // ── Map click → place pin, then auto-advance ─────────────────────────────
   const handleMapClick = useCallback((e: MapMouseEvent) => {
     const { lat, lng } = e.lngLat
@@ -1242,6 +1246,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
         {([
           { id: 'selection' as const, label: 'Course Selection' },
           { id: 'setup'     as const, label: 'Course Setup' },
+          { id: 'pars'      as const, label: 'Pars' },
         ]).map(({ id, label }) => {
           const active = gpsSubTab === id
           return (
@@ -1828,6 +1833,67 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
             </button>
           </div>
         </>
+      )}
+
+      {/* ── Pars Tab ── */}
+      {gpsSubTab === 'pars' && (
+        <div className="glass" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)', marginBottom: 4 }}>Hole Pars</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5 }}>
+              Set the par for each hole. Useful when OpenStreetMap has no par data. Saved with the course.
+            </div>
+          </div>
+
+          {([{ label: 'Front 9', from: 1, to: 9 }, { label: 'Back 9', from: 10, to: 18 }]).map(({ label, from, to }) => {
+            const nineHoles = holes.filter(h => h.hole >= from && h.hole <= to)
+            const nineTotal = nineHoles.reduce((a, h) => a + (h.par ?? 0), 0)
+            return (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)' }}>{label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--tx4)' }}>Out {nineTotal || '—'}</span>
+                </div>
+                {nineHoles.map(h => (
+                  <div key={h.hole} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 52, fontSize: 13, fontWeight: 700, color: 'var(--tx2)' }}>Hole {h.hole}</span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[3, 4, 5, 6].map(n => {
+                        const active = h.par === n
+                        return (
+                          <button key={n} onClick={() => setHolePar(h.hole, n)} style={{
+                            width: 40, height: 36, borderRadius: 9, cursor: 'pointer',
+                            fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums',
+                            background: active ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
+                            border: `1px solid ${active ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
+                            color: active ? '#D4A53A' : 'var(--tx3)',
+                          }}>{n}</button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderTop: '1px solid var(--bdr)', paddingTop: 14 }}>
+            <div style={{ fontSize: 13, color: 'var(--tx3)' }}>
+              Total par{' '}
+              <span style={{ fontWeight: 700, color: '#D4A53A' }}>{holes.reduce((a, h) => a + (h.par ?? 0), 0) || '—'}</span>
+              <span style={{ color: 'var(--tx4)' }}> · {holes.filter(h => h.par != null).length}/18 set</span>
+            </div>
+            <button onClick={save} disabled={saving || !tournamentId} style={{
+              padding: '10px 22px', borderRadius: 10,
+              background: 'rgba(212,165,58,0.15)', border: '1px solid rgba(212,165,58,0.4)',
+              color: '#D4A53A', cursor: saving ? 'not-allowed' : 'pointer',
+              fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <Save size={15} />
+              {saving ? 'Saving…' : 'Save Pars'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

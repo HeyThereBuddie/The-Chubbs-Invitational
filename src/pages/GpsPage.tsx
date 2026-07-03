@@ -182,10 +182,10 @@ function timeAgo(isoString: string): string {
   return `${mins} mins ago`
 }
 
-function scoreToPar(teamId: string, scores: LocalScore[]): number | null {
+function scoreToPar(teamId: string, scores: LocalScore[], parOf: (hole: number) => number): number | null {
   const teamScores = scores.filter(s => s.team_id === teamId)
   if (!teamScores.length) return null
-  return teamScores.reduce((sum, s) => sum + s.score - (HOLE_PARS[s.hole - 1] ?? 4), 0)
+  return teamScores.reduce((sum, s) => sum + s.score - parOf(s.hole), 0)
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -641,7 +641,9 @@ export default function GpsPage() {
 
   const holeHasData = (h: number) => course.holes.some(hd => hd.hole === h && hd.green.center)
 
-  const parForHole = HOLE_PARS[selectedHole - 1] ?? 4
+  // Prefer the course's own par (set in admin GPS setup) over the built-in table.
+  const parOf = (holeNum: number) => course.holes.find(h => h.hole === holeNum)?.par ?? HOLE_PARS[holeNum - 1] ?? 4
+  const parForHole = parOf(selectedHole)
   // Elements above the nav bar sit at this base; tip/hint cards go higher
   const navBase      = `calc(env(safe-area-inset-bottom, 0px) + 68px)`
   const aboveHudCalc = `calc(env(safe-area-inset-bottom, 0px) + 170px)`
@@ -994,7 +996,7 @@ export default function GpsPage() {
           if (!pos) return null
           const player  = localProfiles.find(p => p.id === selectedCartPlayerId)
           const team    = pos.team_id ? localTeams.find(t => t.id === pos.team_id) : null
-          const toPar   = pos.team_id ? scoreToPar(pos.team_id, localScores) : null
+          const toPar   = pos.team_id ? scoreToPar(pos.team_id, localScores, parOf) : null
           const toParStr   = toPar == null ? '—' : toPar > 0 ? `+${toPar}` : toPar === 0 ? 'E' : `${toPar}`
           const toParColor = toPar == null ? 'var(--tx3)' : toPar < 0 ? '#22c55e' : toPar > 0 ? '#ef4444' : '#D4A53A'
           return (
@@ -1026,17 +1028,17 @@ export default function GpsPage() {
           let holesPlayed = 0
           for (let h = 1; h <= 18; h++) {
             const s = scoring.myScores[h]
-            if (s) { totalVsPar += s.score - (HOLE_PARS[h - 1] ?? 4); holesPlayed++ }
+            if (s) { totalVsPar += s.score - parOf(h); holesPlayed++ }
           }
           const scorLabel = holesPlayed === 0 ? 'E' : totalVsPar === 0 ? 'E' : totalVsPar > 0 ? `+${totalVsPar}` : `${totalVsPar}`
           const scorColor = totalVsPar < 0 ? '#22c55e' : totalVsPar > 0 ? '#ef4444' : 'rgba(255,255,255,0.5)'
           // Leaderboard position
           const ranked = localTeams
-            .map(t => ({ id: t.id, toPar: scoreToPar(t.id, localScores) }))
+            .map(t => ({ id: t.id, toPar: scoreToPar(t.id, localScores, parOf) }))
             .filter((t): t is { id: string; toPar: number } => t.toPar !== null)
             .sort((a, b) => a.toPar - b.toPar)
           const myTeamId = scoring.myTeam?.id
-          const myToPar  = myTeamId ? scoreToPar(myTeamId, localScores) : null
+          const myToPar  = myTeamId ? scoreToPar(myTeamId, localScores, parOf) : null
           let posLabel: string | null = null
           if (myTeamId && myToPar !== null) {
             const posIdx = ranked.findIndex(t => t.id === myTeamId)

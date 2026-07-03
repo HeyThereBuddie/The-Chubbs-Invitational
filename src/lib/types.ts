@@ -168,6 +168,7 @@ export interface LatLng { lat: number; lng: number }
 
 export interface HoleGps {
   hole: number
+  par?: number | null              // course-specific par (falls back to HOLE_PARS)
   tee: LatLng | null
   green: {
     front:  LatLng | null
