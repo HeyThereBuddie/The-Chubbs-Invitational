@@ -409,7 +409,6 @@ export default function GpsPage() {
       })) }
   }
   const waterGeoJson      = useMemo(() => makePolyCollection(currentHole?.water),      [currentHole])
-  const avoidZonesGeoJson = useMemo(() => makePolyCollection(currentHole?.avoidZones), [currentHole])
 
   const landingZoneGeoJson = useMemo(() => {
     const lz = currentHole?.landingZone; if (!lz) return null
@@ -751,15 +750,6 @@ export default function GpsPage() {
             <Source id="water-hazards" type="geojson" data={waterGeoJson}>
               <Layer id="water-fill" type="fill" paint={{ 'fill-color': 'rgba(59,130,246,0.55)' }} />
               <Layer id="water-outline" type="line" paint={{ 'line-color': 'rgba(37,99,235,0.85)', 'line-width': 1.5 }} />
-            </Source>
-          )}
-
-          {/* Avoid zones */}
-          {avoidZonesGeoJson && (
-            <Source id="avoid-zones" type="geojson" data={avoidZonesGeoJson}>
-              <Layer id="avoid-zones-fill" type="fill" paint={{ 'fill-color': 'rgba(239,68,68,0.22)' }} />
-              <Layer id="avoid-zones-outline" type="line"
-                paint={{ 'line-color': 'rgba(239,68,68,0.75)', 'line-width': 1.5, 'line-dasharray': [4, 3] }} />
             </Source>
           )}
 
