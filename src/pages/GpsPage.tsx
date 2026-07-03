@@ -509,7 +509,7 @@ export default function GpsPage() {
     // Approach tilt: flat overhead beyond APPROACH_YDS, ramping to MAX_PITCH as
     // the player nears the green. Gives the realistic tilted look on approach shots.
     const distYds = haversineYards(anchor, green)
-    const APPROACH_YDS = 150, MAX_PITCH = 58
+    const APPROACH_YDS = 200, MAX_PITCH = 48
     const pitch = distYds >= APPROACH_YDS
       ? 0
       : Math.min(MAX_PITCH, Math.round((APPROACH_YDS - distYds) / (APPROACH_YDS - 20) * MAX_PITCH))
