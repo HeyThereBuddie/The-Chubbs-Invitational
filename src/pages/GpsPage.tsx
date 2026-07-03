@@ -500,21 +500,31 @@ export default function GpsPage() {
   // Shared hole framing: rotate so the hole points "up" (anchor→green) and fit
   // BOTH the player/tee and the green inside the map area between the top chips
   // and the HUD. fitBounds handles the zoom+center math so both endpoints are
-  // always visible regardless of hole length or orientation.
+  // always visible regardless of hole length or orientation. Within approach
+  // range of the green the camera tilts for a 3D "behind the ball" perspective.
   const frameHole = useCallback((anchor: LatLng, green: LatLng, durationMs: number) => {
     const map = mapRef.current
     if (!map) return
     const bearing = calcBearing(anchor, green)
+    // Approach tilt: flat overhead beyond APPROACH_YDS, ramping to MAX_PITCH as
+    // the player nears the green. Gives the realistic tilted look on approach shots.
+    const distYds = haversineYards(anchor, green)
+    const APPROACH_YDS = 150, MAX_PITCH = 58
+    const pitch = distYds >= APPROACH_YDS
+      ? 0
+      : Math.min(MAX_PITCH, Math.round((APPROACH_YDS - distYds) / (APPROACH_YDS - 20) * MAX_PITCH))
     const bounds: [[number, number], [number, number]] = [
       [Math.min(anchor.lng, green.lng), Math.min(anchor.lat, green.lat)],
       [Math.max(anchor.lng, green.lng), Math.max(anchor.lat, green.lat)],
     ]
     map.fitBounds(bounds, {
       bearing,
+      pitch,
       // top clears the hole/wind chips (green sits here); bottom clears the HUD
       // (player pin sits here, above Enter Score); sides give the fairway margin.
-      padding: { top: HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 48, right: 48 },
-      maxZoom: 18,
+      // Tilted views need extra top headroom so the green isn't pushed off screen.
+      padding: { top: pitch > 0 ? 150 : HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 48, right: 48 },
+      maxZoom: 18.5,
       duration: durationMs,
       essential: false,
     })
