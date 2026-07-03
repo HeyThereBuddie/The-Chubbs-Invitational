@@ -112,7 +112,7 @@ function FlagPin() {
 // Hole framing padding: clearance below the top chips (green sits here) and
 // above the bottom HUD (the player/tee pin sits here).
 const HUD_TOP_PAD = 96
-const HUD_BOTTOM_PAD = 250
+const HUD_BOTTOM_PAD = 96
 
 function calcBearing(a: LatLng, b: LatLng): number {
   const lat1 = (a.lat * Math.PI) / 180, lat2 = (b.lat * Math.PI) / 180
