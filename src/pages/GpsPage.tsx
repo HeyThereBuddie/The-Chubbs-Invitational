@@ -1168,8 +1168,9 @@ export default function GpsPage() {
             padding: isNarrow ? '5px 10px' : '8px 15px', display: 'flex', alignItems: 'center', gap: isNarrow ? 6 : 10,
             boxShadow: '0 4px 16px rgba(0,0,0,0.3)', whiteSpace: 'nowrap',
           }}>
-            {/* Arrow pointing in the direction wind is travelling TO */}
-            <div style={{ transform: `rotate(${wind.direction}deg)`, display: 'flex', lineHeight: 1 }}>
+            {/* Arrow points the way the wind is blowing TO, rotated into the map's
+                frame so it aligns with the satellite view (which rotates hole-up). */}
+            <div style={{ transform: `rotate(${wind.direction + 180 - viewState.bearing}deg)`, display: 'flex', lineHeight: 1 }}>
               <Navigation size={15} color="#D4A53A" fill="#D4A53A" />
             </div>
             <span style={{ fontFamily: 'Bebas Neue', fontSize: isNarrow ? 18 : 24, lineHeight: 1, color: 'white', letterSpacing: 0.5 }}>
