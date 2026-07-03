@@ -111,8 +111,8 @@ function FlagPin() {
 
 // Hole framing padding: clearance below the top chips (green sits here) and
 // above the bottom HUD (the player/tee pin sits here).
-const HUD_TOP_PAD = 76
-const HUD_BOTTOM_PAD = 230
+const HUD_TOP_PAD = 96
+const HUD_BOTTOM_PAD = 250
 
 function calcBearing(a: LatLng, b: LatLng): number {
   const lat1 = (a.lat * Math.PI) / 180, lat2 = (b.lat * Math.PI) / 180
@@ -495,27 +495,24 @@ export default function GpsPage() {
 
   // ── Map fly-to ────────────────────────────────────────────────────────────
 
-  // Shared hole framing: rotate so the hole points "up", then fill the space
-  // between the top chips and the HUD — green pinned near the top, the player/tee
-  // pin sitting just above the HUD (over the Enter Score button, between the side
-  // dashboards), with the whole hole visible in between. Centering on the
-  // anchor↔green midpoint and matching the zoom to the available height keeps both
-  // endpoints where we want them regardless of hole length.
+  // Shared hole framing: rotate so the hole points "up" (anchor→green) and fit
+  // BOTH the player/tee and the green inside the map area between the top chips
+  // and the HUD. fitBounds handles the zoom+center math so both endpoints are
+  // always visible regardless of hole length or orientation.
   const frameHole = useCallback((anchor: LatLng, green: LatLng, durationMs: number) => {
+    const map = mapRef.current
+    if (!map) return
     const bearing = calcBearing(anchor, green)
-    const distMeters = haversineYards(anchor, green) * 0.9144
-    const vh = window.innerHeight
-    // Vertical pixels available for the hole, top chips → HUD.
-    const span = Math.max(140, vh - HUD_TOP_PAD - HUD_BOTTOM_PAD)
-    const metersPerPx = distMeters / span
-    const rawZoom = Math.log2(156543.03 * Math.cos(anchor.lat * Math.PI / 180) / metersPerPx)
-    const zoom = Math.max(14.5, Math.min(18.5, rawZoom))
-    const center = { lat: (anchor.lat + green.lat) / 2, lng: (anchor.lng + green.lng) / 2 }
-    mapRef.current?.easeTo({
-      center: [center.lng, center.lat],
+    const bounds: [[number, number], [number, number]] = [
+      [Math.min(anchor.lng, green.lng), Math.min(anchor.lat, green.lat)],
+      [Math.max(anchor.lng, green.lng), Math.max(anchor.lat, green.lat)],
+    ]
+    map.fitBounds(bounds, {
       bearing,
-      zoom,
-      padding: { top: HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 0, right: 0 },
+      // top clears the hole/wind chips (green sits here); bottom clears the HUD
+      // (player pin sits here, above Enter Score); sides give the fairway margin.
+      padding: { top: HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 48, right: 48 },
+      maxZoom: 18,
       duration: durationMs,
       essential: false,
     })
