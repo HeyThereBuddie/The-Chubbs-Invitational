@@ -79,10 +79,11 @@ function TeePin() {
 }
 
 // Improvement 1: tactical sniper reticle replaces the plain ring tap marker
-function ReticleMarker() {
+function ReticleMarker({ scale = 1 }: { scale?: number }) {
   const cx = 32, cy = 32, outerR = 24, innerR = 9
+  const size = 64 * scale
   return (
-    <svg width={64} height={64} viewBox="0 0 64 64"
+    <svg width={size} height={size} viewBox="0 0 64 64"
       style={{ overflow: 'visible', filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.35))', pointerEvents: 'none' }}>
       <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="rgba(255,255,255,0.92)" strokeWidth="1.5" />
       {/* Inward ticks from ring — gap in center shows terrain underneath */}
@@ -252,6 +253,8 @@ export default function GpsPage() {
   const followPausedRef   = useRef(false)
   const followPauseTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoOpenedHoleRef = useRef(0)
+  const lastTargetPosRef  = useRef<LatLng | null>(null)
+  const lastTargetHoleRef = useRef(0)
   const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
@@ -561,9 +564,33 @@ export default function GpsPage() {
     flyToHole(currentHole)
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-target the sniper reticle. Beyond 200 yds it sits halfway to the green
+  // (your next-shot target); within 200 yds it snaps to the middle of the green.
+  // It re-sets on a new hole, after the player advances ~30 yds toward the green
+  // (fresh target for the next shot), and when crossing inside 200 yds. Between
+  // those, a manual tap to measure a different target sticks.
   useEffect(() => {
-    setTapPoint(course?.holes.find(h => h.hole === selectedHole)?.landingZone ?? null)
-  }, [selectedHole, course])
+    const green = currentHole?.green.center
+    const holeChanged = lastTargetHoleRef.current !== selectedHole
+    if (!position || !green) {
+      // No live position: don't carry a target across holes (falls back to green).
+      if (holeChanged) { setTapPoint(null); lastTargetPosRef.current = null; lastTargetHoleRef.current = selectedHole }
+      return
+    }
+    const distToGreen = haversineYards(position, green)
+    const last = lastTargetPosRef.current
+    const lastDist = last ? haversineYards(last, green) : Infinity
+    const movedToward = lastDist - distToGreen
+    const crossedInside200 = lastDist > 200 && distToGreen <= 200
+    if (holeChanged || last === null || movedToward >= 30 || crossedInside200) {
+      const auto = distToGreen > 200
+        ? { lat: (position.lat + green.lat) / 2, lng: (position.lng + green.lng) / 2 }
+        : green
+      setTapPoint(auto)
+      lastTargetPosRef.current = position
+      lastTargetHoleRef.current = selectedHole
+    }
+  }, [position, currentHole, selectedHole])
 
   // Sim mode: lock the sim pin to the current hole's tee. Re-locks (and disarms
   // "Move Location") whenever the selected hole changes so it jumps to the new tee.
@@ -606,6 +633,9 @@ export default function GpsPage() {
     }
     setTapPoint({ lat: e.lngLat.lat, lng: e.lngLat.lng })
     setSelectedCartPlayerId(null)
+    // Restart the auto-reset countdown from here so a manual target sticks until
+    // the player walks ~30 yds toward the green.
+    if (position) lastTargetPosRef.current = position
   }
 
   // ── Distances ─────────────────────────────────────────────────────────────
@@ -911,10 +941,11 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Sniper reticle — at tap point if set, otherwise at green center */}
+          {/* Sniper reticle — at tap point if set, otherwise at green center.
+              Shrinks within 200 yds of the green (approach range). */}
           {position && aimLineTarget && (
             <Marker longitude={aimLineTarget.lng} latitude={aimLineTarget.lat} anchor="center">
-              <ReticleMarker />
+              <ReticleMarker scale={centerDist !== null && centerDist <= 200 ? 0.7 : 1} />
             </Marker>
           )}
 
