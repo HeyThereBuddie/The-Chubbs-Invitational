@@ -1,10 +1,13 @@
 import type { Team, Player } from './types'
+import { DEFAULT_PARS } from './pars'
 
 export type TeamFull = Team & { player1?: Player; player2?: Player }
 export type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
 export type ChulliganRow = { id: string; player_id: string; hole: number }
 
-export const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4] as const
+// Fallback par table — single source lives in ./pars. Prefer resolvePar()/
+// the course par where a course context is available.
+export const HOLE_PARS = DEFAULT_PARS
 
 export const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 

@@ -6,8 +6,7 @@ import { useYear } from '../context/YearContext'
 import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
-
-const HOLE_PARS = [5,4,5,3,4,4,3,4,4, 4,4,4,3,5,4,3,5,4]
+import { HOLE_PARS } from '../lib/scoreTypes'
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par

@@ -1,3 +1,5 @@
+import { DEFAULT_PARS } from './pars'
+
 export type Role = 'admin' | 'player'
 
 export interface Profile {
@@ -123,11 +125,11 @@ export interface Database {
   }
 }
 
-export const COURSE_PAR = 72
+export const HOLE_PARS = DEFAULT_PARS
+export const COURSE_PAR = DEFAULT_PARS.reduce((a, b) => a + b, 0)
 export const COURSE_NAME = 'TBD Golf Club'
 export const TOURNAMENT_DATE = 'Summer 2025'
 export const FIRST_TEE_TIME = '8:00 AM'
-export const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,5,4,4,3,5,4,4]
 
 export const CHUBBS_QUOTES = [
   "It's all in the hips. It's all in the hips.",
