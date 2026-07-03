@@ -7,6 +7,7 @@ import { displayName, HOLE_PARS } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
 import CourseGpsSetup from '../components/admin/CourseGpsSetup'
+import Scores from './Scores'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -42,7 +43,7 @@ interface THistoryEntry {
 export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
-  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps'>('teams')
+  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores'>('teams')
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -644,6 +645,7 @@ export default function AdminPanel() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
           { id: 'teams',      label: '⛳ Teams' },
+          { id: 'scores',     label: '📝 Scores' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
@@ -1675,6 +1677,12 @@ export default function AdminPanel() {
               </li>
             </ol>
           </div>
+        </div>
+      )}
+
+      {tab === 'scores' && (
+        <div style={{ margin: '0 -4px' }}>
+          <Scores />
         </div>
       )}
 

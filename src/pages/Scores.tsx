@@ -139,16 +139,9 @@ export default function Scores() {
   })
   const [teamPick,      setTeamPick]      = useState('')
   const [settingTeam,   setSettingTeam]   = useState(false)
-  const [expandedHoles, setExpandedHoles] = useState<Set<number>>(new Set([1]))
   const [courseHoles,   setCourseHoles]   = useState<HoleGps[]>([])
-  const toggleHoleInfo = (hole: number) => setExpandedHoles(prev => {
-    const next = new Set(prev)
-    next.has(hole) ? next.delete(hole) : next.add(hole)
-    return next
-  })
   const handleSelectHole = (hole: number) => {
     setSelectedHole(hole)
-    setExpandedHoles(prev => new Set([...prev, hole]))
   }
 
   const viewingTeamIdRef = useRef<string | null>(null)
@@ -722,8 +715,6 @@ export default function Scores() {
               chulligans={adminChulligans}
               onToggleChulligan={(pid, h) => toggleChulligan(adminTeamId!, pid, h, adminChulligans, setAdminChulligans)}
               holeInfo={HOLE_DATA[hole - 1]}
-              infoExpanded={expandedHoles.has(hole)}
-              onToggleInfo={() => toggleHoleInfo(hole)}
               gpsHole={courseHoles.find(h2 => h2.hole === hole)}
               onOpenGps={() => navigate(`/gps?hole=${hole}`)}
             />
@@ -849,8 +840,6 @@ export default function Scores() {
               onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
               locked={locked}
               holeInfo={HOLE_DATA[hole - 1]}
-              infoExpanded={expandedHoles.has(hole)}
-              onToggleInfo={() => toggleHoleInfo(hole)}
               gpsHole={courseHoles.find(h2 => h2.hole === hole)}
               onOpenGps={() => navigate(`/gps?hole=${hole}`)}
             />
@@ -866,8 +855,6 @@ export default function Scores() {
             player2={viewTeam?.player2}
             readOnly
             holeInfo={HOLE_DATA[hole - 1]}
-            infoExpanded={expandedHoles.has(hole)}
-            onToggleInfo={() => toggleHoleInfo(hole)}
             gpsHole={courseHoles.find(h2 => h2.hole === hole)}
             onOpenGps={() => navigate(`/gps?hole=${hole}`)}
           />

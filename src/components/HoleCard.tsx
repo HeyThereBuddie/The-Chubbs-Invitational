@@ -4,7 +4,7 @@ import type { HoleGps, Player } from '../lib/types'
 import { type ScoreRow, type ChulliganRow, HOLE_PARS, scoreBubbleClass } from '../lib/scoreTypes'
 
 export function HoleCard({
-  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, infoExpanded, onToggleInfo, gpsHole, onOpenGps,
+  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, gpsHole, onOpenGps,
 }: {
   hole: number
   scoreRow: ScoreRow | undefined
@@ -22,8 +22,6 @@ export function HoleCard({
   readOnly?: boolean
   locked?: boolean
   holeInfo?: { yards: number; si: number; description?: string; photo?: string }
-  infoExpanded?: boolean
-  onToggleInfo?: () => void
   gpsHole?: HoleGps
   onOpenGps?: () => void
 }) {
@@ -227,56 +225,18 @@ export function HoleCard({
         </div>
       )}
 
-      {(() => {
-        const gpsReady = !!(gpsHole?.green.center)
-        const hasGuide = !!(holeInfo?.description || holeInfo?.photo)
-        if (!gpsReady && !hasGuide) return null
-        return (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', gap: 6 }}>
-            {gpsReady && (
-              <button type="button" onClick={onOpenGps} className="pressable" style={{
-                flex: 1, padding: '10px 14px', minHeight: 40, borderRadius: 10, cursor: 'pointer',
-                background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.32)',
-                color: '#22c55e', fontSize: 13, fontWeight: 600,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                boxShadow: 'var(--elev-1)',
-              }}>
-                <MapPin size={14} />
-                Open GPS
-              </button>
-            )}
-            {hasGuide && (
-              <button type="button" onClick={onToggleInfo} className="pressable" style={{
-                flex: 1, padding: '10px 14px', minHeight: 40, borderRadius: 10, cursor: 'pointer',
-                background: infoExpanded ? 'var(--gold-08)' : 'var(--surf2)',
-                border: `1px solid ${infoExpanded ? 'var(--gold-40)' : 'var(--bdr)'}`,
-                color: infoExpanded ? 'var(--gold)' : 'var(--tx2)',
-                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                <span style={{ fontSize: 15 }}>⛳</span>
-                {infoExpanded ? 'Hide Hole Guide' : 'View Hole Guide'}
-                <span style={{ fontSize: 11, opacity: 0.6 }}>{infoExpanded ? '▲' : '▼'}</span>
-              </button>
-            )}
-          </div>
-        )
-      })()}
-
-      {holeInfo && infoExpanded && (holeInfo.photo || holeInfo.description) && (
-        <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bdr)' }}>
-          {holeInfo.photo && (
-            <img
-              src={holeInfo.photo}
-              alt={`Hole ${hole} diagram`}
-              referrerPolicy="no-referrer"
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-            />
-          )}
-          {holeInfo.description && (
-            <div style={{ padding: '10px 12px', background: 'var(--surf)', fontSize: 12, color: 'var(--tx2)', lineHeight: 1.7 }}>
-              {holeInfo.description}
-            </div>
-          )}
+      {gpsHole?.green.center && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', gap: 6 }}>
+          <button type="button" onClick={onOpenGps} className="pressable" style={{
+            flex: 1, padding: '10px 14px', minHeight: 40, borderRadius: 10, cursor: 'pointer',
+            background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.32)',
+            color: '#22c55e', fontSize: 13, fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            boxShadow: 'var(--elev-1)',
+          }}>
+            <MapPin size={14} />
+            Open GPS
+          </button>
         </div>
       )}
     </div>

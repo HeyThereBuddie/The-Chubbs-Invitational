@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { CHUBBS_QUOTES, displayName } from '../../lib/types'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, ClipboardList, Trophy, Clock, Users, Users2,
+  LayoutDashboard, Trophy, Clock, Users, Users2,
   Target, Shield, LogOut, UserCircle, Star, Sun, Moon,
 } from 'lucide-react'
 
@@ -23,7 +23,6 @@ const playerNav = [
 
 const adminNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/scores', icon: ClipboardList, label: 'Scores' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'My Team' },
