@@ -4,6 +4,7 @@ import { ToastProvider } from './context/ToastContext'
 import { YearProvider } from './context/YearContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { SyncProvider } from './context/SyncContext'
+import { CourseProvider } from './context/CourseContext'
 import Layout from './components/layout/Layout'
 import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
@@ -84,8 +85,10 @@ export default function App() {
           <ToastProvider>
             <YearProvider>
               <SyncProvider>
-                <AppRoutes />
-                <UpdatePrompt />
+                <CourseProvider>
+                  <AppRoutes />
+                  <UpdatePrompt />
+                </CourseProvider>
               </SyncProvider>
             </YearProvider>
           </ToastProvider>
