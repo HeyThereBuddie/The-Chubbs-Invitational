@@ -255,6 +255,7 @@ export default function GpsPage() {
   const autoOpenedHoleRef = useRef(0)
   const lastTargetPosRef  = useRef<LatLng | null>(null)
   const lastTargetHoleRef = useRef(0)
+  const lastElevFetchRef  = useRef(0)
   const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
@@ -377,20 +378,28 @@ export default function GpsPage() {
   useEffect(() => {
     if (!course?.lat || !course?.lng) return
     const lat = course.lat, lng = course.lng
-    const fetchWind = async () => {
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const tick = async () => {
+      if (stopped) return
+      let ok = false
       try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=auto`
         const res = await fetch(url)
-        if (!res.ok) return
-        const json = await res.json()
-        const c = json.current
-        if (typeof c?.wind_speed_10m === 'number' && typeof c?.wind_direction_10m === 'number')
-          setWind({ speed: Math.round(c.wind_speed_10m), direction: c.wind_direction_10m, fetchedAt: Date.now() })
-      } catch { /* offline */ }
+        if (res.ok) {
+          const c = (await res.json()).current
+          if (typeof c?.wind_speed_10m === 'number' && typeof c?.wind_direction_10m === 'number') {
+            setWind({ speed: Math.round(c.wind_speed_10m), direction: c.wind_direction_10m, fetchedAt: Date.now() })
+            ok = true
+          }
+        }
+      } catch { /* offline / transient */ }
+      // Refresh every 10 min on success; retry quickly (30 s) after a failure so
+      // a transient hiccup doesn't leave the wind chip blank for 10 minutes.
+      if (!stopped) timer = setTimeout(tick, ok ? 10 * 60 * 1000 : 30 * 1000)
     }
-    fetchWind()
-    const id = setInterval(fetchWind, 10 * 60 * 1000)
-    return () => clearInterval(id)
+    tick()
+    return () => { stopped = true; if (timer) clearTimeout(timer) }
   }, [course?.lat, course?.lng])
 
   // ── Derived state ─────────────────────────────────────────────────────────
@@ -680,6 +689,11 @@ export default function GpsPage() {
     if (!(pKey in cache)) need.push({ key: pKey, lat: +position.lat.toFixed(4), lng: +position.lng.toFixed(4) })
     if (!(tKey in cache)) need.push({ key: tKey, lat: +aimLineTarget.lat.toFixed(5), lng: +aimLineTarget.lng.toFixed(5) })
     if (need.length === 0) { apply(); return }
+
+    // Throttle network fetches to at most one per 12 s so elevation lookups can't
+    // rate-limit the shared Open-Meteo host (which also serves the wind data).
+    if (Date.now() - lastElevFetchRef.current < 12000) return
+    lastElevFetchRef.current = Date.now()
 
     let cancelled = false
     ;(async () => {
