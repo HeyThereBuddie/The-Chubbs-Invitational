@@ -573,11 +573,13 @@ export default function GpsPage() {
     flyToHole(currentHole)
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-target the sniper reticle. Beyond 200 yds it sits halfway to the green
-  // (your next-shot target); within 200 yds it snaps to the middle of the green.
-  // It re-sets on a new hole, after the player advances ~30 yds toward the green
-  // (fresh target for the next shot), and when crossing inside 200 yds. Between
-  // those, a manual tap to measure a different target sticks.
+  // Auto-target the sniper reticle:
+  //  • Par 3 → always the middle of the green.
+  //  • Par 4/5 → the mapped landing zone (while it's still ahead of the player),
+  //    else halfway to the green; snaps to the green once inside 200 yds.
+  // It re-sets on a new hole, after advancing ~30 yds toward the green (fresh
+  // target for the next shot), and when crossing inside 200 yds. Between those,
+  // a manual tap to measure a different target sticks.
   useEffect(() => {
     const green = currentHole?.green.center
     const holeChanged = lastTargetHoleRef.current !== selectedHole
@@ -592,9 +594,19 @@ export default function GpsPage() {
     const movedToward = lastDist - distToGreen
     const crossedInside200 = lastDist > 200 && distToGreen <= 200
     if (holeChanged || last === null || movedToward >= 30 || crossedInside200) {
-      const auto = distToGreen > 200
-        ? { lat: (position.lat + green.lat) / 2, lng: (position.lng + green.lng) / 2 }
-        : green
+      const par = resolvePar(selectedHole, course?.holes)
+      const lz = currentHole?.landingZone ?? null
+      let auto: LatLng
+      if (par <= 3 || distToGreen <= 200) {
+        // Par 3, or within approach range: aim at the middle of the green.
+        auto = green
+      } else if (lz && haversineYards(lz, green) < distToGreen - 10) {
+        // Par 4/5: the mapped landing zone, while it's still ahead of the player.
+        auto = lz
+      } else {
+        // No usable landing zone ahead: halfway to the green.
+        auto = { lat: (position.lat + green.lat) / 2, lng: (position.lng + green.lng) / 2 }
+      }
       setTapPoint(auto)
       lastTargetPosRef.current = position
       lastTargetHoleRef.current = selectedHole
