@@ -392,7 +392,7 @@ export default function GpsPage() {
         // 1. Prefer the server-side proxy (works even if the phone can't reach
         //    Open-Meteo directly — CORS / per-IP rate limits).
         try {
-          const { data } = await supabase.functions.invoke('weather', { body: { wind: { lat, lng } } })
+          const { data } = await supabase.functions.invoke('weather-', { body: { wind: { lat, lng } } })
           if (data?.wind && typeof data.wind.speed === 'number') result = data.wind
         } catch { /* proxy not deployed / errored — fall through to direct */ }
         // 2. Fall back to a direct fetch.
@@ -723,7 +723,7 @@ export default function GpsPage() {
       let arr: number[] | null = null
       // 1. Prefer the server-side proxy (same reasons as wind).
       try {
-        const { data } = await supabase.functions.invoke('weather', {
+        const { data } = await supabase.functions.invoke('weather-', {
           body: { elevation: need.map(n => ({ lat: n.lat, lng: n.lng })) },
         })
         if (Array.isArray(data?.elevations)) arr = data.elevations
