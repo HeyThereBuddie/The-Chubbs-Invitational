@@ -373,34 +373,45 @@ export default function GpsPage() {
     })
   }, [effectiveTournamentId])
 
-  // ── Wind data (Open-Meteo, refreshes every 10 min) ────────────────────────
+  // ── Wind data ─────────────────────────────────────────────────────────────
+  // Location: the course center, else the first hole with a green (so wind still
+  // works even if the course center coordinate was never saved).
+  const weatherLat = course ? (course.lat ?? course.holes.find(h => h.green.center)?.green.center?.lat ?? null) : null
+  const weatherLng = course ? (course.lng ?? course.holes.find(h => h.green.center)?.green.center?.lng ?? null) : null
 
   useEffect(() => {
-    if (!course?.lat || !course?.lng) return
-    const lat = course.lat, lng = course.lng
+    if (weatherLat == null || weatherLng == null) return
+    const lat = weatherLat, lng = weatherLng
     let stopped = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const tick = async () => {
       if (stopped) return
       let ok = false
       try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=auto`
-        const res = await fetch(url)
-        if (res.ok) {
-          const c = (await res.json()).current
-          if (typeof c?.wind_speed_10m === 'number' && typeof c?.wind_direction_10m === 'number') {
-            setWind({ speed: Math.round(c.wind_speed_10m), direction: c.wind_direction_10m, fetchedAt: Date.now() })
-            ok = true
+        let result: { speed: number; direction: number } | null = null
+        // 1. Prefer the server-side proxy (works even if the phone can't reach
+        //    Open-Meteo directly — CORS / per-IP rate limits).
+        try {
+          const { data } = await supabase.functions.invoke('weather', { body: { wind: { lat, lng } } })
+          if (data?.wind && typeof data.wind.speed === 'number') result = data.wind
+        } catch { /* proxy not deployed / errored — fall through to direct */ }
+        // 2. Fall back to a direct fetch.
+        if (!result) {
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&timezone=auto`)
+          if (res.ok) {
+            const c = (await res.json()).current
+            if (typeof c?.wind_speed_10m === 'number' && typeof c?.wind_direction_10m === 'number')
+              result = { speed: Math.round(c.wind_speed_10m), direction: c.wind_direction_10m }
           }
         }
+        if (result) { setWind({ ...result, fetchedAt: Date.now() }); ok = true }
       } catch { /* offline / transient */ }
-      // Refresh every 10 min on success; retry quickly (30 s) after a failure so
-      // a transient hiccup doesn't leave the wind chip blank for 10 minutes.
+      // Refresh every 10 min on success; retry every 30 s after a failure.
       if (!stopped) timer = setTimeout(tick, ok ? 10 * 60 * 1000 : 30 * 1000)
     }
     tick()
     return () => { stopped = true; if (timer) clearTimeout(timer) }
-  }, [course?.lat, course?.lng])
+  }, [weatherLat, weatherLng])
 
   // ── Derived state ─────────────────────────────────────────────────────────
 
@@ -709,16 +720,27 @@ export default function GpsPage() {
 
     let cancelled = false
     ;(async () => {
+      let arr: number[] | null = null
+      // 1. Prefer the server-side proxy (same reasons as wind).
       try {
-        const lats = need.map(n => n.lat).join(',')
-        const lngs = need.map(n => n.lng).join(',')
-        const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
-        if (res.ok) {
-          const json = await res.json()
-          const arr = json?.elevation as number[] | undefined
-          if (Array.isArray(arr)) need.forEach((n, i) => { if (typeof arr[i] === 'number') cache[n.key] = arr[i] })
-        }
-      } catch { /* offline — elevation adjustment just won't show */ }
+        const { data } = await supabase.functions.invoke('weather', {
+          body: { elevation: need.map(n => ({ lat: n.lat, lng: n.lng })) },
+        })
+        if (Array.isArray(data?.elevations)) arr = data.elevations
+      } catch { /* proxy not deployed / errored — fall through to direct */ }
+      // 2. Fall back to a direct fetch.
+      if (!arr) {
+        try {
+          const lats = need.map(n => n.lat).join(',')
+          const lngs = need.map(n => n.lng).join(',')
+          const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
+          if (res.ok) {
+            const json = await res.json()
+            if (Array.isArray(json?.elevation)) arr = json.elevation
+          }
+        } catch { /* offline — elevation adjustment just won't show */ }
+      }
+      if (arr) need.forEach((n, i) => { if (typeof arr![i] === 'number') cache[n.key] = arr![i] })
       if (!cancelled) apply()
     })()
     return () => { cancelled = true }
