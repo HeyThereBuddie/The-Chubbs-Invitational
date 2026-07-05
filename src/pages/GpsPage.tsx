@@ -220,7 +220,7 @@ export default function GpsPage() {
   const [simMoveMode, setSimMoveMode] = useState(false)
   const [simPosition, setSimPosition] = useState<LatLng | null>(null)
   const position = simMode ? simPosition : realPosition
-  const [elevM, setElevM] = useState<{ player: number | null; target: number | null }>({ player: null, target: null })
+  const [elevM, setElevM] = useState<{ player: number | null; target: number | null; green: number | null }>({ player: null, target: null, green: null })
   const [elevCacheVersion, setElevCacheVersion] = useState(0)
   const elevCacheRef = useRef<Record<string, number>>({})
   const [playerBearing, setPlayerBearing] = useState<number | null>(null)
@@ -697,20 +697,27 @@ export default function GpsPage() {
     setSheetOpen(true)
   }, [centerDist, selectedHole, profile, sheetOpen])
 
-  // Elevation for the player and the aim target (Open-Meteo, no key). Cached per
-  // rounded coordinate so walking around doesn't spam the API; used for the
-  // elevation "plays-like" adjustment.
+  // Elevation for the player, the aim target, and the green (Open-Meteo, no key).
+  // Cached per rounded coordinate so walking around doesn't spam the API; used
+  // for the elevation "plays-like" adjustment on both pills.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    if (!position || !aimLineTarget) { setElevM({ player: null, target: null }); return }
+    const green = currentHole?.green.center ?? null
+    if (!position || !aimLineTarget) { setElevM({ player: null, target: null, green: null }); return }
     const cache = elevCacheRef.current
     const pKey = `${position.lat.toFixed(4)},${position.lng.toFixed(4)}`
     const tKey = `${aimLineTarget.lat.toFixed(5)},${aimLineTarget.lng.toFixed(5)}`
-    const apply = () => setElevM({ player: cache[pKey] ?? null, target: cache[tKey] ?? null })
+    const gKey = green ? `${green.lat.toFixed(5)},${green.lng.toFixed(5)}` : null
+    const apply = () => setElevM({
+      player: cache[pKey] ?? null,
+      target: cache[tKey] ?? null,
+      green: gKey ? (cache[gKey] ?? null) : null,
+    })
 
     const need: { key: string; lat: number; lng: number }[] = []
     if (!(pKey in cache)) need.push({ key: pKey, lat: +position.lat.toFixed(4), lng: +position.lng.toFixed(4) })
     if (!(tKey in cache)) need.push({ key: tKey, lat: +aimLineTarget.lat.toFixed(5), lng: +aimLineTarget.lng.toFixed(5) })
+    if (gKey && green && !(gKey in cache)) need.push({ key: gKey, lat: +green.lat.toFixed(5), lng: +green.lng.toFixed(5) })
     if (need.length === 0) { apply(); return }
 
     let cancelled = false
@@ -739,7 +746,7 @@ export default function GpsPage() {
       if (!cancelled) apply()
     })()
     return () => { cancelled = true }
-  }, [position?.lat, position?.lng, aimLineTarget?.lat, aimLineTarget?.lng, elevCacheVersion])
+  }, [position?.lat, position?.lng, aimLineTarget?.lat, aimLineTarget?.lng, currentHole?.green.center?.lat, currentHole?.green.center?.lng, elevCacheVersion])
 
   // Pre-fetch elevation for every hole's tee, green centre, and landing zone at
   // course load so switching holes shows the elevation instantly (no per-hole
@@ -857,8 +864,7 @@ export default function GpsPage() {
   const apBearing = (aimLineTarget && greenCtr) ? calcBearing(aimLineTarget, greenCtr) : null
   const apHeadwind = (wind && apBearing !== null) ? windComponents(wind.speed, wind.direction, apBearing).headwind : 0
   const apWindAdjYds = (wind && apValid) ? windPlaysLikeYards(apHeadwind, tapToGreenDist!) : 0
-  const greenElevM = greenCtr ? (elevCacheRef.current[`${greenCtr.lat.toFixed(5)},${greenCtr.lng.toFixed(5)}`] ?? null) : null
-  const apElevDeltaFt = (elevM.target !== null && greenElevM !== null) ? (greenElevM - elevM.target) * METERS_TO_FEET : null
+  const apElevDeltaFt = (elevM.target !== null && elevM.green !== null) ? (elevM.green - elevM.target) * METERS_TO_FEET : null
   const apElevAdjYds = apElevDeltaFt !== null ? Math.round(apElevDeltaFt * ELEV_YARDS_PER_FOOT) : 0
   const apPlaysLike = apValid ? Math.max(1, tapToGreenDist! + apWindAdjYds + apElevAdjYds) : null
   const apPlaysDelta = apPlaysLike !== null ? apPlaysLike - tapToGreenDist! : 0
