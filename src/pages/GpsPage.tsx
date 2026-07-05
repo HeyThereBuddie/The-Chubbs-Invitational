@@ -851,6 +851,18 @@ export default function GpsPage() {
   const playsLikeYds = validAim ? Math.max(1, aimLineDist! + windAdjYds + elevAdjYds) : null
   const playsLikeDelta = playsLikeYds !== null ? playsLikeYds - aimLineDist! : 0
 
+  // Plays-like for the approach shot (aim target → green)
+  const greenCtr = currentHole?.green.center ?? null
+  const apValid = tapToGreenDist !== null && tapToGreenDist > 0
+  const apBearing = (aimLineTarget && greenCtr) ? calcBearing(aimLineTarget, greenCtr) : null
+  const apHeadwind = (wind && apBearing !== null) ? windComponents(wind.speed, wind.direction, apBearing).headwind : 0
+  const apWindAdjYds = (wind && apValid) ? windPlaysLikeYards(apHeadwind, tapToGreenDist!) : 0
+  const greenElevM = greenCtr ? (elevCacheRef.current[`${greenCtr.lat.toFixed(5)},${greenCtr.lng.toFixed(5)}`] ?? null) : null
+  const apElevDeltaFt = (elevM.target !== null && greenElevM !== null) ? (greenElevM - elevM.target) * METERS_TO_FEET : null
+  const apElevAdjYds = apElevDeltaFt !== null ? Math.round(apElevDeltaFt * ELEV_YARDS_PER_FOOT) : 0
+  const apPlaysLike = apValid ? Math.max(1, tapToGreenDist! + apWindAdjYds + apElevAdjYds) : null
+  const apPlaysDelta = apPlaysLike !== null ? apPlaysLike - tapToGreenDist! : 0
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1044,7 +1056,7 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Tap-to-green "money" number — sporty pill beside the line (hidden at 0) */}
+          {/* Tap-to-green "money" number — sporty pill w/ plays-like (hidden at 0) */}
           {tapToGreenMid && tapToGreenDist !== null && tapToGreenDist > 0 && (
             <Marker longitude={tapToGreenMid.lng} latitude={tapToGreenMid.lat} anchor="right" offset={[-12, 0]}>
               <div style={{
@@ -1055,10 +1067,30 @@ export default function GpsPage() {
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
                 <div style={{ width: 3, background: 'linear-gradient(180deg,#f2d883,#D4A53A)' }} />
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, padding: '4px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, padding: '4px 11px' }}>
                   <span style={{ fontFamily: 'Bebas Neue', fontSize: 27, lineHeight: 1, letterSpacing: 0.5, color: '#f2cd6c', fontVariantNumeric: 'tabular-nums' }}>{tapToGreenDist}</span>
-                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: 'rgba(242,205,108,0.6)' }}>YDS</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(242,205,108,0.6)' }}>y</span>
                 </div>
+                {apPlaysLike !== null && Math.abs(apPlaysDelta) >= 1 && (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
+                    padding: '3px 11px', borderLeft: '1px solid rgba(212,165,58,0.18)',
+                    background: apPlaysDelta > 0 ? 'rgba(255,77,79,0.10)' : 'rgba(74,222,128,0.10)',
+                  }}>
+                    <span style={{ fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(242,205,108,0.5)', lineHeight: 1 }}>PLAYS LIKE</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 0.85, letterSpacing: 0.5, color: apPlaysDelta > 0 ? '#ff6b6b' : '#51e08a', fontVariantNumeric: 'tabular-nums' }}>{apPlaysLike}</span>
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {apWindAdjYds ? (
+                          <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 0.2, padding: '1px 4px', borderRadius: 4, background: 'rgba(96,165,250,0.20)', color: '#93c5fd' }}>W{apWindAdjYds > 0 ? '+' : ''}{apWindAdjYds}</span>
+                        ) : null}
+                        {apElevAdjYds ? (
+                          <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 0.2, padding: '1px 4px', borderRadius: 4, background: 'rgba(212,165,58,0.22)', color: '#e8c766' }}>E{apElevAdjYds > 0 ? '+' : ''}{apElevAdjYds}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </Marker>
           )}
@@ -1076,9 +1108,9 @@ export default function GpsPage() {
                 {/* leading accent bar */}
                 <div style={{ width: 3, background: 'linear-gradient(180deg,#ffffff,rgba(255,255,255,0.35))' }} />
                 {/* raw yardage */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, padding: '4px 11px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, padding: '4px 11px' }}>
                   <span style={{ fontFamily: 'Bebas Neue', fontSize: 26, lineHeight: 1, letterSpacing: 0.5, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{aimLineDist}</span>
-                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: 'rgba(255,255,255,0.42)' }}>YDS</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.42)' }}>y</span>
                 </div>
                 {/* plays like — only when wind/elevation actually change it */}
                 {playsLikeYds !== null && Math.abs(playsLikeDelta) >= 1 && (
