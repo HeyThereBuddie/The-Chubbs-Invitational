@@ -255,7 +255,6 @@ export default function GpsPage() {
   const autoOpenedHoleRef = useRef(0)
   const lastTargetPosRef  = useRef<LatLng | null>(null)
   const lastTargetHoleRef = useRef(0)
-  const lastElevFetchRef  = useRef(0)
   const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
@@ -712,11 +711,6 @@ export default function GpsPage() {
     if (!(pKey in cache)) need.push({ key: pKey, lat: +position.lat.toFixed(4), lng: +position.lng.toFixed(4) })
     if (!(tKey in cache)) need.push({ key: tKey, lat: +aimLineTarget.lat.toFixed(5), lng: +aimLineTarget.lng.toFixed(5) })
     if (need.length === 0) { apply(); return }
-
-    // Throttle network fetches to at most one per 12 s so elevation lookups can't
-    // rate-limit the shared Open-Meteo host (which also serves the wind data).
-    if (Date.now() - lastElevFetchRef.current < 12000) return
-    lastElevFetchRef.current = Date.now()
 
     let cancelled = false
     ;(async () => {
