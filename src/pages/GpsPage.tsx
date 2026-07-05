@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Target, Navigation, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Target, Navigation, ChevronDown, X } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
@@ -236,6 +236,7 @@ export default function GpsPage() {
 
   const [otherPositions, setOtherPositions] = useState<PlayerPosition[]>([])
   const [selectedCartPlayerId, setSelectedCartPlayerId] = useState<string | null>(null)
+  const [holePickerOpen, setHolePickerOpen] = useState(false)
   const [wind, setWind] = useState<WindData | null>(null)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
@@ -882,54 +883,6 @@ export default function GpsPage() {
       display: 'flex', flexDirection: 'column',
       zIndex: 60, background: 'var(--bg)', overscrollBehavior: 'none',
     }}>
-      {/* Hole selector strip */}
-      <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--bdr)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', gap: 4 }}>
-          <button className="pressable" onClick={() => navigate('/')} style={{
-            padding: '4px 8px', background: 'none', border: 'none',
-            color: 'var(--tx3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            fontSize: 12, flexShrink: 0,
-          }}>
-            <X size={16} />
-          </button>
-          <button className="pressable" onClick={() => setSelectedHole(h => Math.max(1, h - 1))} disabled={selectedHole === 1}
-            style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 1 ? 0.3 : 1 }}>
-            <ChevronLeft size={18} />
-          </button>
-
-          <div style={{ flex: 1, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            <div style={{ display: 'flex', gap: 4, paddingBottom: 4 }}>
-              {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
-                const active = selectedHole === hole, hasData = holeHasData(hole)
-                return (
-                  <button key={hole} className="pressable" onClick={() => setSelectedHole(hole)} style={{
-                    minWidth: isNarrow ? 32 : 38, height: isNarrow ? 28 : 38, borderRadius: 10, flexShrink: 0,
-                    border: active ? '1px solid var(--gold)' : '1px solid var(--bdr)',
-                    background: active
-                      ? 'linear-gradient(180deg, var(--gold-25), var(--gold-15))'
-                      : 'var(--surf)',
-                    boxShadow: active ? '0 0 10px var(--gold-25), var(--elev-1)' : 'none',
-                    cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-                    transform: active ? 'scale(1.08)' : 'scale(1)',
-                    transition: 'transform 0.15s var(--spring), border-color 0.15s, background 0.15s, box-shadow 0.15s',
-                    opacity: hasData ? 1 : 0.5,
-                  }}>
-                    <span style={{ fontSize: isNarrow ? 10 : 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: active ? 'var(--gold)' : 'var(--tx2)', lineHeight: 1 }}>{hole}</span>
-                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: hasData ? '#22c55e' : 'var(--bdr)', flexShrink: 0 }} />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <button className="pressable" onClick={() => setSelectedHole(h => Math.min(18, h + 1))} disabled={selectedHole === 18}
-            style={{ padding: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', opacity: selectedHole === 18 ? 0.3 : 1 }}>
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
-
       {/* Improvement 3: Map fills entire remaining space; HUD floats over the bottom */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         <Map
@@ -1159,6 +1112,60 @@ export default function GpsPage() {
           ))}
         </Map>
 
+        {/* Exit GPS — small floating button (replaces the old top bar's X) */}
+        <button className="pressable" onClick={() => navigate('/')} style={{
+          position: 'absolute', top: 8, left: 8, zIndex: 12,
+          width: 34, height: 34, borderRadius: '50%',
+          background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+        }}>
+          <X size={16} />
+        </button>
+
+        {/* Hole picker — slides down from the top when the hole number is tapped */}
+        {holePickerOpen && (
+          <div onClick={() => setHolePickerOpen(false)} style={{
+            position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
+          }} />
+        )}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 31,
+          background: 'var(--panel)', borderRadius: '0 0 20px 20px',
+          boxShadow: '0 10px 34px rgba(0,0,0,0.55)',
+          padding: '12px 12px 16px',
+          transform: holePickerOpen ? 'translateY(0)' : 'translateY(-115%)',
+          transition: 'transform 0.34s cubic-bezier(0.32,0.72,0,1)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '0 2px' }}>
+            <span className="section-label">Select Hole</span>
+            <button className="pressable" onClick={() => setHolePickerOpen(false)} style={{
+              width: 30, height: 30, borderRadius: '50%', background: 'var(--surf2)', border: '1px solid var(--bdr)',
+              color: 'var(--tx3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            }}><X size={15} /></button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 7 }}>
+            {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
+              const active = selectedHole === hole, hasData = holeHasData(hole)
+              return (
+                <button key={hole} className="pressable" onClick={() => { setSelectedHole(hole); setHolePickerOpen(false) }} style={{
+                  aspectRatio: '1 / 1', borderRadius: 12,
+                  border: active ? '1px solid var(--gold)' : '1px solid var(--bdr)',
+                  background: active ? 'linear-gradient(180deg, var(--gold-25), var(--gold-15))' : 'var(--surf)',
+                  color: active ? 'var(--gold)' : 'var(--tx2)',
+                  boxShadow: active ? '0 0 10px var(--gold-25), var(--elev-1)' : 'none',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                  cursor: 'pointer', opacity: hasData ? 1 : 0.5,
+                }}>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 1, letterSpacing: 0.5, fontVariantNumeric: 'tabular-nums' }}>{hole}</span>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: hasData ? '#22c55e' : 'var(--bdr2)' }} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Top-right badges: GPS status + sim mode toggle */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
           {gpsStatus !== 'ok' && !simMode && (
@@ -1314,7 +1321,7 @@ export default function GpsPage() {
             }
           }
           return (
-            <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ position: 'absolute', top: 50, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Hole + Currently chip */}
               <div style={{
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
@@ -1322,8 +1329,16 @@ export default function GpsPage() {
                 padding: isNarrow ? '6px 8px' : '8px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
               }}>
-                <div style={{ fontFamily: 'Bebas Neue', fontSize: holeNumSize, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
+                <button className="pressable" onClick={() => setHolePickerOpen(true)} style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: holeNumSize, letterSpacing: 1, lineHeight: 1, color: '#D4A53A' }}>{selectedHole}</div>
+                    <ChevronDown size={isNarrow ? 13 : 17} color="rgba(212,165,58,0.75)" style={{ marginTop: 3 }} />
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Par {parForHole}</div>
+                </button>
                 <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.15)', margin: '5px 0' }} />
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>Currently</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
