@@ -608,14 +608,18 @@ export default function GpsPage() {
       const par = resolvePar(selectedHole, course?.holes)
       const lz = currentHole?.landingZone ?? null
       let auto: LatLng
-      if (par <= 3 || distToGreen <= 200) {
-        // Par 3, or within approach range: aim at the middle of the green.
+      if (par <= 3) {
+        // Par 3: always aim at the middle of the green.
         auto = green
       } else if (lz && haversineYards(lz, green) < distToGreen - 10) {
-        // Par 4/5: the mapped landing zone, while it's still ahead of the player.
+        // Par 4/5: the mapped landing zone, while it's still ahead of the player
+        // (takes priority over the approach snap so tee shots aim at the LZ).
         auto = lz
+      } else if (distToGreen <= 200) {
+        // Past the landing zone (or a short hole with no LZ ahead): aim at the green.
+        auto = green
       } else {
-        // No usable landing zone ahead: halfway to the green.
+        // Par 4/5 with no landing zone mapped: halfway to the green.
         auto = { lat: (position.lat + green.lat) / 2, lng: (position.lng + green.lng) / 2 }
       }
       setTapPoint(auto)
