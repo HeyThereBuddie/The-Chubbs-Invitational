@@ -1044,47 +1044,56 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Aim line distance label (+ plays-like for wind & elevation) */}
+          {/* Aim-line distance + plays-like — a horizontal pill beside the aim line */}
           {aimLineMid && aimLineDist !== null && aimLineDist <= 9999 && (
-            <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="center">
+            <Marker longitude={aimLineMid.lng} latitude={aimLineMid.lat} anchor="right" offset={[-12, 0]}>
               <div style={{
-                background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
-                color: '#ffffff', borderRadius: 18, padding: '5px 13px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                border: '1px solid rgba(255,255,255,0.22)',
-                boxShadow: '0 0 16px rgba(255,255,255,0.12), 0 2px 10px rgba(0,0,0,0.65)',
+                display: 'flex', alignItems: 'stretch',
+                background: 'rgba(8,8,12,0.85)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                borderRadius: 999, border: '1px solid rgba(255,255,255,0.20)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.6)', overflow: 'hidden',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 0.5, lineHeight: 1 }}>{aimLineDist}</span>
-                  <span style={{ fontSize: 10, opacity: 0.55, fontWeight: 600, letterSpacing: 0.5 }}>YDS</span>
+                {/* Raw yardage */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, padding: '6px 12px' }}>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 26, lineHeight: 1, color: '#fff', letterSpacing: 0.5 }}>{aimLineDist}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>YDS</span>
                 </div>
-                {playsLikeYds !== null && Math.abs(playsLikeDelta) >= 2 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-                    <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.45)' }}>PLAYS</span>
-                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, lineHeight: 1, letterSpacing: 0.5, color: playsLikeDelta > 0 ? '#f87171' : '#4ade80' }}>{playsLikeYds}</span>
-                    <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 }}>
-                      {[windAdjYds ? `W${windAdjYds > 0 ? '+' : ''}${windAdjYds}` : '', elevAdjYds ? `E${elevAdjYds > 0 ? '+' : ''}${elevAdjYds}` : ''].filter(Boolean).join(' ')}
-                    </span>
+                {/* Plays like — only when wind/elevation actually change it */}
+                {playsLikeYds !== null && Math.abs(playsLikeDelta) >= 1 && (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
+                    padding: '4px 12px', borderLeft: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(255,255,255,0.06)',
+                  }}>
+                    <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, color: 'rgba(255,255,255,0.5)' }}>PLAYS LIKE</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                      <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 1, letterSpacing: 0.5, color: playsLikeDelta > 0 ? '#f87171' : '#4ade80' }}>{playsLikeYds}</span>
+                      {(windAdjYds || elevAdjYds) ? (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3 }}>
+                          {[windAdjYds ? `W${windAdjYds > 0 ? '+' : ''}${windAdjYds}` : '', elevAdjYds ? `E${elevAdjYds > 0 ? '+' : ''}${elevAdjYds}` : ''].filter(Boolean).join(' ')}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 )}
               </div>
             </Marker>
           )}
 
-          {/* Improvement 5: larger tap-to-green label — the "money" number */}
-          {tapToGreenMid && tapToGreenDist !== null && (
-            <Marker longitude={tapToGreenMid.lng} latitude={tapToGreenMid.lat} anchor="center">
+          {/* Tap-to-green "money" number — pill beside the line, above the reticle */}
+          {tapToGreenMid && tapToGreenDist !== null && tapToGreenDist > 0 && (
+            <Marker longitude={tapToGreenMid.lng} latitude={tapToGreenMid.lat} anchor="right" offset={[-12, 0]}>
               <div style={{
-                background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(10px)',
-                color: '#D4A53A', borderRadius: 22, padding: '5px 15px',
-                display: 'flex', alignItems: 'baseline', gap: 4,
-                border: '1px solid rgba(212,165,58,0.38)',
-                boxShadow: '0 0 20px rgba(212,165,58,0.22), 0 2px 10px rgba(0,0,0,0.65)',
+                background: 'rgba(8,8,12,0.85)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                color: '#D4A53A', borderRadius: 999, padding: '5px 14px',
+                display: 'flex', alignItems: 'baseline', gap: 3,
+                border: '1px solid rgba(212,165,58,0.40)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.6)',
                 whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 34, letterSpacing: 0.5, lineHeight: 1, color: '#D4A53A' }}>{tapToGreenDist}</span>
-                <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 600, letterSpacing: 0.5, color: '#D4A53A' }}>YDS</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 0.5, lineHeight: 1, color: '#D4A53A' }}>{tapToGreenDist}</span>
+                <span style={{ fontSize: 9, opacity: 0.7, fontWeight: 700, letterSpacing: 0.5, color: '#D4A53A' }}>YDS</span>
               </div>
             </Marker>
           )}

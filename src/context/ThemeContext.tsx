@@ -3,13 +3,13 @@ import { createContext, useContext, useEffect, useState } from 'react'
 type Theme = 'dark' | 'light'
 
 const ThemeContext = createContext<{ isDark: boolean; toggleTheme: () => void }>({
-  isDark: true,
+  isDark: false,
   toggleTheme: () => {},
 })
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem('chubbs-theme') as Theme) ?? 'dark'
+    () => (localStorage.getItem('chubbs-theme') as Theme) ?? 'light'
   )
 
   useEffect(() => {
