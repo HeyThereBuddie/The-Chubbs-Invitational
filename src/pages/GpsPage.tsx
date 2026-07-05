@@ -221,6 +221,7 @@ export default function GpsPage() {
   const [simPosition, setSimPosition] = useState<LatLng | null>(null)
   const position = simMode ? simPosition : realPosition
   const [elevM, setElevM] = useState<{ player: number | null; target: number | null }>({ player: null, target: null })
+  const [elevCacheVersion, setElevCacheVersion] = useState(0)
   const elevCacheRef = useRef<Record<string, number>>({})
   const [playerBearing, setPlayerBearing] = useState<number | null>(null)
   const [gpsStatus, setGpsStatus] = useState<'acquiring' | 'ok' | 'denied' | 'unavailable'>('acquiring')
@@ -738,7 +739,59 @@ export default function GpsPage() {
       if (!cancelled) apply()
     })()
     return () => { cancelled = true }
-  }, [position?.lat, position?.lng, aimLineTarget?.lat, aimLineTarget?.lng])
+  }, [position?.lat, position?.lng, aimLineTarget?.lat, aimLineTarget?.lng, elevCacheVersion])
+
+  // Pre-fetch elevation for every hole's tee, green centre, and landing zone at
+  // course load so switching holes shows the elevation instantly (no per-hole
+  // network wait). Cached under both the player (4dp) and target (5dp) keys.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    const holes = course?.holes
+    if (!holes?.length) return
+    const cache = elevCacheRef.current
+    const seen = new Set<string>()
+    const pts: LatLng[] = []
+    const add = (p?: LatLng | null) => {
+      if (!p) return
+      const k = `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`
+      if (seen.has(k)) return
+      seen.add(k); pts.push(p)
+    }
+    holes.forEach(h => { add(h.tee); add(h.green.center); add(h.landingZone) })
+    const missing = pts.filter(p => !(`${p.lat.toFixed(5)},${p.lng.toFixed(5)}` in cache))
+    if (!missing.length) return
+
+    let cancelled = false
+    ;(async () => {
+      for (let i = 0; i < missing.length && !cancelled; i += 50) {
+        const chunk = missing.slice(i, i + 50)
+        let arr: number[] | null = null
+        try {
+          const { data } = await supabase.functions.invoke('weather-', {
+            body: { elevation: chunk.map(p => ({ lat: p.lat, lng: p.lng })) },
+          })
+          if (Array.isArray(data?.elevations)) arr = data.elevations
+        } catch { /* proxy unavailable */ }
+        if (!arr) {
+          try {
+            const lats = chunk.map(p => p.lat).join(',')
+            const lngs = chunk.map(p => p.lng).join(',')
+            const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
+            if (res.ok) { const j = await res.json(); if (Array.isArray(j?.elevation)) arr = j.elevation }
+          } catch { /* offline */ }
+        }
+        if (arr) chunk.forEach((p, j) => {
+          const e = arr![j]
+          if (typeof e === 'number') {
+            cache[`${p.lat.toFixed(4)},${p.lng.toFixed(4)}`] = e
+            cache[`${p.lat.toFixed(5)},${p.lng.toFixed(5)}`] = e
+          }
+        })
+      }
+      if (!cancelled) setElevCacheVersion(v => v + 1)
+    })()
+    return () => { cancelled = true }
+  }, [course?.holes])
 
   // ── Early-exit renders ────────────────────────────────────────────────────
 
