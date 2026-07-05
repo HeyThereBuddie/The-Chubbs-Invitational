@@ -3,7 +3,7 @@ import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { Target, Navigation, ChevronDown, X } from 'lucide-react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
@@ -207,7 +207,6 @@ export default function GpsPage() {
   const { profile, isAdmin } = useAuth()
   const { effectiveTournamentId } = useYear()
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const mapRef = useRef<MapRef>(null)
 
   const scoring = usePlayerScoring()
@@ -1112,18 +1111,6 @@ export default function GpsPage() {
           ))}
         </Map>
 
-        {/* Exit GPS — small floating button (replaces the old top bar's X) */}
-        <button className="pressable" onClick={() => navigate('/')} style={{
-          position: 'absolute', top: 8, left: 8, zIndex: 12,
-          width: 34, height: 34, borderRadius: '50%',
-          background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-        }}>
-          <X size={16} />
-        </button>
-
         {/* Hole picker — slides down from the top when the hole number is tapped */}
         {holePickerOpen && (
           <div onClick={() => setHolePickerOpen(false)} style={{
@@ -1321,7 +1308,7 @@ export default function GpsPage() {
             }
           }
           return (
-            <div style={{ position: 'absolute', top: 50, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Hole + Currently chip */}
               <div style={{
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
