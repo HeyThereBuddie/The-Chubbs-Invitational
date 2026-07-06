@@ -713,12 +713,25 @@ export default function GpsPage() {
     const shotBearing = calcBearing(position, aimLineTarget)
     const base = Math.round(aimLineDist)
     const yds = [base - 40, base - 20, base, base + 20, base + 40].filter(y => y > 20)
-    const SPAN = 52 // degrees each side of the shot line
+    // Span each arc by a fixed LATERAL half-width (in yards) rather than a fixed
+    // angle, so the band always fits the zoom window instead of ballooning with
+    // distance. Convert that half-width to a per-ring angle via asin(w / r).
+    const halfYds = Math.min(55, base * 0.4)
+    const halfW = halfYds * 0.9144
     const arcCoords = (yd: number): [number, number][] => {
-      const r = yd * 0.9144, out: [number, number][] = []
-      for (let a = -SPAN; a <= SPAN; a += 4) { const p = offsetLatLng(position, shotBearing + a, r); out.push([p.lng, p.lat]) }
+      const r = yd * 0.9144
+      const A = Math.asin(Math.min(0.98, halfW / r)) * 180 / Math.PI // deg each side
+      const out: [number, number][] = []
+      const steps = 24
+      for (let i = 0; i <= steps; i++) {
+        const a = -A + (2 * A * i) / steps
+        const p = offsetLatLng(position, shotBearing + a, r)
+        out.push([p.lng, p.lat])
+      }
       return out
     }
+    const labelAngle = (yd: number) =>
+      -Math.asin(Math.min(0.98, halfW / (yd * 0.9144))) * 180 / Math.PI
     return {
       geojson: {
         type: 'FeatureCollection' as const,
@@ -729,7 +742,7 @@ export default function GpsPage() {
         })),
       },
       labels: yds.map(yd => {
-        const p = offsetLatLng(position, shotBearing - SPAN, yd * 0.9144)
+        const p = offsetLatLng(position, shotBearing + labelAngle(yd), yd * 0.9144)
         return { yd, lat: p.lat, lng: p.lng, base: yd === base }
       }),
     }
