@@ -730,8 +730,15 @@ export default function GpsPage() {
       }
       return out
     }
-    const labelAngle = (yd: number) =>
-      -Math.asin(Math.min(0.98, halfW / (yd * 0.9144))) * 180 / Math.PI
+    const endAngle = (yd: number) =>
+      Math.asin(Math.min(0.98, halfW / (yd * 0.9144))) * 180 / Math.PI
+    // "Plays like" for each ring: raw carry + wind (scales with distance) + a
+    // constant elevation offset (player → target). Wind headwind is along the shot.
+    const hw = wind ? windComponents(wind.speed, wind.direction, shotBearing).headwind : 0
+    const elevAdj = (elevM.player !== null && elevM.target !== null)
+      ? Math.round((elevM.target - elevM.player) * METERS_TO_FEET * ELEV_YARDS_PER_FOOT) : 0
+    const playsLike = (yd: number) =>
+      Math.max(1, Math.round(yd + (wind ? windPlaysLikeYards(hw, yd) : 0) + elevAdj))
     return {
       geojson: {
         type: 'FeatureCollection' as const,
@@ -742,8 +749,10 @@ export default function GpsPage() {
         })),
       },
       labels: yds.map(yd => {
-        const p = offsetLatLng(position, shotBearing + labelAngle(yd), yd * 0.9144)
-        return { yd, lat: p.lat, lng: p.lng, base: yd === base }
+        const A = endAngle(yd)
+        const left = offsetLatLng(position, shotBearing - A, yd * 0.9144)
+        const right = offsetLatLng(position, shotBearing + A, yd * 0.9144)
+        return { yd, pl: playsLike(yd), left, right, base: yd === base }
       }),
     }
   })() : null
@@ -1099,12 +1108,21 @@ export default function GpsPage() {
                 }} />
             </Source>
           )}
+          {/* Left = actual carry yardage; right = plays-like distance */}
           {scopeArcs?.labels.map(l => (
-            <Marker key={l.yd} longitude={l.lng} latitude={l.lat} anchor="right" offset={[-4, 0]}>
+            <Marker key={`yd-${l.yd}`} longitude={l.left.lng} latitude={l.left.lat} anchor="right" offset={[-4, 0]}>
               <div style={{
                 fontSize: 12, fontWeight: 800, color: l.base ? '#D4A53A' : '#fff',
                 textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap',
-              }}>{l.yd}y</div>
+              }}>{l.yd} yrds</div>
+            </Marker>
+          ))}
+          {scopeArcs?.labels.map(l => (
+            <Marker key={`pl-${l.yd}`} longitude={l.right.lng} latitude={l.right.lat} anchor="left" offset={[4, 0]}>
+              <div style={{
+                fontSize: 12, fontWeight: 800, color: l.base ? '#D4A53A' : '#4ade80',
+                textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap',
+              }}>{l.pl}</div>
             </Marker>
           ))}
 
