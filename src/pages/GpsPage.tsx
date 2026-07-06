@@ -97,6 +97,20 @@ function ReticleMarker({ scale = 1 }: { scale?: number }) {
   )
 }
 
+// Scope / sniper crosshair icon for the green-view button
+function ScopeIcon() {
+  return (
+    <svg width={24} height={24} viewBox="0 0 24 24" style={{ pointerEvents: 'none' }}>
+      <circle cx={12} cy={12} r={8} fill="none" stroke="#fff" strokeWidth={1.6} />
+      <line x1={12} y1={1}  x2={12} y2={5}  stroke="#fff" strokeWidth={1.6} strokeLinecap="round" />
+      <line x1={12} y1={19} x2={12} y2={23} stroke="#fff" strokeWidth={1.6} strokeLinecap="round" />
+      <line x1={1}  y1={12} x2={5}  y2={12} stroke="#fff" strokeWidth={1.6} strokeLinecap="round" />
+      <line x1={19} y1={12} x2={23} y2={12} stroke="#fff" strokeWidth={1.6} strokeLinecap="round" />
+      <circle cx={12} cy={12} r={1.7} fill="#fff" />
+    </svg>
+  )
+}
+
 // Improvement 2: flag pin — the universal golf destination symbol
 function FlagPin() {
   return (
@@ -236,6 +250,7 @@ export default function GpsPage() {
   const [otherPositions, setOtherPositions] = useState<PlayerPosition[]>([])
   const [selectedCartPlayerId, setSelectedCartPlayerId] = useState<string | null>(null)
   const [holePickerOpen, setHolePickerOpen] = useState(false)
+  const [scopeMode, setScopeMode] = useState(false)
   const [wind, setWind] = useState<WindData | null>(null)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
@@ -692,6 +707,40 @@ export default function GpsPage() {
   const tapToGreenMid = tapPoint && currentHole?.green.center
     ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
 
+  // Scope/green-view: concentric range rings (yards) around the aim target.
+  const scopeRingsGeoJson = (scopeMode && aimLineTarget) ? {
+    type: 'FeatureCollection' as const,
+    features: [10, 20, 30].map((yd, i) => {
+      const r = yd * 0.9144
+      const coords: [number, number][] = []
+      for (let a = 0; a <= 48; a++) { const p = offsetLatLng(aimLineTarget, (a / 48) * 360, r); coords.push([p.lng, p.lat]) }
+      return { type: 'Feature' as const, id: i, geometry: { type: 'LineString' as const, coordinates: coords }, properties: {} }
+    }),
+  } : null
+
+  // Zoom the map tightly onto the target when scope mode is on (a "sniper" view).
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!scopeMode || !aimLineTarget) return
+    followPausedRef.current = true
+    const bearing = position ? calcBearing(position, aimLineTarget)
+      : (currentHole?.tee && currentHole?.green.center ? calcBearing(currentHole.tee, currentHole.green.center) : 0)
+    mapRef.current?.easeTo({
+      center: [aimLineTarget.lng, aimLineTarget.lat],
+      zoom: 18.4, bearing, pitch: 0,
+      padding: { top: 0, bottom: 0, left: 0, right: 0 },
+      duration: 600, essential: false,
+    })
+  }, [scopeMode, aimLineTarget?.lat, aimLineTarget?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leave scope mode: resume the normal hole framing.
+  const exitScope = () => {
+    setScopeMode(false)
+    followPausedRef.current = false
+    if (currentHole) flyToHole(currentHole)
+  }
+
+
   // Auto-open score sheet once per hole when player reaches the green (~20 yds)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
@@ -1010,11 +1059,27 @@ export default function GpsPage() {
             </Marker>
           )}
 
+          {/* Scope range rings around the target (green-view mode) */}
+          {scopeRingsGeoJson && (
+            <Source id="scope-rings" type="geojson" data={scopeRingsGeoJson}>
+              <Layer id="scope-rings-line" type="line"
+                paint={{ 'line-color': 'rgba(255,255,255,0.6)', 'line-width': 1.5, 'line-dasharray': [3, 3] }} />
+            </Source>
+          )}
+          {scopeMode && aimLineTarget && [10, 20, 30].map(yd => {
+            const p = offsetLatLng(aimLineTarget, 90, yd * 0.9144)
+            return (
+              <Marker key={yd} longitude={p.lng} latitude={p.lat} anchor="center">
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none' }}>{yd}y</div>
+              </Marker>
+            )
+          })}
+
           {/* Sniper reticle — at tap point if set, otherwise at green center.
               Shrinks within 200 yds of the green (approach range). */}
           {position && aimLineTarget && (
             <Marker longitude={aimLineTarget.lng} latitude={aimLineTarget.lat} anchor="center">
-              <ReticleMarker scale={centerDist !== null && centerDist <= 200 ? 0.7 : 1} />
+              <ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 200 ? 0.7 : 1)} />
             </Marker>
           )}
 
@@ -1111,6 +1176,25 @@ export default function GpsPage() {
           ))}
         </Map>
 
+        {/* Scope / green-view button — left edge; zooms tight onto the target */}
+        {position && aimLineTarget && (
+          <button
+            onClick={() => scopeMode ? exitScope() : setScopeMode(true)}
+            className="pressable"
+            style={{
+              position: 'absolute', left: 8, top: '46%', transform: 'translateY(-50%)', zIndex: 11,
+              width: 46, height: 46, borderRadius: '50%',
+              background: scopeMode ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.4)',
+              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              border: scopeMode ? '1.5px solid #fff' : '1.5px solid rgba(255,255,255,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              boxShadow: scopeMode ? '0 0 16px rgba(255,255,255,0.5)' : '0 2px 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            {scopeMode ? <X size={20} color="#111" /> : <ScopeIcon />}
+          </button>
+        )}
+
         {/* Hole picker — slides down from the top when the hole number is tapped */}
         {holePickerOpen && (
           <div onClick={() => setHolePickerOpen(false)} style={{
@@ -1132,12 +1216,12 @@ export default function GpsPage() {
               color: 'var(--tx3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
             }}><X size={15} /></button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 7 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 7 }}>
             {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => {
               const active = selectedHole === hole, hasData = holeHasData(hole)
               return (
                 <button key={hole} className="pressable" onClick={() => { setSelectedHole(hole); setHolePickerOpen(false) }} style={{
-                  aspectRatio: '1 / 1', borderRadius: 12,
+                  height: 54, borderRadius: 12,
                   border: active ? '1px solid var(--gold)' : '1px solid var(--bdr)',
                   background: active ? 'linear-gradient(180deg, var(--gold-25), var(--gold-15))' : 'var(--surf)',
                   color: active ? 'var(--gold)' : 'var(--tx2)',
