@@ -45,7 +45,8 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores'>('teams')
+  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass'>('teams')
+  const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -249,6 +250,23 @@ export default function AdminPanel() {
   }, [])
 
   useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
+
+  // Jackass-of-the-day results — admin-only (players vote but never see the tally)
+  useEffect(() => {
+    if (tab !== 'jackass') return
+    let cancelled = false
+    const load = async () => {
+      let q = supabase.from('leahey_votes').select('voter_id, nominee_id')
+      if (activeTournamentId) q = q.eq('tournament_id', activeTournamentId)
+      const { data } = await q
+      if (!cancelled) setLaheyVotes(data ?? [])
+    }
+    load()
+    const sub = supabase.channel('admin-jackass-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leahey_votes' }, load)
+      .subscribe()
+    return () => { cancelled = true; supabase.removeChannel(sub) }
+  }, [tab, activeTournamentId])
 
   useEffect(() => {
     // Load GPS state when visiting either GPS setup tab or Tournament tab (needed for Reset GPS button)
@@ -648,6 +666,7 @@ export default function AdminPanel() {
         {([
           { id: 'teams',      label: '⛳ Teams' },
           { id: 'scores',     label: '📝 Scores' },
+          { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
@@ -1687,6 +1706,78 @@ export default function AdminPanel() {
           <Scores />
         </div>
       )}
+
+      {/* ── Jackass of the Day (admin-only results) ─────────────── */}
+      {tab === 'jackass' && (() => {
+        const counts = profiles.reduce<Record<string, number>>((acc, p) => {
+          acc[p.id] = laheyVotes.filter(v => v.nominee_id === p.id).length
+          return acc
+        }, {})
+        const ranked = profiles
+          .filter(p => counts[p.id] > 0)
+          .sort((a, b) => counts[b.id] - counts[a.id])
+        const maxV = Math.max(1, ...Object.values(counts))
+        const total = laheyVotes.length
+        const nameOf = (id: string) => {
+          const p = profiles.find(x => x.id === id)
+          return p ? displayName(p) : 'Unknown'
+        }
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="glass" style={{ padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <span style={{ fontSize: 22 }}>🤠</span>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 2 }}>Jackass of the Day</div>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5 }}>
+                Players vote privately — the tally is only visible here. {total} total vote{total !== 1 ? 's' : ''}.
+              </div>
+            </div>
+
+            {/* Tally */}
+            <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14 }}>Standings</div>
+              {ranked.length === 0 && (
+                <div style={{ padding: 28, textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>No votes yet.</div>
+              )}
+              {ranked.map((p, i) => {
+                const count = counts[p.id]
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0
+                return (
+                  <div key={p.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#D4A53A' : 'var(--tx1)' }}>
+                        {i === 0 ? '👑 ' : ''}{displayName(p)}
+                      </span>
+                      <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 999, background: 'var(--surf2)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 999, width: `${(count / maxV) * 100}%`,
+                        background: i === 0 ? 'linear-gradient(90deg, #D4A53A, #e0a010)' : 'rgba(212,165,58,0.4)',
+                      }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Who voted for whom */}
+            {laheyVotes.length > 0 && (
+              <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14 }}>Who Voted</div>
+                {laheyVotes.map((v, i) => (
+                  <div key={v.voter_id + i} style={{ padding: '10px 20px', borderBottom: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx2)' }}>
+                    <strong style={{ color: 'var(--tx1)' }}>{nameOf(v.voter_id)}</strong>
+                    {' → '}
+                    <strong style={{ color: '#D4A53A' }}>{nameOf(v.nominee_id)}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
     </div>
   )

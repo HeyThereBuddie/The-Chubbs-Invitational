@@ -29,14 +29,6 @@ function SkeletonContestRow() {
   )
 }
 
-interface JackassFeedEvent {
-  id: string
-  voter_name: string | null
-  player_name: string | null
-  label: string
-  created_at: string
-}
-
 export default function Contests() {
   const { profile } = useAuth()
   const { showToast } = useToast()
@@ -62,22 +54,14 @@ export default function Contests() {
   const [votes,        setVotes]        = useState<LeaheyVote[]>([])
   const [myVote,       setMyVote]       = useState<string | null>(null)
   const [selected,     setSelected]     = useState<string | null>(null)
-  const [jackassFeed,  setJackassFeed]  = useState<JackassFeedEvent[]>([])
   const [casting,      setCasting]      = useState(false)
   const [votingOpen,   setVotingOpen]   = useState(false)
 
   useEffect(() => {
     if (tab === 'lahey') {
       fetchLaheyData()
-      fetchJackassFeed()
       const sub = supabase.channel('leahey-rt')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'leahey_votes' }, fetchLaheyData)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_events' }, payload => {
-          const ev = payload.new as JackassFeedEvent & { event_type: string }
-          if (ev.event_type === 'contest' && ev.label?.includes('Vote')) {
-            setJackassFeed(prev => [ev, ...prev].slice(0, 20))
-          }
-        })
         .subscribe()
       return () => { supabase.removeChannel(sub) }
     } else {
@@ -156,24 +140,6 @@ export default function Contests() {
         }
       }
     } catch { /* offline — cached data already shown */ }
-  }
-
-  const fetchJackassFeed = async () => {
-    if (!effectiveTournamentId) { setJackassFeed([]); return }
-    const { data } = await supabase
-      .from('feed_events')
-      .select('id, voter_name, player_name, label, created_at')
-      .eq('event_type', 'contest')
-      .in('label', ['Jackass Vote', 'Vote Changed'])
-      .order('created_at', { ascending: false })
-      .limit(20)
-    if (data !== null) { setJackassFeed(data as JackassFeedEvent[]); return }
-    // Supabase unavailable — fall back to local cache
-    const localEvents = await localDb.feed_events.where('tournament_id').equals(effectiveTournamentId).toArray()
-    setJackassFeed(localEvents
-      .filter(e => e.event_type === 'contest' && (e.label === 'Jackass Vote' || e.label === 'Vote Changed'))
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .slice(0, 20) as JackassFeedEvent[])
   }
 
   const fetchLaheyData = async () => {
@@ -301,7 +267,6 @@ export default function Contests() {
   const castVote = async () => {
     if (!selected || !profile || selected === myVote) return
     setCasting(true)
-    const nominee = laheyPlayers.find(p => p.id === selected)
     const isChange = !!myVote
 
     // Try Supabase first; queue on any network failure
@@ -319,32 +284,16 @@ export default function Contests() {
     if (!voteError) {
       navigator.vibrate?.([10, 150, 10])
       showToast(isChange ? 'Vote changed! 🔄 A new jackass rises.' : 'Vote cast! 🤠 Stay out of my way!')
-      await supabase.from('feed_events').insert({
-        event_type: 'contest', team_name: '',
-        voter_name: profile ? displayName(profile) : '',
-        player_name: nominee ? displayName(nominee) : null,
-        hole: 0, score: null,
-        label: isChange ? 'Vote Changed' : 'Jackass Vote',
-        emoji: '🤠',
-        ...(effectiveTournamentId && { tournament_id: effectiveTournamentId }),
-      })
+      // Jackass voting is private — no feed event so it never shows to players.
       setCasting(false)
       fetchLaheyData()
       return
     }
 
-    // Supabase unavailable — queue for later sync
+    // Supabase unavailable — queue for later sync (vote only, no feed event)
     await enqueue('upsert_leahey_vote', {
       voter_id: profile.id, nominee_id: selected, tournament_id: effectiveTournamentId,
     } satisfies UpsertLeaheyVotePayload, { voter_id: profile.id, tournament_id: effectiveTournamentId })
-    const feedId = crypto.randomUUID()
-    await enqueue('log_feed_event', {
-      id: feedId, event_type: 'contest', team_id: null, team_name: '',
-      voter_name: displayName(profile), player_name: nominee ? displayName(nominee) : null,
-      hole: 0, score: null,
-      label: isChange ? 'Vote Changed' : 'Jackass Vote', emoji: '🤠',
-      tournament_id: effectiveTournamentId,
-    } satisfies LogFeedEventPayload, { id: feedId })
     const fakeVote: LeaheyVote = { id: `offline-vote-${profile.id}`, voter_id: profile.id, nominee_id: selected, created_at: new Date().toISOString() }
     setVotes(prev => [...prev.filter(v => v.voter_id !== profile.id), fakeVote])
     setMyVote(selected)
@@ -352,19 +301,6 @@ export default function Contests() {
     navigator.vibrate?.([10, 150, 10])
     showToast(isChange ? 'Vote queued — will sync when online 🔄' : 'Vote queued — will sync when online 🤠')
   }
-
-  // ── Lahey vote tally helpers ─────────────────────────────────
-
-  const voteCounts = laheyPlayers.reduce<Record<string, number>>((acc, p) => {
-    acc[p.id] = votes.filter(v => v.nominee_id === p.id).length
-    return acc
-  }, {})
-
-  const maxVotes = Math.max(1, ...Object.values(voteCounts))
-  const frontrunnerEntry = Object.entries(voteCounts).sort(([, a], [, b]) => b - a)[0]
-  const frontrunnerPlayer = frontrunnerEntry && frontrunnerEntry[1] > 0
-    ? laheyPlayers.find(p => p.id === frontrunnerEntry[0])
-    : null
 
   // reset photo error state whenever the leader entry changes
   const leaderId = entries[0]?.id
@@ -601,17 +537,6 @@ export default function Contests() {
             </div>
           </div>
 
-          {frontrunnerPlayer && (
-            <div className="glass animate-fadeUp" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, borderColor: 'rgba(212,165,58,0.3)' }}>
-              <span style={{ fontSize: 28 }}>👑</span>
-              <div>
-                <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Current Front-Runner</div>
-                <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 16 }}>{displayName(frontrunnerPlayer)}</div>
-                <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{frontrunnerEntry[1]} vote{frontrunnerEntry[1] !== 1 ? 's' : ''}</div>
-              </div>
-            </div>
-          )}
-
           {!votingOpen ? (
             <div className="glass animate-fadeUp" style={{ padding: '32px', textAlign: 'center', marginBottom: 20, color: 'var(--tx3)' }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
@@ -660,82 +585,9 @@ export default function Contests() {
             </>
           )}
 
-          <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-              Live Vote Tally
-              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block' }} />
-            </div>
-            {laheyPlayers
-              .filter(p => voteCounts[p.id] > 0)
-              .sort((a, b) => voteCounts[b.id] - voteCounts[a.id])
-              .map((player, i) => {
-                const count = voteCounts[player.id]
-                const pct   = Math.round((count / votes.length) * 100)
-                return (
-                  <div key={player.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--bdr)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: i === 0 ? '#D4A53A' : 'var(--tx1)' }}>
-                        {i === 0 ? '👑 ' : ''}{displayName(player)}
-                      </span>
-                      <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{count} vote{count !== 1 ? 's' : ''} ({pct}%)</span>
-                    </div>
-                    <div style={{ height: 6, borderRadius: 999, background: 'var(--surf2)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 999, transition: 'width 0.5s ease',
-                        width: `${(count / maxVotes) * 100}%`,
-                        background: i === 0 ? 'linear-gradient(90deg, #D4A53A, #e0a010)' : 'rgba(212,165,58,0.4)',
-                      }} />
-                    </div>
-                  </div>
-                )
-              })}
-            {votes.length === 0 && (
-              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
-                No votes yet. Who's played like a complete jackass so far? 🤠
-              </div>
-            )}
-            {votes.length > 0 && (
-              <div style={{ padding: '10px 20px', fontSize: 12, color: 'var(--tx4)', textAlign: 'right' }}>
-                {votes.length} total vote{votes.length !== 1 ? 's' : ''}
-              </div>
-            )}
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--tx4)', textAlign: 'center', fontStyle: 'italic' }}>
+            Votes are private — results are revealed by the admins. 🤫
           </div>
-
-          {jackassFeed.length > 0 && (
-            <div className="glass" style={{ padding: 0, overflow: 'hidden', marginTop: 16 }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bdr)', fontWeight: 700, color: '#D4A53A', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                Vote Activity
-                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', display: 'inline-block' }} />
-              </div>
-              {jackassFeed.map((ev, i) => (
-                <div key={ev.id} style={{
-                  padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
-                  borderBottom: i < jackassFeed.length - 1 ? '1px solid var(--bdr)' : 'none',
-                }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>🤠</span>
-                  <div style={{ flex: 1, fontSize: 13, color: 'var(--tx2)' }}>
-                    {ev.label === 'Vote Changed' ? (
-                      <>
-                        <strong style={{ color: 'var(--tx1)' }}>{ev.voter_name}</strong>
-                        {' changed their vote to '}
-                        <strong style={{ color: '#D4A53A' }}>{ev.player_name}</strong>
-                      </>
-                    ) : (
-                      <>
-                        <strong style={{ color: 'var(--tx1)' }}>{ev.voter_name}</strong>
-                        {' voted '}
-                        <strong style={{ color: '#D4A53A' }}>{ev.player_name}</strong>
-                        {' for jackass'}
-                      </>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--tx4)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                    {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </>
       )}
     </div>
