@@ -707,16 +707,33 @@ export default function GpsPage() {
   const tapToGreenMid = tapPoint && currentHole?.green.center
     ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
 
-  // Scope/green-view: concentric range rings (yards) around the aim target.
-  const scopeRingsGeoJson = (scopeMode && aimLineTarget) ? {
-    type: 'FeatureCollection' as const,
-    features: [10, 20, 30].map((yd, i) => {
-      const r = yd * 0.9144
-      const coords: [number, number][] = []
-      for (let a = 0; a <= 48; a++) { const p = offsetLatLng(aimLineTarget, (a / 48) * 360, r); coords.push([p.lng, p.lat]) }
-      return { type: 'Feature' as const, id: i, geometry: { type: 'LineString' as const, coordinates: coords }, properties: {} }
-    }),
-  } : null
+  // Scope/green-view: carry-distance arcs sweeping across, centred on the PLAYER
+  // (so they read as "how far from where I'm hitting"), bracketing the target.
+  const scopeArcs = (scopeMode && position && aimLineTarget && aimLineDist !== null && aimLineDist <= 9999) ? (() => {
+    const shotBearing = calcBearing(position, aimLineTarget)
+    const base = Math.round(aimLineDist)
+    const yds = [base - 40, base - 20, base, base + 20, base + 40].filter(y => y > 20)
+    const SPAN = 52 // degrees each side of the shot line
+    const arcCoords = (yd: number): [number, number][] => {
+      const r = yd * 0.9144, out: [number, number][] = []
+      for (let a = -SPAN; a <= SPAN; a += 4) { const p = offsetLatLng(position, shotBearing + a, r); out.push([p.lng, p.lat]) }
+      return out
+    }
+    return {
+      geojson: {
+        type: 'FeatureCollection' as const,
+        features: yds.map((yd, i) => ({
+          type: 'Feature' as const, id: i,
+          geometry: { type: 'LineString' as const, coordinates: arcCoords(yd) },
+          properties: { base: yd === base },
+        })),
+      },
+      labels: yds.map(yd => {
+        const p = offsetLatLng(position, shotBearing - SPAN, yd * 0.9144)
+        return { yd, lat: p.lat, lng: p.lng, base: yd === base }
+      }),
+    }
+  })() : null
 
   // Zoom the map tightly onto the target when scope mode is on (a "sniper" view).
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1059,21 +1076,24 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Scope range rings around the target (green-view mode) */}
-          {scopeRingsGeoJson && (
-            <Source id="scope-rings" type="geojson" data={scopeRingsGeoJson}>
-              <Layer id="scope-rings-line" type="line"
-                paint={{ 'line-color': 'rgba(255,255,255,0.6)', 'line-width': 1.5, 'line-dasharray': [3, 3] }} />
+          {/* Scope carry-distance arcs from the player (green-view mode) */}
+          {scopeArcs && (
+            <Source id="scope-arcs" type="geojson" data={scopeArcs.geojson}>
+              <Layer id="scope-arcs-line" type="line"
+                paint={{
+                  'line-color': ['case', ['get', 'base'], '#D4A53A', 'rgba(255,255,255,0.75)'],
+                  'line-width': ['case', ['get', 'base'], 2.4, 1.4],
+                }} />
             </Source>
           )}
-          {scopeMode && aimLineTarget && [10, 20, 30].map(yd => {
-            const p = offsetLatLng(aimLineTarget, 90, yd * 0.9144)
-            return (
-              <Marker key={yd} longitude={p.lng} latitude={p.lat} anchor="center">
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none' }}>{yd}y</div>
-              </Marker>
-            )
-          })}
+          {scopeArcs?.labels.map(l => (
+            <Marker key={l.yd} longitude={l.lng} latitude={l.lat} anchor="right" offset={[-4, 0]}>
+              <div style={{
+                fontSize: 12, fontWeight: 800, color: l.base ? '#D4A53A' : '#fff',
+                textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap',
+              }}>{l.yd}y</div>
+            </Marker>
+          ))}
 
           {/* Sniper reticle — at tap point if set, otherwise at green center.
               Shrinks within 200 yds of the green (approach range). */}
