@@ -1227,13 +1227,13 @@ export default function GpsPage() {
           ))}
         </Map>
 
-        {/* Scope / green-view button — left edge; zooms tight onto the target */}
+        {/* Scope / green-view button — right edge; zooms tight onto the target */}
         {position && aimLineTarget && (
           <button
             onClick={() => scopeMode ? exitScope() : setScopeMode(true)}
             className="pressable"
             style={{
-              position: 'absolute', left: 8, top: '46%', transform: 'translateY(-50%)', zIndex: 11,
+              position: 'absolute', right: 8, top: '46%', transform: 'translateY(-50%)', zIndex: 11,
               width: 46, height: 46, borderRadius: '50%',
               background: scopeMode ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.4)',
               backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
