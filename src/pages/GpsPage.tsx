@@ -712,11 +712,11 @@ export default function GpsPage() {
   const scopeArcs = (scopeMode && position && aimLineTarget && aimLineDist !== null && aimLineDist <= 9999) ? (() => {
     const shotBearing = calcBearing(position, aimLineTarget)
     const base = Math.round(aimLineDist)
-    const yds = [base - 40, base - 20, base, base + 20, base + 40].filter(y => y > 20)
+    const yds = [base - 20, base - 10, base, base + 10, base + 20].filter(y => y > 20)
     // Span each arc by a fixed LATERAL half-width (in yards) rather than a fixed
     // angle, so the band always fits the zoom window instead of ballooning with
     // distance. Convert that half-width to a per-ring angle via asin(w / r).
-    const halfYds = Math.min(55, base * 0.4)
+    const halfYds = Math.min(22, base * 0.18)
     const halfW = halfYds * 0.9144
     const arcCoords = (yd: number): [number, number][] => {
       const r = yd * 0.9144
