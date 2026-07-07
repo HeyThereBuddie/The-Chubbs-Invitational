@@ -848,6 +848,16 @@ export default function GpsPage() {
     frameHole(tee, green, 800)
   }, [frameHole])
 
+  // Recenter around the player: frame from where they are on the hole to the
+  // green, and resume the follow-cam so it keeps tracking.
+  const recenterOnPlayer = useCallback(() => {
+    const green = currentHole?.green.center
+    if (!position || !green) return
+    followPausedRef.current = false
+    if (followPauseTimer.current) clearTimeout(followPauseTimer.current)
+    frameHole(position, green, 800)
+  }, [position, currentHole, frameHole])
+
   const [mapLoaded, setMapLoaded] = useState(false)
   const initialFlyDone = useRef(false)
 
@@ -1804,7 +1814,20 @@ export default function GpsPage() {
                   )}
                 </div>
               </div>
-              {/* Recenter button — separate, below chip */}
+              {/* Camera reset buttons — below the chip. "Me" frames the player →
+                  green; "Hole" frames the whole hole (tee → green). */}
+              {currentHole && position && (
+                <button onClick={recenterOnPlayer} style={{
+                  background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                  border: '1px solid rgba(255,255,255,0.14)', color: 'white',
+                  borderRadius: 12, padding: isNarrow ? '7px 10px' : '10px 14px', fontSize: 12, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                }}>
+                  <Navigation size={14} color="#3b82f6" fill="#3b82f6" />
+                  Me
+                </button>
+              )}
               {currentHole && (
                 <button onClick={() => flyToHole(currentHole)} style={{
                   background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
