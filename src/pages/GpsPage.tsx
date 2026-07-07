@@ -828,11 +828,13 @@ export default function GpsPage() {
   }, [selectedHole]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-target the sniper reticle:
+  //  • Inside 210 yds of the green → aim at the green (highest priority).
   //  • Par 3 → always the middle of the green.
-  //  • Par 4/5 → the mapped landing zone (while it's still ahead of the player),
-  //    else halfway to the green; snaps to the green once inside 200 yds.
-  // It re-sets on a new hole, after advancing ~30 yds toward the green (fresh
-  // target for the next shot), and when crossing inside 200 yds. Between those,
+  //  • Par 4/5 tee shot → the mapped landing zone (while it's still ahead).
+  //  • Otherwise → halfway to the green (a middle-of-the-fairway layup, so the
+  //    player→sniper and sniper→green yardages are equal).
+  // It re-sets on a new hole, after advancing ~20 yds toward the green (fresh
+  // target for the next shot), and when crossing inside 210 yds. Between those,
   // a manual tap to measure a different target sticks.
   useEffect(() => {
     const green = currentHole?.green.center
@@ -846,23 +848,23 @@ export default function GpsPage() {
     const last = lastTargetPosRef.current
     const lastDist = last ? haversineYards(last, green) : Infinity
     const movedToward = lastDist - distToGreen
-    const crossedInside200 = lastDist > 200 && distToGreen <= 200
-    if (holeChanged || last === null || movedToward >= 30 || crossedInside200) {
+    const crossedInside210 = lastDist > 210 && distToGreen <= 210
+    if (holeChanged || last === null || movedToward >= 20 || crossedInside210) {
       const par = resolvePar(selectedHole, course?.holes)
       const lz = currentHole?.landingZone ?? null
       let auto: LatLng
-      if (par <= 3) {
+      if (distToGreen <= 210) {
+        // Within approach range: aim at the green (takes priority over the layup).
+        auto = green
+      } else if (par <= 3) {
         // Par 3: always aim at the middle of the green.
         auto = green
       } else if (lz && haversineYards(lz, green) < distToGreen - 10) {
-        // Par 4/5: the mapped landing zone, while it's still ahead of the player
-        // (takes priority over the approach snap so tee shots aim at the LZ).
+        // Par 4/5 tee shot: the mapped landing zone while it's still ahead.
         auto = lz
-      } else if (distToGreen <= 200) {
-        // Past the landing zone (or a short hole with no LZ ahead): aim at the green.
-        auto = green
       } else {
-        // Par 4/5 with no landing zone mapped: halfway to the green.
+        // Layup: halfway to the green, in the middle of the fairway — equal
+        // yardages from the player to the sniper and from the sniper to the hole.
         auto = { lat: (position.lat + green.lat) / 2, lng: (position.lng + green.lng) / 2 }
       }
       setTapPoint(auto)
@@ -1360,10 +1362,10 @@ export default function GpsPage() {
           ))}
 
           {/* Sniper reticle — at tap point if set, otherwise at green center.
-              Shrinks within 200 yds of the green (approach range). */}
+              Shrinks within 210 yds of the green (approach range). */}
           {position && aimLineTarget && (
             <Marker longitude={aimLineTarget.lng} latitude={aimLineTarget.lat} anchor="center">
-              <ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 200 ? 0.7 : 1)} />
+              <ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 210 ? 0.7 : 1)} />
             </Marker>
           )}
 
