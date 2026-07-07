@@ -224,7 +224,9 @@ function useCompassHeading(active: boolean) {
       } else if (e.absolute && typeof e.alpha === 'number') {
         h = (360 - e.alpha) % 360             // spec alpha is counter-clockwise from north
       }
-      if (h !== null) setHeading(h)
+      if (h === null) return
+      // Low-pass smoothing over the shortest arc to steady the arrow (wrap-safe).
+      setHeading(prev => prev === null ? h! : (prev + normDeg(h! - prev) * 0.2 + 360) % 360)
     }
     window.addEventListener('deviceorientationabsolute', handler, true)
     window.addEventListener('deviceorientation', handler, true)
@@ -240,17 +242,25 @@ function useCompassHeading(active: boolean) {
 const normDeg = (d: number) => ((d % 360) + 540) % 360 - 180 // → [-180, 180)
 
 function BlindShotCompass({
-  targetBearing, distance, playsLike, heading, permission, onRequest, onClose,
+  targetBearing, distance, playsLike, heading, headingOffset, calibrated,
+  permission, onRequest, onCalibrate, onResetCalibration, onClose,
 }: {
   targetBearing: number | null
   distance: number | null
   playsLike: number | null
   heading: number | null
+  headingOffset: number
+  calibrated: boolean
   permission: CompassPerm
   onRequest: () => void
+  onCalibrate: () => void
+  onResetCalibration: () => void
   onClose: () => void
 }) {
-  const delta = (heading !== null && targetBearing !== null) ? normDeg(targetBearing - heading) : null
+  // Apply the field-calibration offset so the magnetic reading lines up with the
+  // true-north bearing we compute from GPS.
+  const corrected = heading !== null ? (heading + headingOffset + 360) % 360 : null
+  const delta = (corrected !== null && targetBearing !== null) ? normDeg(targetBearing - corrected) : null
   const aligned = delta !== null && Math.abs(delta) <= 5
   const gold = '#D4A53A', green = '#4ade80'
   const ring = aligned ? green : gold
@@ -339,8 +349,26 @@ function BlindShotCompass({
             </div>
           </div>
 
+          {/* Calibration — cancels magnetic declination + device bias in one tap */}
+          <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button onClick={onCalibrate} disabled={heading === null} className="pressable" style={{
+              padding: '10px 20px', borderRadius: 999, cursor: heading === null ? 'default' : 'pointer',
+              border: `1.5px solid ${gold}`, background: 'rgba(212,165,58,0.12)', color: gold,
+              fontWeight: 800, fontSize: 14, opacity: heading === null ? 0.4 : 1,
+            }}>Calibrate to visible target</button>
+            {calibrated ? (
+              <button onClick={onResetCalibration} style={{ background: 'none', border: 'none', color: green, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                ✓ Calibrated ({headingOffset > 0 ? '+' : ''}{Math.round(headingOffset)}°) — tap to reset
+              </button>
+            ) : (
+              <span style={{ fontSize: 11, opacity: 0.55, maxWidth: 280, textAlign: 'center' }}>
+                Aim the phone at a target you can see, then tap Calibrate for accurate bearings.
+              </span>
+            )}
+          </div>
+
           {/* Instructions */}
-          <p style={{ marginTop: 22, textAlign: 'center', fontSize: 13, lineHeight: 1.5, opacity: 0.72, maxWidth: 300 }}>
+          <p style={{ marginTop: 18, textAlign: 'center', fontSize: 13, lineHeight: 1.5, opacity: 0.72, maxWidth: 300 }}>
             Lay your phone <b>flat on the ground</b> behind the ball, top edge pointing down your line. Rotate until the arrow locks at the top — that’s your aim.
           </p>
         </>
@@ -415,6 +443,12 @@ export default function GpsPage() {
   const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
 
   const compass = useCompassHeading(blindShot)
+  const [headingOffset, setHeadingOffset] = useState<number>(() => {
+    const v = typeof localStorage !== 'undefined' ? localStorage.getItem('bsHeadingOffset') : null
+    return v ? parseFloat(v) || 0 : 0
+  })
+  const [calibrated, setCalibrated] = useState<boolean>(() =>
+    typeof localStorage !== 'undefined' && localStorage.getItem('bsHeadingOffset') !== null)
 
   const isNarrow = useMediaQuery('(max-width: 430px)')
   const holeNumSize  = isNarrow ? 32 : 52
@@ -1430,8 +1464,20 @@ export default function GpsPage() {
             distance={aimLineDist}
             playsLike={playsLikeYds}
             heading={compass.heading}
+            headingOffset={headingOffset}
+            calibrated={calibrated}
             permission={compass.permission}
             onRequest={() => void compass.request()}
+            onCalibrate={() => {
+              if (compass.heading === null || !position || !aimLineTarget) return
+              const off = normDeg(calcBearing(position, aimLineTarget) - compass.heading)
+              setHeadingOffset(off); setCalibrated(true)
+              try { localStorage.setItem('bsHeadingOffset', String(off)) } catch { /* ignore */ }
+            }}
+            onResetCalibration={() => {
+              setHeadingOffset(0); setCalibrated(false)
+              try { localStorage.removeItem('bsHeadingOffset') } catch { /* ignore */ }
+            }}
             onClose={() => setBlindShot(false)}
           />
         )}
