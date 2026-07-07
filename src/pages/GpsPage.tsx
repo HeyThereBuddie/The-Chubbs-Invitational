@@ -176,9 +176,9 @@ function ClubIcon({ club, size = 32 }: { club: string; size?: number }) {
 }
 
 // Small bunker glyph for the sand-distance chips.
-function SandIcon() {
+function SandIcon({ size = 11 }: { size?: number }) {
   return (
-    <svg width={13} height={13} viewBox="0 0 16 16" style={{ pointerEvents: 'none' }}>
+    <svg width={size} height={size} viewBox="0 0 16 16" style={{ pointerEvents: 'none' }}>
       <path d="M2 9 Q2 5 6 5 Q9 4.5 11 6 Q14 6.5 14 9.5 Q14 12 10 12 Q6 12.5 4 11.5 Q2 11 2 9 Z" fill="#3a2c10" opacity={0.5} />
       <circle cx={6} cy={8.6} r={0.8} fill="#3a2c10" />
       <circle cx={9} cy={9} r={0.8} fill="#3a2c10" />
@@ -1432,13 +1432,13 @@ export default function GpsPage() {
           {!scopeMode && !blindShot && bunkerLabels.map(b => (
             <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor={b.side === 1 ? 'left' : 'right'} offset={[b.side * 3, 0]}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 9,
+                display: 'flex', alignItems: 'center', gap: 2.5, padding: '1px 5px', borderRadius: 7,
                 background: 'rgba(224,196,132,0.94)', border: '1px solid rgba(0,0,0,0.18)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)', whiteSpace: 'nowrap', pointerEvents: 'none',
+                boxShadow: '0 1px 5px rgba(0,0,0,0.5)', whiteSpace: 'nowrap', pointerEvents: 'none',
               }}>
-                <SandIcon />
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#3a2c10', fontVariantNumeric: 'tabular-nums' }}>
-                  {b.front}<span style={{ opacity: 0.45 }}> / </span>{b.carry}
+                <SandIcon size={10} />
+                <span style={{ fontSize: 10, fontWeight: 800, color: '#3a2c10', fontVariantNumeric: 'tabular-nums' }}>
+                  {b.front}
                 </span>
               </div>
             </Marker>
