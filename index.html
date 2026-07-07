@@ -12,9 +12,34 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+      /* Portrait lock: block landscape on phones (manifest handles installed
+         Android; this covers iOS Safari, which ignores the manifest). Targets
+         short viewports so tablets/desktops are unaffected. */
+      #rotate-lock { display: none; }
+      @media (orientation: landscape) and (max-height: 540px) {
+        #root { display: none; }
+        #rotate-lock {
+          display: flex; position: fixed; inset: 0; z-index: 999999;
+          flex-direction: column; align-items: center; justify-content: center;
+          gap: 14px; text-align: center; padding: 24px;
+          background: #0d120f; color: #fff;
+          font-family: 'Inter', system-ui, sans-serif;
+        }
+        #rotate-lock .rl-icon { font-size: 46px; animation: rl-rot 2s ease-in-out infinite; }
+        #rotate-lock .rl-title { font-size: 18px; font-weight: 700; }
+        #rotate-lock .rl-sub { font-size: 13px; opacity: 0.6; max-width: 260px; line-height: 1.5; }
+      }
+      @keyframes rl-rot { 0%,55% { transform: rotate(0deg); } 75%,100% { transform: rotate(-90deg); } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="rotate-lock">
+      <div class="rl-icon">📱</div>
+      <div class="rl-title">Rotate your device</div>
+      <div class="rl-sub">The Chubbs is best played in portrait — turn your phone upright to continue.</div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
