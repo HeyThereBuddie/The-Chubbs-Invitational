@@ -175,6 +175,18 @@ function ClubIcon({ club, size = 32 }: { club: string; size?: number }) {
   )
 }
 
+// Small bunker glyph for the sand-distance chips.
+function SandIcon() {
+  return (
+    <svg width={13} height={13} viewBox="0 0 16 16" style={{ pointerEvents: 'none' }}>
+      <path d="M2 9 Q2 5 6 5 Q9 4.5 11 6 Q14 6.5 14 9.5 Q14 12 10 12 Q6 12.5 4 11.5 Q2 11 2 9 Z" fill="#3a2c10" opacity={0.5} />
+      <circle cx={6} cy={8.6} r={0.8} fill="#3a2c10" />
+      <circle cx={9} cy={9} r={0.8} fill="#3a2c10" />
+      <circle cx={11} cy={8} r={0.7} fill="#3a2c10" />
+    </svg>
+  )
+}
+
 // Improvement 2: flag pin — the universal golf destination symbol
 function FlagPin() {
   return (
@@ -775,6 +787,35 @@ export default function GpsPage() {
       label:  { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: labelArc }, properties: {} },
     }
   }, [currentHole])
+
+  // Bunker carry distances: for each mapped bunker that's ahead of the player and
+  // within the shot corridor, the reach (near edge) and carry (far edge) yards.
+  const bunkerLabels = useMemo(() => {
+    const green = currentHole?.green.center
+    const bunkers = currentHole?.bunkers
+    if (!position || !green || !bunkers?.length) return []
+    const aimBearing = calcBearing(position, green)
+    const playerToGreen = haversineYards(position, green)
+    const out: { id: number; lat: number; lng: number; front: number; carry: number }[] = []
+    bunkers.forEach((poly, i) => {
+      if (!poly || poly.length < 2) return
+      const clat = poly.reduce((s, p) => s + p.lat, 0) / poly.length
+      const clng = poly.reduce((s, p) => s + p.lng, 0) / poly.length
+      const centroid = { lat: clat, lng: clng }
+      // Ahead of the player (closer to the green than we are).
+      if (haversineYards(centroid, green) >= playerToGreen) return
+      // Within ~40 yds of the line of play (lateral offset from the aim bearing).
+      const distToCentroid = haversineYards(position, centroid)
+      const angleOff = Math.abs(normDeg(calcBearing(position, centroid) - aimBearing))
+      if (distToCentroid * Math.sin(angleOff * Math.PI / 180) > 40) return
+      // Reach (nearest vertex) and carry (farthest vertex).
+      let front = Infinity, carry = 0
+      poly.forEach(p => { const d = haversineYards(position, p); if (d < front) front = d; if (d > carry) carry = d })
+      if (carry < 15) return // essentially at your feet / already passed
+      out.push({ id: i, lat: clat, lng: clng, front, carry })
+    })
+    return out
+  }, [position, currentHole])
 
   const aimLineGeoJson = useMemo(() => {
     if (!position) return null
@@ -1378,6 +1419,22 @@ export default function GpsPage() {
               }} />
             </Marker>
           )}
+
+          {/* Bunker carry chips — reach / carry yards, in-play bunkers ahead */}
+          {!scopeMode && !blindShot && bunkerLabels.map(b => (
+            <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor="center">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 9,
+                background: 'rgba(224,196,132,0.94)', border: '1px solid rgba(0,0,0,0.18)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)', whiteSpace: 'nowrap', pointerEvents: 'none',
+              }}>
+                <SandIcon />
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#3a2c10', fontVariantNumeric: 'tabular-nums' }}>
+                  {b.front}<span style={{ opacity: 0.45 }}> / </span>{b.carry}
+                </span>
+              </div>
+            </Marker>
+          ))}
 
           {/* Scope carry-distance arcs from the player (green-view mode) */}
           {scopeArcs && (
