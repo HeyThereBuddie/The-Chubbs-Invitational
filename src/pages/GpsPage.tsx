@@ -112,6 +112,30 @@ function ScopeIcon() {
   )
 }
 
+// Simple club-head silhouette per club category — a "picture" for each club.
+function clubCategory(club: string): 'driver' | 'wood' | 'hybrid' | 'iron' | 'wedge' {
+  if (club === 'Dr') return 'driver'
+  if (/^\dW$/.test(club)) return 'wood'
+  if (club === 'Hyb') return 'hybrid'
+  if (['PW', 'GW', 'SW', 'LW'].includes(club)) return 'wedge'
+  return 'iron'
+}
+
+function ClubIcon({ club, size = 32, color = '#dfeee6' }: { club: string; size?: number; color?: string }) {
+  const cat = clubCategory(club)
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 44" fill="none" style={{ pointerEvents: 'none' }}>
+      <line x1={28} y1={4} x2={16} y2={30} stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+      <circle cx={28} cy={4} r={1.8} fill={color} />
+      {cat === 'driver' && <ellipse cx={13} cy={34} rx={10} ry={6.5} fill={color} />}
+      {cat === 'wood' && <ellipse cx={13} cy={34} rx={8} ry={5.5} fill={color} />}
+      {cat === 'hybrid' && <path d="M5 34 Q6 27.5 15 28.8 L18 32 Q17 38.5 8 38.5 Q5 37.5 5 34 Z" fill={color} />}
+      {cat === 'iron' && <path d="M6 37 L19 28 L21 31 L9 39.5 Z" fill={color} />}
+      {cat === 'wedge' && <path d="M4.5 38.5 L18 26.5 L21 29.5 L9 40.5 Z" fill={color} />}
+    </svg>
+  )
+}
+
 // Improvement 2: flag pin — the universal golf destination symbol
 function FlagPin() {
   return (
@@ -353,6 +377,7 @@ function BlindShotCompass({
               <div style={{ textAlign: 'center', minWidth: 84, padding: '10px 14px', borderRadius: 14, background: 'rgba(74,222,128,0.14)', border: `1px solid ${green}55` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: green }}>CLUB</div>
                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 34, lineHeight: 1, color: green }}>{club.club}</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 2 }}><ClubIcon club={club.club} size={30} /></div>
                 {club.note && <div style={{ fontSize: 10, opacity: 0.65 }}>{club.note}</div>}
               </div>
             )}
@@ -1419,17 +1444,6 @@ export default function GpsPage() {
                     </div>
                   </div>
                 )}
-                {/* club suggestion */}
-                {aimClub && (
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
-                    padding: '3px 11px', borderLeft: '1px solid rgba(255,255,255,0.10)',
-                    background: 'rgba(74,222,128,0.12)',
-                  }}>
-                    <span style={{ fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(255,255,255,0.4)', lineHeight: 1 }}>CLUB</span>
-                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 0.9, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
-                  </div>
-                )}
               </div>
             </Marker>
           )}
@@ -1551,8 +1565,21 @@ export default function GpsPage() {
           </div>
         </div>
 
-        {/* Top-right badges: GPS status + sim mode toggle */}
+        {/* Top-right badges: recommended club tile, GPS status, then sim controls */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+          {aimClub && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+              padding: '8px 12px 7px', borderRadius: 14, minWidth: 66,
+              background: 'linear-gradient(180deg, rgba(26,26,32,0.95), rgba(9,9,13,0.95))',
+              border: '1px solid rgba(74,222,128,0.38)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            }}>
+              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(255,255,255,0.42)', lineHeight: 1 }}>CLUB</span>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 0.95, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
+              <ClubIcon club={aimClub.club} size={32} />
+              {aimClub.note && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, color: '#fff', marginTop: 1 }}>{aimClub.note}</span>}
+            </div>
+          )}
           {gpsStatus !== 'ok' && !simMode && (
             <div style={{
               background: gpsStatus === 'acquiring' ? 'rgba(8,8,12,0.72)' : 'rgba(239,68,68,0.88)',
