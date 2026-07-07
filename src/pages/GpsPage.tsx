@@ -11,6 +11,7 @@ import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
 import { displayName, normalizeFairways } from '../lib/types'
 import { resolvePar } from '../lib/pars'
+import { resolveBag, recommendClub } from '../lib/clubs'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -242,12 +243,13 @@ function useCompassHeading(active: boolean) {
 const normDeg = (d: number) => ((d % 360) + 540) % 360 - 180 // → [-180, 180)
 
 function BlindShotCompass({
-  targetBearing, distance, playsLike, heading, headingOffset, calibrated,
+  targetBearing, distance, playsLike, club, heading, headingOffset, calibrated,
   permission, onRequest, onCalibrate, onResetCalibration, onClose,
 }: {
   targetBearing: number | null
   distance: number | null
   playsLike: number | null
+  club: { club: string; note?: string } | null
   heading: number | null
   headingOffset: number
   calibrated: boolean
@@ -347,6 +349,13 @@ function BlindShotCompass({
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: gold }}>PLAYS LIKE</div>
               <div style={{ fontFamily: 'Bebas Neue', fontSize: 34, lineHeight: 1, color: gold }}>{playsLike ?? '--'}<span style={{ fontSize: 15, opacity: 0.7 }}> y</span></div>
             </div>
+            {club && (
+              <div style={{ textAlign: 'center', minWidth: 84, padding: '10px 14px', borderRadius: 14, background: 'rgba(74,222,128,0.14)', border: `1px solid ${green}55` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: green }}>CLUB</div>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 34, lineHeight: 1, color: green }}>{club.club}</div>
+                {club.note && <div style={{ fontSize: 10, opacity: 0.65 }}>{club.note}</div>}
+              </div>
+            )}
           </div>
 
           {/* Calibration — cancels magnetic declination + device bias in one tap */}
@@ -443,6 +452,7 @@ export default function GpsPage() {
   const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
 
   const compass = useCompassHeading(blindShot)
+  const bag = useMemo(() => resolveBag(profile?.club_distances), [profile?.club_distances])
   const [headingOffset, setHeadingOffset] = useState<number>(() => {
     const v = typeof localStorage !== 'undefined' ? localStorage.getItem('bsHeadingOffset') : null
     return v ? parseFloat(v) || 0 : 0
@@ -945,7 +955,8 @@ export default function GpsPage() {
         const A = endAngle(yd)
         const left = offsetLatLng(position, shotBearing - A, yd * 0.9144)
         const right = offsetLatLng(position, shotBearing + A, yd * 0.9144)
-        return { yd, pl: playsLike(yd), left, right, base: yd === base }
+        const pl = playsLike(yd)
+        return { yd, pl, club: recommendClub(pl, bag)?.club ?? null, left, right, base: yd === base }
       }),
     }
   })() : null
@@ -1142,6 +1153,7 @@ export default function GpsPage() {
   const elevAdjYds = elevDeltaFt !== null ? Math.round(elevDeltaFt * ELEV_YARDS_PER_FOOT) : 0
   const playsLikeYds = validAim ? Math.max(1, aimLineDist! + windAdjYds + elevAdjYds) : null
   const playsLikeDelta = playsLikeYds !== null ? playsLikeYds - aimLineDist! : 0
+  const aimClub = recommendClub(playsLikeYds ?? aimLineDist, bag)
 
   // Plays-like for the approach shot (aim target → green)
   const greenCtr = currentHole?.green.center ?? null
@@ -1313,9 +1325,12 @@ export default function GpsPage() {
           {scopeArcs?.labels.map(l => (
             <Marker key={`pl-${l.yd}`} longitude={l.right.lng} latitude={l.right.lat} anchor="left" offset={[4, 0]}>
               <div style={{
-                fontSize: 12, fontWeight: 800, color: l.base ? '#D4A53A' : '#4ade80',
+                display: 'flex', alignItems: 'baseline', gap: 4,
                 textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap',
-              }}>{l.pl}</div>
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: l.base ? '#D4A53A' : '#4ade80' }}>{l.pl}</span>
+                {l.club && <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', opacity: 0.9 }}>{l.club}</span>}
+              </div>
             </Marker>
           ))}
 
@@ -1404,6 +1419,17 @@ export default function GpsPage() {
                     </div>
                   </div>
                 )}
+                {/* club suggestion */}
+                {aimClub && (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
+                    padding: '3px 11px', borderLeft: '1px solid rgba(255,255,255,0.10)',
+                    background: 'rgba(74,222,128,0.12)',
+                  }}>
+                    <span style={{ fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(255,255,255,0.4)', lineHeight: 1 }}>CLUB</span>
+                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, lineHeight: 0.9, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
+                  </div>
+                )}
               </div>
             </Marker>
           )}
@@ -1463,6 +1489,7 @@ export default function GpsPage() {
             targetBearing={position && aimLineTarget ? calcBearing(position, aimLineTarget) : null}
             distance={aimLineDist}
             playsLike={playsLikeYds}
+            club={recommendClub(playsLikeYds, bag)}
             heading={compass.heading}
             headingOffset={headingOffset}
             calibrated={calibrated}

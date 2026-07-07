@@ -1,4 +1,5 @@
 import { DEFAULT_PARS } from './pars'
+import type { ClubDist } from './clubs'
 
 export type Role = 'admin' | 'player'
 
@@ -18,6 +19,7 @@ export interface Profile {
   invite_token: string | null
   invite_response: 'yes' | 'no' | null
   invite_response_at: string | null
+  club_distances?: ClubDist[] | null
 }
 
 export function displayName(p: Pick<Profile, 'name' | 'nickname'>): string {

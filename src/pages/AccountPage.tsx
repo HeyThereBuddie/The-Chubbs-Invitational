@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { displayName } from '../lib/types'
+import { type ClubDist, DEFAULT_BAG, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
   || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
@@ -56,6 +57,9 @@ export default function AccountPage() {
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(DEFAULT_NOTIF_PREFS)
   const [prefSaving, setPrefSaving] = useState<string | null>(null)
   const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
+  const [bag, setBag] = useState<ClubDist[]>(DEFAULT_BAG)
+  const [sevenIron, setSevenIron] = useState('')
+  const [savingBag, setSavingBag] = useState(false)
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -152,8 +156,29 @@ export default function AccountPage() {
         handicap: profile.handicap != null ? String(profile.handicap) : '',
       })
       setEmailForm({ email: profile.email ?? '' })
+      setBag(resolveBag(profile.club_distances))
     }
   }, [profile])
+
+  const saveBag = async () => {
+    if (!profile) return
+    setSavingBag(true)
+    const { error } = await supabase.from('profiles')
+      .update({ club_distances: bag }).eq('id', profile.id)
+    setSavingBag(false)
+    if (error) { showToast(error.message, 'error'); return }
+    await refreshProfile()
+    showToast('Bag saved!')
+  }
+
+  const applySevenIron = () => {
+    const v = parseInt(sevenIron, 10)
+    if (!v || v < 40 || v > 260) { showToast('Enter a 7-iron carry between 40 and 260', 'error'); return }
+    setBag(prev => scaleBagTo7Iron(v).map(d => ({
+      ...d, enabled: prev.find(p => p.club === d.club)?.enabled ?? d.enabled,
+    })))
+    showToast('Bag scaled to your 7-iron')
+  }
 
   const saveProfile = async () => {
     if (!profile) return
@@ -402,6 +427,73 @@ export default function AccountPage() {
           <button className="btn-gold pressable" onClick={saveProfile} disabled={savingProfile} style={{ width: '100%', justifyContent: 'center' }}>
             {savingProfile ? 'Saving…' : 'Save Profile'}
           </button>
+        </div>
+      </section>
+
+      {/* ── My Bag (club distances for GPS recommendations) ── */}
+      <section className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
+        <div className="section-label" style={{ margin: '0 4px 8px' }}>My Bag</div>
+        <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--tx4)', lineHeight: 1.5 }}>
+            Your carry distances power the club suggestion on the GPS screen (matched to the
+            wind &amp; elevation adjusted “plays like” number). Set them exactly below, or just
+            enter your 7-iron to scale the whole bag.
+          </div>
+
+          {/* Quick 7-iron scaler */}
+          <div>
+            <label style={labelStyle}>Scale from 7-iron carry</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number" inputMode="numeric" placeholder="e.g. 155"
+                value={sevenIron} onChange={e => setSevenIron(e.target.value)}
+                min={40} max={260} style={{ ...inputStyle, flex: 1 }}
+              />
+              <button className="pressable" onClick={applySevenIron} style={{
+                padding: '0 18px', borderRadius: 12, border: '1px solid var(--gold)',
+                background: 'rgba(212,165,58,0.12)', color: 'var(--gold)', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>Scale bag</button>
+            </div>
+          </div>
+
+          {/* Per-club editor */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {bag.map((c, i) => (
+              <div key={c.club} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '6px 4px',
+                opacity: c.enabled ? 1 : 0.4,
+              }}>
+                <button
+                  onClick={() => setBag(prev => prev.map((p, j) => j === i ? { ...p, enabled: !p.enabled } : p))}
+                  aria-label={c.enabled ? 'Disable club' : 'Enable club'}
+                  style={{
+                    width: 24, height: 24, borderRadius: 6, flexShrink: 0, cursor: 'pointer',
+                    border: `1.5px solid ${c.enabled ? 'var(--gold)' : 'var(--tx4)'}`,
+                    background: c.enabled ? 'var(--gold)' : 'transparent',
+                    color: '#1a1206', fontWeight: 900, fontSize: 13, lineHeight: 1,
+                  }}
+                >{c.enabled ? '✓' : ''}</button>
+                <span style={{ width: 44, fontWeight: 800, fontSize: 15 }}>{c.club}</span>
+                <input
+                  type="number" inputMode="numeric" value={c.carry}
+                  onChange={e => setBag(prev => prev.map((p, j) => j === i ? { ...p, carry: parseInt(e.target.value, 10) || 0 } : p))}
+                  min={0} max={400}
+                  style={{ ...inputStyle, flex: 1, textAlign: 'right', padding: '8px 12px' }}
+                />
+                <span style={{ width: 20, fontSize: 13, color: 'var(--tx4)' }}>y</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="pressable" onClick={() => setBag(DEFAULT_BAG)} style={{
+              padding: '0 16px', height: 44, borderRadius: 12, border: '1px solid var(--line)',
+              background: 'transparent', color: 'var(--tx3)', fontWeight: 700, cursor: 'pointer',
+            }}>Reset defaults</button>
+            <button className="btn-gold pressable" onClick={saveBag} disabled={savingBag} style={{ flex: 1, justifyContent: 'center' }}>
+              {savingBag ? 'Saving…' : 'Save Bag'}
+            </button>
+          </div>
         </div>
       </section>
 
