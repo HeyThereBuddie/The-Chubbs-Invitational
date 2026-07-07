@@ -175,18 +175,6 @@ function ClubIcon({ club, size = 32 }: { club: string; size?: number }) {
   )
 }
 
-// Small bunker glyph for the sand-distance chips.
-function SandIcon({ size = 11 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" style={{ pointerEvents: 'none' }}>
-      <path d="M2 9 Q2 5 6 5 Q9 4.5 11 6 Q14 6.5 14 9.5 Q14 12 10 12 Q6 12.5 4 11.5 Q2 11 2 9 Z" fill="#3a2c10" opacity={0.5} />
-      <circle cx={6} cy={8.6} r={0.8} fill="#3a2c10" />
-      <circle cx={9} cy={9} r={0.8} fill="#3a2c10" />
-      <circle cx={11} cy={8} r={0.7} fill="#3a2c10" />
-    </svg>
-  )
-}
-
 // Improvement 2: flag pin — the universal golf destination symbol
 function FlagPin() {
   return (
@@ -796,7 +784,13 @@ export default function GpsPage() {
     if (!position || !green || !bunkers?.length) return []
     const aimBearing = calcBearing(position, green)
     const playerToGreen = haversineYards(position, green)
-    const out: { id: number; lat: number; lng: number; front: number; carry: number; side: number }[] = []
+    // The hole centerline (tee → green) defines "inside/outside" the hole, so the
+    // pill always lands on the outer flank of the bunker regardless of where the
+    // player stands. Falls back to the player's line if the tee isn't mapped.
+    const tee = currentHole?.tee ?? null
+    const centerBearing = tee ? calcBearing(tee, green) : aimBearing
+    const centerAnchor = tee ?? position
+    const out: { id: number; lat: number; lng: number; front: number; side: number }[] = []
     bunkers.forEach((poly, i) => {
       if (!poly || poly.length < 2) return
       const clat = poly.reduce((s, p) => s + p.lat, 0) / poly.length
@@ -808,18 +802,18 @@ export default function GpsPage() {
       const distToCentroid = haversineYards(position, centroid)
       const rel = normDeg(calcBearing(position, centroid) - aimBearing)
       if (distToCentroid * Math.sin(Math.abs(rel) * Math.PI / 180) > 40) return
-      // Reach (nearest vertex), carry (farthest vertex), and radius for the offset.
+      // Reach (nearest vertex), carry (farthest — for the skip test), radius.
       let front = Infinity, carry = 0, radius = 0
       poly.forEach(p => {
         const d = haversineYards(position, p); if (d < front) front = d; if (d > carry) carry = d
         const r = haversineYards(centroid, p); if (r > radius) radius = r
       })
       if (carry < 15) return // essentially at your feet / already passed
-      // Push the chip outward (away from the line of play) past the bunker edge so
-      // the sand stays fully visible; side = which flank it sits on.
-      const side = rel >= 0 ? 1 : -1
-      const lp = offsetLatLng(centroid, aimBearing + side * 90, (radius + 11) * 0.9144)
-      out.push({ id: i, lat: lp.lat, lng: lp.lng, front, carry, side })
+      // Which flank of the hole centerline the bunker sits on, then push the pill
+      // that way (outward, away from the fairway) past the bunker edge.
+      const side = normDeg(calcBearing(centerAnchor, centroid) - centerBearing) >= 0 ? 1 : -1
+      const lp = offsetLatLng(centroid, centerBearing + side * 90, (radius + 11) * 0.9144)
+      out.push({ id: i, lat: lp.lat, lng: lp.lng, front, side })
     })
     return out
   }, [position, currentHole])
@@ -1432,12 +1426,16 @@ export default function GpsPage() {
           {!scopeMode && !blindShot && bunkerLabels.map(b => (
             <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor={b.side === 1 ? 'left' : 'right'} offset={[b.side * 3, 0]}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 2.5, padding: '1px 5px', borderRadius: 7,
-                background: 'rgba(224,196,132,0.94)', border: '1px solid rgba(0,0,0,0.18)',
-                boxShadow: '0 1px 5px rgba(0,0,0,0.5)', whiteSpace: 'nowrap', pointerEvents: 'none',
+                display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', pointerEvents: 'none',
+                padding: b.side === 1 ? '2px 11px 2px 8px' : '2px 8px 2px 11px',
+                background: 'linear-gradient(180deg, rgba(28,28,34,0.96), rgba(10,10,14,0.96))',
+                border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 3px 10px rgba(0,0,0,0.55)',
+                borderRadius: 6,
+                // Bevel the outer (away-from-hole) edge so the tag "trails" outward.
+                clipPath: b.side === 1 ? 'polygon(0 0,100% 0,88% 100%,0 100%)' : 'polygon(12% 0,100% 0,100% 100%,0 100%)',
               }}>
-                <SandIcon size={10} />
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#3a2c10', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ width: 6, height: 6, borderRadius: 2, background: '#e0b84a', flexShrink: 0 }} />
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, lineHeight: 1, letterSpacing: 0.5, color: '#e8c766', fontVariantNumeric: 'tabular-nums' }}>
                   {b.front}
                 </span>
               </div>
