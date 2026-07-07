@@ -121,17 +121,56 @@ function clubCategory(club: string): 'driver' | 'wood' | 'hybrid' | 'iron' | 'we
   return 'iron'
 }
 
-function ClubIcon({ club, size = 32, color = '#dfeee6' }: { club: string; size?: number; color?: string }) {
+function ClubIcon({ club, size = 32 }: { club: string; size?: number }) {
   const cat = clubCategory(club)
+  const HEAD = '#e9d9a8', STEEL = '#c9cdd2', GRIP = '#2c2c2c', shade = 'rgba(0,0,0,0.28)'
   return (
-    <svg width={size} height={size} viewBox="0 0 40 44" fill="none" style={{ pointerEvents: 'none' }}>
-      <line x1={28} y1={4} x2={16} y2={30} stroke={color} strokeWidth={2.2} strokeLinecap="round" />
-      <circle cx={28} cy={4} r={1.8} fill={color} />
-      {cat === 'driver' && <ellipse cx={13} cy={34} rx={10} ry={6.5} fill={color} />}
-      {cat === 'wood' && <ellipse cx={13} cy={34} rx={8} ry={5.5} fill={color} />}
-      {cat === 'hybrid' && <path d="M5 34 Q6 27.5 15 28.8 L18 32 Q17 38.5 8 38.5 Q5 37.5 5 34 Z" fill={color} />}
-      {cat === 'iron' && <path d="M6 37 L19 28 L21 31 L9 39.5 Z" fill={color} />}
-      {cat === 'wedge' && <path d="M4.5 38.5 L18 26.5 L21 29.5 L9 40.5 Z" fill={color} />}
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ pointerEvents: 'none' }}>
+      {/* steel shaft */}
+      <line x1={41} y1={5} x2={19.5} y2={31} stroke={STEEL} strokeWidth={2.2} strokeLinecap="round" />
+      {/* rubber grip + highlight */}
+      <line x1={41.5} y1={4.5} x2={35} y2={12.3} stroke={GRIP} strokeWidth={5} strokeLinecap="round" />
+      <line x1={40} y1={6.2} x2={36.2} y2={10.8} stroke="rgba(255,255,255,0.25)" strokeWidth={1} strokeLinecap="round" />
+
+      {cat === 'driver' && (
+        <>
+          <path d="M20 28 Q24 31 22.4 37 Q20 44 11.5 44 Q3.5 44 2.6 36 Q2 30 8.6 28.4 Q15 27 20 28 Z" fill={HEAD} />
+          <path d="M6 40.5 Q3.6 36 5.4 31.2" stroke={shade} strokeWidth={1.2} fill="none" strokeLinecap="round" />
+        </>
+      )}
+      {cat === 'wood' && (
+        <>
+          <path d="M20 29 Q23 32 21.6 37 Q19.4 43 12 43 Q5 43 4.2 36.4 Q3.8 31 9 29.6 Q15 28.4 20 29 Z" fill={HEAD} />
+          <path d="M7 39.6 Q5 35.6 6.6 31.6" stroke={shade} strokeWidth={1.1} fill="none" strokeLinecap="round" />
+        </>
+      )}
+      {cat === 'hybrid' && (
+        <>
+          <path d="M20.4 30 Q22.6 33 21 37.4 Q19 42.4 12.6 42.4 Q6.4 42.4 5.4 37 Q5 32.4 10 31 Q15.6 30 20.4 30 Z" fill={HEAD} />
+          <path d="M8 39 Q6.4 35.6 7.8 32.2" stroke={shade} strokeWidth={1.1} fill="none" strokeLinecap="round" />
+        </>
+      )}
+      {cat === 'iron' && (
+        <>
+          <path d="M21.5 29.6 L24 32.6 L20.6 35.6 L18 32.6 Z" fill={STEEL} />
+          <path d="M4 44 L20.5 31 L23.4 34.2 L8.2 45.4 Q4.6 46 4 44 Z" fill={HEAD} />
+          <g stroke={shade} strokeWidth={0.85} strokeLinecap="round">
+            <line x1={7.4} y1={41.6} x2={19.2} y2={32.4} />
+            <line x1={9.2} y1={43.4} x2={21} y2={34.2} />
+          </g>
+        </>
+      )}
+      {cat === 'wedge' && (
+        <>
+          <path d="M21.2 29 L23.8 32 L20.4 35.2 L17.8 32 Z" fill={STEEL} />
+          <path d="M3 45 L20 30.4 L23 33.6 L7.4 46.6 Q3.6 47.2 3 45 Z" fill={HEAD} />
+          <g stroke={shade} strokeWidth={0.85} strokeLinecap="round">
+            <line x1={6.4} y1={42.6} x2={18.6} y2={32} />
+            <line x1={8.2} y1={44.2} x2={20.2} y2={33.8} />
+            <line x1={10} y1={45.8} x2={21.6} y2={35.4} />
+          </g>
+        </>
+      )}
     </svg>
   )
 }
@@ -377,7 +416,7 @@ function BlindShotCompass({
               <div style={{ textAlign: 'center', minWidth: 84, padding: '10px 14px', borderRadius: 14, background: 'rgba(74,222,128,0.14)', border: `1px solid ${green}55` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: green }}>CLUB</div>
                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 34, lineHeight: 1, color: green }}>{club.club}</div>
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 2 }}><ClubIcon club={club.club} size={30} /></div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 2 }}><ClubIcon club={club.club} size={34} /></div>
                 {club.note && <div style={{ fontSize: 10, opacity: 0.65 }}>{club.note}</div>}
               </div>
             )}
@@ -1578,7 +1617,7 @@ export default function GpsPage() {
             }}>
               <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(255,255,255,0.42)', lineHeight: 1 }}>CLUB</span>
               <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 0.95, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
-              <ClubIcon club={aimClub.club} size={32} />
+              <ClubIcon club={aimClub.club} size={38} />
               {aimClub.note && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, color: '#fff', marginTop: 1 }}>{aimClub.note}</span>}
             </div>
           )}
