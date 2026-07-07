@@ -862,7 +862,7 @@ export default function GpsPage() {
     // Approach tilt: flat overhead beyond APPROACH_YDS, ramping to MAX_PITCH as
     // the player nears the green. Gives the realistic tilted look on approach shots.
     const distYds = haversineYards(anchor, green)
-    const APPROACH_YDS = 200, MAX_PITCH = 48
+    const APPROACH_YDS = 200, MAX_PITCH = 60
     const pitch = distYds >= APPROACH_YDS
       ? 0
       : Math.min(MAX_PITCH, Math.round((APPROACH_YDS - distYds) / (APPROACH_YDS - 20) * MAX_PITCH))
@@ -876,7 +876,7 @@ export default function GpsPage() {
       // top clears the hole/wind chips (green sits here); bottom clears the HUD
       // (player pin sits here, above Enter Score); sides give the fairway margin.
       // Tilted views need extra top headroom so the green isn't pushed off screen.
-      padding: { top: pitch > 0 ? 150 : HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 48, right: 48 },
+      padding: { top: pitch >= 40 ? 175 : pitch > 0 ? 150 : HUD_TOP_PAD, bottom: HUD_BOTTOM_PAD, left: 48, right: 48 },
       maxZoom: 18.5,
       duration: durationMs,
       essential: false,
