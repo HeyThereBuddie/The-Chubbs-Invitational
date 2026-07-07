@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Target, Navigation, ChevronDown, X } from 'lucide-react'
+import { Target, Navigation, ChevronDown, X, Compass } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
@@ -193,6 +193,162 @@ function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, nu
   return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
 }
 
+// ─── Blind-shot compass ───────────────────────────────────────────────────────
+// Reads the device magnetometer (true-north heading) so a player can physically
+// aim at a target they can't see. iOS needs a one-time permission from a tap.
+type CompassPerm = 'unknown' | 'granted' | 'denied' | 'unsupported'
+
+function useCompassHeading(active: boolean) {
+  const [heading, setHeading] = useState<number | null>(null)
+  const [permission, setPermission] = useState<CompassPerm>('unknown')
+
+  const request = useCallback(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const DOE: any = typeof window !== 'undefined' ? (window as any).DeviceOrientationEvent : undefined
+    if (!DOE) { setPermission('unsupported'); return }
+    if (typeof DOE.requestPermission === 'function') {
+      try { setPermission((await DOE.requestPermission()) === 'granted' ? 'granted' : 'denied') }
+      catch { setPermission('denied') }
+    } else {
+      setPermission('granted')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!active || permission !== 'granted') return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handler = (e: any) => {
+      let h: number | null = null
+      if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
+        h = e.webkitCompassHeading            // iOS: clockwise from true/magnetic north
+      } else if (e.absolute && typeof e.alpha === 'number') {
+        h = (360 - e.alpha) % 360             // spec alpha is counter-clockwise from north
+      }
+      if (h !== null) setHeading(h)
+    }
+    window.addEventListener('deviceorientationabsolute', handler, true)
+    window.addEventListener('deviceorientation', handler, true)
+    return () => {
+      window.removeEventListener('deviceorientationabsolute', handler, true)
+      window.removeEventListener('deviceorientation', handler, true)
+    }
+  }, [active, permission])
+
+  return { heading, permission, request }
+}
+
+const normDeg = (d: number) => ((d % 360) + 540) % 360 - 180 // → [-180, 180)
+
+function BlindShotCompass({
+  targetBearing, distance, playsLike, heading, permission, onRequest, onClose,
+}: {
+  targetBearing: number | null
+  distance: number | null
+  playsLike: number | null
+  heading: number | null
+  permission: CompassPerm
+  onRequest: () => void
+  onClose: () => void
+}) {
+  const delta = (heading !== null && targetBearing !== null) ? normDeg(targetBearing - heading) : null
+  const aligned = delta !== null && Math.abs(delta) <= 5
+  const gold = '#D4A53A', green = '#4ade80'
+  const ring = aligned ? green : gold
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 3000,
+      background: 'rgba(6,10,8,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: 'max(20px, env(safe-area-inset-top)) 20px calc(env(safe-area-inset-bottom,0px) + 80px)',
+      color: '#fff',
+    }}>
+      {/* Header */}
+      <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontFamily: 'Bebas Neue', fontSize: 26, letterSpacing: 1, color: gold }}>BLIND SHOT</span>
+        <button onClick={onClose} className="pressable" style={{
+          width: 40, height: 40, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.5)',
+          background: 'rgba(0,0,0,0.4)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        }}><X size={20} /></button>
+      </div>
+
+      {permission !== 'granted' ? (
+        <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 320 }}>
+          {permission === 'denied' ? (
+            <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.85 }}>
+              Compass access was blocked. Enable <b>Motion &amp; Orientation Access</b> in your browser settings, then reopen Blind Shot.
+            </p>
+          ) : permission === 'unsupported' ? (
+            <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.85 }}>
+              This device doesn’t expose a compass to the browser. Blind Shot needs a phone with a magnetometer.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.85, marginBottom: 20 }}>
+                Blind Shot uses your phone’s compass to point you at a target you can’t see. Tap below to enable it.
+              </p>
+              <button onClick={onRequest} className="pressable" style={{
+                padding: '12px 24px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                background: gold, color: '#1a1206', fontWeight: 800, fontSize: 15,
+              }}>Enable Compass</button>
+            </>
+          )}
+        </div>
+      ) : targetBearing === null ? (
+        <p style={{ marginTop: 60, textAlign: 'center', opacity: 0.85, maxWidth: 300 }}>
+          Set your target on the map first (tap the fairway or green), then reopen Blind Shot.
+        </p>
+      ) : (
+        <>
+          {/* Compass dial */}
+          <div style={{ position: 'relative', width: 260, height: 260, marginTop: 18 }}>
+            {/* Fixed reference: the phone's aim direction (top of dial) */}
+            <div style={{ position: 'absolute', top: -2, left: '50%', transform: 'translateX(-50%)', zIndex: 3 }}>
+              <div style={{ width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderTop: `13px solid ${ring}` }} />
+            </div>
+            <svg width={260} height={260} viewBox="0 0 260 260" style={{ display: 'block' }}>
+              <circle cx={130} cy={130} r={122} fill="rgba(255,255,255,0.04)" stroke={ring} strokeWidth={3} />
+              <circle cx={130} cy={130} r={104} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth={1} />
+              {/* Rotating target arrow: 0° = pointing straight up = aligned */}
+              <g transform={`rotate(${delta ?? 0} 130 130)`} style={{ transition: 'transform 0.12s linear' }}>
+                <line x1={130} y1={130} x2={130} y2={26} stroke="#ef4444" strokeWidth={5} strokeLinecap="round" />
+                <polygon points="130,14 120,34 140,34" fill="#ef4444" />
+              </g>
+              <circle cx={130} cy={130} r={7} fill="#fff" />
+            </svg>
+            {/* Center readout */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div style={{ marginTop: 34, fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 1, color: aligned ? green : '#fff' }}>
+                {aligned ? 'ALIGNED' : delta !== null ? (delta > 0 ? 'TURN RIGHT →' : '← TURN LEFT') : '…'}
+              </div>
+              {delta !== null && !aligned && (
+                <div style={{ fontSize: 13, opacity: 0.7 }}>{Math.abs(Math.round(delta))}°</div>
+              )}
+            </div>
+          </div>
+
+          {/* Distances */}
+          <div style={{ display: 'flex', gap: 14, marginTop: 26 }}>
+            <div style={{ textAlign: 'center', minWidth: 96, padding: '10px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, opacity: 0.6 }}>DISTANCE</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 34, lineHeight: 1 }}>{distance ?? '--'}<span style={{ fontSize: 15, opacity: 0.7 }}> y</span></div>
+            </div>
+            <div style={{ textAlign: 'center', minWidth: 96, padding: '10px 14px', borderRadius: 14, background: 'rgba(212,165,58,0.14)', border: `1px solid ${gold}55` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: gold }}>PLAYS LIKE</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 34, lineHeight: 1, color: gold }}>{playsLike ?? '--'}<span style={{ fontSize: 15, opacity: 0.7 }}> y</span></div>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <p style={{ marginTop: 22, textAlign: 'center', fontSize: 13, lineHeight: 1.5, opacity: 0.72, maxWidth: 300 }}>
+            Lay your phone <b>flat on the ground</b> behind the ball, top edge pointing down your line. Rotate until the arrow locks at the top — that’s your aim.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
 
 interface PlayerPosition {
   player_id: string
@@ -251,11 +407,14 @@ export default function GpsPage() {
   const [selectedCartPlayerId, setSelectedCartPlayerId] = useState<string | null>(null)
   const [holePickerOpen, setHolePickerOpen] = useState(false)
   const [scopeMode, setScopeMode] = useState(false)
+  const [blindShot, setBlindShot] = useState(false)
   const [wind, setWind] = useState<WindData | null>(null)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
   const [localProfiles, setLocalProfiles] = useState<LocalProfile[]>([])
+
+  const compass = useCompassHeading(blindShot)
 
   const isNarrow = useMediaQuery('(max-width: 430px)')
   const holeNumSize  = isNarrow ? 32 : 52
@@ -1244,6 +1403,37 @@ export default function GpsPage() {
           >
             {scopeMode ? <X size={20} color="#111" /> : <ScopeIcon />}
           </button>
+        )}
+
+        {/* Blind-shot compass button — right edge, below the scope button */}
+        {position && aimLineTarget && (
+          <button
+            onClick={() => { if (scopeMode) exitScope(); setBlindShot(true); void compass.request() }}
+            className="pressable"
+            aria-label="Blind shot compass"
+            style={{
+              position: 'absolute', right: 8, top: 'calc(46% + 56px)', transform: 'translateY(-50%)', zIndex: 11,
+              width: 46, height: 46, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              border: '1.5px solid rgba(255,255,255,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            <Compass size={24} color="#fff" />
+          </button>
+        )}
+
+        {blindShot && (
+          <BlindShotCompass
+            targetBearing={position && aimLineTarget ? calcBearing(position, aimLineTarget) : null}
+            distance={aimLineDist}
+            playsLike={playsLikeYds}
+            heading={compass.heading}
+            permission={compass.permission}
+            onRequest={() => void compass.request()}
+            onClose={() => setBlindShot(false)}
+          />
         )}
 
         {/* Hole picker — slides down from the top when the hole number is tapped */}
