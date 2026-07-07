@@ -796,7 +796,7 @@ export default function GpsPage() {
     if (!position || !green || !bunkers?.length) return []
     const aimBearing = calcBearing(position, green)
     const playerToGreen = haversineYards(position, green)
-    const out: { id: number; lat: number; lng: number; front: number; carry: number }[] = []
+    const out: { id: number; lat: number; lng: number; front: number; carry: number; side: number }[] = []
     bunkers.forEach((poly, i) => {
       if (!poly || poly.length < 2) return
       const clat = poly.reduce((s, p) => s + p.lat, 0) / poly.length
@@ -806,13 +806,20 @@ export default function GpsPage() {
       if (haversineYards(centroid, green) >= playerToGreen) return
       // Within ~40 yds of the line of play (lateral offset from the aim bearing).
       const distToCentroid = haversineYards(position, centroid)
-      const angleOff = Math.abs(normDeg(calcBearing(position, centroid) - aimBearing))
-      if (distToCentroid * Math.sin(angleOff * Math.PI / 180) > 40) return
-      // Reach (nearest vertex) and carry (farthest vertex).
-      let front = Infinity, carry = 0
-      poly.forEach(p => { const d = haversineYards(position, p); if (d < front) front = d; if (d > carry) carry = d })
+      const rel = normDeg(calcBearing(position, centroid) - aimBearing)
+      if (distToCentroid * Math.sin(Math.abs(rel) * Math.PI / 180) > 40) return
+      // Reach (nearest vertex), carry (farthest vertex), and radius for the offset.
+      let front = Infinity, carry = 0, radius = 0
+      poly.forEach(p => {
+        const d = haversineYards(position, p); if (d < front) front = d; if (d > carry) carry = d
+        const r = haversineYards(centroid, p); if (r > radius) radius = r
+      })
       if (carry < 15) return // essentially at your feet / already passed
-      out.push({ id: i, lat: clat, lng: clng, front, carry })
+      // Push the chip outward (away from the line of play) past the bunker edge so
+      // the sand stays fully visible; side = which flank it sits on.
+      const side = rel >= 0 ? 1 : -1
+      const lp = offsetLatLng(centroid, aimBearing + side * 90, (radius + 11) * 0.9144)
+      out.push({ id: i, lat: lp.lat, lng: lp.lng, front, carry, side })
     })
     return out
   }, [position, currentHole])
@@ -1422,7 +1429,7 @@ export default function GpsPage() {
 
           {/* Bunker carry chips — reach / carry yards, in-play bunkers ahead */}
           {!scopeMode && !blindShot && bunkerLabels.map(b => (
-            <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor="center">
+            <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor={b.side === 1 ? 'left' : 'right'} offset={[b.side * 3, 0]}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 9,
                 background: 'rgba(224,196,132,0.94)', border: '1px solid rgba(0,0,0,0.18)',
