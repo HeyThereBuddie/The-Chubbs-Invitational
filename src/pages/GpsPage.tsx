@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Target, Navigation, ChevronDown, X, Compass } from 'lucide-react'
+import { Navigation, ChevronDown, X, Compass, Camera } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
@@ -1814,31 +1814,35 @@ export default function GpsPage() {
                   )}
                 </div>
               </div>
-              {/* Camera reset buttons — below the chip. "Me" frames the player →
-                  green; "Hole" frames the whole hole (tee → green). */}
-              {currentHole && position && (
-                <button onClick={recenterOnPlayer} style={{
-                  background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-                  border: '1px solid rgba(255,255,255,0.14)', color: 'white',
-                  borderRadius: 12, padding: isNarrow ? '7px 10px' : '10px 14px', fontSize: 12, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-                }}>
-                  <Navigation size={14} color="#3b82f6" fill="#3b82f6" />
-                  Me
-                </button>
-              )}
+              {/* Camera reset buttons — side by side, spanning the chip width.
+                  "Me" frames the player → green; "Hole" frames the whole hole. */}
               {currentHole && (
-                <button onClick={() => flyToHole(currentHole)} style={{
-                  background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-                  border: '1px solid rgba(255,255,255,0.14)', color: 'white',
-                  borderRadius: 12, padding: isNarrow ? '7px 10px' : '10px 14px', fontSize: 12, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-                }}>
-                  <Target size={14} color="#D4A53A" />
-                  Hole
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {position && (
+                    <button onClick={recenterOnPlayer} style={{
+                      flex: 1, minWidth: 0,
+                      background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                      border: '1px solid rgba(255,255,255,0.14)', color: 'white',
+                      borderRadius: 12, padding: isNarrow ? '7px 6px' : '10px 8px', fontSize: 12, fontWeight: 600,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                    }}>
+                      <Navigation size={14} color="#3b82f6" fill="#3b82f6" />
+                      Me
+                    </button>
+                  )}
+                  <button onClick={() => flyToHole(currentHole)} style={{
+                    flex: 1, minWidth: 0,
+                    background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                    border: '1px solid rgba(255,255,255,0.14)', color: 'white',
+                    borderRadius: 12, padding: isNarrow ? '7px 6px' : '10px 8px', fontSize: 12, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                  }}>
+                    <Camera size={14} color="#D4A53A" />
+                    Hole
+                  </button>
+                </div>
               )}
             </div>
           )
