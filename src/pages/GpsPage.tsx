@@ -175,6 +175,18 @@ function ClubIcon({ club, size = 32 }: { club: string; size?: number }) {
   )
 }
 
+// Small bunker glyph (amber) for the bunker callout tags.
+function SandIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" style={{ pointerEvents: 'none' }}>
+      <path d="M2 9 Q2 5 6 5 Q9 4.5 11 6 Q14 6.5 14 9.5 Q14 12 10 12 Q6 12.5 4 11.5 Q2 11 2 9 Z" fill="#e6c877" opacity={0.95} />
+      <circle cx={6} cy={8.6} r={0.8} fill="#2c2109" />
+      <circle cx={9} cy={9} r={0.8} fill="#2c2109" />
+      <circle cx={11} cy={8} r={0.7} fill="#2c2109" />
+    </svg>
+  )
+}
+
 // Improvement 2: flag pin — the universal golf destination symbol
 function FlagPin() {
   return (
@@ -1426,18 +1438,23 @@ export default function GpsPage() {
           {!scopeMode && !blindShot && bunkerLabels.map(b => (
             <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor={b.side === 1 ? 'left' : 'right'} offset={[b.side * 3, 0]}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', pointerEvents: 'none',
-                padding: b.side === 1 ? '2px 11px 2px 8px' : '2px 8px 2px 11px',
+                position: 'relative', display: 'flex', alignItems: 'center', gap: 4,
+                padding: '3px 9px', borderRadius: 8, whiteSpace: 'nowrap', pointerEvents: 'none',
                 background: 'linear-gradient(180deg, rgba(28,28,34,0.96), rgba(10,10,14,0.96))',
                 border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 3px 10px rgba(0,0,0,0.55)',
-                borderRadius: 6,
-                // Bevel the outer (away-from-hole) edge so the tag "trails" outward.
-                clipPath: b.side === 1 ? 'polygon(0 0,100% 0,88% 100%,0 100%)' : 'polygon(12% 0,100% 0,100% 100%,0 100%)',
               }}>
-                <span style={{ width: 6, height: 6, borderRadius: 2, background: '#e0b84a', flexShrink: 0 }} />
+                <SandIcon size={11} />
                 <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, lineHeight: 1, letterSpacing: 0.5, color: '#e8c766', fontVariantNumeric: 'tabular-nums' }}>
                   {b.front}
                 </span>
+                {/* pointer aimed inward at the bunker */}
+                <div style={{
+                  position: 'absolute', top: '50%', transform: 'translateY(-50%)', width: 0, height: 0,
+                  borderTop: '6px solid transparent', borderBottom: '6px solid transparent',
+                  ...(b.side === 1
+                    ? { left: -6, borderRight: '7px solid rgba(15,15,20,0.96)' }
+                    : { right: -6, borderLeft: '7px solid rgba(15,15,20,0.96)' }),
+                }} />
               </div>
             </Marker>
           ))}
