@@ -224,7 +224,7 @@ export default function Dashboard() {
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
       {/* ── Feature tour launcher ─────────────────────────────── */}
-      <button onClick={startTour} className="pressable" style={{
+      <button data-tour="tour-launch" onClick={startTour} className="pressable" style={{
         width: '100%', marginBottom: 16, padding: '13px 16px', borderRadius: 14, cursor: 'pointer',
         border: '1px solid rgba(212,165,58,0.45)', background: 'linear-gradient(180deg, rgba(212,165,58,0.16), rgba(212,165,58,0.07))',
         color: '#D4A53A', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -359,7 +359,7 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
 
         {/* Live leaderboard */}
-        <div className="glass animate-fadeUp delay-100" style={{ padding: 0, overflow: 'hidden' }}>
+        <div data-tour="leaderboard" className="glass animate-fadeUp delay-100" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
             padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
             borderBottom: '1px solid rgba(212,165,58,0.1)',
@@ -405,6 +405,7 @@ export default function Dashboard() {
 
         {/* Live Scoring Feed */}
         <div
+          data-tour="feed"
           className="glass pressable animate-fadeUp delay-200"
           onClick={() => navigate('/live-feed')}
           role="button"

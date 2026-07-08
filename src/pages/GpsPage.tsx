@@ -16,6 +16,7 @@ import { type Shot, shotQuality } from '../lib/shots'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 import { CaddieSheet, type CaddieContext } from '../components/CaddieSheet'
+import { useTour } from '../context/TourContext'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
@@ -514,7 +515,7 @@ export default function GpsPage() {
   const [simMode, setSimMode] = useState(false)
   const [simMoveMode, setSimMoveMode] = useState(false)
   const [simPosition, setSimPosition] = useState<LatLng | null>(null)
-  const position = simMode ? simPosition : realPosition
+  const tour = useTour()
   const [elevM, setElevM] = useState<{ player: number | null; target: number | null; green: number | null }>({ player: null, target: null, green: null })
   const [elevCacheVersion, setElevCacheVersion] = useState(0)
   const elevCacheRef = useRef<Record<string, number>>({})
@@ -788,6 +789,24 @@ export default function GpsPage() {
   // ── Derived state ─────────────────────────────────────────────────────────
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
+
+  // While the feature tour is on its GPS steps, drop the player at a demo spot
+  // (~160y in front of the green) so every GPS element renders and can be
+  // highlighted, even with no real GPS fix. Real/sim position always wins.
+  const tourDemoPos = useMemo(() => {
+    if (!tour.gpsDemo) return null
+    const g = currentHole?.green.center, tee = currentHole?.tee
+    if (!g) return null
+    return tee ? offsetLatLng(g, calcBearing(g, tee), 160 * 0.9144) : g
+  }, [tour.gpsDemo, currentHole])
+  const position = simMode ? simPosition : (realPosition ?? tourDemoPos)
+
+  // Reset any open GPS panel each time the tour advances, so each spotlight
+  // starts from a clean screen.
+  useEffect(() => {
+    if (!tour.active) return
+    setScopeMode(false); setBlindShot(false); setPinEditMode(false); setCaddieOpen(false); setHolePickerOpen(false)
+  }, [tour.active, tour.stepIndex])
 
   // Shared pin for this hole (if anyone has set one). It overrides the green
   // center as the "center" distance / aim target; front & back stay green edges.
@@ -1757,7 +1776,7 @@ export default function GpsPage() {
               Shrinks within 210 yds of the green (approach range). */}
           {position && aimLineTarget && (
             <Marker longitude={aimLineTarget.lng} latitude={aimLineTarget.lat} anchor="center">
-              <ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 210 ? 0.7 : 1)} />
+              <div data-tour="reticle"><ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 210 ? 0.7 : 1)} /></div>
             </Marker>
           )}
 
@@ -1863,6 +1882,7 @@ export default function GpsPage() {
           {/* Scope / green-view: zooms tight onto the target */}
           {position && aimLineTarget && (
             <button
+              data-tour="btn-scope"
               onClick={() => scopeMode ? exitScope() : enterScope()}
               className="pressable"
               style={{
@@ -1884,6 +1904,7 @@ export default function GpsPage() {
             <button
               onClick={() => { if (scopeMode) exitScope(); setBlindShot(true); void compass.request() }}
               className="pressable"
+              data-tour="btn-blindshot"
               aria-label="Blind shot compass"
               style={{
                 pointerEvents: 'auto', flexShrink: 0,
@@ -1903,6 +1924,7 @@ export default function GpsPage() {
             <button
               onClick={enterPinEdit}
               className="pressable"
+              data-tour="btn-pin"
               aria-label="Set pin location"
               style={{
                 pointerEvents: 'auto', flexShrink: 0,
@@ -1923,6 +1945,7 @@ export default function GpsPage() {
             <button
               onClick={() => setCaddieOpen(true)}
               className="pressable"
+              data-tour="btn-caddie"
               aria-label="Ask Chubbs"
               style={{
                 pointerEvents: 'auto', flexShrink: 0, padding: 0, overflow: 'hidden',
@@ -2084,7 +2107,7 @@ export default function GpsPage() {
         {/* Top-right badges: recommended club tile, GPS status, then sim controls */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
           {(aimClub || trackingShot) && (
-            <div style={{
+            <div data-tour="club" style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0,
               padding: '8px 12px 7px', borderRadius: 14, boxSizing: 'border-box',
               width: holeTileW ?? 96,
@@ -2285,7 +2308,7 @@ export default function GpsPage() {
           return (
             <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Hole + Currently chip */}
-              <div ref={holeTileRef} style={{
+              <div ref={holeTileRef} data-tour="hole-tile" style={{
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
                 padding: isNarrow ? '6px 8px' : '8px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -2316,7 +2339,7 @@ export default function GpsPage() {
               {/* Camera reset buttons — side by side, spanning the chip width.
                   "Me" frames the player → green; "Hole" frames the whole hole. */}
               {currentHole && (
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div data-tour="camera" style={{ display: 'flex', gap: 6 }}>
                   {position && (
                     <button onClick={recenterOnPlayer} style={{
                       flex: 1, minWidth: 0,
@@ -2349,7 +2372,7 @@ export default function GpsPage() {
 
         {/* Wind chip — top center */}
         {wind && (
-          <div style={{
+          <div data-tour="wind" style={{
             position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(255,255,255,0.14)', borderRadius: 11,
@@ -2397,7 +2420,7 @@ export default function GpsPage() {
           display: 'flex', alignItems: 'flex-end', gap: 6,
         }}>
           {/* Left: yardage stack */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+          <div data-tour="yardage" style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
             {[
               { label: 'Back',              yards: backDist,   color: '#ef4444' },
               { label: pinForHole ? 'Pin' : 'Ctr', yards: centerDist, color: '#D4A53A' },
@@ -2439,7 +2462,7 @@ export default function GpsPage() {
           </div>
 
           {/* Right: chulligans box + drives box */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+          <div data-tour="chull-drives" style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
             {scoring.myTeam && (() => {
               const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
               const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
