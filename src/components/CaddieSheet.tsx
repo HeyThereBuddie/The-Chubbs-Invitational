@@ -25,8 +25,52 @@ interface Rec {
   confidence: 'low' | 'medium' | 'high'
 }
 
-const SURFACES = ['Fairway', 'Light rough', 'Deep rough', 'Fairway bunker', 'Greenside bunker', 'Hardpan / bare']
-const CONDITIONS = ['Flat', 'Uphill', 'Downhill', 'Ball above feet', 'Ball below feet']
+const SURFACES: { label: string; kind: string }[] = [
+  { label: 'Fairway', kind: 'fairway' }, { label: 'Light rough', kind: 'light' }, { label: 'Deep rough', kind: 'deep' },
+  { label: 'Fairway bunker', kind: 'fbunker' }, { label: 'Greenside bunker', kind: 'gbunker' }, { label: 'Hardpan / bare', kind: 'hardpan' },
+]
+const CONDITIONS: { label: string; kind: string }[] = [
+  { label: 'Flat', kind: 'flat' }, { label: 'Uphill', kind: 'uphill' }, { label: 'Downhill', kind: 'downhill' },
+  { label: 'Ball above feet', kind: 'above' }, { label: 'Ball below feet', kind: 'below' },
+]
+
+const ball = (cx: number, cy: number) => <circle cx={cx} cy={cy} r={4.6} fill="#f4f4f4" stroke="rgba(0,0,0,0.25)" strokeWidth={0.6} />
+
+// Little illustration of each lie / stance.
+function LieIcon({ kind, size = 50 }: { kind: string; size?: number }) {
+  const G = '#4f9d4f', GD = '#3c7a3c', SAND = '#e2c483', DIRT = '#a9793f'
+  let body: React.ReactNode = null
+  switch (kind) {
+    case 'fairway': body = (<>
+      <rect x={3} y={27} width={42} height={11} rx={3} fill={G} />
+      <g stroke={GD} strokeWidth={1.2} strokeLinecap="round"><line x1={9} y1={27} x2={9} y2={24} /><line x1={16} y1={27} x2={16} y2={24.5} /><line x1={33} y1={27} x2={33} y2={24} /><line x1={40} y1={27} x2={40} y2={24.5} /></g>
+      {ball(24, 23)}</>); break
+    case 'light': body = (<>
+      <rect x={3} y={27} width={42} height={11} rx={3} fill={G} />
+      <g stroke={GD} strokeWidth={1.4} strokeLinecap="round"><line x1={14} y1={28} x2={13} y2={21} /><line x1={18} y1={28} x2={18.6} y2={20} /><line x1={30} y1={28} x2={29} y2={21} /><line x1={34} y1={28} x2={35} y2={20.5} /></g>
+      {ball(24, 25)}</>); break
+    case 'deep': body = (<>
+      <rect x={3} y={28} width={42} height={10} rx={3} fill={GD} />
+      {ball(24, 28)}
+      <g stroke="#2f6b2f" strokeWidth={1.8} strokeLinecap="round"><line x1={12} y1={30} x2={10} y2={18} /><line x1={17} y1={30} x2={18} y2={17} /><line x1={22} y1={31} x2={21} y2={19} /><line x1={27} y1={31} x2={28} y2={18} /><line x1={32} y1={30} x2={31} y2={17} /><line x1={37} y1={30} x2={39} y2={19} /></g></>); break
+    case 'fbunker': body = (<><path d="M3 32 Q3 25 14 25 Q24 23 34 25 Q45 25 45 32 L45 38 L3 38 Z" fill={SAND} />{ball(24, 23)}</>); break
+    case 'gbunker': body = (<>
+      <path d="M20 30 Q30 22 46 24 L46 38 L20 38 Z" fill={G} />
+      <path d="M2 33 Q2 27 12 27 Q20 26 26 29 L26 38 L2 38 Z" fill={SAND} />
+      <line x1={38} y1={10} x2={38} y2={26} stroke="#fff" strokeWidth={1.3} /><polygon points="38,10 46,13 38,16" fill="#d64545" />
+      {ball(14, 25)}</>); break
+    case 'hardpan': body = (<>
+      <rect x={3} y={27} width={42} height={11} rx={3} fill={DIRT} />
+      <g stroke="#7c5322" strokeWidth={1} strokeLinecap="round" fill="none"><path d="M10 33 l4 2 l-2 2" /><path d="M32 32 l3 3" /><line x1={20} y1={35} x2={26} y2={34} /></g>
+      {ball(24, 23)}</>); break
+    case 'flat': body = (<><rect x={3} y={28} width={42} height={5} rx={2.5} fill={G} />{ball(24, 24)}</>); break
+    case 'uphill': body = (<><path d="M3 38 L45 16 L45 38 Z" fill={G} />{ball(30, 22)}</>); break
+    case 'downhill': body = (<><path d="M3 16 L45 38 L3 38 Z" fill={G} />{ball(18, 22)}</>); break
+    case 'above': body = (<><path d="M3 38 L45 20 L45 38 Z" fill={G} />{ball(36, 24)}<g fill="#cbd0d6"><ellipse cx={14} cy={33} rx={4.5} ry={2.2} /><ellipse cx={20} cy={34.5} rx={4.5} ry={2.2} /></g></>); break
+    case 'below': body = (<><path d="M3 20 L45 38 L3 38 Z" fill={G} />{ball(12, 24)}<g fill="#cbd0d6"><ellipse cx={32} cy={33} rx={4.5} ry={2.2} /><ellipse cx={38} cy={34.5} rx={4.5} ry={2.2} /></g></>); break
+  }
+  return <svg width={size} height={Math.round(size * 40 / 48)} viewBox="0 0 48 40" style={{ pointerEvents: 'none' }}>{body}</svg>
+}
 
 // Downscale a captured photo so the upload stays small/fast (plenty for a lie).
 function fileToScaledBase64(file: File, maxPx = 1024, quality = 0.8): Promise<{ data: string; mediaType: string }> {
@@ -88,11 +132,12 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
     setLoading(false)
   }
 
-  const chip = (active: boolean): React.CSSProperties => ({
-    padding: '8px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-    border: `1px solid ${active ? '#D4A53A' : 'rgba(255,255,255,0.16)'}`,
-    background: active ? 'rgba(212,165,58,0.18)' : 'rgba(255,255,255,0.05)',
-    color: active ? '#e8c766' : 'var(--tx2)', whiteSpace: 'nowrap',
+  const tile = (active: boolean): React.CSSProperties => ({
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px 7px',
+    borderRadius: 12, cursor: 'pointer',
+    border: `1.5px solid ${active ? '#D4A53A' : 'rgba(255,255,255,0.12)'}`,
+    background: active ? 'rgba(212,165,58,0.16)' : 'rgba(255,255,255,0.04)',
+    color: active ? '#e8c766' : 'var(--tx2)',
   })
 
   const changeBadge = rec ? (rec.clubChange === 'up' ? { t: '▲ CLUB UP', c: '#4ade80' }
@@ -106,10 +151,11 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 520, maxHeight: '92vh', overflowY: 'auto',
+        width: '100%', maxWidth: 520, maxHeight: '86vh', overflowY: 'auto',
+        marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)', // clear the bottom nav
         background: 'var(--panel)', borderRadius: '20px 20px 0 0',
         border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 -12px 40px rgba(0,0,0,0.6)',
-        padding: '18px 18px calc(env(safe-area-inset-bottom, 0px) + 22px)',
+        padding: '18px 18px 22px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <span style={{ fontFamily: 'Bebas Neue', fontSize: 26, letterSpacing: 1, color: '#D4A53A' }}>⛳ AI CADDIE</span>
@@ -129,12 +175,22 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
         {!rec && (
           <>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: 'var(--tx4)', marginBottom: 7 }}>SURFACE</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
-              {SURFACES.map(s => <button key={s} onClick={() => setSurface(s)} style={chip(surface === s)}>{s}</button>)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+              {SURFACES.map(s => (
+                <button key={s.label} onClick={() => setSurface(s.label)} style={tile(surface === s.label)}>
+                  <LieIcon kind={s.kind} />
+                  <span style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', lineHeight: 1.15 }}>{s.label}</span>
+                </button>
+              ))}
             </div>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: 'var(--tx4)', marginBottom: 7 }}>LIE / STANCE</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
-              {CONDITIONS.map(s => <button key={s} onClick={() => setCondition(s)} style={chip(condition === s)}>{s}</button>)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+              {CONDITIONS.map(s => (
+                <button key={s.label} onClick={() => setCondition(s.label)} style={tile(condition === s.label)}>
+                  <LieIcon kind={s.kind} />
+                  <span style={{ fontSize: 11, fontWeight: 700, textAlign: 'center', lineHeight: 1.15 }}>{s.label}</span>
+                </button>
+              ))}
             </div>
 
             {/* Photo */}
