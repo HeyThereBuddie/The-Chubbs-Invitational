@@ -12,6 +12,7 @@ import type { CourseGps, HoleGps, LatLng } from '../lib/types'
 import { displayName, normalizeFairways } from '../lib/types'
 import { resolvePar } from '../lib/pars'
 import { resolveBag, recommendClub } from '../lib/clubs'
+import { type Shot, shotQuality } from '../lib/shots'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 import { CaddieSheet, type CaddieContext } from '../components/CaddieSheet'
@@ -540,6 +541,11 @@ export default function GpsPage() {
   const [pinEditMode, setPinEditMode] = useState(false)
   const [pinDraft, setPinDraft] = useState<LatLng | null>(null)
   const [caddieOpen, setCaddieOpen] = useState(false)
+  // Shot tracking
+  const [trackingShot, setTrackingShot] = useState<{ club: string; start: LatLng; aim: LatLng | null; hole: number } | null>(null)
+  const [clubPickerOpen, setClubPickerOpen] = useState(false)
+  const [lastShot, setLastShot] = useState<Shot | null>(null)
+  const [shotToast, setShotToast] = useState<string | null>(null)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
@@ -699,6 +705,15 @@ export default function GpsPage() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [effectiveTournamentId])
+
+  // Most recent tracked shot (so Chubbs can rib the player on a bad one).
+  useEffect(() => {
+    if (!profile?.id) { setLastShot(null); return }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).from('shots')
+      .select('*').eq('player_id', profile.id).order('created_at', { ascending: false }).limit(1)
+      .then(({ data }: { data: Shot[] | null }) => setLastShot(data?.[0] ?? null))
+  }, [profile?.id, effectiveTournamentId])
 
   // ── Local DB snapshot for score-to-par in cart popups ────────────────────
 
@@ -1027,6 +1042,35 @@ export default function GpsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('hole_pins').delete()
       .eq('tournament_id', effectiveTournamentId).eq('hole', selectedHole)
+  }
+
+  // ── Shot tracking ─────────────────────────────────────────────────────────
+  const startTracking = (club: string) => {
+    if (!position) return
+    setClubPickerOpen(false)
+    setTrackingShot({ club, start: position, aim: aimLineTarget, hole: selectedHole })
+  }
+  const cancelTracking = () => setTrackingShot(null)
+  const markBall = async () => {
+    const t = trackingShot
+    if (!t || !position) return
+    const distance = haversineYards(t.start, position)
+    let offline: number | null = null
+    if (t.aim) {
+      const ang = normDeg(calcBearing(t.start, position) - calcBearing(t.start, t.aim))
+      offline = Math.round(distance * Math.sin(ang * Math.PI / 180))
+    }
+    setTrackingShot(null)
+    setShotToast(`${t.club}: ${distance}y${offline != null && Math.abs(offline) >= 3 ? ` · ${Math.abs(offline)}y ${offline > 0 ? 'right' : 'left'}` : ''}`)
+    setTimeout(() => setShotToast(null), 4000)
+    const row = {
+      tournament_id: effectiveTournamentId, player_id: profile?.id, hole: t.hole, club: t.club,
+      start_lat: t.start.lat, start_lng: t.start.lng, end_lat: position.lat, end_lng: position.lng,
+      distance_yds: distance, offline_yds: offline, created_at: new Date().toISOString(),
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).from('shots').insert(row).select().single()
+    setLastShot((data as Shot) ?? { id: 'local', ...row } as Shot)
   }
 
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -1453,6 +1497,9 @@ export default function GpsPage() {
     ? `${wind.speed} mph out of the ${cardinalDir(wind.direction)}` +
       (Math.abs(shotHeadwind) >= 3 ? `, ${shotHeadwind > 0 ? 'into the shot' : 'helping'} (~${Math.abs(Math.round(shotHeadwind))} mph)` : '')
     : null
+  const lastShotInfo = lastShot?.distance_yds != null
+    ? shotQuality(lastShot, bag.find(c => c.club === lastShot.club)?.carry ?? null)
+    : null
   const caddieContext: CaddieContext = {
     hole: selectedHole,
     par: parForHole,
@@ -1463,6 +1510,8 @@ export default function GpsPage() {
     baselineClub: aimClub?.club ?? null,
     bag: bag.filter(c => c.enabled).map(c => ({ club: c.club, carry: c.carry })),
     surfaceHint,
+    lastShotNote: lastShotInfo?.note ?? null,
+    lastShotBad: lastShotInfo?.bad ?? false,
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -1889,6 +1938,68 @@ export default function GpsPage() {
 
         {caddieOpen && <CaddieSheet context={caddieContext} onClose={() => setCaddieOpen(false)} />}
 
+        {/* Club picker — pick the club you're about to hit, then tracking starts */}
+        {clubPickerOpen && (
+          <div onClick={() => setClubPickerOpen(false)} style={{
+            position: 'absolute', inset: 0, zIndex: 45, background: 'rgba(4,6,5,0.6)',
+            backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-end',
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: '100%', background: 'var(--panel)', borderRadius: '20px 20px 0 0',
+              border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 -12px 40px rgba(0,0,0,0.6)',
+              marginBottom: navBase, padding: '16px 16px 20px',
+            }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 1, color: '#D4A53A', marginBottom: 12 }}>WHICH CLUB DID YOU HIT?</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                {bag.filter(c => c.enabled).map(c => (
+                  <button key={c.club} onClick={() => startTracking(c.club)} className="pressable" style={{
+                    padding: '12px 4px', borderRadius: 12, cursor: 'pointer',
+                    border: `1.5px solid ${aimClub?.club === c.club ? '#D4A53A' : 'rgba(255,255,255,0.14)'}`,
+                    background: aimClub?.club === c.club ? 'rgba(212,165,58,0.16)' : 'rgba(255,255,255,0.05)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                  }}>
+                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: aimClub?.club === c.club ? '#e8c766' : 'var(--tx1)' }}>{c.club}</span>
+                    <span style={{ fontSize: 9, color: 'var(--tx4)' }}>{c.carry}y</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tracking banner — live distance + Mark ball */}
+        {trackingShot && (
+          <div style={{
+            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 40, display: 'flex', alignItems: 'center', gap: 12,
+            background: 'rgba(10,10,15,0.9)', border: '1px solid rgba(212,165,58,0.4)', borderRadius: 14,
+            padding: '8px 10px 8px 14px', boxShadow: '0 6px 20px rgba(0,0,0,0.55)', whiteSpace: 'nowrap',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1, color: '#e8c766' }}>TRACKING {trackingShot.club}</span>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#fff' }}>
+                {position ? haversineYards(trackingShot.start, position) : 0}<span style={{ fontSize: 12, opacity: 0.6 }}>y so far</span>
+              </span>
+            </div>
+            <button onClick={markBall} className="pressable" style={{
+              padding: '10px 16px', borderRadius: 10, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+            }}>Mark ball</button>
+            <button onClick={cancelTracking} style={{
+              width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer', fontSize: 15,
+            }}>✕</button>
+          </div>
+        )}
+
+        {/* Saved-shot toast */}
+        {shotToast && (
+          <div style={{
+            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 41, background: 'rgba(16,45,20,0.95)', border: '1px solid rgba(74,222,128,0.5)', borderRadius: 12,
+            padding: '10px 16px', color: '#b9f6c8', fontWeight: 700, fontSize: 14, boxShadow: '0 6px 20px rgba(0,0,0,0.5)', whiteSpace: 'nowrap',
+          }}>✓ Shot saved — {shotToast}</div>
+        )}
+
         {/* Pin-edit overlay: instruction banner + Save / Clear / Cancel */}
         {pinEditMode && (
           <>
@@ -1980,6 +2091,14 @@ export default function GpsPage() {
               <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 0.95, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
               <ClubIcon club={aimClub.club} size={38} />
               {aimClub.note && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, color: '#fff', marginTop: 1 }}>{aimClub.note}</span>}
+              {position && !trackingShot && (
+                <button onClick={() => setClubPickerOpen(true)} className="pressable" style={{
+                  marginTop: 6, padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+                  border: '1px solid rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.08)',
+                  color: '#fff', fontSize: 9.5, fontWeight: 800, letterSpacing: 0.8,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>◉ TRACK SHOT</button>
+              )}
             </div>
           )}
           {gpsStatus !== 'ok' && !simMode && (

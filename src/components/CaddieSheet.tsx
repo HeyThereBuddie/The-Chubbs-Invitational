@@ -13,6 +13,8 @@ export interface CaddieContext {
   baselineClub: string | null
   bag: { club: string; carry: number }[]
   surfaceHint: string | null
+  lastShotNote?: string | null
+  lastShotBad?: boolean
 }
 
 interface Rec {

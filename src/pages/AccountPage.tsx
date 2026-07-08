@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { displayName } from '../lib/types'
 import { type ClubDist, DEFAULT_BAG, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
+import { ShotStats } from '../components/ShotStats'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
   || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
@@ -496,6 +497,9 @@ export default function AccountPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Shot Stats & History ── */}
+      <ShotStats />
 
       {/* ── Career Highlights ── */}
       {careerStats.length > 0 && (() => {
