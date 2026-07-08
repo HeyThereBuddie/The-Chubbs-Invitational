@@ -1780,21 +1780,24 @@ export default function GpsPage() {
               🚩 Tap the green to place the pin — everyone sees it
             </div>
             <div style={{
-              position: 'absolute', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)',
-              zIndex: 40, display: 'flex', gap: 10, justifyContent: 'center',
+              position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 40,
+              background: 'var(--panel)', borderTop: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 -8px 28px rgba(0,0,0,0.5)',
+              padding: '14px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
+              display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'stretch',
             }}>
               <button onClick={exitPinEdit} className="pressable" style={{
-                padding: '11px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(10,10,15,0.8)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', fontWeight: 700, fontSize: 14, cursor: 'pointer',
               }}>Cancel</button>
               {pinForHole && (
                 <button onClick={clearPin} className="pressable" style={{
-                  padding: '11px 18px', borderRadius: 12, border: '1px solid rgba(255,77,79,0.5)',
-                  background: 'rgba(60,12,12,0.8)', color: '#ff9a9a', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,77,79,0.5)',
+                  background: 'rgba(255,77,79,0.12)', color: '#ff6b6b', fontWeight: 700, fontSize: 14, cursor: 'pointer',
                 }}>Clear</button>
               )}
               <button onClick={savePin} disabled={!pinDraft} className="pressable" style={{
-                flex: 1, maxWidth: 200, padding: '11px 18px', borderRadius: 12, border: 'none',
+                flex: 1, maxWidth: 220, padding: '12px 18px', borderRadius: 12, border: 'none',
                 background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 14,
                 cursor: pinDraft ? 'pointer' : 'default', opacity: pinDraft ? 1 : 0.45,
               }}>Save pin</button>
