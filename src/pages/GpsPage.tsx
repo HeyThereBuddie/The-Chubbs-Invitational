@@ -2109,9 +2109,9 @@ export default function GpsPage() {
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
           {aimClub && (
             <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0,
               padding: '8px 12px 7px', borderRadius: 14, boxSizing: 'border-box',
-              width: holeTileW ?? undefined, minWidth: 66,
+              width: holeTileW ?? 96,
               background: 'linear-gradient(180deg, rgba(26,26,32,0.95), rgba(9,9,13,0.95))',
               border: '1px solid rgba(74,222,128,0.38)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             }}>
