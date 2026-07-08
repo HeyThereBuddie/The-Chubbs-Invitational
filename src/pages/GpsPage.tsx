@@ -880,11 +880,11 @@ export default function GpsPage() {
   }, [position, tapPoint, currentHole])
 
   const tapToGreenGeoJson = useMemo(() => {
-    const green = currentHole?.green.center; if (!tapPoint || !green) return null
+    const green = effectiveCenter; if (!tapPoint || !green) return null
     return { type: 'Feature' as const,
       geometry: { type: 'LineString' as const, coordinates: [[tapPoint.lng, tapPoint.lat], [green.lng, green.lat]] },
       properties: {} }
-  }, [tapPoint, currentHole])
+  }, [tapPoint, effectiveCenter?.lat, effectiveCenter?.lng])
 
   const activeOtherPositions = useMemo(() => {
     const now = Date.now()
