@@ -572,6 +572,7 @@ export default function GpsPage() {
   const followPausedRef   = useRef(false)
   const followPauseTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoOpenedHoleRef = useRef(0)
+  const reachedGreenHoleRef = useRef(0)
   const lastTargetPosRef  = useRef<LatLng | null>(null)
   const lastTargetHoleRef = useRef(0)
   const lastCenterKeyRef  = useRef('')
@@ -1297,13 +1298,19 @@ export default function GpsPage() {
   }
 
 
-  // Auto-open score sheet once per hole when player reaches the green (~20 yds)
+  // Auto-open the score sheet once per hole — but only after the player has
+  // finished putting and WALKED AWAY from the green (toward the next tee), so it
+  // never interrupts putts. We note when they reach the green (~30 yds), then
+  // open once they've moved well off it (>55 yds).
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    if (!profile || sheetOpen || centerDist === null || centerDist > 20) return
-    if (autoOpenedHoleRef.current === selectedHole) return
-    autoOpenedHoleRef.current = selectedHole
-    setSheetOpen(true)
+    if (!profile || centerDist === null) return
+    if (centerDist <= 30) reachedGreenHoleRef.current = selectedHole
+    if (sheetOpen || autoOpenedHoleRef.current === selectedHole) return
+    if (reachedGreenHoleRef.current === selectedHole && centerDist > 55) {
+      autoOpenedHoleRef.current = selectedHole
+      setSheetOpen(true)
+    }
   }, [centerDist, selectedHole, profile, sheetOpen])
 
   // Elevation for the player, the aim target, and the green (Open-Meteo, no key).
