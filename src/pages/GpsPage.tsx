@@ -2128,9 +2128,9 @@ export default function GpsPage() {
           {/* Left: yardage stack */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
             {[
-              { label: 'Back', yards: backDist,   color: '#ef4444' },
-              { label: 'Ctr',  yards: centerDist, color: '#D4A53A' },
-              { label: 'Frt',  yards: frontDist,  color: '#22c55e' },
+              { label: 'Back',              yards: backDist,   color: '#ef4444' },
+              { label: pinForHole ? 'Pin' : 'Ctr', yards: centerDist, color: '#D4A53A' },
+              { label: 'Frt',              yards: frontDist,  color: '#22c55e' },
             ].map(({ label, yards, color }) => {
               const raw = yards !== null && yards <= 9999 ? yards : null
               const display = raw ?? '—'
