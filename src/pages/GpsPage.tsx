@@ -1777,43 +1777,89 @@ export default function GpsPage() {
           ))}
         </Map>
 
-        {/* Scope / green-view button — right edge; zooms tight onto the target */}
-        {position && aimLineTarget && (
-          <button
-            onClick={() => scopeMode ? exitScope() : enterScope()}
-            className="pressable"
-            style={{
-              position: 'absolute', right: 8, top: '46%', transform: 'translateY(-50%)', zIndex: 11,
-              width: 46, height: 46, borderRadius: '50%',
-              background: scopeMode ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.4)',
-              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-              border: scopeMode ? '1.5px solid #fff' : '1.5px solid rgba(255,255,255,0.7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              boxShadow: scopeMode ? '0 0 16px rgba(255,255,255,0.5)' : '0 2px 12px rgba(0,0,0,0.5)',
-            }}
-          >
-            {scopeMode ? <X size={20} color="#111" /> : <ScopeIcon />}
-          </button>
-        )}
+        {/* Right-rail tool buttons — one column, vertically centered as a group so
+            it stays centered no matter how many buttons are shown. */}
+        <div style={{
+          position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 11,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, pointerEvents: 'none',
+        }}>
+          {/* Scope / green-view: zooms tight onto the target */}
+          {position && aimLineTarget && (
+            <button
+              onClick={() => scopeMode ? exitScope() : enterScope()}
+              className="pressable"
+              style={{
+                pointerEvents: 'auto', flexShrink: 0,
+                width: 46, height: 46, borderRadius: '50%',
+                background: scopeMode ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                border: scopeMode ? '1.5px solid #fff' : '1.5px solid rgba(255,255,255,0.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                boxShadow: scopeMode ? '0 0 16px rgba(255,255,255,0.5)' : '0 2px 12px rgba(0,0,0,0.5)',
+              }}
+            >
+              {scopeMode ? <X size={20} color="#111" /> : <ScopeIcon />}
+            </button>
+          )}
 
-        {/* Blind-shot compass button — right edge, below the scope button */}
-        {position && aimLineTarget && (
-          <button
-            onClick={() => { if (scopeMode) exitScope(); setBlindShot(true); void compass.request() }}
-            className="pressable"
-            aria-label="Blind shot compass"
-            style={{
-              position: 'absolute', right: 8, top: 'calc(46% + 56px)', transform: 'translateY(-50%)', zIndex: 11,
-              width: 46, height: 46, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-              border: '1.5px solid rgba(255,255,255,0.7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-            }}
-          >
-            <Compass size={24} color="#fff" />
-          </button>
-        )}
+          {/* Blind-shot compass */}
+          {position && aimLineTarget && (
+            <button
+              onClick={() => { if (scopeMode) exitScope(); setBlindShot(true); void compass.request() }}
+              className="pressable"
+              aria-label="Blind shot compass"
+              style={{
+                pointerEvents: 'auto', flexShrink: 0,
+                width: 46, height: 46, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                border: '1.5px solid rgba(255,255,255,0.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              }}
+            >
+              <Compass size={24} color="#fff" />
+            </button>
+          )}
+
+          {/* Set-pin */}
+          {currentHole?.green.center && !pinEditMode && (
+            <button
+              onClick={enterPinEdit}
+              className="pressable"
+              aria-label="Set pin location"
+              style={{
+                pointerEvents: 'auto', flexShrink: 0,
+                width: 46, height: 46, borderRadius: '50%',
+                background: pinForHole ? 'rgba(212,165,58,0.9)' : 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                border: pinForHole ? '1.5px solid #fff' : '1.5px solid rgba(255,255,255,0.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                boxShadow: pinForHole ? '0 0 14px rgba(212,165,58,0.5)' : '0 2px 12px rgba(0,0,0,0.5)',
+              }}
+            >
+              <Flag size={22} color={pinForHole ? '#111' : '#fff'} fill={pinForHole ? '#111' : 'none'} />
+            </button>
+          )}
+
+          {/* AI caddie */}
+          {position && aimLineTarget && !pinEditMode && (
+            <button
+              onClick={() => setCaddieOpen(true)}
+              className="pressable"
+              aria-label="AI caddie"
+              style={{
+                pointerEvents: 'auto', flexShrink: 0,
+                width: 46, height: 46, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                border: '1.5px solid rgba(255,255,255,0.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              }}
+            >
+              <Sparkles size={22} color="#e8c766" />
+            </button>
+          )}
+        </div>
 
         {blindShot && (
           <BlindShotCompass
@@ -1838,45 +1884,6 @@ export default function GpsPage() {
             }}
             onClose={() => setBlindShot(false)}
           />
-        )}
-
-        {/* Set-pin button — right edge, below the blind-shot button */}
-        {currentHole?.green.center && !pinEditMode && (
-          <button
-            onClick={enterPinEdit}
-            className="pressable"
-            aria-label="Set pin location"
-            style={{
-              position: 'absolute', right: 8, top: 'calc(46% + 112px)', transform: 'translateY(-50%)', zIndex: 11,
-              width: 46, height: 46, borderRadius: '50%',
-              background: pinForHole ? 'rgba(212,165,58,0.9)' : 'rgba(0,0,0,0.4)',
-              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-              border: pinForHole ? '1.5px solid #fff' : '1.5px solid rgba(255,255,255,0.7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              boxShadow: pinForHole ? '0 0 14px rgba(212,165,58,0.5)' : '0 2px 12px rgba(0,0,0,0.5)',
-            }}
-          >
-            <Flag size={22} color={pinForHole ? '#111' : '#fff'} fill={pinForHole ? '#111' : 'none'} />
-          </button>
-        )}
-
-        {/* AI caddie button — right edge, below the pin button */}
-        {position && aimLineTarget && !pinEditMode && (
-          <button
-            onClick={() => setCaddieOpen(true)}
-            className="pressable"
-            aria-label="AI caddie"
-            style={{
-              position: 'absolute', right: 8, top: 'calc(46% + 168px)', transform: 'translateY(-50%)', zIndex: 11,
-              width: 46, height: 46, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-              border: '1.5px solid rgba(255,255,255,0.7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-            }}
-          >
-            <Sparkles size={22} color="#e8c766" />
-          </button>
         )}
 
         {caddieOpen && <CaddieSheet context={caddieContext} onClose={() => setCaddieOpen(false)} />}
