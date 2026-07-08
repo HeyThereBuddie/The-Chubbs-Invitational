@@ -1,45 +1,44 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 const SEEN_KEY = 'chubbsTourSeen'
+const MAX_IMAGES = 8 // per step, probed as /tour/<slug>-1.png … -8.png
 
 interface TourStep {
+  slug: string       // images live at /tour/<slug>-1.png, -2.png, …
   title: string
   body: string
-  route?: string      // navigate here before showing (for live-anchored steps)
-  anchor?: string      // data-tour value of a live element to spotlight
-  image?: string       // screenshot to show instead of spotlighting a live element
-  chubbs?: boolean     // show Chubbs on the card (intro/outro)
+  chubbs?: boolean   // show Chubbs on the card (intro/outro)
 }
 
 const STEPS: TourStep[] = [
-  { title: "Welcome, big fella", chubbs: true,
-    body: "I'm Chubbs — let me walk you through your caddie for The Chubbs Memorial. Tap Next and I'll show you around." },
-  { title: "Getting around", route: '/', anchor: 'nav',
-    body: "Everything lives in these tabs — GPS, the leaderboard, contests, your team, photos and your account." },
-  { title: "GPS: your command centre", image: '/tour/gps.png',
+  { slug: 'welcome', chubbs: true, title: "Welcome, big fella",
+    body: "I'm Chubbs — your caddie for The Chubbs Memorial. Tap Next and I'll walk you around the app." },
+  { slug: 'nav', title: "Getting around",
+    body: "Everything lives in the tabs at the bottom — GPS, the leaderboard, contests, your team, photos and your account." },
+  { slug: 'gps', title: "GPS: your command centre",
     body: "A live satellite view of every hole with your position, the flag, and all your distances. This is where you'll spend the round." },
-  { title: "Every distance, adjusted", image: '/tour/gps-club.png',
+  { slug: 'distances', title: "Every distance, adjusted",
     body: "Front / centre / back yardages, plus a “plays like” number that already bakes in the wind and the elevation change." },
-  { title: "Club in your hand", image: '/tour/gps-club.png',
+  { slug: 'club', title: "Club in your hand",
     body: "The tile up top suggests the right club from YOUR bag for the plays-like distance — and you can track the shot right from it." },
-  { title: "Set your bag", route: '/account', anchor: 'bag',
-    body: "Dial in each club's carry here — or just punch in your 7-iron and I'll scale the whole set for you." },
-  { title: "Scope the green", image: '/tour/scope.png',
+  { slug: 'bag', title: "Set your bag",
+    body: "In Account, dial in each club's carry — or just punch in your 7-iron and I'll scale the whole set for you." },
+  { slug: 'scope', title: "Scope the green",
     body: "Green-view arcs sweep your carry distances across the fairway so you can see exactly what each club covers." },
-  { title: "Blind shot compass",
+  { slug: 'blindshot', title: "Blind shot compass",
     body: "Can't see your target? Set it on the map, lay the phone flat behind the ball, and rotate until the arrow locks — that's your line." },
-  { title: "Shared pin position",
+  { slug: 'pin', title: "Shared pin position",
     body: "First group to the green drops the day's real pin location, and everyone in the tournament sees it live." },
-  { title: "Ask Caddie Chubbs", image: '/tour/caddie.png',
-    body: "Snap a photo of your lie and I'll call the club, ball position, stance and swing — right after I give you a hard time about your last shot." },
-  { title: "Track your shots", route: '/account', anchor: 'shot-stats',
-    body: "Log real distances as you play. Your averages, longest pokes and miss tendencies all build up right here in your profile." },
-  { title: "Score the scramble",
+  { slug: 'caddie', title: "Ask Caddie Chubbs",
+    body: "Snap a photo of your lie and I'll call the club, ball position, stance and swing — right after I give you grief about your last shot." },
+  { slug: 'tracking', title: "Track your shots",
+    body: "Log real distances as you play. Your averages, longest pokes and miss tendencies all build up in your profile." },
+  { slug: 'scoring', title: "Score the scramble",
     body: "Enter your team's score each hole. The app tracks the two-man scramble, drive minimums and chulligans automatically." },
-  { title: "That's the loop, kid", chubbs: true,
+  { slug: 'finish', chubbs: true, title: "That's the loop, kid",
     body: "Contests, the Jim Lahey vote, and a rules assistant are all a tap away. Keep your head down and follow through — now go play." },
 ]
 
@@ -50,17 +49,18 @@ export const useTour = () => useContext(Ctx)
 export function TourProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState(false)
   const [index, setIndex] = useState(0)
-  const [rect, setRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const [promptOpen, setPromptOpen] = useState(false)
-  const navigate = useNavigate()
+  const [images, setImages] = useState<string[]>([])
+  const [imgIdx, setImgIdx] = useState(0)
+  const touchX = useRef<number | null>(null)
   const location = useLocation()
   const { profile } = useAuth()
 
   const startTour = useCallback(() => {
     try { localStorage.setItem(SEEN_KEY, '1') } catch { /* ignore */ }
-    setPromptOpen(false); setIndex(0); setRect(null); setActive(true)
+    setPromptOpen(false); setIndex(0); setActive(true)
   }, [])
-  const close = useCallback(() => { setActive(false); setRect(null) }, [])
+  const close = useCallback(() => setActive(false), [])
 
   // Offer the tour once to a signed-in user on the dashboard.
   useEffect(() => {
@@ -73,36 +73,28 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [profile, location.pathname, active])
 
-  // Position the spotlight for anchored steps (navigate, scroll, measure).
+  // Probe /tour/<slug>-1.png, -2.png … sequentially; stop at the first gap.
   useEffect(() => {
     if (!active) return
-    const step = STEPS[index]
-    setRect(null)
-    if (!step.anchor) return
+    setImages([]); setImgIdx(0)
+    const slug = STEPS[index].slug
     let cancelled = false
-    const run = async () => {
-      const needNav = step.route && location.pathname !== step.route
-      if (needNav) navigate(step.route!)
-      await new Promise(r => setTimeout(r, needNav ? 450 : 120))
-      if (cancelled) return
-      const el = document.querySelector(`[data-tour="${step.anchor}"]`) as HTMLElement | null
-      if (!el) return
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      await new Promise(r => setTimeout(r, 380))
-      if (cancelled) return
-      const r = el.getBoundingClientRect()
-      setRect({ x: r.left, y: r.top, width: r.width, height: r.height })
+    const probe = (n: number, acc: string[]) => {
+      if (cancelled || n > MAX_IMAGES) return
+      const src = `/tour/${slug}-${n}.png`
+      const im = new Image()
+      im.onload = () => { if (cancelled) return; const next = [...acc, src]; setImages(next); probe(n + 1, next) }
+      im.onerror = () => { /* first gap → stop */ }
+      im.src = src
     }
-    run()
+    probe(1, [])
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, index])
 
   const step = STEPS[index]
   const last = index === STEPS.length - 1
-  const pad = 8
-  // Card goes opposite the highlighted element so it never covers it.
-  const cardAtTop = rect ? rect.y > window.innerHeight * 0.5 : false
+  const nextImg = () => setImgIdx(i => (i + 1) % images.length)
+  const prevImg = () => setImgIdx(i => (i - 1 + images.length) % images.length)
 
   return (
     <Ctx.Provider value={{ startTour }}>
@@ -129,36 +121,18 @@ export function TourProvider({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* The tour overlay */}
+      {/* Tour overlay */}
       {active && (
         <>
-          {/* Scrim + spotlight */}
-          {rect ? (
-            <svg width="100%" height="100%" style={{ position: 'fixed', inset: 0, zIndex: 6000, pointerEvents: 'auto' }}>
-              <defs>
-                <mask id="tour-hole">
-                  <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                  <rect x={rect.x - pad} y={rect.y - pad} width={rect.width + pad * 2} height={rect.height + pad * 2} rx={14} fill="black" />
-                </mask>
-              </defs>
-              <rect x="0" y="0" width="100%" height="100%" fill="rgba(6,8,7,0.82)" mask="url(#tour-hole)" />
-              <rect x={rect.x - pad} y={rect.y - pad} width={rect.width + pad * 2} height={rect.height + pad * 2} rx={14} fill="none" stroke="#D4A53A" strokeWidth={2.5} />
-            </svg>
-          ) : (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(6,8,7,0.88)' }} />
-          )}
-
-          {/* Card */}
+          <div style={{ position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(6,8,7,0.9)' }} />
           <div style={{
-            position: 'fixed', left: 16, right: 16, zIndex: 6001, maxWidth: 460, margin: '0 auto',
-            ...(rect
-              ? (cardAtTop ? { top: 'calc(env(safe-area-inset-top, 0px) + 16px)' } : { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' })
-              : { top: '50%', transform: 'translateY(-50%)' }),
+            position: 'fixed', left: 16, right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 6001,
+            maxWidth: 480, margin: '0 auto',
             background: 'var(--panel)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20,
-            boxShadow: '0 16px 48px rgba(0,0,0,0.6)', padding: 18, maxHeight: '84vh', overflowY: 'auto',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.6)', padding: 18, maxHeight: '90vh', overflowY: 'auto',
           }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               {step.chubbs && <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1, color: '#D4A53A' }}>STEP {index + 1} / {STEPS.length}</div>
@@ -167,16 +141,42 @@ export function TourProvider({ children }: { children: ReactNode }) {
               <button onClick={close} aria-label="Close tour" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>✕</button>
             </div>
 
-            {step.image && (
-              <img src={step.image} alt="" style={{ width: '100%', borderRadius: 12, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)', maxHeight: '42vh', objectFit: 'cover', objectPosition: 'top' }} />
+            {/* Image carousel (whole image shown, swipe/tap between them) */}
+            {images.length > 0 && (
+              <div
+                style={{ position: 'relative', marginBottom: 12, display: 'flex', justifyContent: 'center' }}
+                onTouchStart={e => { touchX.current = e.touches[0].clientX }}
+                onTouchEnd={e => {
+                  if (touchX.current == null || images.length < 2) return
+                  const dx = e.changedTouches[0].clientX - touchX.current
+                  if (dx < -40) nextImg(); else if (dx > 40) prevImg()
+                  touchX.current = null
+                }}
+              >
+                <img src={images[imgIdx]} alt="" style={{
+                  display: 'block', maxWidth: '100%', maxHeight: '58vh', borderRadius: 12,
+                  border: '1px solid rgba(255,255,255,0.1)', objectFit: 'contain',
+                }} />
+                {images.length > 1 && (
+                  <>
+                    <button onClick={prevImg} aria-label="Previous" style={arrowStyle('left')}>‹</button>
+                    <button onClick={nextImg} aria-label="Next" style={arrowStyle('right')}>›</button>
+                    <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', gap: 5, justifyContent: 'center' }}>
+                      {images.map((_, i) => (
+                        <span key={i} style={{ width: i === imgIdx ? 16 : 6, height: 6, borderRadius: 3, background: i === imgIdx ? '#D4A53A' : 'rgba(255,255,255,0.45)', transition: 'width 0.2s' }} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--tx2)' }}>{step.body}</div>
 
-            {/* Progress dots */}
-            <div style={{ display: 'flex', gap: 5, justifyContent: 'center', margin: '14px 0' }}>
+            {/* Step progress dots */}
+            <div style={{ display: 'flex', gap: 4, justifyContent: 'center', margin: '14px 0', flexWrap: 'wrap' }}>
               {STEPS.map((_, i) => (
-                <span key={i} style={{ width: i === index ? 18 : 6, height: 6, borderRadius: 3, background: i === index ? '#D4A53A' : 'rgba(255,255,255,0.2)', transition: 'width 0.2s' }} />
+                <span key={i} style={{ width: i === index ? 16 : 5, height: 5, borderRadius: 3, background: i === index ? '#D4A53A' : 'rgba(255,255,255,0.2)', transition: 'width 0.2s' }} />
               ))}
             </div>
 
@@ -197,4 +197,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
       )}
     </Ctx.Provider>
   )
+}
+
+function arrowStyle(side: 'left' | 'right'): React.CSSProperties {
+  return {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)', [side]: 6,
+    width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)',
+    background: 'rgba(10,10,15,0.65)', color: '#fff', fontSize: 20, lineHeight: 1, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
 }
