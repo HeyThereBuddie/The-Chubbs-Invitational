@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Navigation, ChevronDown, X, Compass, Camera, Flag, Sparkles } from 'lucide-react'
+import { Navigation, ChevronDown, X, Compass, Camera, Flag } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
@@ -19,6 +19,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const STALE_MS = 30 * 60 * 1000
+const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 
 function haversineYards(a: LatLng, b: LatLng): number {
   const R = 6371000
@@ -1846,17 +1847,17 @@ export default function GpsPage() {
             <button
               onClick={() => setCaddieOpen(true)}
               className="pressable"
-              aria-label="AI caddie"
+              aria-label="Ask Chubbs"
               style={{
-                pointerEvents: 'auto', flexShrink: 0,
+                pointerEvents: 'auto', flexShrink: 0, padding: 0, overflow: 'hidden',
                 width: 46, height: 46, borderRadius: '50%',
-                background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-                border: '1.5px solid rgba(255,255,255,0.7)',
+                background: 'rgba(0,0,0,0.4)',
+                border: '1.5px solid #D4A53A',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                boxShadow: '0 0 12px rgba(212,165,58,0.45)',
               }}
             >
-              <Sparkles size={22} color="#e8c766" />
+              <img src={CHUBBS_IMG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </button>
           )}
         </div>

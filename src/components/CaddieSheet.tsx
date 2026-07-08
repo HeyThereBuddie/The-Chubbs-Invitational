@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
+
 export interface CaddieContext {
   hole: number
   par: number | null
@@ -163,10 +165,17 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
         border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 -12px 40px rgba(0,0,0,0.6)',
         padding: '18px 18px 22px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <span style={{ fontFamily: 'Bebas Neue', fontSize: 26, letterSpacing: 1, color: '#D4A53A' }}>⛳ AI CADDIE</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <img src={CHUBBS_IMG} alt="Chubbs" style={{
+            width: 50, height: 50, borderRadius: '50%', objectFit: 'cover',
+            border: '2px solid #D4A53A', boxShadow: '0 2px 10px rgba(0,0,0,0.45)',
+          }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 27, letterSpacing: 1, color: '#D4A53A', lineHeight: 1 }}>CADDIE CHUBBS</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, color: 'var(--tx4)', textTransform: 'uppercase' }}>It's all in the hips, big fella</div>
+          </div>
           <button onClick={onClose} style={{
-            width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
+            width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0,
             background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', cursor: 'pointer', fontSize: 16,
           }}>✕</button>
         </div>
@@ -213,7 +222,7 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
             <button onClick={analyze} disabled={loading} className="pressable" style={{
               width: '100%', padding: 15, borderRadius: 14, border: 'none', cursor: loading ? 'default' : 'pointer',
               background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 16, opacity: loading ? 0.6 : 1,
-            }}>{loading ? 'Reading your lie…' : 'Get caddie advice'}</button>
+            }}>{loading ? 'Chubbs is sizing it up…' : 'Ask Chubbs'}</button>
             {error && <div style={{ marginTop: 12, color: '#ff6b6b', fontSize: 13, textAlign: 'center' }}>{error}</div>}
           </>
         )}
@@ -246,12 +255,18 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
               </div>
             ))}
 
-            <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.55, margin: '14px 0 4px', fontStyle: 'italic' }}>“{rec.rationale}”</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', margin: '14px 0 4px' }}>
+              <img src={CHUBBS_IMG} alt="Chubbs" style={{
+                width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
+                border: '1.5px solid rgba(212,165,58,0.6)',
+              }} />
+              <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.55, fontStyle: 'italic', paddingTop: 2 }}>“{rec.rationale}”</div>
+            </div>
 
             <button onClick={() => setRec(null)} className="pressable" style={{
               width: '100%', marginTop: 14, padding: 13, borderRadius: 12, cursor: 'pointer',
               border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', fontWeight: 700, fontSize: 15,
-            }}>Analyze again</button>
+            }}>Ask Chubbs again</button>
           </>
         )}
       </div>
