@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Navigation, ChevronDown, X, Compass, Camera, Flag } from 'lucide-react'
+import { Navigation, ChevronDown, X, Compass, Camera, Flag, Sparkles } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
@@ -14,6 +14,7 @@ import { resolvePar } from '../lib/pars'
 import { resolveBag, recommendClub } from '../lib/clubs'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
+import { CaddieSheet, type CaddieContext } from '../components/CaddieSheet'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
@@ -267,6 +268,16 @@ function buildCorridor(tee: LatLng, green: LatLng, bearing: number): [number, nu
     offsetLatLng(greenFwd, bearing - 90, 22),
   ]
   return [...pts.map(p => [p.lng, p.lat] as [number, number]), [pts[0].lng, pts[0].lat]]
+}
+
+// Ray-casting point-in-polygon (lng/lat is fine at hole scale).
+function pointInPolygon(pt: LatLng, poly: LatLng[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].lng, yi = poly[i].lat, xj = poly[j].lng, yj = poly[j].lat
+    if (((yi > pt.lat) !== (yj > pt.lat)) && pt.lng < (xj - xi) * (pt.lat - yi) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
 }
 
 // ─── Blind-shot compass ───────────────────────────────────────────────────────
@@ -527,6 +538,7 @@ export default function GpsPage() {
   const [pins, setPins] = useState<Record<number, LatLng>>({})
   const [pinEditMode, setPinEditMode] = useState(false)
   const [pinDraft, setPinDraft] = useState<LatLng | null>(null)
+  const [caddieOpen, setCaddieOpen] = useState(false)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
@@ -1422,6 +1434,36 @@ export default function GpsPage() {
   const apPlaysLike = apValid ? Math.max(1, tapToGreenDist! + apWindAdjYds + apElevAdjYds) : null
   const apPlaysDelta = apPlaysLike !== null ? apPlaysLike - tapToGreenDist! : 0
 
+  // ── AI caddie context ───────────────────────────────────────────────────────
+  const surfaceHint = (() => {
+    if (!position || !currentHole) return null
+    if ((currentHole.bunkers ?? []).some(poly => poly.length >= 3 && pointInPolygon(position, poly))) return 'bunker'
+    const fairways = (currentHole.fairway ?? []).filter(p => p.length >= 3)
+    if (fairways.some(poly => pointInPolygon(position, poly))) return 'fairway'
+    return fairways.length ? 'rough' : null
+  })()
+  const elevText = (elevM.player !== null && elevM.target !== null)
+    ? (() => {
+        const ft = Math.round((elevM.target - elevM.player) * METERS_TO_FEET)
+        return Math.abs(ft) < 2 ? 'flat to the target' : `target ~${Math.abs(ft)} ft ${ft > 0 ? 'uphill' : 'downhill'}`
+      })()
+    : null
+  const windText = wind
+    ? `${wind.speed} mph out of the ${cardinalDir(wind.direction)}` +
+      (Math.abs(shotHeadwind) >= 3 ? `, ${shotHeadwind > 0 ? 'into the shot' : 'helping'} (~${Math.abs(Math.round(shotHeadwind))} mph)` : '')
+    : null
+  const caddieContext: CaddieContext = {
+    hole: selectedHole,
+    par: parForHole,
+    targetDistanceYds: aimLineDist,
+    playsLikeYds,
+    windText,
+    elevationText: elevText,
+    baselineClub: aimClub?.club ?? null,
+    bag: bag.filter(c => c.enabled).map(c => ({ club: c.club, carry: c.carry })),
+    surfaceHint,
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1817,6 +1859,27 @@ export default function GpsPage() {
             <Flag size={22} color={pinForHole ? '#111' : '#fff'} fill={pinForHole ? '#111' : 'none'} />
           </button>
         )}
+
+        {/* AI caddie button — right edge, below the pin button */}
+        {position && aimLineTarget && !pinEditMode && (
+          <button
+            onClick={() => setCaddieOpen(true)}
+            className="pressable"
+            aria-label="AI caddie"
+            style={{
+              position: 'absolute', right: 8, top: 'calc(46% + 168px)', transform: 'translateY(-50%)', zIndex: 11,
+              width: 46, height: 46, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              border: '1.5px solid rgba(255,255,255,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            <Sparkles size={22} color="#e8c766" />
+          </button>
+        )}
+
+        {caddieOpen && <CaddieSheet context={caddieContext} onClose={() => setCaddieOpen(false)} />}
 
         {/* Pin-edit overlay: instruction banner + Save / Clear / Cancel */}
         {pinEditMode && (
