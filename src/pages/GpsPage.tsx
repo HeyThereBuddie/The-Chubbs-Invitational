@@ -936,13 +936,21 @@ export default function GpsPage() {
     const map = mapRef.current
     if (!map) return
     const bearing = calcBearing(anchor, green)
-    // Approach tilt: flat overhead beyond APPROACH_YDS, ramping to MAX_PITCH as
-    // the player nears the green. Gives the realistic tilted look on approach shots.
+    // Approach tilt: flat overhead when far, tilt ramps up on the approach and
+    // PEAKS just off the green, then eases back to flat overhead once the player
+    // is on the green (so putts read top-down). Distances in yards.
     const distYds = haversineYards(anchor, green)
-    const APPROACH_YDS = 150, MAX_PITCH = 70
-    const pitch = distYds >= APPROACH_YDS
-      ? 0
-      : Math.min(MAX_PITCH, Math.round((APPROACH_YDS - distYds) / (APPROACH_YDS - 20) * MAX_PITCH))
+    const APPROACH_YDS = 150   // begin tilting inside this
+    const PEAK_YDS = 45        // most tilt around here (just short of the green)
+    const FLAT_YDS = 28        // back to overhead from here in (on the green)
+    const MAX_PITCH = 55
+    let pitch = 0
+    if (distYds < APPROACH_YDS && distYds > FLAT_YDS) {
+      pitch = distYds >= PEAK_YDS
+        ? Math.round((APPROACH_YDS - distYds) / (APPROACH_YDS - PEAK_YDS) * MAX_PITCH)  // ramp up
+        : Math.round((distYds - FLAT_YDS) / (PEAK_YDS - FLAT_YDS) * MAX_PITCH)          // ramp back down
+    }
+    pitch = Math.min(MAX_PITCH, Math.max(0, pitch))
     const bounds: [[number, number], [number, number]] = [
       [Math.min(anchor.lng, green.lng), Math.min(anchor.lat, green.lat)],
       [Math.max(anchor.lng, green.lng), Math.max(anchor.lat, green.lat)],
