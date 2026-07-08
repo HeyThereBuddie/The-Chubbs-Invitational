@@ -1175,6 +1175,15 @@ export default function GpsPage() {
         const pl = playsLike(yd)
         return { yd, pl, club: recommendClub(pl, bag)?.club ?? null, left, right, base: yd === base }
       }),
+      // Column headers just beyond the outermost arc: left = actual carry, right = plays like.
+      headers: (() => {
+        const maxYd = yds[yds.length - 1]
+        const A = endAngle(maxYd)
+        return {
+          left: offsetLatLng(position, shotBearing - A, (maxYd + 16) * 0.9144),
+          right: offsetLatLng(position, shotBearing + A, (maxYd + 16) * 0.9144),
+        }
+      })(),
     }
   })() : null
 
@@ -1562,6 +1571,17 @@ export default function GpsPage() {
                   'line-width': ['case', ['get', 'base'], 2.4, 1.4],
                 }} />
             </Source>
+          )}
+          {/* Column headers so the two number columns aren't confused */}
+          {scopeArcs && (
+            <Marker longitude={scopeArcs.headers.left.lng} latitude={scopeArcs.headers.left.lat} anchor="right" offset={[-4, 0]}>
+              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>Actual</div>
+            </Marker>
+          )}
+          {scopeArcs && (
+            <Marker longitude={scopeArcs.headers.right.lng} latitude={scopeArcs.headers.right.lat} anchor="left" offset={[4, 0]}>
+              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1, color: '#4ade80', textTransform: 'uppercase', textShadow: '0 1px 3px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>Plays Like</div>
+            </Marker>
           )}
           {/* Left = actual carry yardage; right = plays-like distance */}
           {scopeArcs?.labels.map(l => (
