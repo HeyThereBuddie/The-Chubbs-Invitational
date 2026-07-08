@@ -1078,6 +1078,8 @@ export default function GpsPage() {
     restoreCam()
   }
   const savePin = async () => {
+    // Tour is a sandbox — never write to shared data.
+    if (tour.active) { exitPinEdit(); return }
     if (!pinDraft || !effectiveTournamentId) { exitPinEdit(); return }
     const p = pinDraft
     setPins(prev => ({ ...prev, [selectedHole]: p }))       // optimistic
@@ -1089,6 +1091,7 @@ export default function GpsPage() {
     }, { onConflict: 'tournament_id,hole' })
   }
   const clearPin = async () => {
+    if (tour.active) { exitPinEdit(); return }
     if (!effectiveTournamentId) { exitPinEdit(); return }
     setPins(prev => { const n = { ...prev }; delete n[selectedHole]; return n })  // optimistic
     exitPinEdit()
@@ -1116,6 +1119,8 @@ export default function GpsPage() {
     setTrackingShot(null)
     setShotToast(`${t.club}: ${distance}y${offline != null && Math.abs(offline) >= 3 ? ` · ${Math.abs(offline)}y ${offline > 0 ? 'right' : 'left'}` : ''}`)
     setTimeout(() => setShotToast(null), 4000)
+    // Tour is a sandbox — show the result but never persist it.
+    if (tour.active) return
     const row = {
       tournament_id: effectiveTournamentId, player_id: profile?.id, hole: t.hole, club: t.club,
       start_lat: t.start.lat, start_lng: t.start.lng, end_lat: position.lat, end_lng: position.lng,
