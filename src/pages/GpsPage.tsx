@@ -799,15 +799,20 @@ export default function GpsPage() {
   useEffect(() => {
     if (tour.gpsDemo) {
       if (tourPrevHoleRef.current === null) tourPrevHoleRef.current = selectedHole
-      setSelectedHole(1)
+      if (selectedHole !== 1) setSelectedHole(1)
       setSimMode(true)
+      // Set the sim position directly (re-runs when the course finishes loading)
+      // so the GPS screen never renders half-empty during the tour.
+      const h1 = course?.holes.find(h => h.hole === 1)
+      const pos = h1?.tee ?? h1?.green.center
+      if (pos) setSimPosition(pos)
     } else if (tourPrevHoleRef.current !== null) {
       setSimMode(false); setSimMoveMode(false); setSimPosition(null)
       setSelectedHole(tourPrevHoleRef.current)
       tourPrevHoleRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tour.gpsDemo])
+  }, [tour.gpsDemo, course])
 
   // Reset any open GPS panel each time the tour advances, so each spotlight
   // starts from a clean screen.
