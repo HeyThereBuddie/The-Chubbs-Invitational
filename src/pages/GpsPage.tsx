@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Map, { Marker, Source, Layer, type MapRef } from 'react-map-gl/mapbox'
 import type { MapMouseEvent } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Navigation, ChevronDown, X, Compass, Camera } from 'lucide-react'
+import { Navigation, ChevronDown, X, Compass, Camera, Flag } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
@@ -522,6 +522,11 @@ export default function GpsPage() {
   const [scopeMode, setScopeMode] = useState(false)
   const [blindShot, setBlindShot] = useState(false)
   const [wind, setWind] = useState<WindData | null>(null)
+  // Shared pin placement per hole (tournament-wide, live). pinEditMode drives the
+  // set-pin flow; pinDraft is the provisional spot before saving.
+  const [pins, setPins] = useState<Record<number, LatLng>>({})
+  const [pinEditMode, setPinEditMode] = useState(false)
+  const [pinDraft, setPinDraft] = useState<LatLng | null>(null)
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
@@ -550,6 +555,7 @@ export default function GpsPage() {
   const autoOpenedHoleRef = useRef(0)
   const lastTargetPosRef  = useRef<LatLng | null>(null)
   const lastTargetHoleRef = useRef(0)
+  const lastCenterKeyRef  = useRef('')
   const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
@@ -650,6 +656,35 @@ export default function GpsPage() {
     return () => { supabase.removeChannel(channel) }
   }, [effectiveTournamentId])
 
+  // ── Shared pin placements (tournament-wide, live) ─────────────────────────
+
+  useEffect(() => {
+    if (!effectiveTournamentId) { setPins({}); return }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).from('hole_pins')
+      .select('hole, lat, lng')
+      .eq('tournament_id', effectiveTournamentId)
+      .then(({ data }: { data: { hole: number; lat: number; lng: number }[] | null }) => {
+        if (data) setPins(Object.fromEntries(data.map(r => [r.hole, { lat: r.lat, lng: r.lng }])))
+      })
+
+    const channel = supabase.channel(`hole-pins-${effectiveTournamentId}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, {
+        event: '*', schema: 'public', table: 'hole_pins',
+        filter: `tournament_id=eq.${effectiveTournamentId}`,
+      }, (payload: { eventType: string; new: { hole: number; lat: number; lng: number }; old: { hole: number } }) => {
+        if (payload.eventType === 'DELETE') {
+          setPins(prev => { const n = { ...prev }; delete n[payload.old.hole]; return n })
+        } else {
+          const r = payload.new
+          setPins(prev => ({ ...prev, [r.hole]: { lat: r.lat, lng: r.lng } }))
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [effectiveTournamentId])
+
   // ── Local DB snapshot for score-to-par in cart popups ────────────────────
 
   useEffect(() => {
@@ -710,6 +745,11 @@ export default function GpsPage() {
   // ── Derived state ─────────────────────────────────────────────────────────
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
+
+  // Shared pin for this hole (if anyone has set one). It overrides the green
+  // center as the "center" distance / aim target; front & back stay green edges.
+  const pinForHole = pins[selectedHole] ?? null
+  const effectiveCenter = pinForHole ?? currentHole?.green.center ?? null
 
   const corridorGeoJson = useMemo(() => {
     const fairways = (currentHole?.fairway ?? []).filter(p => p.length >= 3)
@@ -912,6 +952,44 @@ export default function GpsPage() {
     frameHole(position, green, 800)
   }, [position, currentHole, frameHole])
 
+  // ── Shared pin editing ────────────────────────────────────────────────────
+  const enterPinEdit = () => {
+    const g = currentHole?.green.center
+    if (!g) return
+    setScopeMode(false); setBlindShot(false)
+    setPinEditMode(true)
+    setPinDraft(pinForHole)
+    followPausedRef.current = true
+    if (followPauseTimer.current) clearTimeout(followPauseTimer.current)
+    const bearing = currentHole?.tee ? calcBearing(currentHole.tee, g) : 0
+    mapRef.current?.easeTo({ center: [g.lng, g.lat], zoom: 19.2, pitch: 0, bearing, duration: 600 })
+  }
+  const exitPinEdit = () => {
+    setPinEditMode(false)
+    setPinDraft(null)
+    followPausedRef.current = false
+    if (currentHole) flyToHole(currentHole)
+  }
+  const savePin = async () => {
+    if (!pinDraft || !effectiveTournamentId) { exitPinEdit(); return }
+    const p = pinDraft
+    setPins(prev => ({ ...prev, [selectedHole]: p }))       // optimistic
+    exitPinEdit()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('hole_pins').upsert({
+      tournament_id: effectiveTournamentId, hole: selectedHole,
+      lat: p.lat, lng: p.lng, set_by: profile?.id ?? null, updated_at: new Date().toISOString(),
+    }, { onConflict: 'tournament_id,hole' })
+  }
+  const clearPin = async () => {
+    if (!effectiveTournamentId) { exitPinEdit(); return }
+    setPins(prev => { const n = { ...prev }; delete n[selectedHole]; return n })  // optimistic
+    exitPinEdit()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('hole_pins').delete()
+      .eq('tournament_id', effectiveTournamentId).eq('hole', selectedHole)
+  }
+
   const [mapLoaded, setMapLoaded] = useState(false)
   const initialFlyDone = useRef(false)
 
@@ -940,8 +1018,11 @@ export default function GpsPage() {
   // target for the next shot), and when crossing inside 210 yds. Between those,
   // a manual tap to measure a different target sticks.
   useEffect(() => {
-    const green = currentHole?.green.center
+    const green = effectiveCenter
     const holeChanged = lastTargetHoleRef.current !== selectedHole
+    const centerKey = green ? `${green.lat.toFixed(6)},${green.lng.toFixed(6)}` : ''
+    const centerChanged = lastCenterKeyRef.current !== centerKey
+    lastCenterKeyRef.current = centerKey
     if (!position || !green) {
       // No live position: don't carry a target across holes (falls back to green).
       if (holeChanged) { setTapPoint(null); lastTargetPosRef.current = null; lastTargetHoleRef.current = selectedHole }
@@ -952,7 +1033,8 @@ export default function GpsPage() {
     const lastDist = last ? haversineYards(last, green) : Infinity
     const movedToward = lastDist - distToGreen
     const crossedInside210 = lastDist > 210 && distToGreen <= 210
-    if (holeChanged || last === null || movedToward >= 20 || crossedInside210) {
+    // centerChanged fires when a pin is set/moved/cleared — re-snap to it.
+    if (holeChanged || centerChanged || last === null || movedToward >= 20 || crossedInside210) {
       const par = resolvePar(selectedHole, course?.holes)
       const lz = currentHole?.landingZone ?? null
       let auto: LatLng
@@ -974,7 +1056,7 @@ export default function GpsPage() {
       lastTargetPosRef.current = position
       lastTargetHoleRef.current = selectedHole
     }
-  }, [position, currentHole, selectedHole])
+  }, [position, currentHole, selectedHole, effectiveCenter?.lat, effectiveCenter?.lng])
 
   // Sim mode: lock the sim pin to the current hole's tee. Re-locks (and disarms
   // "Move Location") whenever the selected hole changes so it jumps to the new tee.
@@ -1010,6 +1092,11 @@ export default function GpsPage() {
   }, [])
 
   const handleMapClick = (e: MapMouseEvent) => {
+    // Placing a shared pin: the tap drops the provisional pin, nothing else.
+    if (pinEditMode) {
+      setPinDraft({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      return
+    }
     // In sim mode, only relocate the sim pin while "Move Location" is armed.
     if (simMode && simMoveMode) {
       setSimPosition({ lat: e.lngLat.lat, lng: e.lngLat.lng })
@@ -1025,20 +1112,20 @@ export default function GpsPage() {
   // ── Distances ─────────────────────────────────────────────────────────────
 
   const frontDist      = dist(position, currentHole?.green.front)
-  const centerDist     = dist(position, currentHole?.green.center)
+  const centerDist     = dist(position, effectiveCenter)
   const backDist       = dist(position, currentHole?.green.back)
   const tapDist        = dist(position, tapPoint)
-  const tapToGreenDist = dist(tapPoint, currentHole?.green.center)
+  const tapToGreenDist = dist(tapPoint, effectiveCenter)
   const distToTee      = dist(position, currentHole?.tee)
   // Hide landing zone once player has walked >75 yds from tee (no longer relevant)
   const showLandingZone = !!currentHole?.landingZone && (!position || distToTee === null || distToTee <= 75)
 
-  const aimLineTarget = tapPoint ?? currentHole?.green.center ?? null
+  const aimLineTarget = tapPoint ?? effectiveCenter ?? null
   const aimLineDist   = tapPoint ? tapDist : centerDist
   const aimLineMid    = position && aimLineTarget
     ? { lat: (position.lat + aimLineTarget.lat) / 2, lng: (position.lng + aimLineTarget.lng) / 2 } : null
-  const tapToGreenMid = tapPoint && currentHole?.green.center
-    ? { lat: (tapPoint.lat + currentHole.green.center.lat) / 2, lng: (tapPoint.lng + currentHole.green.center.lng) / 2 } : null
+  const tapToGreenMid = tapPoint && effectiveCenter
+    ? { lat: (tapPoint.lat + effectiveCenter.lat) / 2, lng: (tapPoint.lng + effectiveCenter.lng) / 2 } : null
 
   // Scope/green-view: carry-distance arcs sweeping across, centred on the PLAYER
   // (so they read as "how far from where I'm hitting"), bracketing the target.
@@ -1286,7 +1373,7 @@ export default function GpsPage() {
   const aimClub = recommendClub(playsLikeYds ?? aimLineDist, bag)
 
   // Plays-like for the approach shot (aim target → green)
-  const greenCtr = currentHole?.green.center ?? null
+  const greenCtr = effectiveCenter
   const apValid = tapToGreenDist !== null && tapToGreenDist > 0
   const apBearing = (aimLineTarget && greenCtr) ? calcBearing(aimLineTarget, greenCtr) : null
   const apHeadwind = (wind && apBearing !== null) ? windComponents(wind.speed, wind.direction, apBearing).headwind : 0
@@ -1409,10 +1496,17 @@ export default function GpsPage() {
             </Marker>
           )}
 
-          {/* Improvement 2: Flag pin at green center */}
-          {currentHole?.green.center && (
-            <Marker longitude={currentHole.green.center.lng} latitude={currentHole.green.center.lat} anchor="bottom">
+          {/* Flag pin — at the shared pin when set, else the green center */}
+          {effectiveCenter && !pinEditMode && (
+            <Marker longitude={effectiveCenter.lng} latitude={effectiveCenter.lat} anchor="bottom">
               <FlagPin />
+            </Marker>
+          )}
+
+          {/* Pin-edit: provisional flag being placed */}
+          {pinEditMode && pinDraft && (
+            <Marker longitude={pinDraft.lng} latitude={pinDraft.lat} anchor="bottom">
+              <div className="pin-draft-bob"><FlagPin /></div>
             </Marker>
           )}
 
@@ -1652,6 +1746,60 @@ export default function GpsPage() {
             }}
             onClose={() => setBlindShot(false)}
           />
+        )}
+
+        {/* Set-pin button — right edge, below the blind-shot button */}
+        {currentHole?.green.center && !pinEditMode && (
+          <button
+            onClick={enterPinEdit}
+            className="pressable"
+            aria-label="Set pin location"
+            style={{
+              position: 'absolute', right: 8, top: 'calc(46% + 112px)', transform: 'translateY(-50%)', zIndex: 11,
+              width: 46, height: 46, borderRadius: '50%',
+              background: pinForHole ? 'rgba(212,165,58,0.9)' : 'rgba(0,0,0,0.4)',
+              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              border: pinForHole ? '1.5px solid #fff' : '1.5px solid rgba(255,255,255,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              boxShadow: pinForHole ? '0 0 14px rgba(212,165,58,0.5)' : '0 2px 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            <Flag size={22} color={pinForHole ? '#111' : '#fff'} fill={pinForHole ? '#111' : 'none'} />
+          </button>
+        )}
+
+        {/* Pin-edit overlay: instruction banner + Save / Clear / Cancel */}
+        {pinEditMode && (
+          <>
+            <div style={{
+              position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '50%', transform: 'translateX(-50%)',
+              zIndex: 40, background: 'rgba(10,10,15,0.85)', color: '#fff', padding: '8px 16px', borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.14)', fontSize: 13, fontWeight: 600, textAlign: 'center',
+              whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            }}>
+              🚩 Tap the green to place the pin — everyone sees it
+            </div>
+            <div style={{
+              position: 'absolute', left: 16, right: 16, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)',
+              zIndex: 40, display: 'flex', gap: 10, justifyContent: 'center',
+            }}>
+              <button onClick={exitPinEdit} className="pressable" style={{
+                padding: '11px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(10,10,15,0.8)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              }}>Cancel</button>
+              {pinForHole && (
+                <button onClick={clearPin} className="pressable" style={{
+                  padding: '11px 18px', borderRadius: 12, border: '1px solid rgba(255,77,79,0.5)',
+                  background: 'rgba(60,12,12,0.8)', color: '#ff9a9a', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                }}>Clear</button>
+              )}
+              <button onClick={savePin} disabled={!pinDraft} className="pressable" style={{
+                flex: 1, maxWidth: 200, padding: '11px 18px', borderRadius: 12, border: 'none',
+                background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 14,
+                cursor: pinDraft ? 'pointer' : 'default', opacity: pinDraft ? 1 : 0.45,
+              }}>Save pin</button>
+            </div>
+          </>
         )}
 
         {/* Hole picker — slides down from the top when the hole number is tapped */}
