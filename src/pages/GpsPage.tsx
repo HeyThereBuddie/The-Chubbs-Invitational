@@ -1994,30 +1994,6 @@ export default function GpsPage() {
           </div>
         )}
 
-        {/* Tracking banner — live distance + Mark ball */}
-        {trackingShot && (
-          <div style={{
-            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 40, display: 'flex', alignItems: 'center', gap: 12,
-            background: 'rgba(10,10,15,0.9)', border: '1px solid rgba(212,165,58,0.4)', borderRadius: 14,
-            padding: '8px 10px 8px 14px', boxShadow: '0 6px 20px rgba(0,0,0,0.55)', whiteSpace: 'nowrap',
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1, color: '#e8c766' }}>TRACKING {trackingShot.club}</span>
-              <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#fff' }}>
-                {position ? haversineYards(trackingShot.start, position) : 0}<span style={{ fontSize: 12, opacity: 0.6 }}>y so far</span>
-              </span>
-            </div>
-            <button onClick={markBall} className="pressable" style={{
-              padding: '10px 16px', borderRadius: 10, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 14, cursor: 'pointer',
-            }}>Mark ball</button>
-            <button onClick={cancelTracking} style={{
-              width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
-              background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer', fontSize: 15,
-            }}>✕</button>
-          </div>
-        )}
-
         {/* Saved-shot toast */}
         {shotToast && (
           <div style={{
@@ -2107,25 +2083,50 @@ export default function GpsPage() {
 
         {/* Top-right badges: recommended club tile, GPS status, then sim controls */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-          {aimClub && (
+          {(aimClub || trackingShot) && (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0,
               padding: '8px 12px 7px', borderRadius: 14, boxSizing: 'border-box',
               width: holeTileW ?? 96,
               background: 'linear-gradient(180deg, rgba(26,26,32,0.95), rgba(9,9,13,0.95))',
-              border: '1px solid rgba(74,222,128,0.38)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              border: `1px solid ${trackingShot ? 'rgba(212,165,58,0.6)' : 'rgba(74,222,128,0.38)'}`,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             }}>
-              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(255,255,255,0.42)', lineHeight: 1 }}>CLUB</span>
-              <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 0.95, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
-              <ClubIcon club={aimClub.club} size={38} />
-              {aimClub.note && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, color: '#fff', marginTop: 1 }}>{aimClub.note}</span>}
-              {position && !trackingShot && (
-                <button onClick={() => setClubPickerOpen(true)} className="pressable" style={{
-                  marginTop: 6, width: '100%', padding: '4px 6px', borderRadius: 8, cursor: 'pointer',
-                  border: '1px solid rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.08)',
-                  color: '#fff', fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                }}>◉ TRACK</button>
+              {trackingShot ? (
+                <>
+                  {/* Club being tracked — abbrev + icon side by side */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 26, lineHeight: 1, letterSpacing: 0.5, color: '#51e08a' }}>{trackingShot.club}</span>
+                    <ClubIcon club={trackingShot.club} size={26} />
+                  </div>
+                  <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.14)', margin: '5px 0' }} />
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.5, color: '#e8c766', lineHeight: 1 }}>TRACKING</span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 1, color: '#fff' }}>
+                    {position ? haversineYards(trackingShot.start, position) : 0}<span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>y</span>
+                  </span>
+                  <button onClick={markBall} className="pressable" style={{
+                    marginTop: 6, width: '100%', padding: '7px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 11, letterSpacing: 0.3,
+                  }}>Save shot</button>
+                  <button onClick={cancelTracking} style={{
+                    marginTop: 3, background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                  }}>Cancel</button>
+                </>
+              ) : aimClub && (
+                <>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.5, color: 'rgba(255,255,255,0.42)', lineHeight: 1 }}>CLUB</span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 0.95, letterSpacing: 0.5, color: '#51e08a' }}>{aimClub.club}</span>
+                  <ClubIcon club={aimClub.club} size={38} />
+                  {aimClub.note && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, color: '#fff', marginTop: 1 }}>{aimClub.note}</span>}
+                  {position && (
+                    <button onClick={() => setClubPickerOpen(true)} className="pressable" style={{
+                      marginTop: 6, width: '100%', padding: '4px 6px', borderRadius: 8, cursor: 'pointer',
+                      border: '1px solid rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.08)',
+                      color: '#fff', fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, whiteSpace: 'nowrap',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    }}>◉ TRACK</button>
+                  )}
+                </>
               )}
             </div>
           )}
