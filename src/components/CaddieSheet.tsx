@@ -115,7 +115,7 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
   const analyze = async () => {
     setLoading(true); setError(null); setRec(null)
     try {
-      const { data, error } = await supabase.functions.invoke('lie-caddie', {
+      const { data, error } = await supabase.functions.invoke('rapid-function', {
         body: {
           context: { ...context, lieSurface: surface, lieCondition: condition },
           imageBase64: photo?.data ?? null,
