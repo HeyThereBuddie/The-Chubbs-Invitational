@@ -546,6 +546,18 @@ export default function GpsPage() {
   const [clubPickerOpen, setClubPickerOpen] = useState(false)
   const [lastShot, setLastShot] = useState<Shot | null>(null)
   const [shotToast, setShotToast] = useState<string | null>(null)
+  // Measure the hole tile so the club tile can match its width exactly.
+  const [holeTileW, setHoleTileW] = useState<number | undefined>(undefined)
+  const holeTileObs = useRef<ResizeObserver | null>(null)
+  const holeTileRef = useCallback((el: HTMLDivElement | null) => {
+    holeTileObs.current?.disconnect()
+    if (!el) return
+    const update = () => setHoleTileW(el.offsetWidth)
+    update()
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(update); ro.observe(el); holeTileObs.current = ro
+    }
+  }, [])
 
   const [localScores, setLocalScores]     = useState<LocalScore[]>([])
   const [localTeams, setLocalTeams]       = useState<LocalTeam[]>([])
@@ -2098,7 +2110,8 @@ export default function GpsPage() {
           {aimClub && (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-              padding: '8px 12px 7px', borderRadius: 14, minWidth: 66,
+              padding: '8px 12px 7px', borderRadius: 14, boxSizing: 'border-box',
+              width: holeTileW ?? undefined, minWidth: 66,
               background: 'linear-gradient(180deg, rgba(26,26,32,0.95), rgba(9,9,13,0.95))',
               border: '1px solid rgba(74,222,128,0.38)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             }}>
@@ -2108,11 +2121,11 @@ export default function GpsPage() {
               {aimClub.note && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, color: '#fff', marginTop: 1 }}>{aimClub.note}</span>}
               {position && !trackingShot && (
                 <button onClick={() => setClubPickerOpen(true)} className="pressable" style={{
-                  marginTop: 6, padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+                  marginTop: 6, width: '100%', padding: '4px 6px', borderRadius: 8, cursor: 'pointer',
                   border: '1px solid rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.08)',
-                  color: '#fff', fontSize: 9.5, fontWeight: 800, letterSpacing: 0.8,
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}>◉ TRACK SHOT</button>
+                  color: '#fff', fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                }}>◉ TRACK</button>
               )}
             </div>
           )}
@@ -2271,7 +2284,7 @@ export default function GpsPage() {
           return (
             <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Hole + Currently chip */}
-              <div style={{
+              <div ref={holeTileRef} style={{
                 background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                 border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
                 padding: isNarrow ? '6px 8px' : '8px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center',
