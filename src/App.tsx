@@ -5,6 +5,7 @@ import { YearProvider } from './context/YearContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { SyncProvider } from './context/SyncContext'
 import { CourseProvider } from './context/CourseContext'
+import { TourProvider } from './context/TourContext'
 import Layout from './components/layout/Layout'
 import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
@@ -86,8 +87,10 @@ export default function App() {
             <YearProvider>
               <SyncProvider>
                 <CourseProvider>
-                  <AppRoutes />
-                  <UpdatePrompt />
+                  <TourProvider>
+                    <AppRoutes />
+                    <UpdatePrompt />
+                  </TourProvider>
                 </CourseProvider>
               </SyncProvider>
             </YearProvider>

@@ -432,7 +432,7 @@ export default function AccountPage() {
       </section>
 
       {/* ── My Bag (club distances for GPS recommendations) ── */}
-      <section className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
+      <section data-tour="bag" className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
         <div className="section-label" style={{ margin: '0 4px 8px' }}>My Bag</div>
         <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--tx4)', lineHeight: 1.5 }}>
@@ -499,7 +499,7 @@ export default function AccountPage() {
       </section>
 
       {/* ── Shot Stats & History ── */}
-      <ShotStats />
+      <div data-tour="shot-stats"><ShotStats /></div>
 
       {/* ── Career Highlights ── */}
       {careerStats.length > 0 && (() => {

@@ -40,7 +40,7 @@ export default function BottomNav() {
   const isNarrow = useMediaQuery('(max-width: 430px)')
 
   return (
-    <nav style={{
+    <nav data-tour="nav" style={{
       position: 'fixed',
       bottom: 0, left: 0, right: 0,
       background: 'var(--panel)',
