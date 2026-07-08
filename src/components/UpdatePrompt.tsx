@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 export default function UpdatePrompt() {
@@ -5,8 +6,22 @@ export default function UpdatePrompt() {
     onRegisteredSW(_swUrl, registration) {
       // Poll for updates every 60s — important for standalone PWA mode
       setInterval(() => registration?.update(), 60_000)
+      // Also check whenever the app is brought back to the foreground.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') registration?.update()
+      })
     },
   })
+
+  // Auto-apply a pending update the moment the app is backgrounded, so users
+  // never linger on a stale build (no manual "Reload" needed). Reloading while
+  // hidden means they simply return to the current version.
+  useEffect(() => {
+    if (!needRefresh) return
+    const onHide = () => { if (document.visibilityState === 'hidden') updateServiceWorker(true) }
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [needRefresh, updateServiceWorker])
 
   if (!needRefresh) return null
 
