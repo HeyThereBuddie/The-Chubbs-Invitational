@@ -790,16 +790,24 @@ export default function GpsPage() {
 
   const currentHole: HoleGps | undefined = course?.holes.find(h => h.hole === selectedHole)
 
-  // While the feature tour is on its GPS steps, drop the player at a demo spot
-  // (~160y in front of the green) so every GPS element renders and can be
-  // highlighted, even with no real GPS fix. Real/sim position always wins.
-  const tourDemoPos = useMemo(() => {
-    if (!tour.gpsDemo) return null
-    const g = currentHole?.green.center, tee = currentHole?.tee
-    if (!g) return null
-    return tee ? offsetLatLng(g, calcBearing(g, tee), 160 * 0.9144) : g
-  }, [tour.gpsDemo, currentHole])
-  const position = simMode ? simPosition : (realPosition ?? tourDemoPos)
+  const position = simMode ? simPosition : realPosition
+
+  // The feature tour runs on a background sim: on its GPS steps we jump to hole 1
+  // and switch sim mode on (position locks to the hole-1 tee via the sim effect),
+  // then turn it all off when the tour exits. Fully invisible to the user.
+  const tourPrevHoleRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (tour.gpsDemo) {
+      if (tourPrevHoleRef.current === null) tourPrevHoleRef.current = selectedHole
+      setSelectedHole(1)
+      setSimMode(true)
+    } else if (tourPrevHoleRef.current !== null) {
+      setSimMode(false); setSimMoveMode(false); setSimPosition(null)
+      setSelectedHole(tourPrevHoleRef.current)
+      tourPrevHoleRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.gpsDemo])
 
   // Reset any open GPS panel each time the tour advances, so each spotlight
   // starts from a clean screen.
@@ -1652,15 +1660,16 @@ export default function GpsPage() {
             </Source>
           )}
 
-          {/* Player position — Improvement 4: directional arrow */}
-          {position && !simMode && (
+          {/* Player position — Improvement 4: directional arrow.
+              During the tour, show the normal dot even though sim is driving. */}
+          {position && (!simMode || tour.active) && (
             <Marker longitude={position.lng} latitude={position.lat} anchor="center">
               <PlayerDot bearing={playerBearing} />
             </Marker>
           )}
 
-          {/* Sim mode: draggable player pin */}
-          {simMode && simPosition && (
+          {/* Sim mode: draggable player pin (hidden during the tour) */}
+          {simMode && !tour.active && simPosition && (
             <Marker longitude={simPosition.lng} latitude={simPosition.lat} anchor="center">
               <div style={{
                 width: 34, height: 34, borderRadius: '50%',
@@ -2165,8 +2174,8 @@ export default function GpsPage() {
             </div>
           )}
 
-          {/* Sim mode controls — admins only */}
-          {isAdmin && (
+          {/* Sim mode controls — admins only, and hidden while the tour drives sim */}
+          {isAdmin && !tour.active && (
             <>
               <button
                 onClick={() => {
