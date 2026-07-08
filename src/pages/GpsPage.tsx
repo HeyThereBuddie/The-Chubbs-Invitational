@@ -1790,7 +1790,7 @@ export default function GpsPage() {
               Shrinks within 210 yds of the green (approach range). */}
           {position && aimLineTarget && (
             <Marker longitude={aimLineTarget.lng} latitude={aimLineTarget.lat} anchor="center">
-              <div data-tour="reticle"><ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 210 ? 0.7 : 1)} /></div>
+              <div data-tour="reticle" style={{ display: 'inline-flex' }}><ReticleMarker scale={scopeMode ? 1.15 : (centerDist !== null && centerDist <= 210 ? 0.7 : 1)} /></div>
             </Marker>
           )}
 

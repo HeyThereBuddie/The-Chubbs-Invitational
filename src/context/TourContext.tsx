@@ -101,9 +101,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       const node = document.querySelector(`[data-tour="${step.anchor}"]`) as HTMLElement | null
       node?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      await sleep(350); measure()
-      await sleep(550); measure()
-      if (!cancelled && step.interactive && el) el.addEventListener('click', onClick, { once: true })
+      if (!cancelled && step.interactive && node) { el = node; node.addEventListener('click', onClick, { once: true }) }
+      // Re-measure repeatedly for ~2.5s: map markers (the reticle) keep moving as
+      // the map frames the hole, so a single measurement lands in the wrong spot.
+      for (let i = 0; i < 12 && !cancelled; i++) { measure(); await sleep(220) }
     }
     run()
     const onResize = () => measure()
