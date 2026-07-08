@@ -556,6 +556,8 @@ export default function GpsPage() {
   const lastTargetPosRef  = useRef<LatLng | null>(null)
   const lastTargetHoleRef = useRef(0)
   const lastCenterKeyRef  = useRef('')
+  // Camera state captured on entering scope/pin mode, restored on exit.
+  const preModeCamRef = useRef<{ center: [number, number]; zoom: number; bearing: number; pitch: number; followPaused: boolean; hole: number } | null>(null)
   const publishRef     = useRef<{ profileId: string; tournamentId: string; teamId: string | null } | null>(null)
   publishRef.current = (profile && effectiveTournamentId)
     ? { profileId: profile.id, tournamentId: effectiveTournamentId, teamId: scoring.myTeam?.id ?? null }
@@ -942,6 +944,30 @@ export default function GpsPage() {
     frameHole(tee, green, 800)
   }, [frameHole])
 
+  // Snapshot the camera + follow state before entering scope/pin mode, so exiting
+  // returns the player to exactly where they were (Me view or whole-hole), rather
+  // than force-zooming to the whole hole.
+  const captureCam = () => {
+    const m = mapRef.current
+    if (!m) { preModeCamRef.current = null; return }
+    const c = m.getCenter()
+    preModeCamRef.current = {
+      center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing(), pitch: m.getPitch(),
+      followPaused: followPausedRef.current, hole: selectedHole,
+    }
+  }
+  const restoreCam = () => {
+    const snap = preModeCamRef.current
+    preModeCamRef.current = null
+    // Hole changed while in the mode → the snapshot is stale; frame the new hole.
+    if (!snap || snap.hole !== selectedHole) { if (currentHole) flyToHole(currentHole); return }
+    followPausedRef.current = snap.followPaused
+    mapRef.current?.easeTo({
+      center: snap.center, zoom: snap.zoom, bearing: snap.bearing, pitch: snap.pitch,
+      duration: 600, essential: false,
+    })
+  }
+
   // Recenter around the player: frame from where they are on the hole to the
   // green, and resume the follow-cam so it keeps tracking.
   const recenterOnPlayer = useCallback(() => {
@@ -956,6 +982,7 @@ export default function GpsPage() {
   const enterPinEdit = () => {
     const g = currentHole?.green.center
     if (!g) return
+    captureCam()
     setScopeMode(false); setBlindShot(false)
     setPinEditMode(true)
     setPinDraft(pinForHole)
@@ -967,8 +994,7 @@ export default function GpsPage() {
   const exitPinEdit = () => {
     setPinEditMode(false)
     setPinDraft(null)
-    followPausedRef.current = false
-    if (currentHole) flyToHole(currentHole)
+    restoreCam()
   }
   const savePin = async () => {
     if (!pinDraft || !effectiveTournamentId) { exitPinEdit(); return }
@@ -1202,11 +1228,15 @@ export default function GpsPage() {
     })
   }, [scopeMode, aimLineTarget?.lat, aimLineTarget?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Leave scope mode: resume the normal hole framing.
+  // Enter scope mode: snapshot the camera first so we can return to it on exit.
+  const enterScope = () => {
+    captureCam()
+    setScopeMode(true)
+  }
+  // Leave scope mode: return to wherever the player was before entering.
   const exitScope = () => {
     setScopeMode(false)
-    followPausedRef.current = false
-    if (currentHole) flyToHole(currentHole)
+    restoreCam()
   }
 
 
@@ -1708,7 +1738,7 @@ export default function GpsPage() {
         {/* Scope / green-view button — right edge; zooms tight onto the target */}
         {position && aimLineTarget && (
           <button
-            onClick={() => scopeMode ? exitScope() : setScopeMode(true)}
+            onClick={() => scopeMode ? exitScope() : enterScope()}
             className="pressable"
             style={{
               position: 'absolute', right: 8, top: '46%', transform: 'translateY(-50%)', zIndex: 11,
@@ -1800,25 +1830,24 @@ export default function GpsPage() {
               🚩 Tap the green to place the pin — everyone sees it
             </div>
             <div style={{
-              position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 40,
-              background: 'var(--panel)', borderTop: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 -8px 28px rgba(0,0,0,0.5)',
-              padding: '14px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
-              display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'stretch',
+              position: 'absolute', left: 12, right: 12, bottom: navBase, zIndex: 40,
+              background: 'var(--panel)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 16,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.55)',
+              padding: 16, display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'stretch',
             }}>
               <button onClick={exitPinEdit} className="pressable" style={{
-                padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                padding: '15px 22px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', fontWeight: 700, fontSize: 16, cursor: 'pointer',
               }}>Cancel</button>
               {pinForHole && (
                 <button onClick={clearPin} className="pressable" style={{
-                  padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,77,79,0.5)',
-                  background: 'rgba(255,77,79,0.12)', color: '#ff6b6b', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  padding: '15px 22px', borderRadius: 14, border: '1px solid rgba(255,77,79,0.5)',
+                  background: 'rgba(255,77,79,0.12)', color: '#ff6b6b', fontWeight: 700, fontSize: 16, cursor: 'pointer',
                 }}>Clear</button>
               )}
               <button onClick={savePin} disabled={!pinDraft} className="pressable" style={{
-                flex: 1, maxWidth: 220, padding: '12px 18px', borderRadius: 12, border: 'none',
-                background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 14,
+                flex: 1, maxWidth: 240, padding: '15px 22px', borderRadius: 14, border: 'none',
+                background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 16,
                 cursor: pinDraft ? 'pointer' : 'default', opacity: pinDraft ? 1 : 0.45,
               }}>Save pin</button>
             </div>
