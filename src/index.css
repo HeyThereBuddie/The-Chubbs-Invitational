@@ -518,6 +518,9 @@ html[data-theme="light"] .glass-strong {
   animation: gpsRingPulse 2s ease-out infinite;
 }
 
+/* Hide the rules-assistant FAB while the AI caddie sheet is open */
+body.caddie-open .rules-fab { display: none !important; }
+
 /* Provisional pin being placed (set-pin flow) */
 @keyframes pinBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .pin-draft-bob { animation: pinBob 1.1s ease-in-out infinite; }

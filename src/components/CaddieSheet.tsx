@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export interface CaddieContext {
@@ -102,6 +102,12 @@ export function CaddieSheet({ context, onClose }: { context: CaddieContext; onCl
   const [rec, setRec] = useState<Rec | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Hide the global rules-assistant FAB while this sheet is open.
+  useEffect(() => {
+    document.body.classList.add('caddie-open')
+    return () => document.body.classList.remove('caddie-open')
+  }, [])
 
   const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

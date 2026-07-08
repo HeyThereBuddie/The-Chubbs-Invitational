@@ -69,6 +69,7 @@ export default function RulesChat() {
         <button
           onClick={() => setOpen(true)}
           title="Ask about tournament rules"
+          className="rules-fab"
           style={{
             position: 'fixed', bottom: btnBottom, right: btnRight, zIndex: 200,
             width: 52, height: 52, borderRadius: '50%',
