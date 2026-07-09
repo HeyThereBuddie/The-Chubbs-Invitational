@@ -1228,6 +1228,13 @@ export default function GpsPage() {
   // Hide landing zone once player has walked >75 yds from tee (no longer relevant)
   const showLandingZone = !!currentHole?.landingZone && (!position || distToTee === null || distToTee <= 75)
 
+  // Driver is a tee-shot club. Drop it from the club recommendation once the
+  // player is >40 yds off the tee (they've already hit their drive) or on a par 3.
+  // This is purely position-based, so it works even when nobody tracks shots.
+  const offTheTee = distToTee !== null && distToTee > 40
+  const isPar3 = resolvePar(selectedHole, course?.holes) === 3
+  const recBag = offTheTee || isPar3 ? bag.filter(c => c.club !== 'Dr') : bag
+
   const aimLineTarget = tapPoint ?? effectiveCenter ?? null
   const aimLineDist   = tapPoint ? tapDist : centerDist
   const aimLineMid    = position && aimLineTarget
@@ -1281,7 +1288,7 @@ export default function GpsPage() {
         const left = offsetLatLng(position, shotBearing - A, yd * 0.9144)
         const right = offsetLatLng(position, shotBearing + A, yd * 0.9144)
         const pl = playsLike(yd)
-        return { yd, pl, club: recommendClub(pl, bag)?.club ?? null, left, right, base: yd === base }
+        return { yd, pl, club: recommendClub(pl, recBag)?.club ?? null, left, right, base: yd === base }
       }),
       // Column headers just beyond the outermost arc: left = actual carry, right = plays like.
       headers: (() => {
@@ -1497,7 +1504,7 @@ export default function GpsPage() {
   const elevAdjYds = elevDeltaFt !== null ? Math.round(elevDeltaFt * ELEV_YARDS_PER_FOOT) : 0
   const playsLikeYds = validAim ? Math.max(1, aimLineDist! + windAdjYds + elevAdjYds) : null
   const playsLikeDelta = playsLikeYds !== null ? playsLikeYds - aimLineDist! : 0
-  const aimClub = recommendClub(playsLikeYds ?? aimLineDist, bag)
+  const aimClub = recommendClub(playsLikeYds ?? aimLineDist, recBag)
 
   // Plays-like for the approach shot (aim target → green)
   const greenCtr = effectiveCenter
@@ -1927,7 +1934,7 @@ export default function GpsPage() {
             targetBearing={position && aimLineTarget ? calcBearing(position, aimLineTarget) : null}
             distance={aimLineDist}
             playsLike={playsLikeYds}
-            club={recommendClub(playsLikeYds, bag)}
+            club={recommendClub(playsLikeYds, recBag)}
             heading={compass.heading}
             headingOffset={headingOffset}
             calibrated={calibrated}
