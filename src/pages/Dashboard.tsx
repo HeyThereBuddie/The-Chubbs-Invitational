@@ -9,6 +9,7 @@ import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, d
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import PushEnableTile from '../components/PushEnableTile'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 
@@ -278,6 +279,9 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Turn-on-notifications nudge (a second entry point) ── */}
+      {isCurrentYear && <PushEnableTile />}
 
       {/* ── Defending Champions ──────────────────────────────── */}
       {defendingChamp && (

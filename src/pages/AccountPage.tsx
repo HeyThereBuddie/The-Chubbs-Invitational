@@ -4,15 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { displayName } from '../lib/types'
 import { type ClubDist, DEFAULT_BAG, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
-
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
-  || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
-
-const DEFAULT_NOTIF_PREFS: Record<string, boolean> = {
-  lead_change: true, top3_shift: true, hot_streak: true, eagle: true,
-  round_complete: true, team_scores: true, contest_winner: true,
-  alligator: true, choking: true, score_disputed: false,
-}
+import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array } from '../lib/push'
 
 const NOTIF_TYPES: { key: string; icon: string; label: string; desc: string; adminOnly?: boolean }[] = [
   { key: 'lead_change',    icon: '🏆', label: 'Lead Change',    desc: 'A team takes the lead' },
@@ -26,14 +18,6 @@ const NOTIF_TYPES: { key: string; icon: string; label: string; desc: string; adm
   { key: 'choking',        icon: '💀', label: 'Choking Alert',  desc: 'The leader gives up 2+ strokes on a hole' },
   { key: 'score_disputed', icon: '📋', label: 'Score Edited',   desc: 'An admin edits a posted score', adminOnly: true },
 ]
-
-function urlBase64ToUint8Array(base64: string) {
-  const pad = '='.repeat((4 - (base64.length % 4)) % 4)
-  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(b64)
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
-}
-
 
 export default function AccountPage() {
   const { profile, user, refreshProfile, signOut, isAdmin } = useAuth()
