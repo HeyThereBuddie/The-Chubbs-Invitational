@@ -57,7 +57,7 @@ export default function AccountPage() {
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(DEFAULT_NOTIF_PREFS)
   const [prefSaving, setPrefSaving] = useState<string | null>(null)
   const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
-  const [tab, setTab] = useState<'profile' | 'bag' | 'career' | 'alerts'>('profile')
+  const [tab, setTab] = useState<'profile' | 'bag' | 'career'>('profile')
   const [bag, setBag] = useState<ClubDist[]>(DEFAULT_BAG)
   const [sevenIron, setSevenIron] = useState('')
   const [savingBag, setSavingBag] = useState(false)
@@ -380,12 +380,97 @@ export default function AccountPage() {
         </div>
       </section>
 
+      {/* ── Notifications (under the profile card) ── */}
+      <section className="animate-fadeUp delay-150" style={{ marginBottom: 24 }}>
+        <div className="section-label" style={{ margin: '0 4px 8px' }}>Notifications</div>
+        <div className="glass" style={{ padding: '8px 20px' }}>
+          <div className="list-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 56, padding: '8px 0', borderBottom: pushStatus === 'subscribed' ? '1px solid var(--bdr)' : 'none' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>Push Alerts</div>
+              {pushStatus === 'unsupported' && (
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Push notifications aren't supported in this browser.</div>
+              )}
+              {pushStatus === 'denied' && (
+                <div style={{ fontSize: 12, color: '#ef4444', marginTop: 2 }}>Blocked — enable in browser settings, then reload.</div>
+              )}
+              {pushStatus === 'unsubscribed' && (
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Turn on to get alerts during the round.</div>
+              )}
+              {pushStatus === 'subscribed' && (
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Pick which alerts hit your phone.</div>
+              )}
+            </div>
+            {(pushStatus === 'subscribed' || pushStatus === 'unsubscribed') && (
+              <div className="pill-tabs" style={{ flexShrink: 0 }}>
+                <button
+                  className={`pill-tab pressable${pushStatus === 'unsubscribed' ? ' active' : ''}`}
+                  onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+                  disabled={pushLoading}
+                  style={{ fontSize: 12, opacity: pushLoading ? 0.6 : 1, cursor: pushLoading ? 'not-allowed' : 'pointer' }}
+                >
+                  {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {pushStatus === 'subscribed' && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {NOTIF_TYPES.filter(t => !t.adminOnly || isAdmin).map((t, i, arr) => {
+                const on = notifPrefs[t.key] !== false
+                const saving = prefSaving === t.key
+                return (
+                  <div
+                    key={t.key}
+                    className="list-row"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      minHeight: 56, padding: '8px 0',
+                      borderBottom: i < arr.length - 1 ? '1px solid var(--bdr)' : 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{t.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>{t.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{t.desc}</div>
+                    </div>
+                    <button
+                      className="pressable"
+                      role="switch"
+                      aria-checked={on}
+                      aria-label={t.label}
+                      onClick={() => !saving && togglePref(t.key, !on)}
+                      style={{
+                        flexShrink: 0, width: 48, height: 28, borderRadius: 999,
+                        background: on ? 'linear-gradient(160deg, #e8bc55 0%, #c4941f 100%)' : 'var(--surf2)',
+                        border: `1px solid ${on ? 'var(--gold-40)' : 'var(--bdr2)'}`,
+                        boxShadow: on ? 'var(--elev-gold)' : 'none',
+                        cursor: saving ? 'wait' : 'pointer',
+                        position: 'relative', transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: 3, left: on ? 23 : 3,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: on ? '#fffdf6' : 'var(--tx4)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                        transition: 'left 0.2s var(--spring), background 0.2s',
+                        display: 'block',
+                      }} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ── Account tabs ── */}
       <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 20 }}>
         <button onClick={() => setTab('profile')} className={`pill-tab pressable ${tab === 'profile' ? 'active' : ''}`}>Profile</button>
         <button onClick={() => setTab('bag')} className={`pill-tab pressable ${tab === 'bag' ? 'active' : ''}`}>My Bag</button>
         <button onClick={() => setTab('career')} className={`pill-tab pressable ${tab === 'career' ? 'active' : ''}`}>Career</button>
-        <button onClick={() => setTab('alerts')} className={`pill-tab pressable ${tab === 'alerts' ? 'active' : ''}`}>Alerts</button>
       </div>
 
       {/* ── Profile info ── */}
@@ -557,94 +642,6 @@ export default function AccountPage() {
           No career highlights yet — win a title, a contest, or the Jackass award and it'll show up here.
         </div>
       ))}
-
-      {/* ── Push Notifications ── */}
-      {tab === 'alerts' && (
-      <section className="animate-fadeUp delay-400" style={{ marginBottom: 24 }}>
-        <div className="section-label" style={{ margin: '0 4px 8px' }}>Notifications</div>
-        <div className="glass" style={{ padding: '8px 20px' }}>
-          <div className="list-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 56, padding: '8px 0', borderBottom: pushStatus === 'subscribed' ? '1px solid var(--bdr)' : 'none' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>Push Alerts</div>
-              {pushStatus === 'unsupported' && (
-                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Push notifications aren't supported in this browser.</div>
-              )}
-              {pushStatus === 'denied' && (
-                <div style={{ fontSize: 12, color: '#ef4444', marginTop: 2 }}>Blocked — enable in browser settings, then reload.</div>
-              )}
-              {pushStatus === 'unsubscribed' && (
-                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Turn on to get alerts during the round.</div>
-              )}
-              {pushStatus === 'subscribed' && (
-                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>Pick which alerts hit your phone.</div>
-              )}
-            </div>
-            {(pushStatus === 'subscribed' || pushStatus === 'unsubscribed') && (
-              <div className="pill-tabs" style={{ flexShrink: 0 }}>
-                <button
-                  className={`pill-tab pressable${pushStatus === 'unsubscribed' ? ' active' : ''}`}
-                  onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
-                  disabled={pushLoading}
-                  style={{ fontSize: 12, opacity: pushLoading ? 0.6 : 1, cursor: pushLoading ? 'not-allowed' : 'pointer' }}
-                >
-                  {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {pushStatus === 'subscribed' && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {NOTIF_TYPES.filter(t => !t.adminOnly || isAdmin).map((t, i, arr) => {
-                const on = notifPrefs[t.key] !== false
-                const saving = prefSaving === t.key
-                return (
-                  <div
-                    key={t.key}
-                    className="list-row"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      minHeight: 56, padding: '8px 0',
-                      borderBottom: i < arr.length - 1 ? '1px solid var(--bdr)' : 'none',
-                    }}
-                  >
-                    <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{t.icon}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>{t.label}</div>
-                      <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{t.desc}</div>
-                    </div>
-                    <button
-                      className="pressable"
-                      role="switch"
-                      aria-checked={on}
-                      aria-label={t.label}
-                      onClick={() => !saving && togglePref(t.key, !on)}
-                      style={{
-                        flexShrink: 0, width: 48, height: 28, borderRadius: 999,
-                        background: on ? 'linear-gradient(160deg, #e8bc55 0%, #c4941f 100%)' : 'var(--surf2)',
-                        border: `1px solid ${on ? 'var(--gold-40)' : 'var(--bdr2)'}`,
-                        boxShadow: on ? 'var(--elev-gold)' : 'none',
-                        cursor: saving ? 'wait' : 'pointer',
-                        position: 'relative', transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
-                      }}
-                    >
-                      <span style={{
-                        position: 'absolute', top: 3, left: on ? 23 : 3,
-                        width: 20, height: 20, borderRadius: '50%',
-                        background: on ? '#fffdf6' : 'var(--tx4)',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
-                        transition: 'left 0.2s var(--spring), background 0.2s',
-                        display: 'block',
-                      }} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-      )}
 
       {/* ── Email + RSVP + Password (Profile tab) ── */}
       {tab === 'profile' && (<>

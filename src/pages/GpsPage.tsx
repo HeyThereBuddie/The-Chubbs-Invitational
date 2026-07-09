@@ -1055,20 +1055,23 @@ export default function GpsPage() {
     setTrackingShot({ club, start: position, aim: aimLineTarget, hole: selectedHole })
   }
   const cancelTracking = () => setTrackingShot(null)
+  const flashToast = (msg: string, ms = 4000) => { setShotToast(msg); setTimeout(() => setShotToast(null), ms) }
   const markBall = async () => {
     const t = trackingShot
     if (!t || !position) return
     const distance = haversineYards(t.start, position)
+    // Need an actual distance — in sim you must move the pin to your ball first.
+    if (distance < 3) { flashToast('No distance yet — move to your ball, then Mark ball', 3500); return }
     let offline: number | null = null
     if (t.aim) {
       const ang = normDeg(calcBearing(t.start, position) - calcBearing(t.start, t.aim))
       offline = Math.round(distance * Math.sin(ang * Math.PI / 180))
     }
     setTrackingShot(null)
-    setShotToast(`${t.club}: ${distance}y${offline != null && Math.abs(offline) >= 3 ? ` · ${Math.abs(offline)}y ${offline > 0 ? 'right' : 'left'}` : ''}`)
-    setTimeout(() => setShotToast(null), 4000)
+    flashToast(`${t.club}: ${distance}y${offline != null && Math.abs(offline) >= 3 ? ` · ${Math.abs(offline)}y ${offline > 0 ? 'right' : 'left'}` : ''}`)
     // Tour is a sandbox — show the result but never persist it.
     if (tour.active) return
+    if (!myTeamId) { flashToast("Join a team to save shots — they're tracked per team", 4000); return }
     const row = {
       tournament_id: effectiveTournamentId, team_id: myTeamId, player_id: profile?.id, hole: t.hole, club: t.club,
       start_lat: t.start.lat, start_lng: t.start.lng, end_lat: position.lat, end_lng: position.lng,
@@ -1079,18 +1082,17 @@ export default function GpsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any
     let saved: Shot | null = null
-    if (myTeamId) {
-      const { data: recent } = await sb.from('shots')
-        .select('id, created_at').eq('team_id', myTeamId).eq('hole', t.hole)
-        .order('created_at', { ascending: false }).limit(1)
-      const prev = recent?.[0]
-      if (prev && Date.now() - new Date(prev.created_at).getTime() < 120_000) {
-        const { data } = await sb.from('shots').update(row).eq('id', prev.id).select().single()
-        saved = data as Shot
-      }
-    }
-    if (!saved) {
-      const { data } = await sb.from('shots').insert(row).select().single()
+    const { data: recent } = await sb.from('shots')
+      .select('id, created_at').eq('team_id', myTeamId).eq('hole', t.hole)
+      .order('created_at', { ascending: false }).limit(1)
+    const prev = recent?.[0]
+    if (prev && Date.now() - new Date(prev.created_at).getTime() < 120_000) {
+      const { data, error } = await sb.from('shots').update(row).eq('id', prev.id).select().single()
+      if (error) { flashToast(`Save failed: ${error.message}`, 6000); return }
+      saved = data as Shot
+    } else {
+      const { data, error } = await sb.from('shots').insert(row).select().single()
+      if (error) { flashToast(`Save failed: ${error.message}`, 6000); return }
       saved = data as Shot
     }
     setLastShot(saved ?? { id: 'local', ...row } as Shot)

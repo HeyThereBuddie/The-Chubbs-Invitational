@@ -6,6 +6,7 @@ import { type Shot, clubStats } from '../lib/shots'
 export function ShotStats({ teamId }: { teamId?: string | null }) {
   const { profile } = useAuth()
   const [shots, setShots] = useState<Shot[]>([])
+  const [putts, setPutts] = useState<(number | null)[]>([])
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
 
@@ -19,8 +20,23 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
     q.then(({ data }: { data: Shot[] | null }) => { setShots(data ?? []); setLoading(false) })
   }, [teamId, profile?.id])
 
+  // Putts come from the team's scorecard, not the shot log.
+  useEffect(() => {
+    if (!teamId) { setPutts([]); return }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).from('scores').select('putts').eq('team_id', teamId)
+      .then(({ data }: { data: { putts: number | null }[] | null }) => setPutts((data ?? []).map(r => r.putts)))
+  }, [teamId])
+
   const stats = clubStats(shots)
   const history = showAll ? shots : shots.slice(0, 8)
+
+  // Dashboard metrics
+  const driveDists = shots.filter(s => s.club === 'Dr' && (s.distance_yds ?? 0) > 0).map(s => s.distance_yds as number)
+  const avgDrive = driveDists.length ? Math.round(driveDists.reduce((a, b) => a + b, 0) / driveDists.length) : null
+  const puttVals = putts.filter((p): p is number => p != null)
+  const puttsPerHole = puttVals.length ? puttVals.reduce((a, b) => a + b, 0) / puttVals.length : null
+  const threePutts = puttVals.filter(p => p >= 3).length
 
   return (
     <section className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
@@ -28,8 +44,17 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
       <div className="glass" style={{ padding: 20 }}>
         {loading ? (
           <div style={{ color: 'var(--tx4)', fontSize: 13 }}>Loading…</div>
-        ) : shots.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5 }}>
+        ) : (
+          <>
+            {/* Dashboard — team drive & putting summary */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: shots.length === 0 ? 0 : 18 }}>
+              <DashTile label="Avg Drive" value={avgDrive != null ? `${avgDrive}y` : '—'} />
+              <DashTile label="Putts / Hole" value={puttsPerHole != null ? puttsPerHole.toFixed(1) : '—'} />
+              <DashTile label="3-Putts" value={String(threePutts)} />
+            </div>
+
+            {shots.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5, marginTop: 14 }}>
             No shots tracked yet. On the GPS screen, tap <b>◉ Track Shot</b> under the club tile, pick your club, hit, then walk to your ball and tap <b>Mark ball</b>.
           </div>
         ) : (
@@ -72,9 +97,20 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
               }}>{showAll ? 'Show less' : `Show all ${shots.length}`}</button>
             )}
           </>
+            )}
+          </>
         )}
       </div>
     </section>
+  )
+}
+
+function DashTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center', padding: '12px 6px', borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ fontFamily: 'Bebas Neue', fontSize: 30, lineHeight: 1, color: '#D4A53A' }}>{value}</div>
+      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, color: 'var(--tx4)', textTransform: 'uppercase', marginTop: 4 }}>{label}</div>
+    </div>
   )
 }
 
