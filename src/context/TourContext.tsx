@@ -100,7 +100,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
       await sleep(needNav ? (step.route === '/gps' ? 850 : 400) : 150)
       if (cancelled) return
       const node = document.querySelector(`[data-tour="${step.anchor}"]`) as HTMLElement | null
-      node?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // Dashboard sections are tall — pin them to the top so the bottom card never
+      // covers them. GPS elements are fixed, so centering is a no-op there.
+      node?.scrollIntoView({ block: step.route === '/' ? 'start' : 'center', behavior: 'smooth' })
       if (!cancelled && step.interactive && node) { el = node; node.addEventListener('click', onClick, { once: true }) }
       // Re-measure repeatedly for ~2.5s: map markers (the reticle) keep moving as
       // the map frames the hole, so a single measurement lands in the wrong spot.
@@ -116,8 +118,23 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const step = STEPS[index]
   const last = index === STEPS.length - 1
   const gpsDemo = active && step.route === '/gps'
-  const cardAtTop = rect ? rect.y > window.innerHeight * 0.48 : false
+  // On the dashboard the highlighted section is pinned to the top, so keep the
+  // card at the bottom (never over the element). On GPS, pick the free side.
+  const cardAtTop = step.route === '/' ? false : (rect ? rect.y > window.innerHeight * 0.48 : false)
   const pad = 8
+
+  // Lock page scrolling while the tour card is showing (programmatic
+  // scrollIntoView still works; opened panels while minimized are unaffected).
+  useEffect(() => {
+    if (!active || minimized) return
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && t.closest('[data-tour-card]')) return
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => document.removeEventListener('touchmove', onTouchMove)
+  }, [active, minimized])
 
   const advance = () => (last ? close() : setIndex(i => i + 1))
 
@@ -173,7 +190,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
           )}
 
           {/* Card */}
-          <div style={{
+          <div data-tour-card style={{
             position: 'fixed', left: 16, right: 16, zIndex: 6001, maxWidth: 460, margin: '0 auto',
             ...(rect ? (cardAtTop ? { top: 'calc(env(safe-area-inset-top, 0px) + 16px)' } : { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }) : { top: '50%', transform: 'translateY(-50%)' }),
             background: 'var(--panel)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20,
