@@ -9,6 +9,7 @@ import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCir
 import RSVPPanel from './RSVP'
 import CourseGpsSetup from '../components/admin/CourseGpsSetup'
 import Scores from './Scores'
+import Groups from './Groups'
 
 type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
@@ -45,7 +46,7 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass'>('teams')
+  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups'>('teams')
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
@@ -666,6 +667,7 @@ export default function AdminPanel() {
         {([
           { id: 'teams',      label: '⛳ Teams' },
           { id: 'scores',     label: '📝 Scores' },
+          { id: 'groups',     label: '👥 Groups' },
           { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
@@ -1704,6 +1706,12 @@ export default function AdminPanel() {
       {tab === 'scores' && (
         <div style={{ margin: '0 -4px' }}>
           <Scores />
+        </div>
+      )}
+
+      {tab === 'groups' && (
+        <div style={{ margin: '0 -4px' }}>
+          <Groups />
         </div>
       )}
 
