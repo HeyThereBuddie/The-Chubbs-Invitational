@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { useYear } from './context/YearContext'
 import { ToastProvider } from './context/ToastContext'
 import { YearProvider } from './context/YearContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -48,6 +49,14 @@ function ProtectedRoute({ children, adminOnly = false, playerRedirect }: { child
   return <>{children}</>
 }
 
+// GPS is live-only — a past-tournament snapshot has no use for it, so bounce to
+// the dashboard (which shows that tournament's archived data instead).
+function LiveOnly({ children }: { children: React.ReactNode }) {
+  const { isCurrentYear } = useYear()
+  if (!isCurrentYear) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth()
   if (loading) return <Spinner />
@@ -64,7 +73,7 @@ function AppRoutes() {
       <Route path="/course" element={<ProtectedRoute><Layout><CoursePage /></Layout></ProtectedRoute>} />
       <Route path="/live-feed" element={<ProtectedRoute><Layout><LiveFeed /></Layout></ProtectedRoute>} />
       <Route path="/scores" element={<ProtectedRoute playerRedirect="/gps"><Layout><Scores /></Layout></ProtectedRoute>} />
-      <Route path="/gps" element={<ProtectedRoute><Layout><GpsPage /></Layout></ProtectedRoute>} />
+      <Route path="/gps" element={<ProtectedRoute><LiveOnly><Layout><GpsPage /></Layout></LiveOnly></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
       <Route path="/hall-of-fame" element={<ProtectedRoute><Layout><HallOfFame /></Layout></ProtectedRoute>} />
       <Route path="/happys-place" element={<ProtectedRoute><Layout><HappysPlace /></Layout></ProtectedRoute>} />

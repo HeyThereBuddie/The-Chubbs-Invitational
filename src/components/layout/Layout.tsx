@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import { useCallback } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { useTheme } from '../../context/ThemeContext'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import OfflineBanner from '../OfflineBanner'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, X } from 'lucide-react'
 import { useYear } from '../../context/YearContext'
 import { useAuth } from '../../context/AuthContext'
 
@@ -15,12 +15,19 @@ export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const isNarrow  = useMediaQuery('(max-width: 430px)')
   const { isDark, toggleTheme } = useTheme()
-  const { isCurrentYear, tournaments, viewingTournamentId } = useYear()
+  const { isCurrentYear, tournaments, viewingTournamentId, setViewingTournamentId } = useYear()
   const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
   const viewingYear = viewingTournament?.year ?? null
 
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
+
+  // Leave a past-tournament snapshot: back to the current tournament + Hall of Fame.
+  const exitSnapshot = () => {
+    setViewingTournamentId(null)
+    navigate('/hall-of-fame')
+  }
   const handleRefresh = useCallback(() => { window.location.reload() }, [])
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, location.pathname !== '/gps')
 
@@ -34,16 +41,28 @@ export default function Layout({ children }: { children: ReactNode }) {
           background: 'rgba(212,165,58,0.12)',
           borderBottom: '1px solid rgba(212,165,58,0.35)',
           backdropFilter: 'blur(12px)',
-          padding: '8px 20px',
+          padding: '8px 12px 8px 20px',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <span style={{ fontSize: 14 }}>🔒</span>
           <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#D4A53A', letterSpacing: 2 }}>
-            {viewingTournament?.name ?? viewingYear} — Read Only
+            {viewingTournament?.name ?? viewingYear} — Snapshot
           </span>
-          <span style={{ fontSize: 12, color: 'var(--tx3)', flex: 1 }}>
-            You're viewing a past tournament. No changes can be made.
+          <span style={{ fontSize: 12, color: 'var(--tx3)', flex: 1, minWidth: 0 }}>
+            {isNarrow ? 'Read only' : "You're viewing a past tournament. No changes can be made."}
           </span>
+          <button
+            onClick={exitSnapshot}
+            aria-label="Exit snapshot"
+            className="pressable"
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
+              padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+              background: '#D4A53A', color: '#1a1206', border: 'none', fontWeight: 800, fontSize: 12,
+            }}
+          >
+            <X size={14} strokeWidth={2.6} /> Exit
+          </button>
         </div>
       )}
 

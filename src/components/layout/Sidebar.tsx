@@ -1,6 +1,7 @@
 import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { useYear } from '../../context/YearContext'
 import { CHUBBS_QUOTES, displayName } from '../../lib/types'
 import { useState, useEffect } from 'react'
 import {
@@ -33,9 +34,12 @@ const adminNav = [
   { to: '/admin', icon: Shield, label: 'Admin Panel' },
 ]
 
+const SNAPSHOT_HIDDEN = new Set(['/gps', '/account', '/rules'])
+
 export default function Sidebar() {
   const { isAdmin, profile, signOut } = useAuth()
   const { isDark, toggleTheme } = useTheme()
+  const { isCurrentYear } = useYear()
   const [quote, setQuote] = useState(CHUBBS_QUOTES[0])
 
   useEffect(() => {
@@ -45,7 +49,8 @@ export default function Sidebar() {
     return () => clearInterval(i)
   }, [])
 
-  const navItems = isAdmin ? adminNav : playerNav
+  const baseNav = isAdmin ? adminNav : playerNav
+  const navItems = isCurrentYear ? baseNav : baseNav.filter(i => !SNAPSHOT_HIDDEN.has(i.to))
 
   return (
     <aside style={{

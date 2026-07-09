@@ -1,7 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTour } from '../../context/TourContext'
+import { useYear } from '../../context/YearContext'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
+
+// Tabs that make no sense inside a past-tournament snapshot (GPS is live-only;
+// Account & Rules aren't tied to a tournament; the tour walks the live app).
+const SNAPSHOT_HIDDEN = new Set(['/gps', '/account', '/rules', '__tour__'])
 import {
   LayoutDashboard, Trophy,
   Target, Shield, UserCircle, Images, MapPin, Info, BookOpen, Sparkles
@@ -39,8 +44,10 @@ const adminNav = [
 export default function BottomNav() {
   const { isAdmin } = useAuth()
   const { startTour } = useTour()
+  const { isCurrentYear } = useYear()
   const location = useLocation()
-  const navItems = isAdmin ? adminNav : playerNav
+  const baseNav = isAdmin ? adminNav : playerNav
+  const navItems = isCurrentYear ? baseNav : baseNav.filter(i => !SNAPSHOT_HIDDEN.has(i.to))
   const isNarrow = useMediaQuery('(max-width: 430px)')
 
   return (

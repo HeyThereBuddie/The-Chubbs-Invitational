@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useYear } from '../context/YearContext'
 
 interface FinalStanding {
   teamName: string
@@ -42,9 +44,17 @@ function awardPlayers(r: ResultEntry) {
 }
 
 export default function HallOfFame() {
+  const navigate = useNavigate()
+  const { setViewingTournamentId } = useYear()
   const [records, setRecords] = useState<TournamentRecord[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Open a full read-only snapshot of a past tournament's app.
+  const openSnapshot = (id: string) => {
+    setViewingTournamentId(id)
+    navigate('/')
+    window.scrollTo({ top: 0 })
+  }
 
   useEffect(() => { fetchData() }, [])
 
@@ -78,11 +88,8 @@ export default function HallOfFame() {
     }))
 
     setRecords(recs)
-    setSelectedId(recs[0]?.id ?? null)
     setLoading(false)
   }
-
-  const selected = records.find(r => r.id === selectedId) ?? null
 
   const cat = (results: ResultEntry[], category: string) =>
     results.find(r => r.category === category) ?? null
@@ -128,32 +135,9 @@ export default function HallOfFame() {
 
       {records.length > 0 && (
         <>
-          {/* ── Year Toggle ───────────────────────────────────────── */}
-          <div className="glass-flat animate-fadeUp" style={{
-            display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24,
-            padding: '12px 16px',
-          }}>
-            {records.map(r => (
-              <button
-                key={r.id}
-                onClick={() => setSelectedId(r.id)}
-                className="pressable"
-                style={{
-                  fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 2,
-                  padding: '8px 20px', minHeight: 40, borderRadius: 999, border: 'none', cursor: 'pointer',
-                  transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
-                  background: selectedId === r.id ? 'linear-gradient(160deg, #e8bc55, #D4A53A)' : 'var(--surf2)',
-                  color: selectedId === r.id ? '#0a0800' : 'var(--tx2)',
-                  boxShadow: selectedId === r.id ? 'var(--elev-gold)' : 'none',
-                }}
-              >
-                {r.year}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Selected Year Detail ──────────────────────────────── */}
-          {selected && (() => {
+          {/* ── Tournament tiles — one per completed year ─────────── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {records.map(selected => {
             const champion = cat(selected.results, 'champion')
             const runnerUp = cat(selected.results, 'runner_up')
             const third    = cat(selected.results, 'third')
@@ -162,7 +146,7 @@ export default function HallOfFame() {
             const ld       = cat(selected.results, 'ld')
 
             return (
-              <div className="glass animate-fadeUp" style={{ overflow: 'hidden', border: '1px solid rgba(212,165,58,0.3)' }}>
+              <div key={selected.id} className="glass animate-fadeUp" style={{ overflow: 'hidden', border: '1px solid rgba(212,165,58,0.3)' }}>
                 {/* Year banner */}
                 <div style={{
                   padding: '16px 22px',
@@ -282,9 +266,26 @@ export default function HallOfFame() {
                     </div>
                   )}
                 </div>
+
+                {/* Open the archived app for this tournament */}
+                <button
+                  onClick={() => openSnapshot(selected.id)}
+                  className="pressable"
+                  style={{
+                    width: '100%', border: 'none', cursor: 'pointer',
+                    borderTop: '1px solid rgba(212,165,58,0.18)',
+                    padding: '14px 16px',
+                    background: 'linear-gradient(180deg, rgba(212,165,58,0.14), rgba(212,165,58,0.06))',
+                    color: '#D4A53A', fontWeight: 800, fontSize: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  ⛳ Open the {selected.year} tournament →
+                </button>
               </div>
             )
-          })()}
+          })}
+          </div>
         </>
       )}
     </div>

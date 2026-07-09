@@ -70,7 +70,7 @@ export default function Dashboard() {
   const { profile } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
-  const { tournaments, viewingTournamentId, effectiveTournamentId, isCurrentYear, setViewingTournamentId, activeTournamentId } = useYear()
+  const { effectiveTournamentId, isCurrentYear } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
   const [feed, setFeed] = useState<FeedEvent[]>([])
@@ -215,41 +215,8 @@ export default function Dashboard() {
   const toPar = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
   const currentQuote = ALL_QUOTES[quoteIdx]
 
-  const otherTournaments = tournaments.filter(t => t.id !== activeTournamentId)
-  const viewingTournament = viewingTournamentId ? tournaments.find(t => t.id === viewingTournamentId) : null
-
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-
-      {/* ── Year Selector ─────────────────────────────────────── */}
-      <div className="glass-flat" style={{
-        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
-        padding: '12px 16px',
-      }}>
-        <span className="section-label" style={{ flexShrink: 0 }}>
-          📅 Year
-        </span>
-        <select
-          value={viewingTournamentId ?? ''}
-          onChange={e => setViewingTournamentId(e.target.value || null)}
-          style={{ flex: 1, maxWidth: 220 }}
-        >
-          <option value="">Current Tournament ({activeTournamentId ? tournaments.find(t => t.id === activeTournamentId)?.year : '—'})</option>
-          {otherTournaments.map(t => (
-            <option key={t.id} value={t.id}>{t.name} ({t.year})</option>
-          ))}
-        </select>
-        {otherTournaments.length === 0 && (
-          <span style={{ fontSize: 11, color: 'var(--tx4)', fontStyle: 'italic' }}>
-            Past years appear here after archiving
-          </span>
-        )}
-        {!isCurrentYear && viewingTournament && (
-          <span style={{ fontSize: 11, color: 'var(--gold-dim)', fontWeight: 600 }}>
-            🔒 {viewingTournament.name} ({viewingTournament.year})
-          </span>
-        )}
-      </div>
 
       {/* Waitlist banner */}
       {profile?.status === 'waitlist' && isCurrentYear && (
