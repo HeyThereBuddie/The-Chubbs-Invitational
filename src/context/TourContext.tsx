@@ -24,9 +24,11 @@ const STEPS: TourStep[] = [
     body: "Every team's score to par, live. It updates the instant a score is entered anywhere in the field." },
   { route: '/', anchor: 'feed', title: 'Live feed',
     body: "The day's action as it happens — birdies, eagles, lead changes, chulligans and all the drama." },
+  { route: '/', anchor: 'nav-rules', title: 'Rules assistant',
+    body: "Stuck on a rule? This tab is your rules assistant — ask Chubbs anything about the scramble format, chulligans, contests or penalties and get an answer on the spot." },
   // ── GPS ──
   { route: '/', anchor: 'nav-gps', title: 'The GPS page',
-    body: "Next up: GPS — your on-course caddie. A live satellite map of every hole with distances, wind, club calls, shot tracking and more. Let's walk through it." },
+    body: "This big gold button in the middle is GPS — your on-course caddie, and where you'll spend most of the round. Live satellite maps, distances, wind, club calls, shot tracking and more. Let's walk through it." },
   { route: '/gps', anchor: 'hole-tile', title: 'Hole, score & position', interactive: true,
     body: "Your current hole and its par, plus your running score and place in the field. Tap the hole number to jump to any hole." },
   { route: '/gps', anchor: 'camera', title: 'Recenter the camera',
