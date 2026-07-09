@@ -15,6 +15,7 @@ import Leaderboard from './pages/Leaderboard'
 import TeeTimes from './pages/TeeTimes'
 import Groups from './pages/Groups'
 import Tourney from './pages/Tourney'
+import RulesPage from './pages/RulesPage'
 import RSVPLanding from './pages/RSVPLanding'
 import Contests from './pages/Contests'
 import Updates from './pages/Updates'
@@ -68,6 +69,7 @@ function AppRoutes() {
       <Route path="/hall-of-fame" element={<ProtectedRoute><Layout><HallOfFame /></Layout></ProtectedRoute>} />
       <Route path="/happys-place" element={<ProtectedRoute><Layout><HappysPlace /></Layout></ProtectedRoute>} />
       <Route path="/tourney" element={<ProtectedRoute><Layout><Tourney /></Layout></ProtectedRoute>} />
+      <Route path="/rules" element={<ProtectedRoute><Layout><RulesPage /></Layout></ProtectedRoute>} />
       <Route path="/tee-times" element={<ProtectedRoute><Layout><TeeTimes /></Layout></ProtectedRoute>} />
       <Route path="/groups" element={<ProtectedRoute><Layout><Groups /></Layout></ProtectedRoute>} />
       <Route path="/contests" element={<ProtectedRoute><Layout><Contests /></Layout></ProtectedRoute>} />

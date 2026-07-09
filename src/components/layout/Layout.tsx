@@ -6,7 +6,6 @@ import { useTheme } from '../../context/ThemeContext'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
-import RulesChat from '../RulesChat'
 import OfflineBanner from '../OfflineBanner'
 import { Sun, Moon } from 'lucide-react'
 import { useYear } from '../../context/YearContext'
@@ -29,7 +28,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="bg-mesh" style={{ minHeight: '100dvh' }}>
-      <RulesChat />
       {!isCurrentYear && (
         <div style={{
           position: 'sticky', top: 0, zIndex: 200,
