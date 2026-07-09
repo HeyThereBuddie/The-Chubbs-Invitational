@@ -8,10 +8,10 @@ import {
 
 // GPS sits in the middle and is emphasised — the on-course home base.
 const playerNav = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/account', icon: UserCircle, label: 'Account' },
+  { to: '/tourney', icon: Info, label: 'Tourney' },
+  { to: '/contests', icon: Target, label: 'Contests' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/rules', icon: BookOpen, label: 'Rules' },
@@ -19,10 +19,10 @@ const playerNav = [
 ]
 
 const adminNav = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/account', icon: UserCircle, label: 'Account' },
+  { to: '/tourney', icon: Info, label: 'Tourney' },
+  { to: '/contests', icon: Target, label: 'Contests' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/rules', icon: BookOpen, label: 'Rules' },
