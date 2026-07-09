@@ -11,8 +11,8 @@ const playerNav = [
   { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/happys-place', icon: Images, label: 'Photos' },
+  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/account', icon: UserCircle, label: 'Account' },
 ]
 
@@ -21,8 +21,8 @@ const adminNav = [
   { to: '/gps', icon: MapPin, label: 'GPS' },
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/happys-place', icon: Images, label: 'Photos' },
+  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/account', icon: UserCircle, label: 'Account' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ]

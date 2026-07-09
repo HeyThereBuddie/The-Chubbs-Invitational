@@ -58,6 +58,8 @@ export default function AccountPage() {
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(DEFAULT_NOTIF_PREFS)
   const [prefSaving, setPrefSaving] = useState<string | null>(null)
   const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
+  const [tab, setTab] = useState<'profile' | 'bag' | 'career' | 'alerts'>('profile')
+  const [bagTab, setBagTab] = useState<'bag' | 'stats'>('bag')
   const [bag, setBag] = useState<ClubDist[]>(DEFAULT_BAG)
   const [sevenIron, setSevenIron] = useState('')
   const [savingBag, setSavingBag] = useState(false)
@@ -380,7 +382,16 @@ export default function AccountPage() {
         </div>
       </section>
 
+      {/* ── Account tabs ── */}
+      <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 20 }}>
+        <button onClick={() => setTab('profile')} className={`pill-tab pressable ${tab === 'profile' ? 'active' : ''}`}>Profile</button>
+        <button onClick={() => setTab('bag')} className={`pill-tab pressable ${tab === 'bag' ? 'active' : ''}`}>Bag &amp; Stats</button>
+        <button onClick={() => setTab('career')} className={`pill-tab pressable ${tab === 'career' ? 'active' : ''}`}>Career</button>
+        <button onClick={() => setTab('alerts')} className={`pill-tab pressable ${tab === 'alerts' ? 'active' : ''}`}>Alerts</button>
+      </div>
+
       {/* ── Profile info ── */}
+      {tab === 'profile' && (
       <section className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
         <div className="section-label" style={{ margin: '0 4px 8px' }}>Profile</div>
         <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -430,8 +441,16 @@ export default function AccountPage() {
           </button>
         </div>
       </section>
+      )}
 
-      {/* ── My Bag (club distances for GPS recommendations) ── */}
+      {/* ── Bag & Stats (with Bag / Shot Stats sub-tabs) ── */}
+      {tab === 'bag' && (
+      <>
+      <div className="pill-tabs" style={{ marginBottom: 16 }}>
+        <button onClick={() => setBagTab('bag')} className={`pill-tab pressable ${bagTab === 'bag' ? 'active' : ''}`}>My Bag</button>
+        <button onClick={() => setBagTab('stats')} className={`pill-tab pressable ${bagTab === 'stats' ? 'active' : ''}`}>Shot Stats</button>
+      </div>
+      {bagTab === 'bag' && (
       <section data-tour="bag" className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
         <div className="section-label" style={{ margin: '0 4px 8px' }}>My Bag</div>
         <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -497,12 +516,15 @@ export default function AccountPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ── Shot Stats & History ── */}
-      <div data-tour="shot-stats"><ShotStats /></div>
+      {bagTab === 'stats' && <div data-tour="shot-stats"><ShotStats /></div>}
+      </>
+      )}
 
       {/* ── Career Highlights ── */}
-      {careerStats.length > 0 && (() => {
+      {tab === 'career' && (careerStats.length > 0 ? (() => {
         const cats = [
           { key: 'champion', emoji: '🏆', label: 'Championship' },
           { key: 'runner_up', emoji: '🥈', label: 'Runner-Up' },
@@ -543,9 +565,14 @@ export default function AccountPage() {
             </div>
           </section>
         )
-      })()}
+      })() : (
+        <div className="glass" style={{ padding: 28, textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
+          No career highlights yet — win a title, a contest, or the Jackass award and it'll show up here.
+        </div>
+      ))}
 
       {/* ── Push Notifications ── */}
+      {tab === 'alerts' && (
       <section className="animate-fadeUp delay-400" style={{ marginBottom: 24 }}>
         <div className="section-label" style={{ margin: '0 4px 8px' }}>Notifications</div>
         <div className="glass" style={{ padding: '8px 20px' }}>
@@ -630,8 +657,10 @@ export default function AccountPage() {
           )}
         </div>
       </section>
+      )}
 
-      {/* ── Email ── */}
+      {/* ── Email + RSVP + Password (Profile tab) ── */}
+      {tab === 'profile' && (<>
       <section className="animate-fadeUp delay-500" style={{ marginBottom: 24 }}>
         <div className="section-label" style={{ margin: '0 4px 8px' }}>Email Address</div>
         <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -724,6 +753,7 @@ export default function AccountPage() {
           </div>
         </section>
       )}
+      </>)}
 
       {/* ── Sign Out (destructive zone) ── */}
       <section className="animate-fadeUp delay-800" style={{ marginTop: 32, paddingBottom: 8 }}>
