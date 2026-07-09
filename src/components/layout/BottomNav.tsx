@@ -8,25 +8,25 @@ import {
 
 // GPS sits in the middle and is emphasised — the on-course home base.
 const playerNav = [
-  { to: '/', icon: LayoutDashboard, label: 'Home' },
-  { to: '/leaderboard', icon: Trophy, label: 'Board' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/rules', icon: BookOpen, label: 'Rules' },
-  { to: '/gps', icon: MapPin, label: 'GPS' },
-  { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/account', icon: UserCircle, label: 'Account' },
+  { to: '/gps', icon: MapPin, label: 'GPS' },
+  { to: '/leaderboard', icon: Trophy, label: 'Board' },
+  { to: '/rules', icon: BookOpen, label: 'Rules' },
+  { to: '/happys-place', icon: Images, label: 'Photos' },
 ]
 
 const adminNav = [
-  { to: '/', icon: LayoutDashboard, label: 'Home' },
-  { to: '/leaderboard', icon: Trophy, label: 'Board' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/contests', icon: Target, label: 'Contests' },
-  { to: '/rules', icon: BookOpen, label: 'Rules' },
-  { to: '/gps', icon: MapPin, label: 'GPS' },
-  { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/account', icon: UserCircle, label: 'Account' },
+  { to: '/gps', icon: MapPin, label: 'GPS' },
+  { to: '/leaderboard', icon: Trophy, label: 'Board' },
+  { to: '/rules', icon: BookOpen, label: 'Rules' },
+  { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ]
 
