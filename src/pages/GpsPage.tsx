@@ -179,18 +179,6 @@ function ClubIcon({ club, size = 32 }: { club: string; size?: number }) {
   )
 }
 
-// Small bunker glyph (amber) for the bunker callout tags.
-function SandIcon({ size = 11 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" style={{ pointerEvents: 'none' }}>
-      <path d="M2 9 Q2 5 6 5 Q9 4.5 11 6 Q14 6.5 14 9.5 Q14 12 10 12 Q6 12.5 4 11.5 Q2 11 2 9 Z" fill="#e6c877" opacity={0.95} />
-      <circle cx={6} cy={8.6} r={0.8} fill="#2c2109" />
-      <circle cx={9} cy={9} r={0.8} fill="#2c2109" />
-      <circle cx={11} cy={8} r={0.7} fill="#2c2109" />
-    </svg>
-  )
-}
-
 // Improvement 2: flag pin — the universal golf destination symbol
 function FlagPin() {
   return (
@@ -903,47 +891,6 @@ export default function GpsPage() {
     }
   }, [currentHole])
 
-  // Bunker carry distances: for each mapped bunker that's ahead of the player and
-  // within the shot corridor, the reach (near edge) and carry (far edge) yards.
-  const bunkerLabels = useMemo(() => {
-    const green = currentHole?.green.center
-    const bunkers = currentHole?.bunkers
-    if (!position || !green || !bunkers?.length) return []
-    const aimBearing = calcBearing(position, green)
-    const playerToGreen = haversineYards(position, green)
-    // The hole centerline (tee → green) defines "inside/outside" the hole, so the
-    // pill always lands on the outer flank of the bunker regardless of where the
-    // player stands. Falls back to the player's line if the tee isn't mapped.
-    const tee = currentHole?.tee ?? null
-    const centerBearing = tee ? calcBearing(tee, green) : aimBearing
-    const centerAnchor = tee ?? position
-    const out: { id: number; lat: number; lng: number; front: number; side: number }[] = []
-    bunkers.forEach((poly, i) => {
-      if (!poly || poly.length < 2) return
-      const clat = poly.reduce((s, p) => s + p.lat, 0) / poly.length
-      const clng = poly.reduce((s, p) => s + p.lng, 0) / poly.length
-      const centroid = { lat: clat, lng: clng }
-      // Ahead of the player (closer to the green than we are).
-      if (haversineYards(centroid, green) >= playerToGreen) return
-      // Within ~40 yds of the line of play (lateral offset from the aim bearing).
-      const distToCentroid = haversineYards(position, centroid)
-      const rel = normDeg(calcBearing(position, centroid) - aimBearing)
-      if (distToCentroid * Math.sin(Math.abs(rel) * Math.PI / 180) > 40) return
-      // Reach (nearest vertex), carry (farthest — for the skip test), radius.
-      let front = Infinity, carry = 0, radius = 0
-      poly.forEach(p => {
-        const d = haversineYards(position, p); if (d < front) front = d; if (d > carry) carry = d
-        const r = haversineYards(centroid, p); if (r > radius) radius = r
-      })
-      if (carry < 15) return // essentially at your feet / already passed
-      // Which flank of the hole centerline the bunker sits on, then push the pill
-      // that way (outward, away from the fairway) past the bunker edge.
-      const side = normDeg(calcBearing(centerAnchor, centroid) - centerBearing) >= 0 ? 1 : -1
-      const lp = offsetLatLng(centroid, centerBearing + side * 90, (radius + 11) * 0.9144)
-      out.push({ id: i, lat: lp.lat, lng: lp.lng, front, side })
-    })
-    return out
-  }, [position, currentHole])
 
   const aimLineGeoJson = useMemo(() => {
     if (!position) return null
@@ -1723,31 +1670,6 @@ export default function GpsPage() {
               }} />
             </Marker>
           )}
-
-          {/* Bunker carry chips — reach / carry yards, in-play bunkers ahead */}
-          {!scopeMode && !blindShot && bunkerLabels.map(b => (
-            <Marker key={`bnk-${b.id}`} longitude={b.lng} latitude={b.lat} anchor={b.side === 1 ? 'left' : 'right'} offset={[b.side * 3, 0]}>
-              <div style={{
-                position: 'relative', display: 'flex', alignItems: 'center', gap: 4,
-                padding: '3px 9px', borderRadius: 8, whiteSpace: 'nowrap', pointerEvents: 'none',
-                background: 'linear-gradient(180deg, rgba(28,28,34,0.96), rgba(10,10,14,0.96))',
-                border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 3px 10px rgba(0,0,0,0.55)',
-              }}>
-                <SandIcon size={11} />
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: 17, lineHeight: 1, letterSpacing: 0.5, color: '#e8c766', fontVariantNumeric: 'tabular-nums' }}>
-                  {b.front}
-                </span>
-                {/* pointer aimed inward at the bunker */}
-                <div style={{
-                  position: 'absolute', top: '50%', transform: 'translateY(-50%)', width: 0, height: 0,
-                  borderTop: '6px solid transparent', borderBottom: '6px solid transparent',
-                  ...(b.side === 1
-                    ? { left: -6, borderRight: '7px solid rgba(15,15,20,0.96)' }
-                    : { right: -6, borderLeft: '7px solid rgba(15,15,20,0.96)' }),
-                }} />
-              </div>
-            </Marker>
-          ))}
 
           {/* Scope carry-distance arcs from the player (green-view mode) */}
           {scopeArcs && (
