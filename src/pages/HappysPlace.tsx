@@ -413,7 +413,7 @@ export default function HappysPlace() {
       )}
 
       {/* ── Header ── */}
-      <div style={{ marginBottom: 20 }}>
+      <div data-tour="photos" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 5, margin: 0 }}>
             Happy's Place

@@ -8,7 +8,7 @@ export default function Tourney() {
   const [tab, setTab] = useState<'tees' | 'teams' | 'hof'>('tees')
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
+      <div data-tour="tourney-tabs" className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
         <button onClick={() => { navigator.vibrate?.(8); setTab('tees') }} className={`pill-tab pressable ${tab === 'tees' ? 'active' : ''}`}>🕐 Tee Times</button>
         <button onClick={() => { navigator.vibrate?.(8); setTab('teams') }} className={`pill-tab pressable ${tab === 'teams' ? 'active' : ''}`}>👥 Teams</button>
         <button onClick={() => { navigator.vibrate?.(8); setTab('hof') }} className={`pill-tab pressable ${tab === 'hof' ? 'active' : ''}`}>🏆 Hall of Fame</button>

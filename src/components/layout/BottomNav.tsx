@@ -1,12 +1,14 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useTour } from '../../context/TourContext'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import {
   LayoutDashboard, Trophy,
-  Target, Shield, UserCircle, Images, MapPin, Info, BookOpen
+  Target, Shield, UserCircle, Images, MapPin, Info, BookOpen, Sparkles
 } from 'lucide-react'
 
 // GPS sits in the middle and is emphasised — the on-course home base.
+// '__tour__' is a virtual item that launches the walkthrough instead of routing.
 const playerNav = [
   { to: '/account', icon: UserCircle, label: 'Account' },
   { to: '/tourney', icon: Info, label: 'Tourney' },
@@ -16,6 +18,7 @@ const playerNav = [
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/rules', icon: BookOpen, label: 'Rules' },
   { to: '/happys-place', icon: Images, label: 'Photos' },
+  { to: '__tour__', icon: Sparkles, label: 'Tour' },
 ]
 
 const adminNav = [
@@ -27,11 +30,13 @@ const adminNav = [
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/rules', icon: BookOpen, label: 'Rules' },
   { to: '/happys-place', icon: Images, label: 'Photos' },
+  { to: '__tour__', icon: Sparkles, label: 'Tour' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ]
 
 export default function BottomNav() {
   const { isAdmin } = useAuth()
+  const { startTour } = useTour()
   const location = useLocation()
   const navItems = isAdmin ? adminNav : playerNav
   const isNarrow = useMediaQuery('(max-width: 430px)')
@@ -52,6 +57,32 @@ export default function BottomNav() {
     }}>
       {navItems.map(({ to, icon: Icon, label }) => {
         const isGps = to === '/gps'
+        const isTour = to === '__tour__'
+        if (isTour) {
+          return (
+            <button
+              key="__tour__"
+              data-tour="nav-tour"
+              onClick={() => { navigator.vibrate?.(8); startTour() }}
+              className="pressable"
+              style={{
+                flex: 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+                padding: '6px 2px 6px', minWidth: 0,
+                background: 'none', border: 'none', cursor: 'pointer',
+              }}
+            >
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: isNarrow ? 36 : 42, height: isNarrow ? 24 : 28, borderRadius: 999,
+                marginBottom: 2,
+              }}>
+                <Icon size={isNarrow ? 17 : 20} strokeWidth={1.8} color="var(--tx3)" />
+              </div>
+              <span style={{ fontSize: isNarrow ? 9 : 10, fontWeight: 500, letterSpacing: 0.3, color: 'var(--tx3)' }}>{label}</span>
+            </button>
+          )
+        }
         return (
         <NavLink
           key={to}

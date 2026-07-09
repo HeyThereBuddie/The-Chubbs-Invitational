@@ -5,7 +5,6 @@ import { localDb, parseJson } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
-import { useTour } from '../context/TourContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Users, Flag, Pin } from 'lucide-react'
@@ -70,7 +69,6 @@ interface DefendingChamp {
 export default function Dashboard() {
   const { profile } = useAuth()
   const { isDark } = useTheme()
-  const { startTour } = useTour()
   const navigate = useNavigate()
   const { tournaments, viewingTournamentId, effectiveTournamentId, isCurrentYear, setViewingTournamentId, activeTournamentId } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
@@ -222,13 +220,6 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-
-      {/* ── Feature tour launcher ─────────────────────────────── */}
-      <button data-tour="tour-launch" onClick={startTour} className="pressable" style={{
-        width: '100%', marginBottom: 16, padding: '13px 16px', borderRadius: 14, cursor: 'pointer',
-        border: '1px solid rgba(212,165,58,0.45)', background: 'linear-gradient(180deg, rgba(212,165,58,0.16), rgba(212,165,58,0.07))',
-        color: '#D4A53A', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      }}>✨ Walk me through the app</button>
 
       {/* ── Year Selector ─────────────────────────────────────── */}
       <div className="glass-flat" style={{

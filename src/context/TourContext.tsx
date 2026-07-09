@@ -15,17 +15,13 @@ interface TourStep {
 }
 
 const STEPS: TourStep[] = [
-  // ── Dashboard ──
-  { route: '/', anchor: 'nav-home', title: 'Home — your dashboard',
-    body: "This is Home, your tournament HQ. At a glance you get the live leaderboard, the latest action feed, key event info, and quick links to everything else. Let's start here." },
-  { route: '/', anchor: 'tour-launch', title: 'Your tour button',
-    body: "This is your tour button — tap it anytime to run this whole walkthrough again. No pressure to remember everything." },
+  // ── Intro / Dashboard ──
+  { route: '/', anchor: 'nav-tour', title: "Hey, I'm Chubbs",
+    body: "I'll be your caddie for this little tour. See this button down here? Tap it any time you want me to walk you through the whole app again — no need to memorize a thing. Ready? Let's roll." },
   { route: '/', anchor: 'leaderboard', title: 'Live leaderboard',
     body: "Every team's score to par, live. It updates the instant a score is entered anywhere in the field." },
   { route: '/', anchor: 'feed', title: 'Live feed',
     body: "The day's action as it happens — birdies, eagles, lead changes, chulligans and all the drama." },
-  { route: '/', anchor: 'nav-rules', title: 'Rules assistant',
-    body: "Stuck on a rule? This tab is your rules assistant — ask Chubbs anything about the scramble format, chulligans, contests or penalties and get an answer on the spot." },
   // ── GPS ──
   { route: '/', anchor: 'nav-gps', title: 'The GPS page',
     body: "This big gold button in the middle is GPS — your on-course caddie, and where you'll spend most of the round. Live satellite maps, distances, wind, club calls, shot tracking and more. Let's walk through it." },
@@ -62,6 +58,18 @@ const STEPS: TourStep[] = [
     body: "For each team: To Par (score against par), Gross (total strokes taken), Thru (holes completed — “F” means finished), and Putts (the first tiebreaker if teams are level)." },
   { route: '/leaderboard', anchor: 'lb-scorecard', title: 'Hole-by-hole scorecard',
     body: "Below each team is their scorecard — the score on every hole in its own bubble, colour-coded for birdie, par, bogey and worse. Swipe it sideways to see all 18." },
+  // ── Rules ──
+  { route: '/leaderboard', anchor: 'nav-rules', title: 'Ask me the rules',
+    body: "Stuck on a rule? This tab opens my rules desk — ask me anything about the scramble format, chulligans, contests or penalties and I'll set you straight on the spot." },
+  // ── Contests ──
+  { route: '/contests', anchor: 'contests-tabs', title: 'Side action & contests',
+    body: "Closest to Pin, Longest Drive and the Jackass-of-the-Day (Lahey) vote all live here. Flip between them with these tabs, snap your proof photo, and stake your claim." },
+  // ── Tourney ──
+  { route: '/tourney', anchor: 'tourney-tabs', title: 'The Tourney tab',
+    body: "Everything about the event itself: your tee times, the teams and pairings, and the Hall of Fame of past champions — all tucked behind these three tabs." },
+  // ── Photos ──
+  { route: '/happys-place', anchor: 'photos', title: "Happy's Place",
+    body: "The photo wall — your best shots and your worst disasters, all in one gallery. Add your own with the button up top. That's the tour! Now get out there and play." },
 ]
 
 interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; stepIndex: number }
@@ -213,9 +221,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
             background: 'var(--panel)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20,
             boxShadow: '0 16px 48px rgba(0,0,0,0.6)', padding: 18,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 11 }}>
+              {/* Chubbs, your narrating caddie */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', boxShadow: '0 0 0 3px rgba(212,165,58,0.16)' }} />
+                {/* speech-bubble tail so it reads like he's talking */}
+                <div style={{ position: 'absolute', right: -5, top: '50%', marginTop: -6, width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '7px solid #D4A53A' }} />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1, color: '#D4A53A' }}>STEP {index + 1} / {STEPS.length}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1, color: '#D4A53A' }}>CHUBBS · STEP {index + 1} / {STEPS.length}</div>
                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 0.5, color: 'var(--tx1)', lineHeight: 1.05 }}>{step.title}</div>
               </div>
               <button onClick={close} aria-label="Close tour" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>✕</button>
