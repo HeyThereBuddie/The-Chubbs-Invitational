@@ -521,6 +521,10 @@ html[data-theme="light"] .glass-strong {
 /* Hide the rules-assistant FAB while the AI caddie sheet is open */
 body.caddie-open .rules-fab { display: none !important; }
 
+/* Tour: leave room below the status bar (and above the bottom card) when the
+   walkthrough scrolls a highlighted element into view, so it isn't cut off. */
+[data-tour] { scroll-margin-top: 100px; scroll-margin-bottom: 300px; }
+
 /* Provisional pin being placed (set-pin flow) */
 @keyframes pinBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .pin-draft-bob { animation: pinBob 1.1s ease-in-out infinite; }
