@@ -15,6 +15,7 @@ interface TourStep {
   body: string
   section?: SectionKey  // which topic this step belongs to (intro has none)
   interactive?: boolean // let the user tap the element; tour minimizes then resumes
+  pokeable?: boolean    // let the user tap the element but keep the card up (no minimize)
 }
 
 // The topic menu Chubbs offers after the intro — one entry per app area.
@@ -82,7 +83,15 @@ const STEPS: TourStep[] = [
     body: "Say you're not sure what a chulligan is. I'll ask for you and pull up the answer — no typing needed. Give it a read, then hit Next." },
   // ── Contests ──
   { section: 'contests', route: '/contests', anchor: 'contests-tabs', title: 'Side action & contests',
-    body: "Closest to Pin, Longest Drive and the Jackass-of-the-Day (Lahey) vote all live here. Flip between them with these tabs, snap your proof photo, and stake your claim." },
+    body: "Closest to Pin, Longest Drive and the Jackass-of-the-Day (Lahey) vote all live here. Flip between them with these tabs. Let me show you a couple." },
+  { section: 'contests', route: '/contests', anchor: 'ld-player', title: 'Longest Drive — pick the player',
+    body: "Here's Longest Drive. This is where you log the entry — pick the teammate who bombed it, or yourself if you're the one flexing. Whoever you choose gets the entry." },
+  { section: 'contests', route: '/contests', anchor: 'ld-photo', title: 'Prove it with a photo',
+    body: "Back it up with a picture. “Take Photo” opens your camera for a fresh shot at the ball; “Upload Photo” grabs one from your library instead. The photo rides along with the entry so nobody can argue who's really longest." },
+  { section: 'contests', route: '/contests', anchor: 'lahey-title', title: 'Jackass of the Day',
+    body: "Now the fun one — the Jackass of the Day, our Lahey Award. It's a running vote for whoever best channels their inner Shooter McGavin out there. One glorious idiot gets crowned each day." },
+  { section: 'contests', route: '/contests', anchor: 'lahey-vote', pokeable: true, title: 'Vote for the drunkest',
+    body: "Tap whoever earned it — the drunkest, sloppiest, most Happy-Gilmore performance of the day. Go ahead and pick someone now; it's just for show during the tour, so no real vote gets cast. One vote each, and it stays private." },
   // ── Tourney ──
   { section: 'tourney', route: '/tourney', anchor: 'tourney-tabs', title: 'The Tourney tab',
     body: "Everything about the event itself: your tee times, the teams and pairings, and the Hall of Fame of past champions — all tucked behind these three tabs." },
@@ -91,8 +100,8 @@ const STEPS: TourStep[] = [
     body: "The photo wall — your best shots and your worst disasters, all in one gallery. Add your own with the button up top." },
 ]
 
-interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; rulesDemo: boolean; stepIndex: number }
-const Ctx = createContext<TourCtx>({ startTour: () => {}, active: false, gpsDemo: false, rulesDemo: false, stepIndex: 0 })
+interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; rulesDemo: boolean; stepAnchor: string | null; stepIndex: number }
+const Ctx = createContext<TourCtx>({ startTour: () => {}, active: false, gpsDemo: false, rulesDemo: false, stepAnchor: null, stepIndex: 0 })
 export const useTour = () => useContext(Ctx)
 
 export function TourProvider({ children }: { children: ReactNode }) {
@@ -178,6 +187,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const gpsDemo = active && !menuOpen && step?.route === '/gps'
   // The rules page runs a scripted, hands-off Q&A demo on this one step.
   const rulesDemo = active && !minimized && !menuOpen && step?.anchor === 'rules-demo'
+  // Current step's anchor — lets a page react (e.g. switch its own tab) as the tour advances.
+  const stepAnchor = active && !menuOpen ? (step?.anchor ?? null) : null
   // Card goes opposite the highlighted element: element in the bottom half → card
   // at top (e.g. a nav-bar tab); element up top → card at the bottom.
   const cardAtTop = rect ? rect.y > window.innerHeight * 0.48 : false
@@ -210,7 +221,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     : 'Next'
 
   return (
-    <Ctx.Provider value={{ startTour, active, gpsDemo, rulesDemo, stepIndex: index }}>
+    <Ctx.Provider value={{ startTour, active, gpsDemo, rulesDemo, stepAnchor, stepIndex: index }}>
       {children}
 
       {/* First-run offer */}
@@ -246,7 +257,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       {active && !minimized && !menuOpen && step && (
         <>
           {rect ? (
-            <svg width="100%" height="100%" style={{ position: 'fixed', inset: 0, zIndex: 6000, pointerEvents: step.interactive ? 'none' : 'auto' }}>
+            <svg width="100%" height="100%" style={{ position: 'fixed', inset: 0, zIndex: 6000, pointerEvents: step.interactive || step.pokeable ? 'none' : 'auto' }}>
               <defs>
                 <mask id="tour-hole">
                   <rect x="0" y="0" width="100%" height="100%" fill="white" />

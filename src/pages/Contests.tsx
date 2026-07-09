@@ -9,6 +9,7 @@ import type { LogFeedEventPayload, UpsertLeaheyVotePayload, SubmitContestEntryPa
 import BottomSheetPicker from '../components/BottomSheetPicker'
 import { Skeleton } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
+import { useTour } from '../context/TourContext'
 import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Camera, Target, Upload } from 'lucide-react'
@@ -34,7 +35,15 @@ export default function Contests() {
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { refreshPendingCount } = useSyncContext()
+  const { active: tourActive, stepAnchor } = useTour()
   const [tab, setTab] = useState<ContestType>('ctp')
+
+  // Drive the contest tab from the tour so its Longest Drive / Jackass steps
+  // land on the right sub-page.
+  useEffect(() => {
+    if (stepAnchor === 'ld-player' || stepAnchor === 'ld-photo') setTab('ld')
+    else if (stepAnchor === 'lahey-title' || stepAnchor === 'lahey-vote') setTab('lahey')
+  }, [stepAnchor])
 
   // CTP / LD state
   const [entries,        setEntries]        = useState<(ContestEntry & { player?: Player })[]>([])
@@ -265,6 +274,7 @@ export default function Contests() {
   }
 
   const castVote = async () => {
+    if (tourActive) { showToast("Just practice — your vote won't count during the tour 😉"); return }
     if (!selected || !profile || selected === myVote) return
     setCasting(true)
     const isChange = !!myVote
@@ -371,13 +381,13 @@ export default function Contests() {
       {(tab === 'ctp' || tab === 'ld') && (
         <>
 
-          {isCurrentYear && <div className="glass animate-fadeUp delay-100" style={{ padding: 20, marginBottom: 16 }}>
+          {(isCurrentYear || tourActive) && <div className="glass animate-fadeUp delay-100" style={{ padding: 20, marginBottom: 16 }}>
             <div className="section-label" style={{ color: 'var(--gold)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Target size={12} style={{ flexShrink: 0 }} />
               Submit Entry
             </div>
             <form onSubmit={submitContest}>
-              <div style={{ marginBottom: 12 }}>
+              <div data-tour="ld-player" style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, color: 'var(--tx3)', display: 'block', marginBottom: 8 }}>Player *</label>
                 <BottomSheetPicker
                   options={contestPlayers.map(p => ({ value: p.id, label: displayName(p) }))}
@@ -397,13 +407,13 @@ export default function Contests() {
                 {/* Camera — opens rear camera directly on mobile */}
                 <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
                   onChange={e => { setPhoto(e.target.files?.[0] ?? null); e.target.value = '' }} />
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div data-tour="ld-photo" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button
                     type="button"
                     className="btn-ghost"
                     disabled={!form.player_id}
                     onClick={() => cameraRef.current?.click()}
-                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed', color: 'var(--tx1)', borderColor: 'var(--tx4)' }}
+                    style={{ opacity: form.player_id || tourActive ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed', color: 'var(--tx1)', borderColor: 'var(--tx4)' }}
                   >
                     <Camera size={13} /> Take Photo
                   </button>
@@ -412,7 +422,7 @@ export default function Contests() {
                     className="btn-ghost"
                     disabled={!form.player_id}
                     onClick={() => fileRef.current?.click()}
-                    style={{ opacity: form.player_id ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed', color: 'var(--tx1)', borderColor: 'var(--tx4)' }}
+                    style={{ opacity: form.player_id || tourActive ? 1 : 0.35, cursor: form.player_id ? 'pointer' : 'not-allowed', color: 'var(--tx1)', borderColor: 'var(--tx4)' }}
                   >
                     <Upload size={13} /> Upload Photo
                   </button>
@@ -520,7 +530,7 @@ export default function Contests() {
             border: '1px solid rgba(212,165,58,0.22)',
             background: 'var(--surf)',
           }}>
-            <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div data-tour="lahey-title" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 26, flexShrink: 0 }}>🤠</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
@@ -537,7 +547,7 @@ export default function Contests() {
             </div>
           </div>
 
-          {!votingOpen ? (
+          {!(votingOpen || stepAnchor === 'lahey-vote') ? (
             <div className="glass animate-fadeUp" style={{ padding: '32px', textAlign: 'center', marginBottom: 20, color: 'var(--tx3)' }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--tx2)', marginBottom: 6 }}>Voting hasn't started yet</div>
@@ -551,7 +561,7 @@ export default function Contests() {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 20 }}>
+              <div data-tour="lahey-vote" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 20 }}>
                 {laheyPlayers.map(player => {
                   const isSelected = selected === player.id
                   const isMyVote   = myVote === player.id
