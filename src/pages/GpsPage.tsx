@@ -818,7 +818,7 @@ export default function GpsPage() {
   // starts from a clean screen.
   useEffect(() => {
     if (!tour.active) return
-    setScopeMode(false); setBlindShot(false); setPinEditMode(false); setCaddieOpen(false); setHolePickerOpen(false)
+    setScopeMode(false); setBlindShot(false); setPinEditMode(false); setCaddieOpen(false); setHolePickerOpen(false); setSheetOpen(false)
   }, [tour.active, tour.stepIndex])
 
   // Shared pin for this hole (if anyone has set one). It overrides the green
@@ -2464,7 +2464,7 @@ export default function GpsPage() {
           {/* Center: Enter Score — same height as one yardage tile, fills available width */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
             {profile && (
-              <button onClick={() => setSheetOpen(true)} style={{
+              <button data-tour="enter-score" onClick={() => setSheetOpen(true)} style={{
                 flex: 1,
                 height: isNarrow ? 50 : 64,
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
@@ -2593,11 +2593,11 @@ export default function GpsPage() {
         myScores={scoring.myScores}
         myChulligans={scoring.myChulligans}
         saving={scoring.saving}
-        adjustMyScore={scoring.adjustMyScore}
-        setMyDrive={scoring.setMyDrive}
-        setMyPutts={scoring.setMyPutts}
-        resetMyScore={scoring.resetMyScore}
-        toggleMyChulligan={scoring.toggleMyChulligan}
+        adjustMyScore={tour.active ? (() => {}) : scoring.adjustMyScore}
+        setMyDrive={tour.active ? (() => {}) : scoring.setMyDrive}
+        setMyPutts={tour.active ? (() => {}) : scoring.setMyPutts}
+        resetMyScore={tour.active ? (() => {}) : scoring.resetMyScore}
+        toggleMyChulligan={tour.active ? (() => {}) : scoring.toggleMyChulligan}
         countDrives={scoring.countDrives}
       />
     </div>

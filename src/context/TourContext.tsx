@@ -49,6 +49,8 @@ const STEPS: TourStep[] = [
     body: "Your aim point. Tap anywhere on the map to move it — the pills show the exact yardage to it, adjusted for wind and elevation." },
   { route: '/gps', anchor: 'chull-drives', title: 'Chulligans & drives',
     body: "Your group's chulligans used and each player's drive count — so you always know where the scramble stands." },
+  { route: '/gps', anchor: 'enter-score', title: 'Enter your score', interactive: true,
+    body: "This is where you post the hole — tap it to log your team's score, putts, drives and chulligans. Important: every category has to be completed before the app will let you enter a score on later holes, so finish each hole before moving on." },
 ]
 
 interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; stepIndex: number }
