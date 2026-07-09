@@ -251,7 +251,7 @@ export default function Leaderboard() {
               }}>
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div data-tour={i === 0 ? 'lb-position' : undefined} style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                     {rankIndicator}
                     {back !== null && back > 0 && (
                       <div style={{
@@ -285,7 +285,7 @@ export default function Leaderboard() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                  <div data-tour={i === 0 ? 'lb-stats' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <ScorePill toPar={row.toPar} thru={row.thru} large={isLeader} />
                       <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--tx4)', marginTop: 3, letterSpacing: 1, textTransform: 'uppercase' }}>To Par</div>
@@ -298,7 +298,7 @@ export default function Leaderboard() {
 
                 {/* Hole grid: hole numbers on top, score bubbles below */}
                 {row.thru > 0 && (
-                  <div style={{ marginTop: 12 }}>
+                  <div data-tour={i === 0 ? 'lb-scorecard' : undefined} style={{ marginTop: 12 }}>
                     <div className={isLeader ? 'divider-gold' : ''} style={isLeader ? { marginBottom: 8 } : { height: 1, background: 'var(--bdr)', marginBottom: 8 }} />
                     <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
                     <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 'max-content' }}>

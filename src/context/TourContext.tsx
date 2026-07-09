@@ -7,7 +7,7 @@ const SEEN_KEY = 'chubbsTourSeen'
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 interface TourStep {
-  route: '/' | '/gps'
+  route: string         // path to navigate to before showing this step
   anchor: string        // data-tour value of the element to spotlight
   title: string
   body: string
@@ -51,6 +51,15 @@ const STEPS: TourStep[] = [
     body: "Your group's chulligans used and each player's drive count — so you always know where the scramble stands." },
   { route: '/gps', anchor: 'enter-score', title: 'Enter your score', interactive: true,
     body: "This is where you post the hole — tap it to log your team's score, putts, drives and chulligans. Important: every category has to be completed before the app will let you enter a score on later holes, so finish each hole before moving on." },
+  // ── Leaderboard ──
+  { route: '/gps', anchor: 'nav-board', title: 'The Board',
+    body: "This tab is the live leaderboard — every team's standing in the tournament, updated the instant scores come in. Let's take a look." },
+  { route: '/leaderboard', anchor: 'lb-position', title: 'Position & strokes back',
+    body: "Each team's place in the field. On any team that isn't leading, a red “back” badge shows how many strokes behind the lead they are — so you can read the gap at a glance." },
+  { route: '/leaderboard', anchor: 'lb-stats', title: 'The four numbers',
+    body: "For each team: To Par (score against par), Gross (total strokes taken), Thru (holes completed — “F” means finished), and Putts (the first tiebreaker if teams are level)." },
+  { route: '/leaderboard', anchor: 'lb-scorecard', title: 'Hole-by-hole scorecard',
+    body: "Below each team is their scorecard — the score on every hole in its own bubble, colour-coded for birdie, par, bogey and worse. Swipe it sideways to see all 18." },
 ]
 
 interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; stepIndex: number }
