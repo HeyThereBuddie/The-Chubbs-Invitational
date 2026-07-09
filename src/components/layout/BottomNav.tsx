@@ -7,6 +7,8 @@ import {
   Target, Shield, UserCircle, Images, MapPin, Info, BookOpen, Sparkles
 } from 'lucide-react'
 
+const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
+
 // GPS sits in the middle and is emphasised — the on-course home base.
 // '__tour__' is a virtual item that launches the walkthrough instead of routing.
 const playerNav = [
@@ -111,12 +113,13 @@ export default function BottomNav() {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: isNarrow ? 46 : 54, height: isNarrow ? 46 : 54, borderRadius: '50%',
-                    marginTop: isNarrow ? -18 : -22, marginBottom: 3,
+                    marginTop: isNarrow ? -18 : -22, marginBottom: 3, overflow: 'hidden',
                     background: 'linear-gradient(160deg, #e8bc55 0%, #c4941f 100%)',
                     border: '3px solid var(--panel)',
                     boxShadow: '0 4px 18px rgba(212,165,58,0.55), 0 2px 8px rgba(0,0,0,0.45)',
                   }}>
-                  <Icon size={isNarrow ? 22 : 26} strokeWidth={2.3} color="#1a1206" />
+                  {/* Chubbs — your caddie — is the on-course GPS button */}
+                  <img src={CHUBBS_IMG} alt="GPS" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%' }} />
                 </div>
               ) : (
                 <div
