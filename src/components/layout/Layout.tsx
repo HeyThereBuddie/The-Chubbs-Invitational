@@ -45,11 +45,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <span style={{ fontSize: 14 }}>🔒</span>
-          <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#D4A53A', letterSpacing: 2 }}>
+          <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#D4A53A', letterSpacing: 2, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {viewingTournament?.name ?? viewingYear} — Snapshot
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--tx3)', flex: 1, minWidth: 0 }}>
-            {isNarrow ? 'Read only' : "You're viewing a past tournament. No changes can be made."}
           </span>
           <button
             onClick={exitSnapshot}
