@@ -7,7 +7,7 @@ import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
-import { Trophy, Users, Flag, Pin } from 'lucide-react'
+import { Trophy, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
 
@@ -67,6 +67,8 @@ interface DefendingChamp {
   year: number
 }
 
+interface ContestLeader { name: string; photo_url: string | null }
+
 export default function Dashboard() {
   const { profile } = useAuth()
   const { isDark } = useTheme()
@@ -75,8 +77,7 @@ export default function Dashboard() {
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [updates, setUpdates] = useState<Update[]>([])
   const [feed, setFeed] = useState<FeedEvent[]>([])
-  const [playerCount, setPlayerCount] = useState(0)
-  const [teamCount, setTeamCount] = useState(0)
+  const [contestLeaders, setContestLeaders] = useState<{ ctp: ContestLeader | null; ld: ContestLeader | null }>({ ctp: null, ld: null })
   const [quoteIdx, setQuoteIdx] = useState(0)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [defendingChamp, setDefendingChamp] = useState<DefendingChamp | null>(null)
@@ -114,6 +115,18 @@ export default function Dashboard() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentYear, effectiveTournamentId])
+
+  // Contest leaders — fetch + keep live.
+  useEffect(() => {
+    fetchContestLeaders()
+    if (!isCurrentYear) return
+    const ch = supabase
+      .channel('contest_entries_dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contest_entries' }, () => fetchContestLeaders())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrentYear, effectiveTournamentId])
 
@@ -161,13 +174,12 @@ export default function Dashboard() {
   }
 
   const fetchData = async () => {
-    if (!effectiveTournamentId) { setLeaders([]); setTeamCount(0); return }
+    if (!effectiveTournamentId) { setLeaders([]); return }
 
     // Step 1: Show cached data immediately (works offline)
-    const [localTeams, localScores, localProfiles] = await Promise.all([
+    const [localTeams, localScores] = await Promise.all([
       localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray(),
       localDb.scores.toArray(),
-      localDb.profiles.where('status').equals('active').toArray(),
     ])
     if (localTeams.length > 0) {
       const cachedTeams = localTeams.map(t => ({
@@ -175,8 +187,6 @@ export default function Dashboard() {
         player1: parseJson(t.player1_json) as Player | undefined,
         player2: parseJson(t.player2_json) as Player | undefined,
       }))
-      setTeamCount(cachedTeams.length)
-      setPlayerCount(localProfiles.length)
       const cachedRows: LeaderRow[] = cachedTeams.map(team => {
         const teamScores = localScores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
@@ -190,16 +200,13 @@ export default function Dashboard() {
 
     // Step 2: Refresh from Supabase in background
     try {
-      const [teamsRes, scoresRes, playersRes, updatesRes] = await Promise.all([
+      const [teamsRes, scoresRes, updatesRes] = await Promise.all([
         supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('tournament_id', effectiveTournamentId),
         supabase.from('scores').select('*'),
-        supabase.from('profiles').select('id', { count: 'exact' }).eq('status', 'active'),
         supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
       ])
       const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
       const scores: Score[] = scoresRes.data ?? []
-      setPlayerCount(playersRes.count ?? 0)
-      setTeamCount(teams.length)
       setUpdates(updatesRes.data ?? [])
       const rows: LeaderRow[] = teams.map(team => {
         const teamScores = scores.filter(s => s.team_id === team.id)
@@ -211,6 +218,25 @@ export default function Dashboard() {
       rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
       setLeaders(rows.slice(0, 5))
     } catch { /* offline — cached data already shown */ }
+  }
+
+  // Current contest holders (CTP / LD). The most recent entry per type is the
+  // standing leader — same rule the Contests page uses.
+  const fetchContestLeaders = async () => {
+    if (!effectiveTournamentId) { setContestLeaders({ ctp: null, ld: null }); return }
+    try {
+      const { data } = await supabase
+        .from('contest_entries')
+        .select('type, photo_url, player:profiles(*)')
+        .eq('tournament_id', effectiveTournamentId)
+        .in('type', ['ctp', 'ld'])
+        .order('created_at', { ascending: false })
+      const pick = (t: string): ContestLeader | null => {
+        const row = (data ?? []).find(r => r.type === t) as { photo_url: string | null; player?: Player } | undefined
+        return row?.player ? { name: displayName(row.player), photo_url: row.photo_url } : null
+      }
+      setContestLeaders({ ctp: pick('ctp'), ld: pick('ld') })
+    } catch { /* offline — keep whatever we have */ }
   }
 
   const toPar = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
@@ -460,34 +486,51 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Stats row ─────────────────────────────────────────── */}
-      <div className="animate-fadeUp delay-300" style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-        gap: 10, marginBottom: 20,
-      }}>
+      {/* ── Contest Leaders (live) ────────────────────────────── */}
+      <div
+        className="glass pressable animate-fadeUp delay-300"
+        onClick={() => navigate('/contests')}
+        role="button"
+        style={{ padding: 0, overflow: 'hidden', marginBottom: 20, cursor: 'pointer' }}
+      >
+        <div style={{
+          padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
+          borderBottom: '1px solid rgba(212,165,58,0.1)',
+          background: 'rgba(212,165,58,0.04)',
+        }}>
+          <span style={{ fontSize: 15 }}>🎯</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Contest Leaders</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold-dim)' }}>View all →</span>
+            {isCurrentYear && (
+              <>
+                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
+              </>
+            )}
+          </div>
+        </div>
         {[
-          { label: 'Players', value: playerCount, icon: <Users size={18} />, sub: 'confirmed' },
-          { label: 'Teams',   value: teamCount,   icon: <Trophy size={18} />, sub: 'competing' },
-          { label: 'Par',     value: COURSE_PAR,  icon: <Flag size={18} />, sub: '18 holes' },
-          {
-            label: 'Leader',
-            value: leaders[0] ? toPar(Math.round(leaders[0].toPar)) : '—',
-            icon: '🏆',
-            sub: leaders[0]
-              ? `${leaders[0].team.name} · ${[leaders[0].team.player1 && displayName(leaders[0].team.player1), leaders[0].team.player2 && displayName(leaders[0].team.player2)].filter(Boolean).join(' & ')}`
-              : 'TBD',
-          },
-        ].map(({ label, value, icon, sub }) => (
-          <div key={label} className="glass" style={{
-            padding: '18px 16px', textAlign: 'center',
-            borderColor: label === 'Leader' && leaders[0] ? 'rgba(212,165,58,0.3)' : undefined,
+          { icon: '🎯', label: 'Closest to Pin', leader: contestLeaders.ctp },
+          { icon: '💥', label: 'Longest Drive',  leader: contestLeaders.ld },
+        ].map((c, i) => (
+          <div key={c.label} style={{
+            display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px',
+            borderBottom: i === 0 ? '1px solid var(--bdr)' : 'none',
           }}>
-            <div style={{ color: '#D4A53A', marginBottom: 8, display: 'flex', justifyContent: 'center', opacity: 0.85 }}>
-              {typeof icon === 'string' ? <span style={{ fontSize: 18 }}>{icon}</span> : icon}
+            <div style={{
+              width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: 'var(--surf)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+            }}>{c.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold-dim)', textTransform: 'uppercase', letterSpacing: 1.2 }}>{c.label}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: c.leader ? 'var(--tx1)' : 'var(--tx4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                {c.leader ? c.leader.name : 'Up for grabs'}
+              </div>
             </div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--tx1)', lineHeight: 1, fontFamily: 'Bebas Neue', letterSpacing: 1 }}>{value}</div>
-            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
-            <div style={{ fontSize: 11, color: 'rgba(212,165,58,0.6)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
+            {c.leader?.photo_url
+              ? <img src={c.leader.photo_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--bdr)' }} />
+              : c.leader && <span style={{ fontSize: 18, flexShrink: 0 }}>🏆</span>}
           </div>
         ))}
       </div>
