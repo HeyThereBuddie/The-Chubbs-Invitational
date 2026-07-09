@@ -2,8 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import {
-  LayoutDashboard, Trophy, Clock, Users, Users2,
-  Target, Shield, UserCircle, Star, Images, MapPin
+  LayoutDashboard, Trophy, Users2,
+  Target, Shield, UserCircle, Star, Images, MapPin, Info
 } from 'lucide-react'
 
 const playerNav = [
@@ -12,8 +12,7 @@ const playerNav = [
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'Team' },
-  { to: '/tee-times', icon: Clock, label: 'Tees' },
-  { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/hall-of-fame', icon: Star, label: 'HOF' },
   { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/account', icon: UserCircle, label: 'Account' },
@@ -25,8 +24,7 @@ const adminNav = [
   { to: '/leaderboard', icon: Trophy, label: 'Board' },
   { to: '/contests', icon: Target, label: 'Contests' },
   { to: '/my-team', icon: Users2, label: 'Team' },
-  { to: '/tee-times', icon: Clock, label: 'Tees' },
-  { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/tourney', icon: Info, label: 'Tourney' },
   { to: '/hall-of-fame', icon: Star, label: 'HOF' },
   { to: '/happys-place', icon: Images, label: 'Photos' },
   { to: '/account', icon: UserCircle, label: 'Account' },
