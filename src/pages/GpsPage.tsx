@@ -708,14 +708,15 @@ export default function GpsPage() {
     return () => { supabase.removeChannel(channel) }
   }, [effectiveTournamentId])
 
-  // Most recent tracked shot (so Chubbs can rib the player on a bad one).
+  // The team's most recent tracked shot (so Chubbs can rib them on a bad one).
+  const myTeamId = scoring.myTeam?.id ?? null
   useEffect(() => {
-    if (!profile?.id) { setLastShot(null); return }
+    if (!myTeamId) { setLastShot(null); return }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(supabase as any).from('shots')
-      .select('*').eq('player_id', profile.id).order('created_at', { ascending: false }).limit(1)
+      .select('*').eq('team_id', myTeamId).order('created_at', { ascending: false }).limit(1)
       .then(({ data }: { data: Shot[] | null }) => setLastShot(data?.[0] ?? null))
-  }, [profile?.id, effectiveTournamentId])
+  }, [myTeamId, effectiveTournamentId])
 
   // ── Local DB snapshot for score-to-par in cart popups ────────────────────
 
@@ -1069,13 +1070,30 @@ export default function GpsPage() {
     // Tour is a sandbox — show the result but never persist it.
     if (tour.active) return
     const row = {
-      tournament_id: effectiveTournamentId, player_id: profile?.id, hole: t.hole, club: t.club,
+      tournament_id: effectiveTournamentId, team_id: myTeamId, player_id: profile?.id, hole: t.hole, club: t.club,
       start_lat: t.start.lat, start_lng: t.start.lng, end_lat: position.lat, end_lng: position.lng,
       distance_yds: distance, offline_yds: offline, created_at: new Date().toISOString(),
     }
+    // Shots are TEAM-based. If a teammate just tracked this same shot (same team &
+    // hole within ~2 min), overwrite it so we keep only the last one — no dupes.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any).from('shots').insert(row).select().single()
-    setLastShot((data as Shot) ?? { id: 'local', ...row } as Shot)
+    const sb = supabase as any
+    let saved: Shot | null = null
+    if (myTeamId) {
+      const { data: recent } = await sb.from('shots')
+        .select('id, created_at').eq('team_id', myTeamId).eq('hole', t.hole)
+        .order('created_at', { ascending: false }).limit(1)
+      const prev = recent?.[0]
+      if (prev && Date.now() - new Date(prev.created_at).getTime() < 120_000) {
+        const { data } = await sb.from('shots').update(row).eq('id', prev.id).select().single()
+        saved = data as Shot
+      }
+    }
+    if (!saved) {
+      const { data } = await sb.from('shots').insert(row).select().single()
+      saved = data as Shot
+    }
+    setLastShot(saved ?? { id: 'local', ...row } as Shot)
   }
 
   const [mapLoaded, setMapLoaded] = useState(false)

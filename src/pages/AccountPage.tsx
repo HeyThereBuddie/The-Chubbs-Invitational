@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { displayName } from '../lib/types'
 import { type ClubDist, DEFAULT_BAG, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
-import { ShotStats } from '../components/ShotStats'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
   || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
@@ -59,7 +58,6 @@ export default function AccountPage() {
   const [prefSaving, setPrefSaving] = useState<string | null>(null)
   const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
   const [tab, setTab] = useState<'profile' | 'bag' | 'career' | 'alerts'>('profile')
-  const [bagTab, setBagTab] = useState<'bag' | 'stats'>('bag')
   const [bag, setBag] = useState<ClubDist[]>(DEFAULT_BAG)
   const [sevenIron, setSevenIron] = useState('')
   const [savingBag, setSavingBag] = useState(false)
@@ -385,7 +383,7 @@ export default function AccountPage() {
       {/* ── Account tabs ── */}
       <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 20 }}>
         <button onClick={() => setTab('profile')} className={`pill-tab pressable ${tab === 'profile' ? 'active' : ''}`}>Profile</button>
-        <button onClick={() => setTab('bag')} className={`pill-tab pressable ${tab === 'bag' ? 'active' : ''}`}>Bag &amp; Stats</button>
+        <button onClick={() => setTab('bag')} className={`pill-tab pressable ${tab === 'bag' ? 'active' : ''}`}>My Bag</button>
         <button onClick={() => setTab('career')} className={`pill-tab pressable ${tab === 'career' ? 'active' : ''}`}>Career</button>
         <button onClick={() => setTab('alerts')} className={`pill-tab pressable ${tab === 'alerts' ? 'active' : ''}`}>Alerts</button>
       </div>
@@ -443,14 +441,8 @@ export default function AccountPage() {
       </section>
       )}
 
-      {/* ── Bag & Stats (with Bag / Shot Stats sub-tabs) ── */}
+      {/* ── My Bag ── */}
       {tab === 'bag' && (
-      <>
-      <div className="pill-tabs" style={{ marginBottom: 16 }}>
-        <button onClick={() => setBagTab('bag')} className={`pill-tab pressable ${bagTab === 'bag' ? 'active' : ''}`}>My Bag</button>
-        <button onClick={() => setBagTab('stats')} className={`pill-tab pressable ${bagTab === 'stats' ? 'active' : ''}`}>Shot Stats</button>
-      </div>
-      {bagTab === 'bag' && (
       <section data-tour="bag" className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
         <div className="section-label" style={{ margin: '0 4px 8px' }}>My Bag</div>
         <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -516,11 +508,6 @@ export default function AccountPage() {
           </div>
         </div>
       </section>
-      )}
-
-      {/* ── Shot Stats & History ── */}
-      {bagTab === 'stats' && <div data-tour="shot-stats"><ShotStats /></div>}
-      </>
       )}
 
       {/* ── Career Highlights ── */}

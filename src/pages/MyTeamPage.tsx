@@ -7,6 +7,7 @@ import { displayName } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
+import { ShotStats } from '../components/ShotStats'
 
 type ScoreRow     = { hole: number; score: number; putts: number | null; drive_used_id: string | null }
 type ChulliganRow = { id: string; player_id: string; hole: number }
@@ -66,6 +67,7 @@ export default function MyTeamPage() {
 
   const [allTeams,      setAllTeams]      = useState<TeamFull[]>([])
   const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
+  const [teamSubTab, setTeamSubTab] = useState<'profile' | 'stats'>('profile')
   const [team,          setTeam]          = useState<TeamFull | null>(null)
   const [scores,        setScores]        = useState<ScoreRow[]>([])
   const [chulligans,    setChulligans]    = useState<ChulliganRow[]>([])
@@ -255,7 +257,7 @@ export default function MyTeamPage() {
           {tabTeams.map(t => (
             <button
               key={t.id}
-              onClick={() => { setViewingTeamId(t.id); setEditingName(false) }}
+              onClick={() => { setViewingTeamId(t.id); setEditingName(false); setTeamSubTab('profile') }}
               className={`pill-tab pressable ${viewingTeamId === t.id ? 'active' : ''}`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}
             >
@@ -270,8 +272,20 @@ export default function MyTeamPage() {
         </div>
       )}
 
+      {/* ── Team sub-tabs: profile vs team shot stats ── */}
+      {!loading && team && (
+        <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
+          <button onClick={() => setTeamSubTab('profile')} className={`pill-tab pressable ${teamSubTab === 'profile' ? 'active' : ''}`}>⛳ Team Profile</button>
+          <button onClick={() => setTeamSubTab('stats')} className={`pill-tab pressable ${teamSubTab === 'stats' ? 'active' : ''}`}>📊 Shot Stats</button>
+        </div>
+      )}
+
+      {teamSubTab === 'stats' && !loading && team && (
+        <ShotStats teamId={viewingTeamId} />
+      )}
+
       {/* ── Loading skeleton — mirrors page layout ── */}
-      {loading ? (
+      {teamSubTab === 'profile' && (loading ? (
         <div aria-busy="true" className="animate-fadeUp">
           {/* Team header */}
           <div style={{ marginBottom: 24 }}>
@@ -603,7 +617,7 @@ export default function MyTeamPage() {
             </div>
           )}
         </>
-      )}
+      ))}
     </div>
   )
 }

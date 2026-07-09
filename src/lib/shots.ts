@@ -5,6 +5,7 @@ export interface Shot {
   id: string
   tournament_id: string | null
   player_id: string
+  team_id: string | null
   hole: number | null
   club: string | null
   start_lat: number | null

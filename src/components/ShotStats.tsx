@@ -3,19 +3,21 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { type Shot, clubStats } from '../lib/shots'
 
-export function ShotStats() {
+export function ShotStats({ teamId }: { teamId?: string | null }) {
   const { profile } = useAuth()
   const [shots, setShots] = useState<Shot[]>([])
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
-    if (!profile?.id) return
+    setLoading(true)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(supabase as any).from('shots')
-      .select('*').eq('player_id', profile.id).order('created_at', { ascending: false }).limit(300)
-      .then(({ data }: { data: Shot[] | null }) => { setShots(data ?? []); setLoading(false) })
-  }, [profile?.id])
+    let q = (supabase as any).from('shots').select('*').order('created_at', { ascending: false }).limit(300)
+    if (teamId) q = q.eq('team_id', teamId)
+    else if (profile?.id) q = q.eq('player_id', profile.id)
+    else { setShots([]); setLoading(false); return }
+    q.then(({ data }: { data: Shot[] | null }) => { setShots(data ?? []); setLoading(false) })
+  }, [teamId, profile?.id])
 
   const stats = clubStats(shots)
   const history = showAll ? shots : shots.slice(0, 8)
