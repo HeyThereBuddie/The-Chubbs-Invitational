@@ -49,9 +49,6 @@ export default function BottomNav() {
       zIndex: 100,
       paddingTop: 4,
       paddingBottom: 'env(safe-area-inset-bottom, 8px)',
-      // Inset the outer icons off the rounded iPhone corners.
-      paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 10px)',
-      paddingRight: 'calc(env(safe-area-inset-right, 0px) + 10px)',
     }}>
       {navItems.map(({ to, icon: Icon, label }) => {
         const isGps = to === '/gps'
