@@ -74,7 +74,7 @@ export default function CoursePage() {
       </div>
 
       {/* Nine tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div className="pill-tabs" style={{ marginBottom: 16 }}>
         {(['front', 'back', 'all'] as Nine[]).map(n => (
           <button
             key={n}

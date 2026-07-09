@@ -650,7 +650,7 @@ export default function Scores() {
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         {pageHeader}
 
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
+        <div className="pill-tabs" style={{ marginBottom: 16 }}>
           {adminTabTeams.map(t => (
             <button key={t.id} onClick={() => { setAdminTeamId(t.id); setAdminScores({}) }}
               className={`pill-tab ${adminTeamId === t.id ? 'active' : ''}`}
@@ -751,7 +751,7 @@ export default function Scores() {
 
       {/* Team tabs — browse all scorecards; own team is editable, others are read-only */}
       {allTeams.length > 1 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
+        <div className="pill-tabs" style={{ marginBottom: 16 }}>
           {tabTeams.map(t => (
             <button key={t.id} onClick={() => setViewingTeamId(t.id)}
               className={`pill-tab ${viewingTeamId === t.id ? 'active' : ''}`}

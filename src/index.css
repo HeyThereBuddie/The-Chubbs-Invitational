@@ -385,25 +385,45 @@ input::placeholder, textarea::placeholder { color: var(--tx4); }
 select option { background: var(--bg); color: var(--tx1); }
 
 /* ── Pill tab ── */
+/* Segmented-control track that groups the tabs */
+.pill-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  vertical-align: top;
+}
+.pill-tabs::-webkit-scrollbar { display: none; }
+
 .pill-tab {
-  padding: 9px 18px;
-  min-height: 38px;
-  border-radius: 999px;
-  font-size: 13px;
+  padding: 6px 13px;
+  min-height: 32px;
+  border-radius: 9px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid var(--bdr);
-  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s var(--spring), box-shadow 0.2s;
-  white-space: nowrap;
-  background: var(--surf);
+  border: none;
+  background: transparent;
   color: var(--tx3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background 0.18s, color 0.18s, transform 0.15s var(--spring);
   -webkit-tap-highlight-color: transparent;
 }
 .pill-tab.active {
-  background: var(--gold-15);
-  border-color: var(--gold-40);
-  color: var(--gold);
-  box-shadow: var(--elev-gold);
+  background: var(--gold);
+  color: #1a1206;
+  font-weight: 800;
 }
 .pill-tab:hover:not(.active) { color: var(--tx2); background: var(--surf2); }
 .pill-tab:active { transform: scale(0.96); }

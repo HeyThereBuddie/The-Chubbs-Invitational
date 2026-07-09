@@ -566,14 +566,16 @@ export default function AccountPage() {
               )}
             </div>
             {(pushStatus === 'subscribed' || pushStatus === 'unsubscribed') && (
-              <button
-                className={`pill-tab pressable${pushStatus === 'unsubscribed' ? ' active' : ''}`}
-                onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
-                disabled={pushLoading}
-                style={{ flexShrink: 0, fontSize: 12, opacity: pushLoading ? 0.6 : 1, cursor: pushLoading ? 'not-allowed' : 'pointer' }}
-              >
-                {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
-              </button>
+              <div className="pill-tabs" style={{ flexShrink: 0 }}>
+                <button
+                  className={`pill-tab pressable${pushStatus === 'unsubscribed' ? ' active' : ''}`}
+                  onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+                  disabled={pushLoading}
+                  style={{ fontSize: 12, opacity: pushLoading ? 0.6 : 1, cursor: pushLoading ? 'not-allowed' : 'pointer' }}
+                >
+                  {pushLoading ? '…' : pushStatus === 'subscribed' ? 'Turn Off' : 'Turn On'}
+                </button>
+              </div>
             )}
           </div>
 

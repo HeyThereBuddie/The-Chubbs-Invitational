@@ -194,7 +194,7 @@ export default function TeeTimes() {
           )}
         </div>
         {isAdmin && isCurrentYear && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="pill-tabs">
             <button onClick={() => setTab('view')} className={`pill-tab pressable ${tab === 'view' ? 'active' : ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Clock size={13} /> View

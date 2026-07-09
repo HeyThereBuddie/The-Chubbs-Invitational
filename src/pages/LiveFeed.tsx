@@ -133,8 +133,8 @@ export default function LiveFeed() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
-        <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
+      <div style={{ marginBottom: 12, display: 'flex' }}>
+        <div className="pill-tabs">
           {([
             { id: null,       label: 'All' },
             { id: 'golf',     label: '⛳ Golf' },

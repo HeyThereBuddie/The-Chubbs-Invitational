@@ -251,7 +251,7 @@ export default function MyTeamPage() {
 
       {/* ── Team selector tabs ── */}
       {allTeams.length > 1 && (
-        <div className="animate-fadeUp" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, marginBottom: 16 }}>
+        <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
           {tabTeams.map(t => (
             <button
               key={t.id}

@@ -123,7 +123,7 @@ export default function Groups() {
       </div>
 
       {/* Tabs */}
-      <div className="animate-fadeUp delay-100" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20 }}>
         {([['groups', 'Groups'], ['pairings', 'Pairings']] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}

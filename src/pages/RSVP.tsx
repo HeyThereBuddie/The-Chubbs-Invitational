@@ -176,12 +176,14 @@ export default function RSVP() {
       )}
 
       {/* Status tabs + export */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        {STATUS_TABS.map(({ id, label, emoji }) => (
-          <button key={id} onClick={() => { setTab(id); setSelected(new Set()) }} className={`pill-tab ${tab === id ? 'active' : ''}`}>
-            {emoji} {label} ({counts[id]})
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="pill-tabs">
+          {STATUS_TABS.map(({ id, label, emoji }) => (
+            <button key={id} onClick={() => { setTab(id); setSelected(new Set()) }} className={`pill-tab ${tab === id ? 'active' : ''}`}>
+              {emoji} {label} ({counts[id]})
+            </button>
+          ))}
+        </div>
         <button
           onClick={exportBrevoCSV}
           style={{

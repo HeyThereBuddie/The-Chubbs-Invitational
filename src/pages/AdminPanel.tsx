@@ -662,7 +662,7 @@ export default function AdminPanel() {
         <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Manage teams, users, and access codes</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="pill-tabs" style={{ marginBottom: 20 }}>
         {([
           { id: 'teams',      label: '⛳ Teams' },
           { id: 'scores',     label: '📝 Scores' },
@@ -819,7 +819,7 @@ export default function AdminPanel() {
       {tab === 'players' && (
         <div>
           {/* Sub-tabs */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+          <div className="pill-tabs" style={{ marginBottom: 20 }}>
             <button onClick={() => setPlayerSubTab('roster')} className={`pill-tab ${playerSubTab === 'roster' ? 'active' : ''}`}>
               🏆 Tournament Roster
             </button>

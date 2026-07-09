@@ -361,7 +361,7 @@ export default function Contests() {
         <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
       </header>
 
-      <div className="animate-fadeUp delay-100" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20 }}>
         <button onClick={() => { navigator.vibrate?.(8); setTab('ctp') }} className={`pill-tab pressable ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
         <button onClick={() => { navigator.vibrate?.(8); setTab('ld') }}  className={`pill-tab pressable ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
         <button onClick={() => { navigator.vibrate?.(8); setTab('lahey') }} className={`pill-tab pressable ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
