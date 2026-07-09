@@ -16,6 +16,8 @@ interface TourStep {
 
 const STEPS: TourStep[] = [
   // ── Dashboard ──
+  { route: '/', anchor: 'nav-home', title: 'Home — your dashboard',
+    body: "This is Home, your tournament HQ. At a glance you get the live leaderboard, the latest action feed, key event info, and quick links to everything else. Let's start here." },
   { route: '/', anchor: 'tour-launch', title: 'Your tour button',
     body: "This is your tour button — tap it anytime to run this whole walkthrough again. No pressure to remember everything." },
   { route: '/', anchor: 'leaderboard', title: 'Live leaderboard',
@@ -23,6 +25,8 @@ const STEPS: TourStep[] = [
   { route: '/', anchor: 'feed', title: 'Live feed',
     body: "The day's action as it happens — birdies, eagles, lead changes, chulligans and all the drama." },
   // ── GPS ──
+  { route: '/', anchor: 'nav-gps', title: 'The GPS page',
+    body: "Next up: GPS — your on-course caddie. A live satellite map of every hole with distances, wind, club calls, shot tracking and more. Let's walk through it." },
   { route: '/gps', anchor: 'hole-tile', title: 'Hole, score & position', interactive: true,
     body: "Your current hole and its par, plus your running score and place in the field. Tap the hole number to jump to any hole." },
   { route: '/gps', anchor: 'camera', title: 'Recenter the camera',
@@ -118,9 +122,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const step = STEPS[index]
   const last = index === STEPS.length - 1
   const gpsDemo = active && step.route === '/gps'
-  // On the dashboard the highlighted section is pinned to the top, so keep the
-  // card at the bottom (never over the element). On GPS, pick the free side.
-  const cardAtTop = step.route === '/' ? false : (rect ? rect.y > window.innerHeight * 0.48 : false)
+  // Card goes opposite the highlighted element: element in the bottom half → card
+  // at top (e.g. a nav-bar tab); element up top → card at the bottom.
+  const cardAtTop = rect ? rect.y > window.innerHeight * 0.48 : false
   const pad = 8
 
   // Lock page scrolling while the tour card is showing (programmatic

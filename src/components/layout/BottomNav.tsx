@@ -58,6 +58,7 @@ export default function BottomNav() {
           key={to}
           to={to}
           end={to === '/'}
+          data-tour={to === '/' ? 'nav-home' : to === '/gps' ? 'nav-gps' : undefined}
           onClick={() => navigator.vibrate?.(8)}
           className="pressable"
           style={{
