@@ -1228,12 +1228,21 @@ export default function GpsPage() {
   // Hide landing zone once player has walked >75 yds from tee (no longer relevant)
   const showLandingZone = !!currentHole?.landingZone && (!position || distToTee === null || distToTee <= 75)
 
-  // Driver is a tee-shot club. Drop it from the club recommendation once the
-  // player is >40 yds off the tee (they've already hit their drive) or on a par 3.
-  // This is purely position-based, so it works even when nobody tracks shots.
-  const offTheTee = distToTee !== null && distToTee > 40
+  // Driver is only a sensible call on a par-4/5 tee shot. We drop it from the
+  // recommendation otherwise — all position-based, so it works even when nobody
+  // tracks shots. Three independent signals, any of which suppresses driver:
+  //   • par 3 — you're hitting a green, never a drive (#4: fairway-wood max)
+  //   • >40 yds off the tee — they've already driven (#1)
+  //   • remaining distance is well short of a full drive from the tee, so they
+  //     must be past their tee shot even on a dogleg or if they walked up (#2)
   const isPar3 = resolvePar(selectedHole, course?.holes) === 3
-  const recBag = offTheTee || isPar3 ? bag.filter(c => c.club !== 'Dr') : bag
+  const offTheTee = distToTee !== null && distToTee > 40
+  const holeLen = dist(currentHole?.tee ?? null, currentHole?.green.center)
+  const driverCarry = bag.find(c => c.club === 'Dr')?.carry ?? 220
+  const pastDrive = holeLen !== null && centerDist !== null && centerDist < holeLen - driverCarry * 0.5
+  // Removing driver leaves the longest club at 3W, so this also caps the rec at
+  // a 3-wood for every non-tee shot (#4).
+  const recBag = isPar3 || offTheTee || pastDrive ? bag.filter(c => c.club !== 'Dr') : bag
 
   const aimLineTarget = tapPoint ?? effectiveCenter ?? null
   const aimLineDist   = tapPoint ? tapDist : centerDist
