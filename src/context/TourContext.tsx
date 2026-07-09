@@ -78,6 +78,8 @@ const STEPS: TourStep[] = [
   // ── Rules ──
   { section: 'rules', route: '/rules', anchor: 'nav-rules', title: 'Ask me the rules',
     body: "Stuck on a rule? This tab opens my rules desk — ask me anything about the scramble format, chulligans, contests or penalties and I'll set you straight on the spot." },
+  { section: 'rules', route: '/rules', anchor: 'rules-demo', title: 'Watch how it works',
+    body: "Say you're not sure what a chulligan is. I'll ask for you and pull up the answer — no typing needed. Give it a read, then hit Next." },
   // ── Contests ──
   { section: 'contests', route: '/contests', anchor: 'contests-tabs', title: 'Side action & contests',
     body: "Closest to Pin, Longest Drive and the Jackass-of-the-Day (Lahey) vote all live here. Flip between them with these tabs, snap your proof photo, and stake your claim." },
@@ -89,8 +91,8 @@ const STEPS: TourStep[] = [
     body: "The photo wall — your best shots and your worst disasters, all in one gallery. Add your own with the button up top." },
 ]
 
-interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; stepIndex: number }
-const Ctx = createContext<TourCtx>({ startTour: () => {}, active: false, gpsDemo: false, stepIndex: 0 })
+interface TourCtx { startTour: () => void; active: boolean; gpsDemo: boolean; rulesDemo: boolean; stepIndex: number }
+const Ctx = createContext<TourCtx>({ startTour: () => {}, active: false, gpsDemo: false, rulesDemo: false, stepIndex: 0 })
 export const useTour = () => useContext(Ctx)
 
 export function TourProvider({ children }: { children: ReactNode }) {
@@ -174,6 +176,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const step = sequence[index]
   const last = index === sequence.length - 1
   const gpsDemo = active && !menuOpen && step?.route === '/gps'
+  // The rules page runs a scripted, hands-off Q&A demo on this one step.
+  const rulesDemo = active && !minimized && !menuOpen && step?.anchor === 'rules-demo'
   // Card goes opposite the highlighted element: element in the bottom half → card
   // at top (e.g. a nav-bar tab); element up top → card at the bottom.
   const cardAtTop = rect ? rect.y > window.innerHeight * 0.48 : false
@@ -206,7 +210,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     : 'Next'
 
   return (
-    <Ctx.Provider value={{ startTour, active, gpsDemo, stepIndex: index }}>
+    <Ctx.Provider value={{ startTour, active, gpsDemo, rulesDemo, stepIndex: index }}>
       {children}
 
       {/* First-run offer */}
