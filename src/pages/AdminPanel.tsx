@@ -340,6 +340,30 @@ export default function AdminPanel() {
     else showToast('All Jackass of the Day votes cleared.')
   }
 
+  // Wipe every contest for the active tournament — CTP, LD and Jackass votes,
+  // plus the contest events in the feed. For testing / re-running contests.
+  const [contestsResetting, setContestsResetting] = useState(false)
+  const resetContests = async () => {
+    if (!confirm('Wipe ALL contest data (Closest to Pin, Longest Drive, and Jackass votes) for this tournament? This cannot be undone.')) return
+    setContestsResetting(true)
+    const ceQ = supabase.from('contest_entries').delete()
+    const lvQ = supabase.from('leahey_votes').delete()
+    const NONE = '00000000-0000-0000-0000-000000000000'
+    const [ce, lv, fe] = await Promise.all([
+      activeTournamentId ? ceQ.eq('tournament_id', activeTournamentId) : ceQ.neq('id', NONE),
+      activeTournamentId ? lvQ.eq('tournament_id', activeTournamentId) : lvQ.neq('id', NONE),
+      activeTournamentId
+        ? supabase.from('feed_events').delete().eq('tournament_id', activeTournamentId).eq('event_type', 'contest')
+        : Promise.resolve({ error: null }),
+    ])
+    // Clear this device's "already logged this hole" flags so GPS reminders re-fire.
+    try { Object.keys(localStorage).filter(k => k.startsWith('contestLogged:')).forEach(k => localStorage.removeItem(k)) } catch { /* ignore */ }
+    setContestsResetting(false)
+    const err = ce.error || lv.error || fe.error
+    if (err) showToast(err.message, 'error')
+    else showToast('All contests wiped — CTP, LD, and Jackass votes cleared.')
+  }
+
   const prepareEndTournament = async () => {
     let teamsQ = supabase.from('teams').select('id, name, p1_id, p2_id, player1:profiles!teams_p1_id_fkey(id, name, nickname), player2:profiles!teams_p2_id_fkey(id, name, nickname)')
     if (activeTournamentId) teamsQ = teamsQ.eq('tournament_id', activeTournamentId)
@@ -1294,6 +1318,31 @@ export default function AdminPanel() {
                       {laheyResetting ? 'Clearing…' : 'Reset All Votes'}
                     </button>
                   </div>
+                </div>
+
+                {/* Reset all contests (testing) */}
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <span style={{ fontSize: 20 }}>🧹</span>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#ef4444' }}>Reset All Contests</div>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--tx2)', marginBottom: 16, lineHeight: 1.6 }}>
+                    Wipes every contest entry (🎯 Closest to Pin, 💥 Longest Drive) and 🤠 Jackass of the Day votes for the active tournament, plus their live-feed events. Teams and scores are untouched. Handy for testing.
+                  </p>
+                  <button
+                    onClick={resetContests}
+                    disabled={contestsResetting || !activeTournamentId}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                      background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
+                      color: '#ef4444', cursor: contestsResetting || !activeTournamentId ? 'not-allowed' : 'pointer',
+                      opacity: contestsResetting || !activeTournamentId ? 0.6 : 1,
+                    }}
+                  >
+                    <RotateCcw size={15} />
+                    {contestsResetting ? 'Wiping…' : 'Wipe All Contest Data'}
+                  </button>
                 </div>
 
                 {/* End Tournament & Archive */}
