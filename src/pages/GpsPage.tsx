@@ -844,13 +844,15 @@ export default function GpsPage() {
             geometry: { type: 'Polygon' as const, coordinates: [[...coords, coords[0]]] }, properties: {} }
         }) }
     }
-    const tee = currentHole?.tee, green = currentHole?.green.center
+    // Par 3s have no fairway — don't draw the tee→green corridor box.
+    if (!currentHole || resolvePar(currentHole.hole, course?.holes) === 3) return null
+    const tee = currentHole.tee, green = currentHole.green.center
     if (!tee || !green) return null
     return { type: 'FeatureCollection' as const,
       features: [{ type: 'Feature' as const,
         geometry: { type: 'Polygon' as const, coordinates: [buildCorridor(tee, green, calcBearing(tee, green))] },
         properties: {} }] }
-  }, [currentHole])
+  }, [currentHole, course?.holes])
 
 
   const landingZoneGeoJson = useMemo(() => {
