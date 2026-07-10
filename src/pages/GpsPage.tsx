@@ -1119,6 +1119,28 @@ export default function GpsPage() {
     setLastShot(saved ?? { id: 'local', ...row } as Shot)
   }
 
+  // Log a putt: distance from where you stand (over the ball) to the pin, in feet.
+  // Unlike full shots these never dedupe — each putt on a hole is its own row.
+  const trackPutt = async () => {
+    setClubPickerOpen(false)
+    if (!position) { flashToast('No GPS position yet', 3500); return }
+    const target = effectiveCenter
+    if (!target) { flashToast('Set the pin (or map the green) to log putts', 4500); return }
+    const yds = haversineYards(position, target)
+    flashToast(`Putt · ${feetInches(yds)}`)
+    if (tour.active) return
+    if (!myTeamId) { flashToast("Join a team to save putts — they're tracked per team", 4000); return }
+    const row = {
+      tournament_id: effectiveTournamentId, team_id: myTeamId, player_id: profile?.id, hole: selectedHole, club: 'Putt',
+      start_lat: position.lat, start_lng: position.lng, end_lat: target.lat, end_lng: target.lng,
+      distance_yds: yds, offline_yds: null, created_at: new Date().toISOString(),
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).from('shots').insert(row).select().single()
+    if (error) { flashToast(`Save failed: ${error.message}`, 6000); return }
+    setLastShot((data ?? { id: 'local', ...row }) as Shot)
+  }
+
   // ── Contest logging (CTP / LD) ───────────────────────────────────────────
   const contestPlayers = useMemo(() => {
     const arr: { id: string; label: string }[] = []
@@ -2212,6 +2234,18 @@ export default function GpsPage() {
                     <span style={{ fontSize: 9, color: 'var(--tx4)' }}>{c.carry}y</span>
                   </button>
                 ))}
+              </div>
+              {/* Putter — logs the putt length (ball → pin) in feet, right away */}
+              <button onClick={trackPutt} className="pressable" style={{
+                width: '100%', marginTop: 10, padding: '13px', borderRadius: 12, cursor: 'pointer',
+                border: '1.5px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                color: '#34d399', fontWeight: 800, fontSize: 15,
+              }}>
+                <span style={{ fontSize: 17 }}>⛳</span> Putt — log distance to pin
+              </button>
+              <div style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', marginTop: 6 }}>
+                Stand over your ball, then tap — measures feet to the pin.
               </div>
             </div>
           </div>

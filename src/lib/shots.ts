@@ -29,7 +29,7 @@ export interface ClubStat {
 export function clubStats(shots: Shot[]): ClubStat[] {
   const by: Record<string, Shot[]> = {}
   for (const s of shots) {
-    if (!s.club || s.distance_yds == null) continue
+    if (!s.club || s.club === 'Putt' || s.distance_yds == null) continue  // putts are feet, not swing yardage
     ;(by[s.club] ??= []).push(s)
   }
   return Object.entries(by).map(([club, list]) => {

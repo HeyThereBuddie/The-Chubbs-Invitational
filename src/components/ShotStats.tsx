@@ -37,6 +37,9 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
   const puttVals = putts.filter((p): p is number => p != null)
   const puttsPerHole = puttVals.length ? puttVals.reduce((a, b) => a + b, 0) / puttVals.length : null
   const threePutts = puttVals.filter(p => p >= 3).length
+  // Tracked putt lengths (stored as yards, shown in feet).
+  const puttLenYds = shots.filter(s => s.club === 'Putt' && (s.distance_yds ?? 0) > 0).map(s => s.distance_yds as number)
+  const avgPuttFt = puttLenYds.length ? Math.round((puttLenYds.reduce((a, b) => a + b, 0) / puttLenYds.length) * 3) : null
 
   return (
     <section className="animate-fadeUp delay-200" style={{ marginBottom: 24 }}>
@@ -47,10 +50,11 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
         ) : (
           <>
             {/* Dashboard — team drive & putting summary */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: shots.length === 0 ? 0 : 18 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: shots.length === 0 ? 0 : 18, flexWrap: 'wrap' }}>
               <DashTile label="Avg Drive" value={avgDrive != null ? `${avgDrive}y` : '—'} />
               <DashTile label="Putts / Hole" value={puttsPerHole != null ? puttsPerHole.toFixed(1) : '—'} />
               <DashTile label="3-Putts" value={String(threePutts)} />
+              <DashTile label="Avg Putt" value={avgPuttFt != null ? `${avgPuttFt} ft` : '—'} />
             </div>
 
             {shots.length === 0 ? (
@@ -83,9 +87,15 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
               {history.map(sh => (
                 <div key={sh.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 2px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 13 }}>
                   <span style={{ width: 40, fontWeight: 800, color: '#e8c766' }}>{sh.club ?? '—'}</span>
-                  <span style={{ width: 52, color: 'var(--tx1)', fontWeight: 700 }}>{sh.distance_yds ?? '—'}y</span>
+                  <span style={{ width: 52, color: 'var(--tx1)', fontWeight: 700 }}>
+                    {sh.club === 'Putt'
+                      ? (sh.distance_yds != null ? `${Math.round(sh.distance_yds * 3)} ft` : '—')
+                      : `${sh.distance_yds ?? '—'}y`}
+                  </span>
                   <span style={{ flex: 1, color: 'var(--tx3)' }}>
-                    {sh.offline_yds != null && Math.abs(sh.offline_yds) >= 3 ? `${Math.abs(sh.offline_yds)}y ${sh.offline_yds > 0 ? 'right' : 'left'}` : 'on line'}
+                    {sh.club === 'Putt'
+                      ? 'putt'
+                      : sh.offline_yds != null && Math.abs(sh.offline_yds) >= 3 ? `${Math.abs(sh.offline_yds)}y ${sh.offline_yds > 0 ? 'right' : 'left'}` : 'on line'}
                   </span>
                   <span style={{ color: 'var(--tx4)', fontSize: 11 }}>{sh.hole ? `H${sh.hole}` : ''}</span>
                 </div>
