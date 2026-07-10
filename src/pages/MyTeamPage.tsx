@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { localDb, parseJson } from '../lib/localDb'
-import { displayName } from '../lib/types'
+import { displayName, teamMemberName } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
@@ -262,9 +262,9 @@ export default function MyTeamPage() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}
             >
               <span>{t.name}{t.id === myTeamId ? ' ⭐' : ''}</span>
-              {(t.player1 || t.player2) && (
+              {(t.player1 || t.player2 || t.p1_name || t.p2_name) && (
                 <span style={{ fontSize: 9, opacity: 0.55, whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
-                  {[t.player1 && displayName(t.player1), t.player2 && displayName(t.player2)].filter(Boolean).join(' & ')}
+                  {[teamMemberName(t.player1, t.p1_name), teamMemberName(t.player2, t.p2_name)].filter(Boolean).join(' & ')}
                 </span>
               )}
             </button>

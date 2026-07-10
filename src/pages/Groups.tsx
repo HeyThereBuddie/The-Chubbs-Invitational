@@ -3,258 +3,286 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
-import { useSyncContext } from '../context/SyncContext'
-import { localDb, parseJson } from '../lib/localDb'
-import type { Player, Pairing } from '../lib/types'
-import { Lock, Shuffle, Save } from 'lucide-react'
+import type { Player, Team, RosterEntry } from '../lib/types'
+import { displayName, teamMemberName } from '../lib/types'
+import { Trash2, Plus, UserPlus, Wand2 } from 'lucide-react'
+
+type TeamRow = Team & { player1?: Player; player2?: Player }
+
+const firstToken = (name: string) => name.trim().split(/\s+/).slice(-1)[0] || name.trim()
 
 export default function Groups() {
   const { isAdmin } = useAuth()
   const { showToast } = useToast()
-  const { isCurrentYear, activeTournamentId } = useYear()
-  const { isOnline } = useSyncContext()
-  const [players, setPlayers] = useState<Player[]>([])
-  const [pairings, setPairings] = useState<(Pairing & { player_a?: Player; player_b?: Player })[]>([])
-  const [draftPairings, setDraftPairings] = useState<{ a: Player; b: Player; name: string }[]>([])
-  const [tab, setTab] = useState<'groups' | 'pairings'>('groups')
-  const [pairingsReleased, setPairingsReleased] = useState(false)
+  const { activeTournamentId, isCurrentYear } = useYear()
 
-  useEffect(() => { fetchData() }, [isOnline])
+  const [roster, setRoster] = useState<RosterEntry[]>([])
+  const [profiles, setProfiles] = useState<Player[]>([])
+  const [teams, setTeams] = useState<TeamRow[]>([])
+  const [tab, setTab] = useState<'draw' | 'roster'>('draw')
+  const [pasteText, setPasteText] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [selected, setSelected] = useState<string[]>([])   // roster ids picked for the next team
+  const [search, setSearch] = useState('')
+
+  useEffect(() => { fetchData() }, [activeTournamentId])
 
   const fetchData = async () => {
-    if (!isOnline) {
-      const localPairings = await localDb.pairings.toArray()
-      const localProfiles = await localDb.profiles.where('status').equals('active').toArray()
-      setPlayers(localProfiles as Player[])
-      const mappedPairings = localPairings.map(p => ({
-        id: p.id,
-        player_a_id: p.player_a_id,
-        player_b_id: p.player_b_id,
-        team_name: p.team_name,
-        generated_at: p.generated_at,
-        player_a: parseJson<Player>(p.player_a_json),
-        player_b: parseJson<Player>(p.player_b_json),
-      } as Pairing & { player_a?: Player; player_b?: Player }))
-      setPairings(mappedPairings)
-      setPairingsReleased(mappedPairings.length > 0)
-      return
-    }
-    const [playersRes, pairingsRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('status', 'active').order('handicap'),
-      supabase.from('pairings').select('*, player_a:profiles!pairings_player_a_id_fkey(*), player_b:profiles!pairings_player_b_id_fkey(*)').order('generated_at', { ascending: false }),
+    if (!activeTournamentId) { setRoster([]); setTeams([]); return }
+    const [rosterRes, profilesRes, teamsRes] = await Promise.all([
+      supabase.from('roster').select('*').eq('tournament_id', activeTournamentId).order('name'),
+      supabase.from('profiles').select('*').eq('status', 'active').order('name'),
+      supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('tournament_id', activeTournamentId).order('created_at'),
     ])
-    setPlayers(playersRes.data ?? [])
-    const saved = pairingsRes.data ?? []
-    setPairings(saved)
-    setPairingsReleased(saved.length > 0)
+    setRoster((rosterRes.data ?? []) as RosterEntry[])
+    setProfiles((profilesRes.data ?? []) as Player[])
+    setTeams((teamsRes.data ?? []) as TeamRow[])
   }
 
-  const median = (arr: number[]) => {
-    if (!arr.length) return 0
-    const sorted = [...arr].sort((a, b) => a - b)
-    const mid = Math.floor(sorted.length / 2)
-    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
-  }
-
-  const medianHcp = median(players.map(p => p.handicap ?? 18))
-  const groupA = players.filter(p => (p.handicap ?? 18) <= medianHcp)
-  const groupB = players.filter(p => (p.handicap ?? 18) > medianHcp)
-
-  const generatePairings = () => {
-    const a = [...groupA].sort(() => Math.random() - 0.5)
-    const b = [...groupB].sort(() => Math.random() - 0.5)
-    const count = Math.min(a.length, b.length)
-    const draft = Array.from({ length: count }, (_, i) => ({
-      a: a[i], b: b[i],
-      name: `Team ${i + 1}`,
-    }))
-    setDraftPairings(draft)
-  }
-
-  const savePairings = async () => {
-    if (!activeTournamentId) {
-      showToast('No active tournament. Create one in the Admin panel first.', 'error')
-      return
-    }
-
-    // 1. Replace pairings
-    await supabase.from('pairings').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-    const { error: pErr } = await supabase.from('pairings').insert(
-      draftPairings.map(p => ({ player_a_id: p.a.id, player_b_id: p.b.id, team_name: p.name, generated_at: new Date().toISOString() }))
-    )
-    if (pErr) { showToast(pErr.message, 'error'); return }
-
-    // 2. Clear player team assignments for existing teams in this tournament
-    const { data: oldTeams } = await supabase.from('teams').select('id').eq('tournament_id', activeTournamentId)
-    if (oldTeams?.length) {
-      await supabase.from('profiles').update({ team_id: null }).in('team_id', oldTeams.map(t => t.id))
-      await supabase.from('teams').delete().eq('tournament_id', activeTournamentId)
-    }
-
-    // 3. Create teams from pairings
-    const { data: newTeams, error: tErr } = await supabase
-      .from('teams')
-      .insert(draftPairings.map(p => ({ name: p.name, p1_id: p.a.id, p2_id: p.b.id, tournament_id: activeTournamentId })))
-      .select('id, p1_id, p2_id')
-    if (tErr) { showToast(tErr.message, 'error'); return }
-
-    // 4. Assign each player to their new team
-    if (newTeams) {
-      await Promise.all(
-        newTeams.map(t =>
-          supabase.from('profiles').update({ team_id: t.id }).in('id', [t.p1_id, t.p2_id].filter(Boolean))
-        )
-      )
-    }
-
-    showToast('Pairings saved — teams created and players assigned!')
+  // ── Roster import (paste: "Name, email, phone" per line) ──────────────────
+  const importRoster = async () => {
+    if (!activeTournamentId) { showToast('Create/select an active tournament first', 'error'); return }
+    const rows = pasteText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+      const [name, email, phone] = line.split(',').map(s => s?.trim() || null)
+      return { name: name!, email: email || null, phone: phone || null }
+    }).filter(r => r.name)
+    if (!rows.length) { showToast('Nothing to import', 'error'); return }
+    const existing = new Set(roster.map(r => r.name.toLowerCase()))
+    const fresh = rows.filter(r => !existing.has(r.name.toLowerCase()))
+    if (!fresh.length) { showToast('Those names are already on the roster'); return }
+    setImporting(true)
+    const { error } = await supabase.from('roster').insert(fresh.map(r => ({ ...r, tournament_id: activeTournamentId })))
+    setImporting(false)
+    if (error) { showToast(error.message, 'error'); return }
+    setPasteText('')
+    showToast(`Added ${fresh.length} to the roster`)
     fetchData()
-    setDraftPairings([])
+  }
+
+  // Link roster entries to accounts by matching names (case-insensitive).
+  const autoMatch = async () => {
+    const byName = new Map(profiles.map(p => [p.name.trim().toLowerCase(), p.id]))
+    const updates = roster.filter(r => !r.claimed_by).map(r => ({ r, pid: byName.get(r.name.trim().toLowerCase()) })).filter(x => x.pid)
+    if (!updates.length) { showToast('No new name matches found'); return }
+    await Promise.all(updates.map(({ r, pid }) => supabase.from('roster').update({ claimed_by: pid }).eq('id', r.id)))
+    // propagate to any teams already built with those roster entries
+    await Promise.all(updates.map(async ({ r, pid }) => {
+      const t = teams.find(t => t.p1_roster_id === r.id || t.p2_roster_id === r.id)
+      if (!t) return
+      const slot = t.p1_roster_id === r.id ? 'p1_id' : 'p2_id'
+      await supabase.from('teams').update({ [slot]: pid }).eq('id', t.id)
+      await supabase.from('profiles').update({ team_id: t.id }).eq('id', pid!)
+    }))
+    showToast(`Matched ${updates.length} player${updates.length === 1 ? '' : 's'} to accounts`)
+    fetchData()
+  }
+
+  const removeRosterEntry = async (id: string) => {
+    await supabase.from('roster').delete().eq('id', id)
+    setSelected(s => s.filter(x => x !== id))
+    fetchData()
+  }
+
+  // ── Live pair builder ─────────────────────────────────────────────────────
+  const assignedRosterIds = new Set(teams.flatMap(t => [t.p1_roster_id, t.p2_roster_id].filter(Boolean) as string[]))
+  const pool = roster.filter(r => !assignedRosterIds.has(r.id))
+  const poolFiltered = pool.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+
+  const toggleSelect = (id: string) => {
+    setSelected(s => s.includes(id) ? s.filter(x => x !== id) : s.length >= 2 ? [s[1], id] : [...s, id])
+  }
+
+  const createTeam = async () => {
+    if (selected.length !== 2 || !activeTournamentId) return
+    const a = roster.find(r => r.id === selected[0])!
+    const b = roster.find(r => r.id === selected[1])!
+    const name = `${firstToken(a.name)} & ${firstToken(b.name)}`
+    const { data: team, error } = await supabase.from('teams').insert({
+      name, tournament_id: activeTournamentId,
+      p1_name: a.name, p2_name: b.name,
+      p1_roster_id: a.id, p2_roster_id: b.id,
+      p1_id: a.claimed_by, p2_id: b.claimed_by,
+    }).select('id, p1_id, p2_id').single()
+    if (error) { showToast(error.message, 'error'); return }
+    const ids = [team.p1_id, team.p2_id].filter(Boolean) as string[]
+    if (ids.length) await supabase.from('profiles').update({ team_id: team.id }).in('id', ids)
+    setSelected([])
+    showToast(`Team created: ${name}`)
+    fetchData()
+  }
+
+  const renameTeam = async (team: TeamRow) => {
+    const name = window.prompt('Team name', team.name)?.trim()
+    if (!name || name === team.name) return
+    await supabase.from('teams').update({ name }).eq('id', team.id)
+    fetchData()
+  }
+
+  const removeTeam = async (team: TeamRow) => {
+    const ids = [team.p1_id, team.p2_id].filter(Boolean) as string[]
+    if (ids.length) await supabase.from('profiles').update({ team_id: null }).in('id', ids)
+    await supabase.from('teams').delete().eq('id', team.id)
+    fetchData()
+  }
+
+  const claimedCount = roster.filter(r => r.claimed_by).length
+
+  if (!isAdmin) {
+    return (
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+        <div className="glass" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--tx3)' }}>
+          Team pairings are entered by the organizers from the live draw. Check the Teams tab to see yours.
+        </div>
+      </div>
+    )
   }
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      {/* Header */}
-      <div className="animate-fadeUp" style={{ marginBottom: 20 }}>
+      <div className="animate-fadeUp" style={{ marginBottom: 16 }}>
         <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: 'var(--gold)', letterSpacing: 4, lineHeight: 1.1, margin: 0 }}>
-          Groups & Pairings
+          Team Draw
         </h1>
-        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>{players.length} confirmed players</p>
+        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
+          {roster.length} on roster · {claimedCount} signed up · {teams.length} teams built
+        </p>
       </div>
 
-      {/* Tabs */}
       <div className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20 }}>
-        {([['groups', 'Groups'], ['pairings', 'Pairings']] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
-        ))}
+        <button onClick={() => setTab('draw')} className={`pill-tab pressable ${tab === 'draw' ? 'active' : ''}`}>🎲 Build Teams</button>
+        <button onClick={() => setTab('roster')} className={`pill-tab pressable ${tab === 'roster' ? 'active' : ''}`}>📋 Roster</button>
       </div>
 
-      {/* Groups tab */}
-      {tab === 'groups' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {[
-            { label: 'Group A', subtitle: `Low HCP (≤ ${Math.round(medianHcp)})`, players: groupA, color: 'var(--gold)' },
-            { label: 'Group B', subtitle: `High HCP (> ${Math.round(medianHcp)})`, players: groupB, color: '#60a5fa' },
-          ].map(({ label, subtitle, players: grpPlayers, color }, gi) => (
-            <div key={label} className={`glass animate-fadeUp ${gi === 0 ? 'delay-200' : 'delay-300'}`} style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '16px', borderBottom: '1px solid var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2, color, lineHeight: 1.1 }}>{label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{subtitle}</div>
-                </div>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color, lineHeight: 1, flexShrink: 0 }}>{grpPlayers.length}</div>
-              </div>
-              {grpPlayers.map((p, i) => (
-                <div key={p.id} style={{
-                  padding: '12px 16px',
-                  borderBottom: i < grpPlayers.length - 1 ? '1px solid var(--bdr)' : 'none',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-                }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tx1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx3)', background: 'var(--surf2)', border: '1px solid var(--bdr)', borderRadius: 999, padding: '2px 8px', flexShrink: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    HCP {p.handicap ?? '—'}
-                  </div>
-                </div>
-              ))}
-              {grpPlayers.length === 0 && (
-                <div style={{ padding: 16, fontSize: 13, color: 'var(--tx4)', textAlign: 'center' }}>No players yet</div>
-              )}
-            </div>
-          ))}
+      {!isCurrentYear && (
+        <div className="glass" style={{ padding: 16, textAlign: 'center', color: 'var(--tx3)', fontSize: 13 }}>
+          You're viewing a past tournament — switch to the current one to edit teams.
         </div>
       )}
 
-      {/* Pairings tab */}
-      {tab === 'pairings' && (
-        <div>
-          {isAdmin && isCurrentYear && (
-            <div className="animate-fadeUp delay-200" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-              <button className="btn-gold" onClick={generatePairings}>
-                <Shuffle size={14} /> Generate Pairings
-              </button>
-              {draftPairings.length > 0 && (
-                <button className="btn-outline" onClick={savePairings}>
-                  <Save size={14} /> Save & Release
-                </button>
-              )}
+      {/* ── Build Teams ── */}
+      {tab === 'draw' && isCurrentYear && (
+        <>
+          {/* Selection tray */}
+          <div className="glass animate-fadeUp" style={{ padding: 14, marginBottom: 16, border: '1px solid var(--gold-25)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'var(--gold-dim)', textTransform: 'uppercase', marginBottom: 8 }}>Next team</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {[0, 1].map(i => {
+                const r = selected[i] ? roster.find(x => x.id === selected[i]) : null
+                return (
+                  <div key={i} style={{
+                    flex: 1, minWidth: 0, padding: '11px 12px', borderRadius: 10, textAlign: 'center',
+                    border: `1px dashed ${r ? 'var(--gold-40)' : 'var(--bdr2)'}`,
+                    background: r ? 'rgba(212,165,58,0.1)' : 'var(--surf2)',
+                    color: r ? 'var(--tx1)' : 'var(--tx4)', fontWeight: 700, fontSize: 14,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{r ? r.name : `Player ${i + 1}`}</div>
+                )
+              })}
+              <button onClick={createTeam} disabled={selected.length !== 2} className="pressable" style={{
+                flexShrink: 0, padding: '11px 16px', borderRadius: 10, border: 'none', cursor: selected.length === 2 ? 'pointer' : 'not-allowed',
+                background: selected.length === 2 ? '#D4A53A' : 'var(--surf2)', color: selected.length === 2 ? '#1a1206' : 'var(--tx4)',
+                fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6,
+              }}><Plus size={15} /> Pair</button>
             </div>
-          )}
+          </div>
 
-          {/* Draft pairings preview */}
-          {draftPairings.length > 0 && (
-            <div className="animate-fadeUp" style={{ marginBottom: 20 }}>
-              <div className="section-label" style={{ color: 'var(--gold)', marginBottom: 12 }}>
-                📋 Draft — Not Yet Released
+          {/* Unassigned pool */}
+          <div style={{ marginBottom: 20 }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${pool.length} unpaired players…`}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none', marginBottom: 10 }} />
+            {pool.length === 0 ? (
+              <div className="glass" style={{ padding: 24, textAlign: 'center', color: 'var(--tx4)', fontSize: 13 }}>
+                {roster.length === 0 ? 'Import your roster first (Roster tab).' : 'Everyone on the roster is paired. 🎉'}
               </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {poolFiltered.map(r => {
+                  const on = selected.includes(r.id)
+                  return (
+                    <button key={r.id} onClick={() => toggleSelect(r.id)} className="pressable" style={{
+                      padding: '9px 14px', borderRadius: 999, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                      border: `1px solid ${on ? '#D4A53A' : 'var(--bdr)'}`,
+                      background: on ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
+                      color: on ? '#D4A53A' : 'var(--tx1)',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
+                      {r.name}
+                      {r.claimed_by ? <span title="Signed up" style={{ fontSize: 10, color: '#4ade80' }}>✓</span>
+                        : <span title="Not signed up yet" style={{ fontSize: 10, color: 'var(--tx4)' }}>○</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Built teams */}
+          {teams.length > 0 && (
+            <div>
+              <div className="section-label" style={{ marginBottom: 10 }}>Teams ({teams.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {draftPairings.map((p, i) => (
-                  <div key={i} className="glass-flat" style={{ padding: '12px 16px', border: '1px dashed var(--gold-25)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: 'var(--tx4)', width: 20, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                {teams.map((t, i) => (
+                  <div key={t.id} className="glass" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: 'var(--tx4)', width: 22, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: 13, letterSpacing: 0.5 }}>{p.name}</div>
-                      <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 4 }}>
-                        {p.a.name} <span style={{ fontSize: 11, color: 'var(--tx4)' }}>HCP {p.a.handicap}</span>
-                        <span style={{ color: 'var(--tx4)' }}> & </span>
-                        {p.b.name} <span style={{ fontSize: 11, color: 'var(--tx4)' }}>HCP {p.b.handicap}</span>
+                      <div style={{ fontWeight: 800, color: 'var(--gold)', fontSize: 14 }}>{t.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
+                        {[teamMemberName(t.player1, t.p1_name), teamMemberName(t.player2, t.p2_name)].filter(Boolean).join(' & ') || '—'}
                       </div>
                     </div>
+                    <button onClick={() => renameTeam(t)} className="pressable" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx2)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Rename</button>
+                    <button onClick={() => removeTeam(t)} className="pressable" aria-label="Remove team" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', flexShrink: 0, display: 'flex' }}><Trash2 size={14} /></button>
                   </div>
                 ))}
               </div>
             </div>
           )}
+        </>
+      )}
 
-          {/* Released pairings or locked */}
-          {!pairingsReleased && draftPairings.length === 0 && !isAdmin && (
-            <div className="glass animate-fadeUp delay-200" style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surf2)', border: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <Lock size={26} color="var(--tx3)" />
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: 'var(--tx2)', letterSpacing: 3 }}>
-                Pairings Not Yet Released
-              </div>
-              <p style={{ color: 'var(--tx4)', fontSize: 13, marginTop: 8 }}>
-                The admin will release pairings before the tournament
-              </p>
+      {/* ── Roster ── */}
+      {tab === 'roster' && isCurrentYear && (
+        <>
+          <div className="glass animate-fadeUp" style={{ padding: 16, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx1)', marginBottom: 6 }}>Import players</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 10, lineHeight: 1.5 }}>
+              Paste one player per line. Optional: <code>Name, email, phone</code>. Paste straight from a spreadsheet column.
             </div>
-          )}
+            <textarea value={pasteText} onChange={e => setPasteText(e.target.value)} rows={6}
+              placeholder={"Happy Gilmore, happy@example.com\nShooter McGavin\nChubbs Peterson, , 555-0100"}
+              style={{ width: '100%', padding: '11px 13px', borderRadius: 10, fontSize: 13, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button onClick={importRoster} disabled={importing || !pasteText.trim()} className="btn-gold" style={{ opacity: importing || !pasteText.trim() ? 0.6 : 1 }}>
+                <UserPlus size={14} /> {importing ? 'Adding…' : 'Add to roster'}
+              </button>
+              {roster.some(r => !r.claimed_by) && (
+                <button onClick={autoMatch} className="btn-outline"><Wand2 size={14} /> Match names to accounts</button>
+              )}
+            </div>
+          </div>
 
-          {pairingsReleased && draftPairings.length === 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {pairings.map((p, i) => (
-                <div key={p.id} className="glass animate-fadeUp" style={{ padding: '14px 16px', animationDelay: `${Math.min(i, 6) * 0.06 + 0.2}s` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <span style={{
-                      width: 32, height: 32, borderRadius: 10, background: 'var(--gold-08)', border: '1px solid var(--gold-15)',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: i < 3 ? 16 : 14, fontFamily: "'Bebas Neue', sans-serif", color: 'var(--gold)', flexShrink: 0,
-                    }}>
-                      {i === 0 ? '⛳' : i === 1 ? '🏌️' : i === 2 ? '🎯' : i + 1}
-                    </span>
-                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: 2, color: 'var(--gold)', lineHeight: 1.1 }}>
-                      {p.team_name}
-                    </div>
-                  </div>
-                  <div>
-                    {[p.player_a, p.player_b].map((pl, j) => (
-                      <div key={j} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-                        padding: '8px 0', borderTop: j === 1 ? '1px solid var(--bdr)' : 'none',
-                      }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {pl?.name ?? '—'}
-                        </span>
-                        <span style={{ fontSize: 11, color: 'var(--tx4)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                          HCP {pl?.handicap ?? '—'}
-                        </span>
+          <div className="section-label" style={{ marginBottom: 10 }}>Roster ({roster.length})</div>
+          {roster.length === 0 ? (
+            <div className="glass" style={{ padding: 24, textAlign: 'center', color: 'var(--tx4)', fontSize: 13 }}>No one on the roster yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {roster.map(r => {
+                const acct = r.claimed_by ? profiles.find(p => p.id === r.claimed_by) : null
+                return (
+                  <div key={r.id} className="glass-flat" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: r.claimed_by ? '#4ade80' : 'var(--tx4)', marginTop: 1 }}>
+                        {r.claimed_by ? `✓ Signed up${acct ? ` — ${displayName(acct)}` : ''}` : '○ Not signed up yet'}
                       </div>
-                    ))}
+                    </div>
+                    <button onClick={() => removeRosterEntry(r.id)} aria-label="Remove" className="pressable" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx3)', cursor: 'pointer', flexShrink: 0, display: 'flex' }}><Trash2 size={14} /></button>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

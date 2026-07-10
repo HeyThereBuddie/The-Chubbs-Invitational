@@ -5,7 +5,7 @@ import { localDb, parseJson } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
-import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName } from '../lib/types'
+import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player, Update } from '../lib/types'
 import { Trophy, Pin } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -390,7 +390,7 @@ export default function Dashboard() {
                     {row.team.name}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--tx3)' }}>
-                    {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
+                    {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>

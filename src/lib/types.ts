@@ -48,9 +48,29 @@ export interface Team {
   name: string
   p1_id: string | null
   p2_id: string | null
+  p1_name?: string | null       // drawn display name (used before a player claims an account)
+  p2_name?: string | null
+  p1_roster_id?: string | null
+  p2_roster_id?: string | null
   created_at: string
   player1?: Player
   player2?: Player
+}
+
+export interface RosterEntry {
+  id: string
+  tournament_id: string | null
+  name: string
+  email: string | null
+  phone: string | null
+  claimed_by: string | null
+  created_at: string
+}
+
+// Display name for a team slot: the linked account's name, else the drawn name.
+export function teamMemberName(player: Player | undefined | null, fallback: string | null | undefined): string | null {
+  if (player) return displayName(player)
+  return fallback ?? null
 }
 
 export interface Score {

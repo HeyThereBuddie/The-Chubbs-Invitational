@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
-import { COURSE_PAR, displayName } from '../lib/types'
+import { COURSE_PAR, teamMemberName } from '../lib/types'
 import { useYear } from '../context/YearContext'
 import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
@@ -281,7 +281,7 @@ export default function Leaderboard() {
                       {row.team.name}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {[row.team.player1 && displayName(row.team.player1), row.team.player2 && displayName(row.team.player2)].filter(Boolean).join(' & ')}
+                      {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}
                     </div>
                   </div>
 

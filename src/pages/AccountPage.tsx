@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { displayName } from '../lib/types'
+import { useYear } from '../context/YearContext'
+import { displayName, type RosterEntry } from '../lib/types'
 import { type ClubDist, DEFAULT_BAG, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
 import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array } from '../lib/push'
 
@@ -22,7 +23,29 @@ const NOTIF_TYPES: { key: string; icon: string; label: string; desc: string; adm
 export default function AccountPage() {
   const { profile, user, refreshProfile, signOut, isAdmin } = useAuth()
   const { showToast } = useToast()
+  const { activeTournamentId } = useYear()
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Roster claim — link this account to your name from the organizers' draw list.
+  const [roster, setRoster] = useState<RosterEntry[]>([])
+  const myClaim = roster.find(r => r.claimed_by === user?.id) ?? null
+  const unclaimed = roster.filter(r => !r.claimed_by)
+  useEffect(() => {
+    if (!activeTournamentId) { setRoster([]); return }
+    supabase.from('roster').select('*').eq('tournament_id', activeTournamentId).order('name')
+      .then(({ data }) => setRoster((data ?? []) as RosterEntry[]))
+  }, [activeTournamentId, user?.id])
+
+  const claimSpot = async (r: RosterEntry) => {
+    if (!user) return
+    // Atomic on the server: sets roster.claimed_by, links the drawn team slot,
+    // and sets your team_id (works despite teams being admin-write).
+    const { error } = await supabase.rpc('claim_roster_entry', { p_roster_id: r.id })
+    if (error) { showToast(error.message, 'error'); return }
+    await refreshProfile()
+    showToast(`You're linked as ${r.name}!`)
+    setRoster(prev => prev.map(x => x.id === r.id ? { ...x, claimed_by: user.id } : x))
+  }
 
   const [profileForm, setProfileForm] = useState({
     nickname: '',
@@ -363,6 +386,33 @@ export default function AccountPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Claim your spot (link account → the draw roster) ── */}
+      {!myClaim && unclaimed.length > 0 && (
+        <section className="animate-fadeUp delay-150" style={{ marginBottom: 24 }}>
+          <div className="glass" style={{ padding: 16, border: '1px solid var(--gold-25)' }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--tx1)', marginBottom: 2 }}>👋 Which player are you?</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 12, lineHeight: 1.5 }}>
+              Tap your name from the tournament roster to link your account — it hooks you up to your team from the draw.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {unclaimed.map(r => (
+                <button key={r.id} onClick={() => claimSpot(r)} className="pressable" style={{
+                  padding: '9px 14px', borderRadius: 999, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                  border: '1px solid var(--gold-25)', background: 'rgba(212,165,58,0.08)', color: 'var(--tx1)',
+                }}>{r.name}</button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+      {myClaim && (
+        <section className="animate-fadeUp delay-150" style={{ marginBottom: 24 }}>
+          <div className="glass-flat" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--tx2)' }}>
+            <span style={{ color: '#4ade80' }}>✓</span> Linked to the roster as <strong style={{ color: 'var(--tx1)' }}>{myClaim.name}</strong>.
+          </div>
+        </section>
+      )}
 
       {/* ── Notifications (under the profile card) ── */}
       <section className="animate-fadeUp delay-150" style={{ marginBottom: 24 }}>
