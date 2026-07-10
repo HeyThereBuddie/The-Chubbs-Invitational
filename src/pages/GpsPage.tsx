@@ -36,6 +36,15 @@ function dist(pos: LatLng | null, target: LatLng | null | undefined): number | n
   return pos && target ? haversineYards(pos, target) : null
 }
 
+// Yards → "X ft Y in" for close-range (Closest-to-Pin) readouts.
+function feetInches(yds: number): string {
+  const totalFt = yds * 3
+  const ft = Math.floor(totalFt)
+  const inch = Math.round((totalFt - ft) * 12)
+  if (inch >= 12) return `${ft + 1} ft`
+  return inch > 0 ? `${ft} ft ${inch} in` : `${ft} ft`
+}
+
 // ─── Map markers ────────────────────────────────────────────────────────────
 
 // Improvement 4: directional arrow that rotates with heading; falls back to dot
@@ -535,6 +544,16 @@ export default function GpsPage() {
   const [clubPickerOpen, setClubPickerOpen] = useState(false)
   const [lastShot, setLastShot] = useState<Shot | null>(null)
   const [shotToast, setShotToast] = useState<string | null>(null)
+  // Contest logging (Closest to Pin / Longest Drive) on designated holes.
+  const [contestPrompt, setContestPrompt] = useState<'ctp' | 'ld' | null>(null)  // reminder card
+  const [contestSheet, setContestSheet] = useState<'ctp' | 'ld' | null>(null)     // submission sheet
+  const [contestPlayerId, setContestPlayerId] = useState<string | null>(null)
+  const [contestYds, setContestYds] = useState<number | null>(null)               // measured distance (yards)
+  const [contestOffFairway, setContestOffFairway] = useState(false)               // LD: measured off the fairway
+  const [contestOverride, setContestOverride] = useState(false)                   // LD: accept off-fairway anyway
+  const [contestPhoto, setContestPhoto] = useState<File | null>(null)
+  const [contestSubmitting, setContestSubmitting] = useState(false)
+  const contestPhotoRef = useRef<HTMLInputElement>(null)
   // Measure the hole tile so the club tile can match its width exactly.
   const [holeTileW, setHoleTileW] = useState<number | undefined>(undefined)
   const holeTileObs = useRef<ResizeObserver | null>(null)
@@ -1098,6 +1117,88 @@ export default function GpsPage() {
     setLastShot(saved ?? { id: 'local', ...row } as Shot)
   }
 
+  // ── Contest logging (CTP / LD) ───────────────────────────────────────────
+  const contestPlayers = useMemo(() => {
+    const arr: { id: string; label: string }[] = []
+    const t = scoring.myTeam
+    if (t?.player1) arr.push({ id: t.player1.id, label: displayName(t.player1) })
+    if (t?.player2) arr.push({ id: t.player2.id, label: displayName(t.player2) })
+    if (!arr.length && profile) arr.push({ id: profile.id, label: displayName(profile) })
+    return arr
+  }, [scoring.myTeam, profile])
+
+  const contestKey = (type: 'ctp' | 'ld') => `contestLogged:${effectiveTournamentId}:${selectedHole}:${type}`
+  const contestAnswered = (type: 'ctp' | 'ld') => { try { return !!localStorage.getItem(contestKey(type)) } catch { return false } }
+  const markContestAnswered = (type: 'ctp' | 'ld', v: string) => { try { localStorage.setItem(contestKey(type), v) } catch { /* ignore */ } }
+
+  const fairwayContains = (pt: LatLng) =>
+    (currentHole?.fairway ?? []).some(poly => poly.length >= 3 && pointInPolygon(pt, poly))
+
+  // Capture the GPS measurement for the open contest sheet.
+  const measureContest = () => {
+    if (!position || !contestSheet) return
+    if (contestSheet === 'ctp') {
+      if (!effectiveCenter) { flashToast('No pin/green location for this hole', 4000); return }
+      setContestYds(haversineYards(position, effectiveCenter)); setContestOffFairway(false)
+      return
+    }
+    const tee = currentHole?.tee
+    if (!tee) { flashToast('No tee location for this hole', 4000); return }
+    if (!fairwayContains(position) && !contestOverride) { setContestOffFairway(true); setContestYds(null); return }
+    setContestOffFairway(false)
+    setContestYds(haversineYards(tee, position))
+  }
+  const overrideFairway = () => {
+    const tee = currentHole?.tee
+    setContestOverride(true); setContestOffFairway(false)
+    if (position && tee) setContestYds(haversineYards(tee, position))
+  }
+
+  const openContestSheet = (type: 'ctp' | 'ld') => {
+    setContestPrompt(null); setContestSheet(type)
+    setContestPlayerId(contestPlayers[0]?.id ?? profile?.id ?? null)
+    setContestYds(null); setContestOffFairway(false); setContestOverride(false); setContestPhoto(null)
+  }
+  const closeContestSheet = () => {
+    setContestSheet(null); setContestYds(null); setContestOffFairway(false); setContestOverride(false); setContestPhoto(null)
+  }
+  const declineContest = (type: 'ctp' | 'ld') => {
+    markContestAnswered(type, 'declined'); setContestPrompt(null)
+    flashToast('No? You suck. 🥱')
+  }
+
+  const submitContestEntry = async () => {
+    const type = contestSheet
+    if (!type || !contestPlayerId || contestYds == null || !effectiveTournamentId) return
+    if (tour.active) { closeContestSheet(); flashToast('Tour sandbox — nothing was saved'); return }
+    setContestSubmitting(true)
+    let photo_url: string | null = null
+    if (contestPhoto) {
+      const ext = contestPhoto.name.split('.').pop() ?? 'jpg'
+      const path = `${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('contest-photos').upload(path, contestPhoto)
+      if (!upErr) photo_url = supabase.storage.from('contest-photos').getPublicUrl(path).data.publicUrl
+    }
+    // One entry per player+type per tournament — replace on resubmit.
+    await supabase.from('contest_entries').delete()
+      .eq('type', type).eq('player_id', contestPlayerId).eq('tournament_id', effectiveTournamentId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('contest_entries').insert({
+      type, player_id: contestPlayerId, hole: selectedHole, distance: '',
+      distance_yds: Math.round(contestYds), photo_url, tournament_id: effectiveTournamentId,
+    })
+    if (error) { setContestSubmitting(false); flashToast(`Submit failed: ${error.message}`, 6000); return }
+    const p = contestPlayers.find(x => x.id === contestPlayerId)
+    await supabase.from('feed_events').insert({
+      event_type: 'contest', team_name: scoring.myTeam?.name ?? '', player_name: p?.label ?? null,
+      hole: selectedHole, score: null, label: type === 'ctp' ? 'CTP Entry' : 'LD Entry',
+      emoji: type === 'ctp' ? '🎯' : '💥', tournament_id: effectiveTournamentId,
+    })
+    markContestAnswered(type, 'submitted')
+    setContestSubmitting(false); closeContestSheet()
+    flashToast(type === 'ctp' ? '🎯 Closest to pin logged!' : '💥 Longest drive logged!')
+  }
+
   const [mapLoaded, setMapLoaded] = useState(false)
   const initialFlyDone = useRef(false)
 
@@ -1243,6 +1344,22 @@ export default function GpsPage() {
   // Removing driver leaves the longest club at 3W, so this also caps the rec at
   // a 3-wood for every non-tee shot (#4).
   const recBag = isPar3 || offTheTee || pastDrive ? bag.filter(c => c.club !== 'Dr') : bag
+
+  // Nudge to log the contest once you're in position on a designated hole:
+  // LD once you've walked off the tee, CTP once you've reached the green.
+  useEffect(() => {
+    if (tour.active) return
+    const c = currentHole?.contest
+    if (!c || !position || contestPrompt || contestSheet || contestAnswered(c)) return
+    const triggered = c === 'ld'
+      ? distToTee !== null && distToTee > 40
+      : centerDist !== null && centerDist <= 30
+    if (triggered) setContestPrompt(c)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentHole?.contest, position, distToTee, centerDist, selectedHole, contestPrompt, contestSheet])
+
+  // Drop a stale prompt when the hole changes.
+  useEffect(() => { setContestPrompt(null); setContestSheet(null) }, [selectedHole])
 
   const aimLineTarget = tapPoint ?? effectiveCenter ?? null
   const aimLineDist   = tapPoint ? tapDist : centerDist
@@ -1964,6 +2081,110 @@ export default function GpsPage() {
         )}
 
         {caddieOpen && <CaddieSheet context={caddieContext} onClose={() => setCaddieOpen(false)} />}
+
+        {/* Contest reminder — persists until answered */}
+        {contestPrompt && !contestSheet && (
+          <div style={{
+            position: 'absolute', left: 12, right: 12, bottom: navBase, zIndex: 46,
+            background: 'var(--panel)', border: '1px solid rgba(212,165,58,0.45)', borderRadius: 16,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.55)', padding: 14, display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <span style={{ fontSize: 26, flexShrink: 0 }}>{contestPrompt === 'ctp' ? '🎯' : '💥'}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--tx1)' }}>{contestPrompt === 'ctp' ? 'Closest to Pin hole' : 'Longest Drive hole'}</div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Log {contestPrompt === 'ctp' ? 'your closest to the pin' : 'your drive'}?</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => declineContest(contestPrompt)} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--bdr2)', background: 'var(--surf2)', color: 'var(--tx2)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>No</button>
+              <button onClick={() => openContestSheet(contestPrompt)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Yes</button>
+            </div>
+          </div>
+        )}
+
+        {/* Contest submission sheet */}
+        {contestSheet && (
+          <div onClick={closeContestSheet} style={{
+            position: 'absolute', inset: 0, zIndex: 47, background: 'rgba(4,6,5,0.6)',
+            backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-end',
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: '100%', background: 'var(--panel)', borderRadius: '20px 20px 0 0',
+              border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 -12px 40px rgba(0,0,0,0.6)',
+              marginBottom: navBase, padding: '16px 16px 20px', maxHeight: '78vh', overflowY: 'auto',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <span style={{ fontSize: 24 }}>{contestSheet === 'ctp' ? '🎯' : '💥'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 1, color: '#D4A53A', lineHeight: 1 }}>{contestSheet === 'ctp' ? 'Closest to Pin' : 'Longest Drive'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>Hole {selectedHole}</div>
+                </div>
+                <button onClick={closeContestSheet} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--bdr2)', background: 'var(--surf2)', color: 'var(--tx1)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+              </div>
+
+              {contestPlayers.length > 1 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Who hit it?</div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                    {contestPlayers.map(p => (
+                      <button key={p.id} onClick={() => setContestPlayerId(p.id)} style={{
+                        padding: '9px 14px', borderRadius: 999, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                        border: `1px solid ${contestPlayerId === p.id ? '#D4A53A' : 'var(--bdr)'}`,
+                        background: contestPlayerId === p.id ? 'rgba(212,165,58,0.16)' : 'var(--surf2)',
+                        color: contestPlayerId === p.id ? '#D4A53A' : 'var(--tx2)',
+                      }}>{p.label}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {trackingShot && (
+                <div style={{ fontSize: 12, color: '#e8c766', marginBottom: 8 }}>
+                  You're tracking a shot — walk up and stand over your ball before you finish, then measure.
+                </div>
+              )}
+
+              {contestOffFairway ? (
+                <div style={{ borderRadius: 12, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', padding: '12px 14px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#f87171', marginBottom: 4 }}>You are not detected on the fairway</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 10 }}>Longest Drive must be in the fairway. Walk into the fairway and measure again — or if this is a mistake, record it anyway.</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={measureContest} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--bdr2)', background: 'var(--surf2)', color: 'var(--tx1)', fontWeight: 700, cursor: 'pointer' }}>Measure again</button>
+                    <button onClick={overrideFairway} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#f59e0b', color: '#1a1206', fontWeight: 800, cursor: 'pointer' }}>It's a mistake — record</button>
+                  </div>
+                </div>
+              ) : contestYds == null ? (
+                <button onClick={measureContest} className="pressable" style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 15, cursor: 'pointer', marginBottom: 12 }}>
+                  📍 Stand over your ball &amp; measure
+                </button>
+              ) : (
+                <div style={{ borderRadius: 12, border: '1px solid rgba(212,165,58,0.35)', background: 'rgba(212,165,58,0.08)', padding: '14px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: 'var(--gold-dim)', textTransform: 'uppercase' }}>{contestSheet === 'ctp' ? 'Approx from pin' : 'Approx drive'}</div>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 30, color: '#D4A53A', lineHeight: 1 }}>{contestSheet === 'ctp' ? feetInches(contestYds) : `${Math.round(contestYds)} yds`}</div>
+                  </div>
+                  <button onClick={measureContest} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--bdr2)', background: 'var(--surf2)', color: 'var(--tx2)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Re-measure</button>
+                </div>
+              )}
+              {contestSheet === 'ctp' && contestYds != null && (
+                <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: -4, marginBottom: 12 }}>GPS is ~±10–15 ft, so this is a rough guide — your photo is the real proof.</div>
+              )}
+
+              <input ref={contestPhotoRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { setContestPhoto(e.target.files?.[0] ?? null); e.target.value = '' }} />
+              <button onClick={() => contestPhotoRef.current?.click()} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--bdr2)', background: 'transparent', color: 'var(--tx2)', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
+                {contestPhoto ? `✓ ${contestPhoto.name.length > 22 ? contestPhoto.name.slice(0, 22) + '…' : contestPhoto.name}` : '📷 Add a photo (optional)'}
+              </button>
+
+              <button onClick={submitContestEntry} disabled={contestYds == null || contestSubmitting || !contestPlayerId} style={{
+                width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                background: contestYds != null && !contestSubmitting ? '#D4A53A' : 'var(--surf2)',
+                color: contestYds != null && !contestSubmitting ? '#1a1206' : 'var(--tx4)',
+                fontWeight: 800, fontSize: 15, cursor: contestYds != null && !contestSubmitting ? 'pointer' : 'not-allowed',
+              }}>
+                {contestSubmitting ? 'Submitting…' : `Submit ${contestSheet === 'ctp' ? 'CTP' : 'LD'} entry`}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Club picker — pick the club you're about to hit, then tracking starts */}
         {clubPickerOpen && (

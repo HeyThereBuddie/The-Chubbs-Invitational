@@ -67,7 +67,13 @@ interface DefendingChamp {
   year: number
 }
 
-interface ContestLeader { name: string; photo_url: string | null }
+interface ContestLeader { name: string; photo_url: string | null; detail: string | null }
+
+// Yards → feet/inches, for the Closest-to-Pin readout.
+function feetInchesLabel(yds: number): string {
+  const totalFt = yds * 3, ft = Math.floor(totalFt), inch = Math.round((totalFt - ft) * 12)
+  return inch >= 12 ? `${ft + 1} ft` : inch > 0 ? `${ft} ft ${inch} in` : `${ft} ft`
+}
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -227,15 +233,22 @@ export default function Dashboard() {
     try {
       const { data } = await supabase
         .from('contest_entries')
-        .select('type, photo_url, player:profiles(*)')
+        .select('type, photo_url, distance_yds, player:profiles(*)')
         .eq('tournament_id', effectiveTournamentId)
         .in('type', ['ctp', 'ld'])
         .order('created_at', { ascending: false })
-      const pick = (t: string): ContestLeader | null => {
-        const row = (data ?? []).find(r => r.type === t) as { photo_url: string | null; player?: Player } | undefined
-        return row?.player ? { name: displayName(row.player), photo_url: row.photo_url } : null
-      }
-      setContestLeaders({ ctp: pick('ctp'), ld: pick('ld') })
+      type Row = { type: string; photo_url: string | null; distance_yds: number | null; player?: Player }
+      const rows = (data ?? []) as unknown as Row[]
+      const asLeader = (r: Row | undefined, detail: string | null): ContestLeader | null =>
+        r?.player ? { name: displayName(r.player), photo_url: r.photo_url, detail } : null
+      // CTP = latest submission; LD = longest measured drive.
+      const ctp = rows.find(r => r.type === 'ctp')
+      const ldRows = rows.filter(r => r.type === 'ld')
+      const ld = ldRows.reduce<Row | undefined>((best, r) => (r.distance_yds ?? -1) > (best?.distance_yds ?? -1) ? r : best, undefined)
+      setContestLeaders({
+        ctp: asLeader(ctp, ctp?.distance_yds != null ? feetInchesLabel(ctp.distance_yds) : null),
+        ld: asLeader(ld, ld?.distance_yds != null ? `${Math.round(ld.distance_yds)} yds` : null),
+      })
     } catch { /* offline — keep whatever we have */ }
   }
 
@@ -528,6 +541,9 @@ export default function Dashboard() {
                 {c.leader ? c.leader.name : 'Up for grabs'}
               </div>
             </div>
+            {c.leader?.detail && (
+              <div style={{ flexShrink: 0, fontFamily: 'Bebas Neue', fontSize: 18, color: '#D4A53A', letterSpacing: 0.5 }}>{c.leader.detail}</div>
+            )}
             {c.leader?.photo_url
               ? <img src={c.leader.photo_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--bdr)' }} />
               : c.leader && <span style={{ fontSize: 18, flexShrink: 0 }}>🏆</span>}

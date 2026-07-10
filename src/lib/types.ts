@@ -99,6 +99,7 @@ export interface ContestEntry {
   player_id: string
   hole: number
   distance: string
+  distance_yds?: number | null   // GPS-measured (LD: drive yards, CTP: yards to pin)
   photo_url: string | null
   created_at: string
   player?: Player
@@ -184,6 +185,7 @@ export interface HoleGps {
   landingZone?: LatLng | null      // center of ideal tee-shot landing area
   avoidZones?:  LatLng[][] | null  // danger areas beyond mapped hazards
   tip?: string | null              // AI-generated playing tip
+  contest?: 'ctp' | 'ld' | null    // this hole hosts Closest-to-Pin or Longest-Drive
 }
 
 // Upgrades holes saved before fairway became LatLng[][] (old format was LatLng[])

@@ -1088,6 +1088,13 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
     setHoles(prev => prev.map(h => h.hole === hole ? { ...h, par } : h))
   }
 
+  // Mark a hole as a contest hole (Closest to Pin / Longest Drive), or clear it.
+  // A course has at most one CTP and one LD hole active at a time is NOT enforced
+  // here — admins can mark several par-3s as CTP if they run it on multiple holes.
+  const setHoleContest = (hole: number, contest: 'ctp' | 'ld' | null) => {
+    setHoles(prev => prev.map(h => h.hole === hole ? { ...h, contest } : h))
+  }
+
   // ── Map click → place pin, then auto-advance ─────────────────────────────
   const handleMapClick = useCallback((e: MapMouseEvent) => {
     const { lat, lng } = e.lngLat
@@ -1855,7 +1862,7 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                   <span style={{ fontSize: 12, color: 'var(--tx4)' }}>Out {nineTotal || '—'}</span>
                 </div>
                 {nineHoles.map(h => (
-                  <div key={h.hole} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div key={h.hole} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ width: 52, fontSize: 13, fontWeight: 700, color: 'var(--tx2)' }}>Hole {h.hole}</span>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {[3, 4, 5, 6].map(n => {
@@ -1868,6 +1875,25 @@ export default function CourseGpsSetup({ tournamentId, currentGps, onSaved }: {
                             border: `1px solid ${active ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
                             color: active ? '#D4A53A' : 'var(--tx3)',
                           }}>{n}</button>
+                        )
+                      })}
+                    </div>
+                    {/* Contest hole marker */}
+                    <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                      {([['none', '—'], ['ctp', '🎯'], ['ld', '💥']] as const).map(([val, glyph]) => {
+                        const active = (h.contest ?? 'none') === val
+                        return (
+                          <button
+                            key={val}
+                            title={val === 'ctp' ? 'Closest to Pin' : val === 'ld' ? 'Longest Drive' : 'Not a contest hole'}
+                            onClick={() => setHoleContest(h.hole, val === 'none' ? null : val)}
+                            style={{
+                              minWidth: 36, height: 36, borderRadius: 9, cursor: 'pointer', fontSize: 14, fontWeight: 700,
+                              background: active ? 'rgba(212,165,58,0.18)' : 'var(--surf2)',
+                              border: `1px solid ${active ? 'rgba(212,165,58,0.5)' : 'var(--bdr)'}`,
+                              color: active ? '#D4A53A' : 'var(--tx4)',
+                            }}
+                          >{glyph}</button>
                         )
                       })}
                     </div>

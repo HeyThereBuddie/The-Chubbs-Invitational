@@ -326,7 +326,25 @@ export default function Contests() {
 
   // ── Render ───────────────────────────────────────────────────
 
-  const leader = entries[0]
+  // Longest Drive ranks by GPS yardage (one row per player, their best); CTP
+  // stays latest-submission (the pin moves daily, so its distance is info only).
+  const rankedEntries = (() => {
+    if (tab !== 'ld') return entries
+    const sorted = [...entries].sort((a, b) => (b.distance_yds ?? -1) - (a.distance_yds ?? -1))
+    const seen = new Set<string>()
+    const out: (ContestEntry & { player?: Player })[] = []
+    for (const e of sorted) { if (!seen.has(e.player_id)) { seen.add(e.player_id); out.push(e) } }
+    return out
+  })()
+  const leader = rankedEntries[0]
+
+  // Distance label: LD in yards, CTP in feet/inches.
+  const contestDist = (e: ContestEntry) => {
+    if (e.distance_yds == null) return null
+    if (e.type === 'ld') return `${Math.round(e.distance_yds)} yds`
+    const totalFt = e.distance_yds * 3, ft = Math.floor(totalFt), inch = Math.round((totalFt - ft) * 12)
+    return inch >= 12 ? `${ft + 1} ft` : inch > 0 ? `${ft} ft ${inch} in` : `${ft} ft`
+  }
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -448,7 +466,7 @@ export default function Contests() {
                 No entries yet — be the first!
               </div>
             )}
-            {entries.map((entry, i) => (
+            {rankedEntries.map((entry, i) => (
               <div key={entry.id} className="glass animate-fadeUp" style={{
                 padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
                 borderColor: i === 0 ? 'rgba(212,165,58,0.3)' : undefined,
@@ -456,12 +474,18 @@ export default function Contests() {
                 <div style={{ fontSize: 20, width: 28, textAlign: 'center' }}>
                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 14 }}>{entry.player && displayName(entry.player)}</div>
                   <div style={{ fontSize: 12, color: 'var(--tx2)' }}>
-                    {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
+                    {entry.hole ? `Hole ${entry.hole} · ` : ''}{formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
                   </div>
                 </div>
+                {contestDist(entry) && (
+                  <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#D4A53A', lineHeight: 1 }}>{contestDist(entry)}</div>
+                    {tab === 'ctp' && <div style={{ fontSize: 9, color: 'var(--tx4)' }}>approx</div>}
+                  </div>
+                )}
                 {entry.photo_url && (
                   <div onClick={() => setLightbox(entry.photo_url!)} style={{ flexShrink: 0, cursor: 'zoom-in' }}>
                     <img src={entry.photo_url} alt=""
