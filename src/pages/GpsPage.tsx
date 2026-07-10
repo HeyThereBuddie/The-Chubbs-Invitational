@@ -12,7 +12,7 @@ import type { CourseGps, HoleGps, LatLng } from '../lib/types'
 import { displayName, normalizeFairways } from '../lib/types'
 import { resolvePar } from '../lib/pars'
 import { resolveBag, recommendClub } from '../lib/clubs'
-import { type Shot, shotQuality } from '../lib/shots'
+import { type Shot, shotQuality, PUTT_TRACKING } from '../lib/shots'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
 import { CaddieSheet, type CaddieContext } from '../components/CaddieSheet'
@@ -2236,17 +2236,21 @@ export default function GpsPage() {
                 ))}
               </div>
               {/* Putter — logs the putt length (ball → pin) in feet, right away */}
-              <button onClick={trackPutt} className="pressable" style={{
-                width: '100%', marginTop: 10, padding: '13px', borderRadius: 12, cursor: 'pointer',
-                border: '1.5px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                color: '#34d399', fontWeight: 800, fontSize: 15,
-              }}>
-                <span style={{ fontSize: 17 }}>⛳</span> Putt — log distance to pin
-              </button>
-              <div style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', marginTop: 6 }}>
-                Stand over your ball, then tap — measures feet to the pin.
-              </div>
+              {PUTT_TRACKING && (
+                <>
+                  <button onClick={trackPutt} className="pressable" style={{
+                    width: '100%', marginTop: 10, padding: '13px', borderRadius: 12, cursor: 'pointer',
+                    border: '1.5px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    color: '#34d399', fontWeight: 800, fontSize: 15,
+                  }}>
+                    <span style={{ fontSize: 17 }}>⛳</span> Putt — log distance to pin
+                  </button>
+                  <div style={{ fontSize: 10, color: 'var(--tx4)', textAlign: 'center', marginTop: 6 }}>
+                    Stand over your ball, then tap — measures feet to the pin.
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

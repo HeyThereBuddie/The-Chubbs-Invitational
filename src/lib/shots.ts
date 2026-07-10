@@ -1,6 +1,11 @@
 // GPS-tracked shots: types, per-club stats, and a "was it ugly?" helper Chubbs
 // uses to rib the player on their previous shot.
 
+// Feature flag: putt-distance tracking. Turned off for now — flip to true to
+// bring back the "Putt" button on GPS and the "Avg Putt" stat. All the logic
+// stays wired up; this just hides the UI.
+export const PUTT_TRACKING = false
+
 export interface Shot {
   id: string
   tournament_id: string | null

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { type Shot, clubStats } from '../lib/shots'
+import { type Shot, clubStats, PUTT_TRACKING } from '../lib/shots'
 
 export function ShotStats({ teamId }: { teamId?: string | null }) {
   const { profile } = useAuth()
@@ -54,7 +54,7 @@ export function ShotStats({ teamId }: { teamId?: string | null }) {
               <DashTile label="Avg Drive" value={avgDrive != null ? `${avgDrive}y` : '—'} />
               <DashTile label="Putts / Hole" value={puttsPerHole != null ? puttsPerHole.toFixed(1) : '—'} />
               <DashTile label="3-Putts" value={String(threePutts)} />
-              <DashTile label="Avg Putt" value={avgPuttFt != null ? `${avgPuttFt} ft` : '—'} />
+              {PUTT_TRACKING && <DashTile label="Avg Putt" value={avgPuttFt != null ? `${avgPuttFt} ft` : '—'} />}
             </div>
 
             {shots.length === 0 ? (
