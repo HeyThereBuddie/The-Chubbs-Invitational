@@ -1385,6 +1385,24 @@ export default function GpsPage() {
   // Drop a stale prompt when the hole changes.
   useEffect(() => { setContestPrompt(null); setContestSheet(null) }, [selectedHole])
 
+  // App-tour demo: drive the contest pop-up / submission sheet from the current
+  // tour step, sandboxed. Each contest step shows only its own piece; every other
+  // step (incl. enter-score) force-closes them so they can't cover the scorecard.
+  useEffect(() => {
+    if (!tour.active) { setContestPrompt(null); setContestSheet(null); return }
+    const a = tour.stepAnchor
+    if (a === 'contest-ld') { setContestSheet(null); setContestPrompt('ld') }
+    else if (a === 'contest-ctp') { setContestSheet(null); setContestPrompt('ctp') }
+    else if (a === 'contest-measure') {
+      setContestPrompt(null); setContestSheet('ld'); setContestPlayerId(profile?.id ?? null)
+      setContestYds(null); setContestOffFairway(false)
+    } else if (a === 'contest-photo' || a === 'contest-submit') {
+      setContestPrompt(null); setContestSheet('ld'); setContestPlayerId(profile?.id ?? null)
+      setContestYds(245); setContestOffFairway(false)   // demo yardage so photo + submit show
+    } else { setContestPrompt(null); setContestSheet(null) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.active, tour.stepAnchor])
+
   const aimLineTarget = tapPoint ?? effectiveCenter ?? null
   const aimLineDist   = tapPoint ? tapDist : centerDist
   const aimLineMid    = position && aimLineTarget
@@ -2108,7 +2126,7 @@ export default function GpsPage() {
 
         {/* Contest reminder — persists until answered */}
         {contestPrompt && !contestSheet && (
-          <div style={{
+          <div data-tour={contestPrompt === 'ctp' ? 'contest-ctp' : 'contest-ld'} style={{
             position: 'absolute', left: 12, right: 12, bottom: navBase, zIndex: 46,
             background: 'var(--panel)', border: '1px solid rgba(212,165,58,0.45)', borderRadius: 16,
             boxShadow: '0 12px 40px rgba(0,0,0,0.55)', padding: 14, display: 'flex', alignItems: 'center', gap: 12,
@@ -2177,7 +2195,7 @@ export default function GpsPage() {
                   </div>
                 </div>
               ) : contestYds == null ? (
-                <button onClick={measureContest} className="pressable" style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 15, cursor: 'pointer', marginBottom: 12 }}>
+                <button data-tour="contest-measure" onClick={measureContest} className="pressable" style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 15, cursor: 'pointer', marginBottom: 12 }}>
                   📍 Stand over your ball &amp; measure
                 </button>
               ) : (
@@ -2194,11 +2212,11 @@ export default function GpsPage() {
               )}
 
               <input ref={contestPhotoRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { setContestPhoto(e.target.files?.[0] ?? null); e.target.value = '' }} />
-              <button onClick={() => contestPhotoRef.current?.click()} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--bdr2)', background: 'transparent', color: 'var(--tx2)', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
+              <button data-tour="contest-photo" onClick={() => contestPhotoRef.current?.click()} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--bdr2)', background: 'transparent', color: 'var(--tx2)', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
                 {contestPhoto ? `✓ ${contestPhoto.name.length > 22 ? contestPhoto.name.slice(0, 22) + '…' : contestPhoto.name}` : '📷 Add a photo (optional)'}
               </button>
 
-              <button onClick={submitContestEntry} disabled={contestYds == null || contestSubmitting || !contestPlayerId} style={{
+              <button data-tour="contest-submit" onClick={submitContestEntry} disabled={contestYds == null || contestSubmitting || !contestPlayerId} style={{
                 width: '100%', padding: '14px', borderRadius: 12, border: 'none',
                 background: contestYds != null && !contestSubmitting ? '#D4A53A' : 'var(--surf2)',
                 color: contestYds != null && !contestSubmitting ? '#1a1206' : 'var(--tx4)',
