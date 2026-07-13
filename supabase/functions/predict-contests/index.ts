@@ -82,18 +82,45 @@ serve(async (req) => {
     const { data: tourn } = await supabase.from('tournaments').select('id').eq('status', 'active').order('year', { ascending: false }).limit(1).single()
     if (!tourn?.id) return json({ error: 'No active tournament' }, 400)
 
-    const { data: players } = await supabase.from('profiles')
-      .select('name, nickname, handicap, club_distances')
-      .eq('status', 'active').neq('role', 'admin').order('name')
-
-    const field = (players ?? []).map((p: { name: string; nickname: string | null; handicap: number | null; club_distances: { club: string; carry: number; enabled: boolean }[] | null }) => {
-      const name = (p.nickname?.trim()) || p.name
-      const bag = Array.isArray(p.club_distances) ? p.club_distances : null
+    // The field = the tournament roster (name + handicap is the source of truth).
+    // Club distances come from a player's claimed profile once they've logged
+    // real numbers; otherwise the roster's demo/estimated bag; otherwise standard.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type Bag = { club: string; carry: number; enabled?: boolean }[]
+    const describe = (name: string, handicap: number | null, bag: Bag | null) => {
       const dr = bag?.find(c => c.club === 'Dr')?.carry
-      const short = bag ? bag.filter(c => ['PW', 'GW', 'SW', '9i', '8i'].includes(c.club)).map(c => `${c.club} ${c.carry}y`).join('/') : 'standard bag'
-      return `- ${name}: HCP ${p.handicap ?? '?'}, driver ${dr ? dr + 'y' : 'standard'}, short game ${short}`
-    }).join('\n')
+      const short = bag ? bag.filter(c => ['PW', 'GW', 'SW', '9i', '8i'].includes(c.club)).map(c => `${c.club} ${c.carry}y`).join('/') : ''
+      return `- ${name}: HCP ${handicap ?? '?'}, driver ${dr ? dr + 'y' : 'standard'}, short game ${short || 'standard'}`
+    }
 
+    let lines: string[] = []
+    const { data: roster } = await supabase.from('roster')
+      .select('name, handicap, club_distances, profile:claimed_by(nickname, club_distances)')
+      .eq('tournament_id', tourn.id).order('name')
+
+    if (roster && roster.length) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      lines = roster.map((r: any) => {
+        const prof = Array.isArray(r.profile) ? r.profile[0] : r.profile
+        const name = (prof?.nickname?.trim()) || r.name
+        const bag: Bag | null = (Array.isArray(prof?.club_distances) ? prof.club_distances : null)
+          ?? (Array.isArray(r.club_distances) ? r.club_distances : null)
+        return describe(name, r.handicap, bag)
+      })
+    } else {
+      // No roster seeded — fall back to real registered profiles.
+      const { data: players } = await supabase.from('profiles')
+        .select('name, nickname, handicap, club_distances')
+        .eq('status', 'active').neq('role', 'admin').order('name')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      lines = (players ?? []).map((p: any) => {
+        const name = (p.nickname?.trim()) || p.name
+        const bag: Bag | null = Array.isArray(p.club_distances) ? p.club_distances : null
+        return describe(name, p.handicap, bag)
+      })
+    }
+
+    const field = lines.join('\n')
     if (!field) return json({ error: 'No players in the field yet' }, 400)
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
