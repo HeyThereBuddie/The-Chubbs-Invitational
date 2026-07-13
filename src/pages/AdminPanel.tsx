@@ -204,7 +204,14 @@ export default function AdminPanel() {
     setRunningPredictions(true)
     try {
       const { data, error } = await supabase.functions.invoke('predict-contests', { body: {} })
-      if (error) { showToast(error.message || 'Prediction failed', 'error'); setRunningPredictions(false); return }
+      if (error) {
+        // invoke masks the body behind a generic "non-2xx" message — dig out the real reason.
+        let msg = error.message || 'Prediction failed'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ctx = (error as any).context
+        try { const body = await ctx?.json?.(); if (body?.error) msg = String(body.error) } catch { /* not JSON */ }
+        showToast(msg, 'error'); setRunningPredictions(false); return
+      }
       if (data?.error) { showToast(String(data.error), 'error'); setRunningPredictions(false); return }
       showToast("Chubbs has spoken — predictions updated 🔮")
       await loadLastPrediction()
