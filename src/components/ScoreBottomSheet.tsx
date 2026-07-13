@@ -1,5 +1,6 @@
 import { HoleCard } from './HoleCard'
-import { type TeamFull, type ScoreRow, type ChulliganRow, isHoleComplete } from '../lib/scoreTypes'
+import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam, isHoleComplete } from '../lib/scoreTypes'
+import { displayName } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 
 interface ScoreBottomSheetProps {
@@ -18,6 +19,13 @@ interface ScoreBottomSheetProps {
   resetMyScore: (hole: number) => void
   toggleMyChulligan: (playerId: string, hole: number) => void
   countDrives: (pid: string | null, from: number, to: number) => number
+  // Cross-team approval
+  approvalsEnabled: boolean
+  groupTeams: GroupTeam[]
+  approvedScoreIds: Set<string>
+  myDisputedHoles: Set<number>
+  approveScore: (scoreId: string) => void
+  disputeScore: (scoreId: string) => void
 }
 
 export function ScoreBottomSheet({
@@ -35,11 +43,28 @@ export function ScoreBottomSheet({
   resetMyScore,
   toggleMyChulligan,
   countDrives,
+  approvalsEnabled,
+  groupTeams,
+  approvedScoreIds,
+  myDisputedHoles,
+  approveScore,
+  disputeScore,
 }: ScoreBottomSheetProps) {
   const mp1 = myTeam?.player1
   const mp2 = myTeam?.player2
   const twoPlayers = !!(mp1 && mp2)
-  const locked = hole > 1 && !isHoleComplete(myScores[hole - 1], twoPlayers)
+  const ownComplete = hole <= 1 || isHoleComplete(myScores[hole - 1], twoPlayers)
+
+  // Cross-team approval of the PREVIOUS hole before this one opens.
+  const gHole = hole - 1
+  const gActive = approvalsEnabled && hole > 1 && groupTeams.length > 0
+  const groupPending = gActive
+    ? groupTeams.map(gt => ({ gt, s: gt.scores[gHole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && !approvedScoreIds.has(x.s.id))
+    : []
+  const groupWaiting = gActive ? groupTeams.filter(gt => !gt.scores[gHole]) : []
+  const approvalLock = groupPending.length > 0 || groupWaiting.length > 0
+
+  const locked = hole > 1 && (!ownComplete || approvalLock)
   const { parOf } = useCourse()
   const par = parOf(hole)
 
@@ -177,6 +202,48 @@ export function ScoreBottomSheet({
                 {missingItems.join(' · ')}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* A team flagged one of our scores */}
+        {approvalsEnabled && myDisputedHoles.size > 0 && (
+          <div style={{ margin: '8px 12px 0', padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#f87171' }}>⚠️ A team flagged your hole {[...myDisputedHoles].sort((a, b) => a - b).join(', ')}</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4, lineHeight: 1.5 }}>Head back and check that hole — once you fix it, they can re-approve.</div>
+          </div>
+        )}
+
+        {/* Approve the group's previous hole to continue */}
+        {ownComplete && approvalLock && (
+          <div style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#e8c766', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+              Approve your group's hole {gHole} to open hole {hole}
+            </div>
+            {groupWaiting.map(gt => (
+              <div key={gt.id} style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
+                ⏳ Waiting for <strong style={{ color: 'var(--tx2)' }}>{gt.name}</strong> to post hole {gHole}…
+              </div>
+            ))}
+            {groupPending.map(({ gt, s }) => {
+              const drivePlayer = [gt.player1, gt.player2].find(p => p?.id === s.drive_used_id)
+              const driveName = drivePlayer ? displayName(drivePlayer) : null
+              const chs = gt.chulligans.filter(c => c.hole === gHole)
+              return (
+                <div key={gt.id} style={{ padding: '13px 15px', borderRadius: 12, background: 'rgba(212,165,58,0.06)', border: '1px solid rgba(212,165,58,0.25)' }}>
+                  <div style={{ fontWeight: 800, color: 'var(--tx1)', fontSize: 14, marginBottom: 6 }}>{gt.name}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--tx3)', display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <span>Score <strong style={{ color: 'var(--tx1)', fontSize: 14 }}>{s.score}</strong></span>
+                    <span>Putts <strong style={{ color: 'var(--tx1)' }}>{s.putts ?? '—'}</strong></span>
+                    {driveName && <span>Drive <strong style={{ color: 'var(--tx1)' }}>{driveName}</strong></span>}
+                    {chs.length > 0 && <span>🍺 {chs.length}</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => disputeScore(s.id)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Something's off</button>
+                    <button onClick={() => approveScore(s.id)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>✓ Approve</button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
 

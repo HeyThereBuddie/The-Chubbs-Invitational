@@ -4,6 +4,18 @@ export type TeamFull = Team & { player1?: Player; player2?: Player }
 export type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null }
 export type ChulliganRow = { id: string; player_id: string; hole: number }
 
+// Another team in your foursome (same tee time) — for cross-team score approval.
+export type GroupTeam = {
+  id: string
+  name: string
+  p1_name: string | null
+  p2_name: string | null
+  player1?: Player
+  player2?: Player
+  scores: Record<number, ScoreRow>
+  chulligans: ChulliganRow[]
+}
+
 export const SCORE_SELECT = 'id, hole, score, drive_used_id, putts'
 
 export function scoreFeedInfo(score: number, par: number): { label: string; emoji: string } {

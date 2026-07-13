@@ -13,6 +13,7 @@ import {
   type TeamFull,
   type ScoreRow,
   type ChulliganRow,
+  type GroupTeam,
   SCORE_SELECT,
   scoreFeedInfo,
   puttFeedInfo,
@@ -39,8 +40,62 @@ export function usePlayerScoring() {
   const [myChulligans, setMyChulligans] = useState<ChulliganRow[]>([])
   const [saving,       setSaving]       = useState<number | null>(null)
 
+  // Cross-team score approval (foursome)
+  const [approvalsEnabled, setApprovalsEnabled] = useState(false)
+  const [groupTeams,       setGroupTeams]       = useState<GroupTeam[]>([])
+  const [approvedScoreIds, setApprovedScoreIds] = useState<Set<string>>(new Set())
+  const [myDisputedHoles,  setMyDisputedHoles]  = useState<Set<number>>(new Set())
+
   const myTeamIdRef = useRef<string | undefined>(undefined)
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
+  const myScoresRef = useRef<Record<number, ScoreRow>>({})
+  useEffect(() => { myScoresRef.current = myScores }, [myScores])
+
+  // Load the other team(s) in my tee-time group + who's approved what.
+  const loadGroup = async (teamId: string, scoresMap: Record<number, ScoreRow>) => {
+    try {
+      const { data: settings } = await supabase.from('tournament_settings').select('approvals_enabled').eq('id', 1).single()
+      const enabled = !!settings?.approvals_enabled
+      setApprovalsEnabled(enabled)
+      if (!enabled) { setGroupTeams([]); setApprovedScoreIds(new Set()); setMyDisputedHoles(new Set()); return }
+
+      const { data: myTT } = await supabase.from('tee_times').select('tee_time').eq('team_id', teamId).limit(1).maybeSingle()
+      if (!myTT?.tee_time) { setGroupTeams([]); return }
+      const { data: sib } = await supabase.from('tee_times').select('team_id').eq('tee_time', myTT.tee_time).neq('team_id', teamId)
+      const otherIds = [...new Set((sib ?? []).map(s => s.team_id))]
+      if (!otherIds.length) { setGroupTeams([]); return }
+
+      const [teamsRes, scoresRes, chRes] = await Promise.all([
+        supabase.from('teams').select('id, name, p1_name, p2_name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').in('id', otherIds),
+        supabase.from('scores').select('id, hole, score, drive_used_id, putts, team_id').in('team_id', otherIds),
+        supabase.from('chulligans').select('id, player_id, hole, team_id').in('team_id', otherIds),
+      ])
+      const scoresByTeam: Record<string, Record<number, ScoreRow>> = {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const s of (scoresRes.data ?? []) as any[]) { (scoresByTeam[s.team_id] ??= {})[s.hole] = s }
+      const chByTeam: Record<string, ChulliganRow[]> = {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const c of (chRes.data ?? []) as any[]) { (chByTeam[c.team_id] ??= []).push({ id: c.id, player_id: c.player_id, hole: c.hole }) }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setGroupTeams((teamsRes.data ?? []).map((t: any) => ({
+        id: t.id, name: t.name, p1_name: t.p1_name, p2_name: t.p2_name,
+        player1: t.player1 ?? undefined, player2: t.player2 ?? undefined,
+        scores: scoresByTeam[t.id] ?? {}, chulligans: chByTeam[t.id] ?? [],
+      })))
+
+      const { data: myApp } = await supabase.from('score_approvals').select('score_id').eq('approving_team_id', teamId).eq('status', 'approved')
+      setApprovedScoreIds(new Set((myApp ?? []).map(a => a.score_id)))
+
+      const myScoreIds = Object.values(scoresMap).map(s => s.id).filter(id => !String(id).startsWith('offline-'))
+      if (myScoreIds.length) {
+        const { data: inc } = await supabase.from('score_approvals').select('score_id').in('score_id', myScoreIds).eq('status', 'disputed')
+        const disputed = new Set((inc ?? []).map(a => a.score_id))
+        const holes = new Set<number>()
+        for (const [h, s] of Object.entries(scoresMap)) if (disputed.has(s.id)) holes.add(Number(h))
+        setMyDisputedHoles(holes)
+      } else setMyDisputedHoles(new Set())
+    } catch { /* offline — approvals stay as-is */ }
+  }
 
   const loadPlayerData = async (teamId: string) => {
     // Step 1: Show cached data immediately (works offline, zero latency)
@@ -82,6 +137,9 @@ export function usePlayerScoring() {
         for (const s of scores ?? []) map[s.hole] = s
         setMyScores(map)
         setMyChulligans((ch ?? []) as ChulliganRow[])
+        void loadGroup(teamId, map)
+      } else {
+        void loadGroup(teamId, cacheMap)
       }
     } catch { /* offline — cached data already shown */ }
   }
@@ -100,10 +158,26 @@ export function usePlayerScoring() {
     const sub = supabase.channel('player-scoring-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' },     reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chulligans' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, () => {
+        if (myTeamIdRef.current) loadGroup(myTeamIdRef.current, myScoresRef.current)
+      })
       .subscribe()
     return () => { supabase.removeChannel(sub) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Approve / dispute another team's score for a hole.
+  const setApproval = async (scoreId: string, status: 'approved' | 'disputed') => {
+    if (!myTeamId) return
+    setApprovedScoreIds(prev => { const n = new Set(prev); status === 'approved' ? n.add(scoreId) : n.delete(scoreId); return n })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('score_approvals').upsert(
+      { score_id: scoreId, approving_team_id: myTeamId, status, updated_at: new Date().toISOString() },
+      { onConflict: 'score_id,approving_team_id' })
+    if (myTeamIdRef.current) loadGroup(myTeamIdRef.current, myScoresRef.current)
+  }
+  const approveScore = (scoreId: string) => setApproval(scoreId, 'approved')
+  const disputeScore = (scoreId: string) => setApproval(scoreId, 'disputed')
 
   // ── Actions ─────────────────────────────────────────────────
 
@@ -328,5 +402,12 @@ export function usePlayerScoring() {
     resetMyScore,
     toggleMyChulligan,
     countDrives,
+    // Cross-team approval
+    approvalsEnabled,
+    groupTeams,
+    approvedScoreIds,
+    myDisputedHoles,
+    approveScore,
+    disputeScore,
   }
 }

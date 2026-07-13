@@ -2843,6 +2843,12 @@ export default function GpsPage() {
         resetMyScore={tour.active ? (() => {}) : scoring.resetMyScore}
         toggleMyChulligan={tour.active ? (() => {}) : scoring.toggleMyChulligan}
         countDrives={scoring.countDrives}
+        approvalsEnabled={!tour.active && scoring.approvalsEnabled}
+        groupTeams={scoring.groupTeams}
+        approvedScoreIds={scoring.approvedScoreIds}
+        myDisputedHoles={scoring.myDisputedHoles}
+        approveScore={tour.active ? (() => {}) : scoring.approveScore}
+        disputeScore={tour.active ? (() => {}) : scoring.disputeScore}
       />
     </div>
   )
