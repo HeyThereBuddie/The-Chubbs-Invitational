@@ -5,13 +5,12 @@ import { useYear } from '../context/YearContext'
 import { useCourse } from '../context/CourseContext'
 import type { Profile, Team, CourseGps } from '../lib/types'
 import { displayName } from '../lib/types'
-import { Copy, Shield, ShieldOff, Trash2, Check, Plus, Users, RotateCcw, PlayCircle, Shuffle, Archive } from 'lucide-react'
+import { Copy, Shield, ShieldOff, Trash2, Check, RotateCcw, PlayCircle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
 import CourseGpsSetup from '../components/admin/CourseGpsSetup'
 import Scores from './Scores'
 import Groups from './Groups'
 
-type TeamWithPlayers = Team & { player1?: Profile; player2?: Profile }
 
 interface StandingEntry {
   teamName: string; p1Name: string | null; p2Name: string | null
@@ -46,21 +45,17 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = useState<'teams' | 'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups'>('teams')
+  const [tab, setTab] = useState<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups'>('groups')
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [teams, setTeams] = useState<TeamWithPlayers[]>([])
-  const [newTeamP1, setNewTeamP1] = useState('')
-  const [newTeamP2, setNewTeamP2] = useState('')
-  const [creating, setCreating] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
 
   useEffect(() => {
     fetchProfiles()
-    fetchActiveTournament().then(id => fetchTeams(id))
+    fetchActiveTournament()
   }, [])
 
   const fetchProfiles = async () => {
@@ -75,112 +70,6 @@ export default function AdminPanel() {
     return id
   }
 
-  const fetchTeams = async (tournamentId?: string | null) => {
-    const tid = tournamentId !== undefined ? tournamentId : activeTournamentId
-    let q = supabase.from('teams')
-      .select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
-      .order('created_at')
-    if (tid) q = q.eq('tournament_id', tid)
-    const { data } = await q
-    setTeams(data ?? [])
-  }
-
-  // ── Team management ──────────────────────────────────────────
-
-  const createTeam = async () => {
-    if (!newTeamP1 || !newTeamP2 || newTeamP1 === newTeamP2) return
-    setCreating(true)
-    const name = `Team ${teams.length + 1}`
-    const payload: Record<string, unknown> = { name, p1_id: newTeamP1, p2_id: newTeamP2 }
-    if (activeTournamentId) payload.tournament_id = activeTournamentId
-    const { data: teamData, error } = await supabase.from('teams').insert(payload).select().single()
-    if (error) { showToast(error.message, 'error'); setCreating(false); return }
-    // Assign team_id and activate deactivated players
-    const p1 = profiles.find(p => p.id === newTeamP1)
-    const p2 = profiles.find(p => p.id === newTeamP2)
-    await Promise.all([
-      supabase.from('profiles').update({ team_id: teamData.id, ...(p1?.status !== 'active' ? { status: 'active' } : {}) }).eq('id', newTeamP1),
-      supabase.from('profiles').update({ team_id: teamData.id, ...(p2?.status !== 'active' ? { status: 'active' } : {}) }).eq('id', newTeamP2),
-    ])
-    setCreating(false)
-    setNewTeamP1('')
-    setNewTeamP2('')
-    showToast('Team created!')
-    fetchTeams()
-    fetchProfiles()
-  }
-
-  const assignPlayer = async (
-    team: TeamWithPlayers,
-    slot: 'p1_id' | 'p2_id',
-    profileId: string
-  ) => {
-    const oldId = slot === 'p1_id' ? team.p1_id : team.p2_id
-    const otherId = slot === 'p1_id' ? team.p2_id : team.p1_id
-    const newId = profileId || null
-
-    // Update team slot
-    await supabase.from('teams').update({ [slot]: newId }).eq('id', team.id)
-
-    // Clear old player's team_id if they're no longer in either slot
-    if (oldId && oldId !== otherId) {
-      await supabase.from('profiles').update({ team_id: null }).eq('id', oldId)
-    }
-
-    // Set new player's team_id; activate them if deactivated
-    if (newId) {
-      const player = profiles.find(p => p.id === newId)
-      const updates: Record<string, unknown> = { team_id: team.id }
-      if (player && player.status !== 'active') updates.status = 'active'
-      await supabase.from('profiles').update(updates).eq('id', newId)
-    }
-
-    fetchTeams()
-    fetchProfiles()
-  }
-
-  const deleteTeam = async (team: TeamWithPlayers) => {
-    if (!confirm(`Delete "${team.name}"? This removes all their scores.`)) return
-    // Clear team_id for assigned players
-    if (team.p1_id) await supabase.from('profiles').update({ team_id: null }).eq('id', team.p1_id)
-    if (team.p2_id && team.p2_id !== team.p1_id) await supabase.from('profiles').update({ team_id: null }).eq('id', team.p2_id)
-    await supabase.from('teams').delete().eq('id', team.id)
-    showToast('Team deleted')
-    fetchTeams()
-    fetchProfiles()
-  }
-
-  const resetTeamAssignments = async () => {
-    if (!confirm('Remove all player assignments from every team? Player accounts are kept — only the roster slots are cleared.')) return
-    setResettingTeams(true)
-    await Promise.all([
-      supabase.from('teams').update({ p1_id: null, p2_id: null }).neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('profiles').update({ team_id: null }).neq('id', '00000000-0000-0000-0000-000000000000'),
-    ])
-    showToast('All team assignments cleared')
-    setResettingTeams(false)
-    fetchTeams()
-    fetchProfiles()
-  }
-
-  const regenerateTeams = async () => {
-    if (!confirm('Randomly assign all active players to teams?')) return
-    setRegenerating(true)
-    const shuffled = [...activePlayers].sort(() => Math.random() - 0.5)
-    const updates: PromiseLike<unknown>[] = []
-    teams.forEach(team => {
-      const p1 = shuffled.shift() ?? null
-      const p2 = shuffled.shift() ?? null
-      updates.push(supabase.from('teams').update({ p1_id: p1?.id ?? null, p2_id: p2?.id ?? null }).eq('id', team.id))
-      if (p1) updates.push(supabase.from('profiles').update({ team_id: team.id }).eq('id', p1.id))
-      if (p2) updates.push(supabase.from('profiles').update({ team_id: team.id }).eq('id', p2.id))
-    })
-    await Promise.all(updates)
-    showToast('Teams regenerated!')
-    setRegenerating(false)
-    fetchTeams()
-    fetchProfiles()
-  }
 
   // ── User management ──────────────────────────────────────────
 
@@ -213,8 +102,6 @@ export default function AdminPanel() {
   const ADMIN_CODE    = import.meta.env.VITE_ADMIN_CODE    ?? 'CHUBS_ADMIN'
   const WAITLIST_CODE = import.meta.env.VITE_WAITLIST_CODE ?? 'CHUBS_WAITLIST'
 
-  const [resettingTeams, setResettingTeams] = useState(false)
-  const [regenerating, setRegenerating] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [resetGpsConfirm, setResetGpsConfirm] = useState(false)
@@ -313,7 +200,6 @@ export default function AdminPanel() {
     setResetting(false)
     setResetConfirm(false)
     showToast('All scores, chulligans, contests, and live feed cleared!')
-    fetchTeams()
   }
 
   const toggleLaheyVoting = async () => {
@@ -503,7 +389,6 @@ export default function AdminPanel() {
       setEndTournamentPreview(null)
       setActiveTournamentId(null)
       showToast(`${activeTournament.name || activeTournament.year} archived! Create a new tournament when you're ready. 🏆`)
-      fetchTeams(null)
       refreshTournaments()
     } catch (e) {
       showToast((e as Error).message ?? 'Archive failed', 'error')
@@ -564,7 +449,7 @@ export default function AdminPanel() {
     await supabase.from('tournaments').update({ deleted_at: new Date().toISOString() }).eq('id', deleteModal.id)
     setDeletingYear(false)
     const { name, isActive } = deleteModal
-    if (isActive) { setActiveTournamentId(null); fetchTeams(null) }
+    if (isActive) { setActiveTournamentId(null) }
     setDeleteModal(null)
     setDeleteInput('')
     fetchTournamentHistory()
@@ -649,14 +534,12 @@ export default function AdminPanel() {
       .select('id')
     const movedCount = movedPlayers?.length ?? 0
 
-    fetchTeams(data.id)
     fetchTournamentHistory()
     refreshTournaments()
     showToast(`"${name}" is live! ${movedCount > 0 ? `${movedCount} player${movedCount !== 1 ? 's' : ''} deactivated.` : ''} 🏆`)
   }
 
   const activePlayers = profiles.filter(p => p.status === 'active')
-  const allPlayers    = profiles
 
   // ── Brevo sync ────────────────────────────────────────────
   const [brevoSyncing, setBrevoSyncing] = useState(false)
@@ -689,9 +572,8 @@ export default function AdminPanel() {
 
       <div className="pill-tabs" style={{ marginBottom: 20 }}>
         {([
-          { id: 'teams',      label: '⛳ Teams' },
           { id: 'scores',     label: '📝 Scores' },
-          { id: 'groups',     label: '👥 Groups' },
+          { id: 'groups',     label: '👥 Team Draw' },
           { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
@@ -703,143 +585,6 @@ export default function AdminPanel() {
         ))}
       </div>
 
-      {/* ── Teams tab ───────────────────────────────────────────── */}
-      {tab === 'teams' && (
-        <div>
-          {/* Create team */}
-          <div className="glass" style={{ padding: '18px 20px', marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 12 }}>
-              Create Team
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              {([['Player 1', newTeamP1, setNewTeamP1, newTeamP2] as const, ['Player 2', newTeamP2, setNewTeamP2, newTeamP1] as const]).map(([label, val, setter, other]) => (
-                <div key={label}>
-                  <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>{label}</label>
-                  <select value={val} onChange={e => setter(e.target.value)}>
-                    <option value="">— Select player —</option>
-                    {allPlayers.map(p => {
-                      const isDeactivated = p.status !== 'active'
-                      return (
-                        <option key={p.id} value={p.id} disabled={p.id === other}>
-                          {displayName(p)}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}{isDeactivated ? ' ⚫ Deactivated' : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
-                </div>
-              ))}
-            </div>
-            <button
-              className="btn-gold"
-              onClick={createTeam}
-              disabled={creating || !newTeamP1 || !newTeamP2 || newTeamP1 === newTeamP2}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              <Plus size={14} /> {creating ? 'Creating…' : 'Create Team'}
-            </button>
-          </div>
-
-          {/* Team bulk actions */}
-          {teams.length > 0 && (() => {
-            const teamsReset = teams.every(t => !t.p1_id && !t.p2_id)
-            return (
-              <div className="glass" style={{ padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={resetTeamAssignments}
-                  disabled={resettingTeams || teamsReset}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                    background: teamsReset ? 'var(--surf2)' : 'rgba(239,68,68,0.1)',
-                    border: `1px solid ${teamsReset ? 'var(--bdr)' : 'rgba(239,68,68,0.3)'}`,
-                    color: teamsReset ? 'var(--tx4)' : '#ef4444',
-                    cursor: resettingTeams || teamsReset ? 'not-allowed' : 'pointer',
-                    opacity: resettingTeams ? 0.6 : 1,
-                  }}
-                >
-                  <RotateCcw size={13} />
-                  {resettingTeams ? 'Clearing…' : teamsReset ? 'Teams Already Reset' : 'Reset Teams'}
-                </button>
-
-                <button
-                  onClick={regenerateTeams}
-                  disabled={regenerating || !teamsReset}
-                  title={!teamsReset ? 'Reset team assignments first before regenerating' : undefined}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '9px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
-                    background: teamsReset ? 'rgba(212,165,58,0.12)' : 'var(--surf2)',
-                    border: `1px solid ${teamsReset ? 'rgba(212,165,58,0.35)' : 'var(--bdr)'}`,
-                    color: teamsReset ? '#D4A53A' : 'var(--tx4)',
-                    cursor: regenerating || !teamsReset ? 'not-allowed' : 'pointer',
-                    opacity: regenerating ? 0.6 : 1,
-                  }}
-                >
-                  <Shuffle size={13} />
-                  {regenerating ? 'Assigning…' : 'Regenerate Teams'}
-                </button>
-
-                {!teamsReset && (
-                  <span style={{ fontSize: 11, color: 'var(--tx4)', fontStyle: 'italic' }}>
-                    Reset teams first to enable regeneration
-                  </span>
-                )}
-              </div>
-            )
-          })()}
-
-          {teams.length === 0 && (
-            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>
-              <Users size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.2 }} />
-              No teams yet. Create one above.
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {teams.map(team => (
-              <div key={team.id} className="glass" style={{ padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <div style={{ fontWeight: 700, color: '#D4A53A', fontSize: 15, flex: 1 }}>{team.name}</div>
-                  <button
-                    onClick={() => deleteTeam(team)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', padding: '4px' }}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {(['p1_id', 'p2_id'] as const).map((slot, i) => {
-                    const current = slot === 'p1_id' ? team.p1_id : team.p2_id
-                    const otherSlot = slot === 'p1_id' ? team.p2_id : team.p1_id
-                    return (
-                      <div key={slot}>
-                        <label style={{ fontSize: 11, color: 'var(--tx3)', display: 'block', marginBottom: 4 }}>
-                          Player {i + 1}
-                        </label>
-                        <select
-                          value={current ?? ''}
-                          onChange={e => assignPlayer(team, slot, e.target.value)}
-                        >
-                          <option value="">— Unassigned —</option>
-                          {allPlayers.map(p => (
-                            <option
-                              key={p.id}
-                              value={p.id}
-                              disabled={p.id === otherSlot}
-                            >
-                              {displayName(p)}{p.handicap != null ? ` (HCP ${p.handicap})` : ''}{p.status !== 'active' ? ' ⚫ Deactivated' : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Users tab ───────────────────────────────────────────── */}
       {tab === 'players' && (

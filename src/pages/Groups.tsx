@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import type { Player, Team, RosterEntry } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
-import { Trash2, Plus, UserPlus, Wand2 } from 'lucide-react'
+import { Trash2, Plus, UserPlus, Wand2, ArrowLeftRight } from 'lucide-react'
 
 type TeamRow = Team & { player1?: Player; player2?: Player }
 
@@ -24,6 +24,7 @@ export default function Groups() {
   const [importing, setImporting] = useState(false)
   const [selected, setSelected] = useState<string[]>([])   // roster ids picked for the next team
   const [search, setSearch] = useState('')
+  const [swapTarget, setSwapTarget] = useState<{ teamId: string; slot: 1 | 2; currentName: string | null } | null>(null)
 
   useEffect(() => { fetchData() }, [activeTournamentId])
 
@@ -145,6 +146,23 @@ export default function Groups() {
     fetchData()
   }
 
+  // Swap one player on a team for an unpaired roster entry (late substitution).
+  const swapMember = async (teamId: string, slot: 1 | 2, newRosterId: string) => {
+    const team = teams.find(t => t.id === teamId)
+    const newR = roster.find(r => r.id === newRosterId)
+    if (!team || !newR) return
+    const oldPid = slot === 1 ? team.p1_id : team.p2_id
+    const patch = slot === 1
+      ? { p1_roster_id: newR.id, p1_name: newR.name, p1_id: newR.claimed_by }
+      : { p2_roster_id: newR.id, p2_name: newR.name, p2_id: newR.claimed_by }
+    await supabase.from('teams').update(patch).eq('id', teamId)
+    if (oldPid && oldPid !== newR.claimed_by) await supabase.from('profiles').update({ team_id: null }).eq('id', oldPid)
+    if (newR.claimed_by) await supabase.from('profiles').update({ team_id: teamId }).eq('id', newR.claimed_by)
+    setSwapTarget(null)
+    showToast(`Swapped in ${newR.name}`)
+    fetchData()
+  }
+
   const claimedCount = roster.filter(r => r.claimed_by).length
 
   if (!isAdmin) {
@@ -247,8 +265,17 @@ export default function Groups() {
                     <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: 'var(--tx4)', width: 22, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 800, color: 'var(--gold)', fontSize: 14 }}>{t.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
-                        {[teamMemberName(t.player1, t.p1_name), teamMemberName(t.player2, t.p2_name)].filter(Boolean).join(' & ') || '—'}
+                      <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+                        {([1, 2] as const).map(slot => {
+                          const nm = slot === 1 ? teamMemberName(t.player1, t.p1_name) : teamMemberName(t.player2, t.p2_name)
+                          return (
+                            <button key={slot} onClick={() => setSwapTarget({ teamId: t.id, slot, currentName: nm })} className="pressable"
+                              title="Swap this player"
+                              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 999, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx2)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                              {nm ?? '—'} <ArrowLeftRight size={11} style={{ opacity: 0.6 }} />
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                     <button onClick={() => renameTeam(t)} className="pressable" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx2)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Rename</button>
@@ -314,6 +341,32 @@ export default function Groups() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── Swap-a-player picker ── */}
+      {swapTarget && (
+        <div onClick={() => setSwapTarget(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,6,5,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 500, background: 'var(--panel)', borderRadius: '20px 20px 0 0', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 -12px 40px rgba(0,0,0,0.6)', padding: '16px 16px calc(20px + env(safe-area-inset-bottom, 0px))', maxHeight: '70vh', overflowY: 'auto' }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: 1, color: '#D4A53A', marginBottom: 2 }}>Swap out {swapTarget.currentName ?? 'player'}</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14 }}>Pick a replacement from the unpaired pool.</div>
+            {pool.length === 0 ? (
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--tx4)', fontSize: 13 }}>No unpaired players — remove another team to free someone up.</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {pool.map(r => (
+                  <button key={r.id} onClick={() => swapMember(swapTarget.teamId, swapTarget.slot, r.id)} className="pressable" style={{
+                    padding: '9px 14px', borderRadius: 999, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                    border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx1)', display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                    {r.name}
+                    {r.handicap != null && <span style={{ fontSize: 10, color: 'var(--tx4)' }}>· {r.handicap}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setSwapTarget(null)} style={{ width: '100%', marginTop: 16, padding: '10px', borderRadius: 10, border: '1px solid var(--bdr)', background: 'transparent', color: 'var(--tx3)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+          </div>
+        </div>
       )}
     </div>
   )
