@@ -20,6 +20,7 @@ export interface Profile {
   invite_response: 'yes' | 'no' | null
   invite_response_at: string | null
   club_distances?: ClubDist[] | null
+  onboarded?: boolean
 }
 
 export function displayName(p: Pick<Profile, 'name' | 'nickname'>): string {

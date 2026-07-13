@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useYear } from './context/YearContext'
 import { ToastProvider } from './context/ToastContext'
@@ -58,8 +58,14 @@ function LiveOnly({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <Spinner />
+
+  // New players must finish the mandatory setup wizard before entering the app.
+  const needsSetup = !!user && !!profile && profile.onboarded === false
+  const setupExempt = location.pathname === '/welcome' || location.pathname === '/auth' || location.pathname === '/invite-response' || location.pathname === '/rsvp-landing'
+  if (needsSetup && !setupExempt) return <Navigate to="/welcome" replace />
 
   return (
     <Routes>
