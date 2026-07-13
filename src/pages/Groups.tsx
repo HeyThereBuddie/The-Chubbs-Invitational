@@ -39,12 +39,20 @@ export default function Groups() {
     setTeams((teamsRes.data ?? []) as TeamRow[])
   }
 
-  // ── Roster import (paste: "Name, email, phone" per line) ──────────────────
+  // ── Roster import (paste "Name, Email, Handicap" — email & handicap optional,
+  // detected by shape so column order doesn't matter) ───────────────────────
   const importRoster = async () => {
     if (!activeTournamentId) { showToast('Create/select an active tournament first', 'error'); return }
     const rows = pasteText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-      const [name, email, phone] = line.split(',').map(s => s?.trim() || null)
-      return { name: name!, email: email || null, phone: phone || null }
+      const parts = line.split(',').map(s => s.trim()).filter(Boolean)
+      const name = parts.shift() ?? ''
+      let email: string | null = null
+      let handicap: number | null = null
+      for (const p of parts) {
+        if (p.includes('@')) email = p
+        else if (/^\d+$/.test(p)) handicap = parseInt(p, 10)
+      }
+      return { name, email, handicap }
     }).filter(r => r.name)
     if (!rows.length) { showToast('Nothing to import', 'error'); return }
     const existing = new Set(roster.map(r => r.name.toLowerCase()))
@@ -59,19 +67,24 @@ export default function Groups() {
     fetchData()
   }
 
-  // Link roster entries to accounts by matching names (case-insensitive).
+  // Link roster entries to accounts by email first, then name (case-insensitive).
   const autoMatch = async () => {
+    const byEmail = new Map(profiles.filter(p => p.email).map(p => [p.email!.trim().toLowerCase(), p.id]))
     const byName = new Map(profiles.map(p => [p.name.trim().toLowerCase(), p.id]))
-    const updates = roster.filter(r => !r.claimed_by).map(r => ({ r, pid: byName.get(r.name.trim().toLowerCase()) })).filter(x => x.pid)
-    if (!updates.length) { showToast('No new name matches found'); return }
-    await Promise.all(updates.map(({ r, pid }) => supabase.from('roster').update({ claimed_by: pid }).eq('id', r.id)))
-    // propagate to any teams already built with those roster entries
+    const updates = roster.filter(r => !r.claimed_by).map(r => {
+      const pid = (r.email && byEmail.get(r.email.trim().toLowerCase())) || byName.get(r.name.trim().toLowerCase())
+      return { r, pid }
+    }).filter((x): x is { r: RosterEntry; pid: string } => !!x.pid)
+    if (!updates.length) { showToast('No new email or name matches found'); return }
     await Promise.all(updates.map(async ({ r, pid }) => {
+      await supabase.from('roster').update({ claimed_by: pid }).eq('id', r.id)
+      // Roster is the source of truth — push canonical name + handicap to the account.
+      await supabase.from('profiles').update({ name: r.name, ...(r.handicap != null ? { handicap: r.handicap } : {}) }).eq('id', pid)
       const t = teams.find(t => t.p1_roster_id === r.id || t.p2_roster_id === r.id)
       if (!t) return
       const slot = t.p1_roster_id === r.id ? 'p1_id' : 'p2_id'
       await supabase.from('teams').update({ [slot]: pid }).eq('id', t.id)
-      await supabase.from('profiles').update({ team_id: t.id }).eq('id', pid!)
+      await supabase.from('profiles').update({ team_id: t.id }).eq('id', pid)
     }))
     showToast(`Matched ${updates.length} player${updates.length === 1 ? '' : 's'} to accounts`)
     fetchData()
@@ -81,6 +94,13 @@ export default function Groups() {
     await supabase.from('roster').delete().eq('id', id)
     setSelected(s => s.filter(x => x !== id))
     fetchData()
+  }
+
+  // Add / edit a roster entry's email (filled in as they're collected).
+  const updateRosterEmail = async (id: string, email: string) => {
+    const v = email.trim() || null
+    await supabase.from('roster').update({ email: v }).eq('id', id)
+    setRoster(prev => prev.map(r => r.id === id ? { ...r, email: v } : r))
   }
 
   // ── Live pair builder ─────────────────────────────────────────────────────
@@ -207,6 +227,7 @@ export default function Groups() {
                       display: 'flex', alignItems: 'center', gap: 6,
                     }}>
                       {r.name}
+                      {r.handicap != null && <span style={{ fontSize: 10, color: on ? 'rgba(212,165,58,0.7)' : 'var(--tx4)', fontVariantNumeric: 'tabular-nums' }}>· {r.handicap}</span>}
                       {r.claimed_by ? <span title="Signed up" style={{ fontSize: 10, color: '#4ade80' }}>✓</span>
                         : <span title="Not signed up yet" style={{ fontSize: 10, color: 'var(--tx4)' }}>○</span>}
                     </button>
@@ -246,17 +267,17 @@ export default function Groups() {
           <div className="glass animate-fadeUp" style={{ padding: 16, marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx1)', marginBottom: 6 }}>Import players</div>
             <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 10, lineHeight: 1.5 }}>
-              Paste one player per line. Optional: <code>Name, email, phone</code>. Paste straight from a spreadsheet column.
+              Paste one player per line as <code>Name, Email, Handicap</code>. Email and handicap are optional and detected automatically, so <code>Name, 12</code> or just <code>Name</code> works too — add emails later below.
             </div>
             <textarea value={pasteText} onChange={e => setPasteText(e.target.value)} rows={6}
-              placeholder={"Happy Gilmore, happy@example.com\nShooter McGavin\nChubbs Peterson, , 555-0100"}
+              placeholder={"Happy Gilmore, happy@example.com, 4\nShooter McGavin, 2\nChubbs Peterson"}
               style={{ width: '100%', padding: '11px 13px', borderRadius: 10, fontSize: 13, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button onClick={importRoster} disabled={importing || !pasteText.trim()} className="btn-gold" style={{ opacity: importing || !pasteText.trim() ? 0.6 : 1 }}>
                 <UserPlus size={14} /> {importing ? 'Adding…' : 'Add to roster'}
               </button>
               {roster.some(r => !r.claimed_by) && (
-                <button onClick={autoMatch} className="btn-outline"><Wand2 size={14} /> Match names to accounts</button>
+                <button onClick={autoMatch} className="btn-outline"><Wand2 size={14} /> Match to accounts</button>
               )}
             </div>
           </div>
@@ -271,10 +292,20 @@ export default function Groups() {
                 return (
                   <div key={r.id} className="glass-flat" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: r.claimed_by ? '#4ade80' : 'var(--tx4)', marginTop: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{r.name}</span>
+                        {r.handicap != null && <span style={{ fontSize: 11, color: 'var(--tx3)', fontVariantNumeric: 'tabular-nums' }}>HCP {r.handicap}</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: r.claimed_by ? '#4ade80' : 'var(--tx4)', margin: '2px 0 6px' }}>
                         {r.claimed_by ? `✓ Signed up${acct ? ` — ${displayName(acct)}` : ''}` : '○ Not signed up yet'}
                       </div>
+                      <input
+                        defaultValue={r.email ?? ''}
+                        onBlur={e => { if ((e.target.value.trim() || null) !== (r.email ?? null)) updateRosterEmail(r.id, e.target.value) }}
+                        placeholder="add email…"
+                        type="email"
+                        style={{ width: '100%', maxWidth: 260, padding: '6px 10px', borderRadius: 8, fontSize: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none' }}
+                      />
                     </div>
                     <button onClick={() => removeRosterEntry(r.id)} aria-label="Remove" className="pressable" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx3)', cursor: 'pointer', flexShrink: 0, display: 'flex' }}><Trash2 size={14} /></button>
                   </div>

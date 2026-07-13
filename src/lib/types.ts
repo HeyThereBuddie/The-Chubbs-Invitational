@@ -63,6 +63,7 @@ export interface RosterEntry {
   name: string
   email: string | null
   phone: string | null
+  handicap: number | null
   claimed_by: string | null
   created_at: string
 }

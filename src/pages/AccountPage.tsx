@@ -542,14 +542,15 @@ export default function AccountPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Handicap</label>
+            <label style={labelStyle}>Handicap {myClaim && <span style={{ fontWeight: 400, color: 'var(--tx4)', textTransform: 'none', letterSpacing: 0 }}>· set by the organizers</span>}</label>
             <input
               type="number"
               placeholder="e.g. 14"
               value={profileForm.handicap}
               onChange={e => setProfileForm(f => ({ ...f, handicap: e.target.value }))}
+              disabled={!!myClaim}
               min={0} max={54} step={0.1}
-              style={inputStyle}
+              style={{ ...inputStyle, ...(myClaim ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
             />
           </div>
 
