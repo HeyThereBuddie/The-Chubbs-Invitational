@@ -18,15 +18,19 @@ create index if not exists roster_tournament_idx on public.roster(tournament_id)
 
 alter table public.roster enable row level security;
 
+-- drop-then-create so the migration is safe to re-run (CREATE POLICY has no IF NOT EXISTS)
+drop policy if exists "roster: authenticated read" on public.roster;
 create policy "roster: authenticated read"
   on public.roster for select to authenticated using (true);
 
+drop policy if exists "roster: admin write" on public.roster;
 create policy "roster: admin write"
   on public.roster for all to authenticated
   using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
   with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
 
 -- Let a signed-in player claim an UNclaimed roster entry as themselves.
+drop policy if exists "roster: claim own" on public.roster;
 create policy "roster: claim own"
   on public.roster for update to authenticated
   using (claimed_by is null)
