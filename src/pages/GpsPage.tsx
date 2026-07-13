@@ -9,7 +9,7 @@ import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng } from '../lib/types'
-import { displayName, normalizeFairways } from '../lib/types'
+import { displayName, normalizeFairways, teamMemberName } from '../lib/types'
 import { resolvePar } from '../lib/pars'
 import { resolveBag, recommendClub } from '../lib/clubs'
 import { type Shot, shotQuality, PUTT_TRACKING } from '../lib/shots'
@@ -2720,9 +2720,14 @@ export default function GpsPage() {
           {/* Right: chulligans box + drives box */}
           <div data-tour="chull-drives" style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
             {scoring.myTeam && (() => {
-              const p1 = scoring.myTeam!.player1, p2 = scoring.myTeam!.player2
-              const players = [p1, p2].filter((p): p is NonNullable<typeof p1> => !!p)
-              if (players.length === 0) return null
+              const mt = scoring.myTeam!
+              // Show BOTH team slots — a teammate who hasn't signed up yet shows by
+              // their roster name (dimmed, non-interactive) until they register.
+              const slots: { player: typeof mt.player1 | null; name: string | null }[] = [
+                { player: mt.player1 ?? null, name: teamMemberName(mt.player1, mt.p1_name) },
+                { player: mt.player2 ?? null, name: teamMemberName(mt.player2, mt.p2_name) },
+              ].filter(s => !!s.name)
+              if (slots.length === 0) return null
 
               const panelStyle: React.CSSProperties = {
                 background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
@@ -2743,20 +2748,21 @@ export default function GpsPage() {
                   {/* Chulligans box */}
                   <div style={panelStyle}>
                     <div style={headerStyle}>🍺 Chulligans</div>
-                    {players.map(player => {
-                      const ch = scoring.myChulligans.find(c => c.player_id === player.id)
-                      const firstName = displayName(player).split(' ')[0]
+                    {slots.map((slot, i) => {
+                      const player = slot.player
+                      const ch = player ? scoring.myChulligans.find(c => c.player_id === player.id) : undefined
+                      const firstName = (slot.name ?? '').split(' ')[0]
                       return (
-                        <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <div key={player?.id ?? `s${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, opacity: player ? 1 : 0.5 }}>
                           <span style={nameStyle}>{firstName}</span>
                           {/* Beer mug: full = available; tappable faded = used (tap to undo) */}
                           <button
-                            onClick={ch ? () => scoring.toggleMyChulligan(player.id, ch.hole) : undefined}
+                            onClick={ch && player ? () => scoring.toggleMyChulligan(player.id, ch.hole) : undefined}
                             style={{
                               position: 'relative', display: 'inline-flex', alignItems: 'center',
-                              background: 'none', border: 'none', padding: 0, cursor: ch ? 'pointer' : 'default',
+                              background: 'none', border: 'none', padding: 0, cursor: ch && player ? 'pointer' : 'default',
                             }}
-                            title={ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
+                            title={!player ? 'Not signed up yet' : ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
                           >
                             <span style={{
                               fontSize: 16, lineHeight: 1,
@@ -2773,7 +2779,7 @@ export default function GpsPage() {
                                 borderRadius: 4, padding: '1px 3px',
                                 letterSpacing: 0.3,
                               }}>H{ch.hole}</span>
-                            ) : (
+                            ) : player ? (
                               /* Available: green dot */
                               <span style={{
                                 position: 'absolute', top: -2, right: -4,
@@ -2781,7 +2787,7 @@ export default function GpsPage() {
                                 background: '#22c55e',
                                 boxShadow: '0 0 4px rgba(34,197,94,0.8)',
                               }} />
-                            )}
+                            ) : null}
                           </button>
                         </div>
                       )
@@ -2791,13 +2797,14 @@ export default function GpsPage() {
                   {/* Drives box */}
                   <div style={panelStyle}>
                     <div style={headerStyle}>🏌️ Drives</div>
-                    {players.map(player => {
+                    {slots.map((slot, i) => {
+                      const player = slot.player
                       const driveFrom = selectedHole <= 9 ? 1 : 10
                       const driveTo   = selectedHole <= 9 ? 9 : 18
-                      const drivesUsed = scoring.countDrives(player.id, driveFrom, driveTo)
-                      const firstName = displayName(player).split(' ')[0]
+                      const drivesUsed = player ? scoring.countDrives(player.id, driveFrom, driveTo) : 0
+                      const firstName = (slot.name ?? '').split(' ')[0]
                       return (
-                        <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <div key={player?.id ?? `s${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, opacity: player ? 1 : 0.5 }}>
                           <span style={nameStyle}>{firstName}</span>
                           <div style={{ display: 'flex', gap: 4 }}>
                             {Array.from({ length: 5 }, (_, i) => (
