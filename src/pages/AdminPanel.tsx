@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { useCourse } from '../context/CourseContext'
-import type { Profile, Team, CourseGps } from '../lib/types'
+import type { Profile, Team, CourseGps, PredictionPayload } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, RotateCcw, PlayCircle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
@@ -45,7 +45,7 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = useState<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups'>('groups')
+  const [tab, setTab] = useState<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions'>('groups')
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
@@ -180,6 +180,36 @@ export default function AdminPanel() {
       showToast(`Unlocked — force-approved ${rows.length} score${rows.length === 1 ? '' : 's'}`)
     } catch (e) { showToast((e as Error).message, 'error') }
     setForceApproving(false)
+  }
+
+  // ── Chubbs' AI contest predictions (manual re-run only, cost control) ──
+  const [runningPredictions, setRunningPredictions] = useState(false)
+  const [lastPrediction, setLastPrediction] = useState<{ payload: PredictionPayload; generated_at: string } | null>(null)
+
+  const loadLastPrediction = async () => {
+    if (!activeTournamentId) return
+    const { data } = await supabase.from('contest_predictions')
+      .select('payload, generated_at')
+      .eq('tournament_id', activeTournamentId)
+      .order('generated_at', { ascending: false })
+      .limit(1).maybeSingle()
+    if (data) setLastPrediction({ payload: data.payload as PredictionPayload, generated_at: data.generated_at as string })
+    else setLastPrediction(null)
+  }
+
+  useEffect(() => { if (tab === 'predictions') loadLastPrediction() }, [tab, activeTournamentId])
+
+  const runPredictions = async () => {
+    if (runningPredictions) return
+    setRunningPredictions(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('predict-contests', { body: {} })
+      if (error) { showToast(error.message || 'Prediction failed', 'error'); setRunningPredictions(false); return }
+      if (data?.error) { showToast(String(data.error), 'error'); setRunningPredictions(false); return }
+      showToast("Chubbs has spoken — predictions updated 🔮")
+      await loadLastPrediction()
+    } catch (e) { showToast((e as Error).message, 'error') }
+    setRunningPredictions(false)
   }
 
   useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
@@ -619,6 +649,7 @@ export default function AdminPanel() {
         {([
           { id: 'scores',     label: '📝 Scores' },
           { id: 'groups',     label: '👥 Team Draw' },
+          { id: 'predictions', label: '🔮 Predictions' },
           { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
@@ -1654,6 +1685,75 @@ export default function AdminPanel() {
           </div>
         )
       })()}
+
+      {/* ── Chubbs' AI Predictions ──────────────────────────────── */}
+      {tab === 'predictions' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="glass" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <img src="https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp" alt="Chubbs" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', flexShrink: 0 }} />
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 2 }}>Chubbs' Predictions</div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5 }}>
+              Chubbs reads the field's handicaps and logged club distances and calls each contest — TSN style, no mercy.
+              This runs on demand only (it costs tokens), so hit the button when club data has changed. Players see the
+              board on the Contests page under <strong>Chubbs' Picks</strong>.
+            </div>
+          </div>
+
+          <button
+            onClick={runPredictions}
+            disabled={runningPredictions || !activeTournamentId}
+            className="pressable"
+            style={{
+              padding: '14px 18px', borderRadius: 14, border: 'none', cursor: runningPredictions ? 'default' : 'pointer',
+              background: runningPredictions ? 'var(--surf2)' : 'linear-gradient(90deg, #D4A53A, #e0a010)',
+              color: runningPredictions ? 'var(--tx3)' : '#1a1408', fontWeight: 800, fontSize: 15,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            {runningPredictions ? 'Chubbs is thinking…' : lastPrediction ? '🔮 Re-run Predictions' : '🔮 Generate Predictions'}
+          </button>
+
+          {lastPrediction && (
+            <div style={{ fontSize: 12, color: 'var(--tx4)', textAlign: 'center' }}>
+              Last generated {new Date(lastPrediction.generated_at).toLocaleString()}
+            </div>
+          )}
+
+          {lastPrediction ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="glass" style={{ padding: '14px 18px', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.6, fontStyle: 'italic' }}>
+                “{lastPrediction.payload.intro}”
+              </div>
+              {lastPrediction.payload.contests.map((c, ci) => {
+                const title = c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'
+                return (
+                  <div key={ci} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--bdr)' }}>
+                      <div style={{ fontWeight: 800, color: '#D4A53A', fontSize: 14 }}>{title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{c.headline}</div>
+                    </div>
+                    {c.podium.map((p, pi) => (
+                      <div key={pi} style={{ padding: '10px 18px', borderBottom: '1px solid var(--bdr)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: 16, width: 22, flexShrink: 0 }}>{['🥇', '🥈', '🥉'][pi] ?? `${pi + 1}.`}</span>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx1)' }}>{p.player}</div>
+                          {p.note && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 1, lineHeight: 1.45 }}>{p.note}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="glass" style={{ padding: 28, textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
+              No predictions yet. Hit the button and let Chubbs run his mouth.
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   )

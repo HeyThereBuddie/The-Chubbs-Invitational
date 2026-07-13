@@ -2342,14 +2342,22 @@ export default function GpsPage() {
               border: '1px solid rgba(255,255,255,0.14)', fontSize: 13, fontWeight: 600, textAlign: 'center',
               whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             }}>
-              🚩 Tap the green to place the pin — everyone sees it
+              🚩 Tap the green to place the pin, or set it where you're standing
             </div>
             <div style={{
               position: 'absolute', left: 12, right: 12, bottom: navBase, zIndex: 40,
               background: 'var(--panel)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 16,
               boxShadow: '0 10px 30px rgba(0,0,0,0.55)',
-              padding: 16, display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'stretch',
+              padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
             }}>
+              {/* Stand at the cup and drop the pin on your exact GPS spot */}
+              <button onClick={() => { if (position) setPinDraft(position) }} disabled={!position} className="pressable" style={{
+                width: '100%', padding: '13px', borderRadius: 12, border: '1px solid rgba(212,165,58,0.45)',
+                background: 'rgba(212,165,58,0.1)', color: '#e8c766', fontWeight: 800, fontSize: 15,
+                cursor: position ? 'pointer' : 'not-allowed', opacity: position ? 1 : 0.5,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>📍 Set pin where I'm standing</button>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'stretch' }}>
               <button onClick={exitPinEdit} className="pressable" style={{
                 padding: '15px 22px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.2)',
                 background: 'rgba(255,255,255,0.06)', color: 'var(--tx1)', fontWeight: 700, fontSize: 16, cursor: 'pointer',
@@ -2365,6 +2373,7 @@ export default function GpsPage() {
                 background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 16,
                 cursor: pinDraft ? 'pointer' : 'default', opacity: pinDraft ? 1 : 0.45,
               }}>Save pin</button>
+              </div>
             </div>
           </>
         )}

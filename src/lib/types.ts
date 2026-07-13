@@ -115,6 +115,11 @@ export interface Pairing {
   player_b?: Player
 }
 
+// AI-generated contest predictions (Chubbs' picks). One payload per tournament.
+export interface PredictionPick { player: string; note?: string }
+export interface ContestPrediction { contest: 'ld' | 'ctp' | 'jackass'; headline: string; podium: PredictionPick[] }
+export interface PredictionPayload { intro: string; contests: ContestPrediction[] }
+
 export interface ContestEntry {
   id: string
   type: 'ctp' | 'ld'

@@ -8,12 +8,19 @@ import { enqueue } from '../lib/writeQueue'
 import type { UpsertLeaheyVotePayload } from '../lib/writeQueue'
 import { Skeleton } from '../components/Skeleton'
 import { useTour } from '../context/TourContext'
-import type { ContestEntry, Player, LeaheyVote } from '../lib/types'
+import type { ContestEntry, Player, LeaheyVote, PredictionPayload } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Target } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
-type ContestType = 'ctp' | 'ld' | 'lahey'
+const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
+const MEDAL = ['🥇', '🥈', '🥉']
+
+type ContestType = 'predictions' | 'overall' | 'ctp' | 'ld' | 'lahey'
+
+// Placement points for the overall board (fuller than a flat 3/2/1).
+const PLACE_POINTS = [5, 3, 2, 1]
+const placePoints = (rank: number) => PLACE_POINTS[rank] ?? 1  // rank is 0-indexed; 5th+ earns 1
 
 function SkeletonContestRow() {
   return (
@@ -33,7 +40,9 @@ export default function Contests() {
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { active: tourActive, stepAnchor } = useTour()
-  const [tab, setTab] = useState<ContestType>('ctp')
+  const [tab, setTab] = useState<ContestType>('predictions')
+  const [allEntries, setAllEntries] = useState<(ContestEntry & { player?: Player })[]>([])
+  const [predictions, setPredictions] = useState<{ payload: PredictionPayload; generated_at: string } | null>(null)
 
   // Drive the contest tab from the tour so its Longest Drive / Jackass steps
   // land on the right sub-page.
@@ -61,6 +70,18 @@ export default function Contests() {
       fetchLaheyData()
       const sub = supabase.channel('leahey-rt')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'leahey_votes' }, fetchLaheyData)
+        .subscribe()
+      return () => { supabase.removeChannel(sub) }
+    } else if (tab === 'predictions') {
+      fetchPredictions()
+      const sub = supabase.channel('predictions-rt')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'contest_predictions' }, fetchPredictions)
+        .subscribe()
+      return () => { supabase.removeChannel(sub) }
+    } else if (tab === 'overall') {
+      fetchAllEntries()
+      const sub = supabase.channel('overall-rt')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'contest_entries' }, fetchAllEntries)
         .subscribe()
       return () => { supabase.removeChannel(sub) }
     } else {
@@ -104,6 +125,24 @@ export default function Contests() {
         .order('created_at', { ascending: false })
       if (entriesData !== null) setEntries(entriesData)
     } catch { /* offline — cached entries already shown */ }
+  }
+
+  const fetchAllEntries = async () => {
+    if (!effectiveTournamentId) { setAllEntries([]); setLoading(false); return }
+    const { data } = await supabase.from('contest_entries').select('*, player:profiles(*)')
+      .in('type', ['ctp', 'ld']).eq('tournament_id', effectiveTournamentId)
+      .order('created_at', { ascending: false })
+    setAllEntries((data ?? []) as (ContestEntry & { player?: Player })[])
+    setLoading(false)
+  }
+
+  const fetchPredictions = async () => {
+    if (!effectiveTournamentId) { setPredictions(null); setLoading(false); return }
+    const { data } = await supabase.from('contest_predictions')
+      .select('payload, generated_at').eq('tournament_id', effectiveTournamentId)
+      .order('generated_at', { ascending: false }).limit(1).maybeSingle()
+    setPredictions(data ? { payload: data.payload as PredictionPayload, generated_at: data.generated_at } : null)
+    setLoading(false)
   }
 
   const fetchLaheyData = async () => {
@@ -205,6 +244,34 @@ export default function Contests() {
     return inch >= 12 ? `${ft + 1} ft` : inch > 0 ? `${ft} ft ${inch} in` : `${ft} ft`
   }
 
+  // Overall board: LD ranks by yards, CTP by current-holder (latest); placement
+  // points sum across both. Jackass is added at the reveal.
+  const overallBoard = (() => {
+    const dedupe = (list: (ContestEntry & { player?: Player })[], byBest: boolean) => {
+      const sorted = byBest
+        ? [...list].sort((a, b) => (b.distance_yds ?? -1) - (a.distance_yds ?? -1))
+        : [...list].sort((a, b) => b.created_at.localeCompare(a.created_at))  // latest first
+      const seen = new Set<string>(); const out: (ContestEntry & { player?: Player })[] = []
+      for (const e of sorted) if (!seen.has(e.player_id)) { seen.add(e.player_id); out.push(e) }
+      return out
+    }
+    const ld  = dedupe(allEntries.filter(e => e.type === 'ld'), true)
+    const ctp = dedupe(allEntries.filter(e => e.type === 'ctp'), false)
+    type Row = { id: string; name: string; player?: Player; points: number; leads: number; ldRank?: number; ctpRank?: number }
+    const byPlayer = new Map<string, Row>()
+    const add = (rows: (ContestEntry & { player?: Player })[], which: 'ld' | 'ctp') => rows.forEach((e, i) => {
+      const r = byPlayer.get(e.player_id) ?? { id: e.player_id, name: e.player ? displayName(e.player) : '—', player: e.player, points: 0, leads: 0 }
+      r.points += placePoints(i)
+      if (i === 0) r.leads += 1
+      if (which === 'ld') r.ldRank = i + 1; else r.ctpRank = i + 1
+      r.player = r.player ?? e.player
+      byPlayer.set(e.player_id, r)
+    })
+    add(ld, 'ld'); add(ctp, 'ctp')
+    return [...byPlayer.values()].sort((a, b) => b.points - a.points || b.leads - a.leads)
+  })()
+  const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 - n % 10 === 10 ? 0 : n % 10)] ?? 'th'}`
+
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {/* ── Lightbox ── */}
@@ -248,11 +315,98 @@ export default function Contests() {
         <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
       </header>
 
-      <div data-tour="contests-tabs" className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20 }}>
-        <button onClick={() => { navigator.vibrate?.(8); setTab('ctp') }} className={`pill-tab pressable ${tab === 'ctp' ? 'active' : ''}`}>🎯 Closest to Pin</button>
-        <button onClick={() => { navigator.vibrate?.(8); setTab('ld') }}  className={`pill-tab pressable ${tab === 'ld'  ? 'active' : ''}`}>💥 Longest Drive</button>
-        <button onClick={() => { navigator.vibrate?.(8); setTab('lahey') }} className={`pill-tab pressable ${tab === 'lahey' ? 'active' : ''}`}>🤠 Jackass of the Day</button>
+      <div data-tour="contests-tabs" className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20, overflowX: 'auto', flexWrap: 'nowrap' }}>
+        {([['predictions', "🔮 Chubbs' Picks"], ['overall', '🏆 Overall'], ['ctp', '🎯 CTP'], ['ld', '💥 LD'], ['lahey', '🤠 Jackass']] as const).map(([id, label]) => (
+          <button key={id} onClick={() => { navigator.vibrate?.(8); setTab(id) }} className={`pill-tab pressable ${tab === id ? 'active' : ''}`} style={{ whiteSpace: 'nowrap' }}>{label}</button>
+        ))}
       </div>
+
+      {/* ── Chubbs' Picks (AI predictions) ───────────────────────── */}
+      {tab === 'predictions' && (
+        <>
+          {loading ? (
+            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>Loading…</div>
+          ) : !predictions ? (
+            <div className="glass" style={{ padding: '40px 24px', textAlign: 'center' }}>
+              <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)', marginBottom: 6 }}>Chubbs hasn't made his picks yet</div>
+              <div style={{ fontSize: 13, color: 'var(--tx4)', lineHeight: 1.6 }}>The organizers fire up the predictions from the admin panel — check back once he's weighed in.</div>
+            </div>
+          ) : (
+            <>
+              <div className="glass animate-fadeUp" style={{ padding: 16, marginBottom: 14, display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px solid rgba(212,165,58,0.3)' }}>
+                <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div className="section-label" style={{ marginBottom: 2 }}>Chubbs on the call</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--tx1)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{predictions.payload.intro}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {predictions.payload.contests.map((c, ci) => (
+                  <div key={ci} className="glass animate-fadeUp" style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,165,58,0.12)', background: 'rgba(212,165,58,0.05)' }}>
+                      <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, color: '#D4A53A' }}>
+                        {c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'}
+                      </div>
+                      {c.headline && <div style={{ fontSize: 12.5, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 3, lineHeight: 1.5 }}>“{c.headline}”</div>}
+                    </div>
+                    <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {c.podium.map((p, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{MEDAL[i] ?? `${i + 1}`}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#D4A53A' : 'var(--tx1)' }}>{p.player}</div>
+                            {p.note && <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5, marginTop: 1 }}>{p.note}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--tx4)', textAlign: 'center', marginTop: 14, fontStyle: 'italic' }}>
+                🔮 Chubbs' predictions — for entertainment only. Updated {formatDistanceToNow(new Date(predictions.generated_at), { addSuffix: true })}.
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Overall leaderboard ──────────────────────────────────── */}
+      {tab === 'overall' && (
+        <>
+          <div className="glass-flat animate-fadeUp" style={{ padding: '11px 16px', marginBottom: 16, fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5, border: '1px solid rgba(245,158,11,0.25)' }}>
+            ⚠️ Just for fun — the <strong style={{ color: 'var(--tx2)' }}>physical markers on the course are the official ruling</strong>. This board is for show. Points: 1st = 5, 2nd = 3, 3rd = 2, 4th = 1, everyone else who's entered = 1.
+          </div>
+          {loading && overallBoard.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{Array.from({ length: 3 }).map((_, i) => <SkeletonContestRow key={i} />)}</div>
+          ) : overallBoard.length === 0 ? (
+            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>No entries yet — log some from the GPS screen.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {overallBoard.map((r, i) => (
+                <div key={r.id} className="glass animate-fadeUp" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, borderColor: i === 0 ? 'rgba(212,165,58,0.3)' : undefined }}>
+                  <span style={{ fontSize: 20, width: 30, textAlign: 'center', flexShrink: 0 }}>{MEDAL[i] ?? `${i + 1}`}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: i === 0 ? '#D4A53A' : 'var(--tx1)', fontSize: 14 }}>{r.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 10 }}>
+                      {r.ldRank != null && <span>💥 {ordinal(r.ldRank)}</span>}
+                      {r.ctpRank != null && <span>🎯 {ordinal(r.ctpRank)}</span>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', lineHeight: 1 }}>{r.points}</div>
+                    <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase' }}>pts</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--tx4)', textAlign: 'center', marginTop: 14, fontStyle: 'italic' }}>
+            🤠 Jackass points get added once the winner is revealed at the awards.
+          </div>
+        </>
+      )}
 
       {/* ── CTP / LD ─────────────────────────────────────────────── */}
       {(tab === 'ctp' || tab === 'ld') && (
