@@ -132,10 +132,55 @@ export default function AdminPanel() {
   const [createTournamentCap, setCreateTournamentCap] = useState('')
   const [creatingTournament, setCreatingTournament] = useState(false)
 
+  const [approvalsEnabled, setApprovalsEnabled] = useState(false)
+  const [togglingApprovals, setTogglingApprovals] = useState(false)
+  const [forceApproving, setForceApproving] = useState(false)
+
   useEffect(() => {
-    supabase.from('tournament_settings').select('lahey_voting_open').eq('id', 1).single()
-      .then(({ data }) => { if (data) setLaheyVotingOpen(data.lahey_voting_open) })
+    supabase.from('tournament_settings').select('lahey_voting_open, approvals_enabled').eq('id', 1).single()
+      .then(({ data }) => { if (data) { setLaheyVotingOpen(data.lahey_voting_open); setApprovalsEnabled(!!data.approvals_enabled) } })
   }, [])
+
+  const toggleApprovals = async () => {
+    setTogglingApprovals(true)
+    const next = !approvalsEnabled
+    const { error } = await supabase.from('tournament_settings').update({ approvals_enabled: next }).eq('id', 1)
+    setTogglingApprovals(false)
+    if (error) showToast(error.message, 'error')
+    else { setApprovalsEnabled(next); showToast(next ? 'Score approvals ON — groups must approve each other' : 'Score approvals off') }
+  }
+
+  // Override: force-approve every posted score on behalf of each team's group
+  // partner(s), so a stuck group (dead phone) can move on.
+  const forceApproveAll = async () => {
+    if (!confirm('Force-approve every posted score for all groups? Use this to unlock a stuck group.')) return
+    setForceApproving(true)
+    try {
+      const [ttRes, scRes, apRes] = await Promise.all([
+        supabase.from('tee_times').select('team_id, tee_time'),
+        supabase.from('scores').select('id, team_id'),
+        supabase.from('score_approvals').select('score_id, approving_team_id, status'),
+      ])
+      const tts = ttRes.data ?? []
+      const byTime: Record<string, string[]> = {}
+      for (const t of tts) (byTime[t.tee_time] ??= []).push(t.team_id)
+      const timeOf: Record<string, string> = {}
+      for (const t of tts) timeOf[t.team_id] = t.tee_time
+      const have = new Set((apRes.data ?? []).filter(a => a.status === 'approved').map(a => `${a.score_id}:${a.approving_team_id}`))
+      const rows: { score_id: string; approving_team_id: string; status: string; updated_at: string }[] = []
+      for (const s of scRes.data ?? []) {
+        const partners = (byTime[timeOf[s.team_id]] ?? []).filter(id => id !== s.team_id)
+        for (const p of partners) if (!have.has(`${s.id}:${p}`)) rows.push({ score_id: s.id, approving_team_id: p, status: 'approved', updated_at: new Date().toISOString() })
+      }
+      if (rows.length) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any).from('score_approvals').upsert(rows, { onConflict: 'score_id,approving_team_id' })
+        if (error) { showToast(error.message, 'error'); setForceApproving(false); return }
+      }
+      showToast(`Unlocked — force-approved ${rows.length} score${rows.length === 1 ? '' : 's'}`)
+    } catch (e) { showToast((e as Error).message, 'error') }
+    setForceApproving(false)
+  }
 
   useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
 
@@ -1013,6 +1058,35 @@ export default function AdminPanel() {
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {activeTournamentId && (<>
+
+                {/* Cross-team score approvals */}
+                <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(212,165,58,0.25)', background: 'rgba(212,165,58,0.04)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <span style={{ fontSize: 20 }}>✅</span>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#D4A53A' }}>Group Score Approvals</div>
+                    <div style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: approvalsEnabled ? 'rgba(34,197,94,0.15)' : 'var(--surf2)', color: approvalsEnabled ? '#22c55e' : 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                      {approvalsEnabled ? '● On' : '● Off'}
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--tx2)', marginBottom: 16, lineHeight: 1.6 }}>
+                    When on, each team must approve the other team's score in their foursome (matched by tee time) before either can move to the next hole. Needs tee times set.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button onClick={toggleApprovals} disabled={togglingApprovals} style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700, cursor: togglingApprovals ? 'not-allowed' : 'pointer', opacity: togglingApprovals ? 0.6 : 1,
+                      background: approvalsEnabled ? 'var(--surf2)' : 'rgba(34,197,94,0.15)',
+                      border: `1px solid ${approvalsEnabled ? 'var(--bdr)' : 'rgba(34,197,94,0.4)'}`,
+                      color: approvalsEnabled ? 'var(--tx2)' : '#22c55e',
+                    }}>{togglingApprovals ? 'Updating…' : approvalsEnabled ? 'Turn Off' : 'Turn On'}</button>
+                    <button onClick={forceApproveAll} disabled={forceApproving || !approvalsEnabled} style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                      cursor: forceApproving || !approvalsEnabled ? 'not-allowed' : 'pointer', opacity: forceApproving || !approvalsEnabled ? 0.5 : 1,
+                      background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
+                    }}>
+                      <RotateCcw size={15} />{forceApproving ? 'Unlocking…' : 'Force-approve (unlock stuck group)'}
+                    </button>
+                  </div>
+                </div>
 
                 {/* Jackass voting */}
                 <div style={{ padding: '20px 22px', borderRadius: 14, border: '1px solid rgba(212,165,58,0.25)', background: 'rgba(212,165,58,0.04)' }}>

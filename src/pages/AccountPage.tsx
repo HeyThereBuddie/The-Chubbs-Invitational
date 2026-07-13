@@ -15,6 +15,7 @@ const NOTIF_TYPES: { key: string; icon: string; label: string; desc: string; adm
   { key: 'round_complete', icon: '🏁', label: 'Round Complete', desc: 'All teams finish 18 holes' },
   { key: 'team_scores',    icon: '⛳', label: 'My Team Scores', desc: 'Your team posts a score' },
   { key: 'contest_winner', icon: '🎯', label: 'Contest Entry',  desc: 'CTP or longest drive entry claimed' },
+  { key: 'score_approval', icon: '✅', label: 'Score to Approve', desc: 'Your group posts a score to approve' },
   { key: 'alligator',      icon: '🐊', label: 'Alligator Alert', desc: 'A team makes double bogey or worse' },
   { key: 'choking',        icon: '💀', label: 'Choking Alert',  desc: 'The leader gives up 2+ strokes on a hole' },
   { key: 'score_disputed', icon: '📋', label: 'Score Edited',   desc: 'An admin edits a posted score', adminOnly: true },

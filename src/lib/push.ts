@@ -6,7 +6,7 @@ export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
 export const DEFAULT_NOTIF_PREFS: Record<string, boolean> = {
   lead_change: true, top3_shift: true, hot_streak: true, eagle: true,
   round_complete: true, team_scores: true, contest_winner: true,
-  alligator: true, choking: true, score_disputed: false,
+  alligator: true, choking: true, score_disputed: false, score_approval: true,
 }
 
 export function urlBase64ToUint8Array(base64: string) {

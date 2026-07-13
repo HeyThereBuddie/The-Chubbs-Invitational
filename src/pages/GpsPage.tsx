@@ -15,6 +15,7 @@ import { resolveBag, recommendClub } from '../lib/clubs'
 import { type Shot, shotQuality, PUTT_TRACKING } from '../lib/shots'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
 import { ScoreBottomSheet } from '../components/ScoreBottomSheet'
+import { ApprovalCard } from '../components/ApprovalCard'
 import { CaddieSheet, type CaddieContext } from '../components/CaddieSheet'
 import { useTour } from '../context/TourContext'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -554,6 +555,7 @@ export default function GpsPage() {
   const [contestPhoto, setContestPhoto] = useState<File | null>(null)
   const [contestSubmitting, setContestSubmitting] = useState(false)
   const contestPhotoRef = useRef<HTMLInputElement>(null)
+  const [approvalSheetOpen, setApprovalSheetOpen] = useState(false)
   // Measure the hole tile so the club tile can match its width exactly.
   const [holeTileW, setHoleTileW] = useState<number | undefined>(undefined)
   const holeTileObs = useRef<ResizeObserver | null>(null)
@@ -1385,6 +1387,11 @@ export default function GpsPage() {
   // Drop a stale prompt when the hole changes.
   useEffect(() => { setContestPrompt(null); setContestSheet(null) }, [selectedHole])
 
+  // Close the approval sheet once everything's approved.
+  useEffect(() => {
+    if (approvalSheetOpen && scoring.pendingApprovals.length === 0) setApprovalSheetOpen(false)
+  }, [approvalSheetOpen, scoring.pendingApprovals.length])
+
   // App-tour demo: drive the contest pop-up / submission sheet from the current
   // tour step, sandboxed. Each contest step shows only its own piece; every other
   // step (incl. enter-score) force-closes them so they can't cover the scorecard.
@@ -2124,6 +2131,50 @@ export default function GpsPage() {
 
         {caddieOpen && <CaddieSheet context={caddieContext} onClose={() => setCaddieOpen(false)} />}
 
+        {/* Cross-team approval reminder banner */}
+        {!tour.active && scoring.approvalsEnabled && scoring.pendingApprovals.length > 0 && !approvalSheetOpen && !sheetOpen && (
+          <button onClick={() => setApprovalSheetOpen(true)} className="pressable" style={{
+            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 96px)', left: 10, right: 10, zIndex: 44,
+            padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(212,165,58,0.55)', cursor: 'pointer',
+            background: 'rgba(20,16,4,0.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            color: '#e8c766', display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: 13,
+            boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
+          }}>
+            <span style={{ fontSize: 16 }}>✅</span>
+            <span style={{ flex: 1, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Approve {scoring.pendingApprovals[0].team.name}'s hole {scoring.pendingApprovals[0].hole}
+              {scoring.pendingApprovals.length > 1 ? ` +${scoring.pendingApprovals.length - 1}` : ''}
+            </span>
+            <span style={{ fontSize: 16 }}>›</span>
+          </button>
+        )}
+
+        {/* Approval sheet */}
+        {approvalSheetOpen && (
+          <div onClick={() => setApprovalSheetOpen(false)} style={{
+            position: 'absolute', inset: 0, zIndex: 47, background: 'rgba(4,6,5,0.6)',
+            backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'flex-end',
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: '100%', background: 'var(--panel)', borderRadius: '20px 20px 0 0',
+              border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 -12px 40px rgba(0,0,0,0.6)',
+              marginBottom: navBase, padding: '16px 16px 20px', maxHeight: '78vh', overflowY: 'auto',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 1, color: '#D4A53A', flex: 1 }}>Approve group scores</div>
+                <button onClick={() => setApprovalSheetOpen(false)} style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--bdr2)', background: 'var(--surf2)', color: 'var(--tx1)', cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14 }}>Check your group's card, then approve so everyone can move on.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {scoring.pendingApprovals.map(({ team, score, hole }) => (
+                  <ApprovalCard key={`${team.id}-${score.id}`} team={team} score={score} hole={hole}
+                    onApprove={() => scoring.approveScore(score.id)} onDispute={() => scoring.disputeScore(score.id)} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Contest reminder — persists until answered */}
         {contestPrompt && !contestSheet && (
           <div data-tour={contestPrompt === 'ctp' ? 'contest-ctp' : 'contest-ld'} style={{
@@ -2832,7 +2883,19 @@ export default function GpsPage() {
         open={sheetOpen}
         hole={selectedHole}
         onClose={() => setSheetOpen(false)}
-        onNextHole={() => { setSelectedHole(h => Math.min(18, h + 1)); setSheetOpen(false) }}
+        onNextHole={() => {
+          // Nudge the group partner(s) to approve the hole we just wrapped up.
+          const from = selectedHole
+          if (!tour.active && scoring.approvalsEnabled && scoring.myTeamId) {
+            supabase.auth.getSession().then(({ data }) => {
+              supabase.functions.invoke('notify-approval', {
+                headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {},
+                body: { team_id: scoring.myTeamId, hole: from },
+              }).catch(() => {})
+            })
+          }
+          setSelectedHole(h => Math.min(18, h + 1)); setSheetOpen(false)
+        }}
         myTeam={scoring.myTeam}
         myScores={scoring.myScores}
         myChulligans={scoring.myChulligans}

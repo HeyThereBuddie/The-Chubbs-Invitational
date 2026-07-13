@@ -390,6 +390,13 @@ export function usePlayerScoring() {
     return n
   }
 
+  // Group scores I still need to approve — drives the GPS reminder banner.
+  const pendingApprovals = groupTeams.flatMap(gt =>
+    Object.values(gt.scores)
+      .filter(s => !approvedScoreIds.has(s.id))
+      .map(s => ({ team: gt, score: s, hole: s.hole })))
+    .sort((a, b) => a.hole - b.hole)
+
   return {
     myTeam,
     myTeamId,
@@ -407,6 +414,7 @@ export function usePlayerScoring() {
     groupTeams,
     approvedScoreIds,
     myDisputedHoles,
+    pendingApprovals,
     approveScore,
     disputeScore,
   }

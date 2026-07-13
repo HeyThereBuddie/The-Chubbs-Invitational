@@ -1,6 +1,6 @@
 import { HoleCard } from './HoleCard'
+import { ApprovalCard } from './ApprovalCard'
 import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam, isHoleComplete } from '../lib/scoreTypes'
-import { displayName } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 
 interface ScoreBottomSheetProps {
@@ -224,26 +224,10 @@ export function ScoreBottomSheet({
                 ⏳ Waiting for <strong style={{ color: 'var(--tx2)' }}>{gt.name}</strong> to post hole {gHole}…
               </div>
             ))}
-            {groupPending.map(({ gt, s }) => {
-              const drivePlayer = [gt.player1, gt.player2].find(p => p?.id === s.drive_used_id)
-              const driveName = drivePlayer ? displayName(drivePlayer) : null
-              const chs = gt.chulligans.filter(c => c.hole === gHole)
-              return (
-                <div key={gt.id} style={{ padding: '13px 15px', borderRadius: 12, background: 'rgba(212,165,58,0.06)', border: '1px solid rgba(212,165,58,0.25)' }}>
-                  <div style={{ fontWeight: 800, color: 'var(--tx1)', fontSize: 14, marginBottom: 6 }}>{gt.name}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--tx3)', display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
-                    <span>Score <strong style={{ color: 'var(--tx1)', fontSize: 14 }}>{s.score}</strong></span>
-                    <span>Putts <strong style={{ color: 'var(--tx1)' }}>{s.putts ?? '—'}</strong></span>
-                    {driveName && <span>Drive <strong style={{ color: 'var(--tx1)' }}>{driveName}</strong></span>}
-                    {chs.length > 0 && <span>🍺 {chs.length}</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => disputeScore(s.id)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Something's off</button>
-                    <button onClick={() => approveScore(s.id)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#D4A53A', color: '#1a1206', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>✓ Approve</button>
-                  </div>
-                </div>
-              )
-            })}
+            {groupPending.map(({ gt, s }) => (
+              <ApprovalCard key={gt.id} team={gt} score={s} hole={gHole}
+                onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)} />
+            ))}
           </div>
         )}
 
