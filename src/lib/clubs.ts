@@ -10,20 +10,36 @@ export interface ClubDist {
   enabled: boolean
 }
 
-// Long → short. 7i anchored at 150y (the reference for the one-number scaler).
+// Full catalog, long → short. 7i anchored at 150y (the reference for the
+// one-number scaler). `enabled` marks a realistic default 14-club set; the rest
+// are available to toggle on in the bag editor. Distances scale together off 7i.
 export const DEFAULT_BAG: ClubDist[] = [
+  // Driver & woods
   { club: 'Dr',  carry: 230, enabled: true },
-  { club: '3W',  carry: 210, enabled: true },
+  { club: '3W',  carry: 215, enabled: true },
+  { club: '4W',  carry: 205, enabled: false },
   { club: '5W',  carry: 195, enabled: true },
-  { club: 'Hyb', carry: 185, enabled: true },
-  { club: '3i',  carry: 190, enabled: true },
+  { club: '7W',  carry: 185, enabled: false },
+  { club: '9W',  carry: 175, enabled: false },
+  // Hybrids
+  { club: '2H',  carry: 205, enabled: false },
+  { club: '3H',  carry: 195, enabled: false },
+  { club: '4H',  carry: 185, enabled: true },
+  { club: '5H',  carry: 175, enabled: false },
+  { club: '6H',  carry: 165, enabled: false },
+  // Driving / utility + standard irons
+  { club: '1i',  carry: 215, enabled: false },
+  { club: '2i',  carry: 205, enabled: false },
+  { club: '3i',  carry: 190, enabled: false },
   { club: '4i',  carry: 180, enabled: true },
   { club: '5i',  carry: 170, enabled: true },
   { club: '6i',  carry: 160, enabled: true },
   { club: '7i',  carry: 150, enabled: true },
   { club: '8i',  carry: 140, enabled: true },
   { club: '9i',  carry: 130, enabled: true },
+  // Wedges
   { club: 'PW',  carry: 115, enabled: true },
+  { club: 'AW',  carry: 105, enabled: false },
   { club: 'GW',  carry: 100, enabled: true },
   { club: 'SW',  carry: 85,  enabled: true },
   { club: 'LW',  carry: 70,  enabled: true },
