@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { PageMasthead } from '../components/PageMasthead'
 import type { Update } from '../lib/types'
 import { formatDistanceToNow } from 'date-fns'
 import { Pin, PinOff, Trash2, Plus, X } from 'lucide-react'
@@ -64,17 +65,13 @@ export default function Updates() {
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Updates</h1>
-          <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Tournament announcements & news</p>
-        </div>
-        {isAdmin && (
-          <button className="btn-gold" onClick={() => setShowForm(!showForm)}>
+      <PageMasthead title="Updates" subtitle="Announcements & news" icon="📣" right={
+        isAdmin ? (
+          <button className="btn-gold" onClick={() => setShowForm(!showForm)} style={{ flexShrink: 0 }}>
             {showForm ? <><X size={14} /> Cancel</> : <><Plus size={14} /> Post Update</>}
           </button>
-        )}
-      </div>
+        ) : undefined
+      } />
 
       {/* Post form */}
       {showForm && isAdmin && (
