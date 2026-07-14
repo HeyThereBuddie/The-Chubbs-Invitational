@@ -16,7 +16,10 @@ const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/C
 const AUGUSTA = '#0a5c39'
 const AUGUSTA_DEEP = '#063a25'
 const CREAM = '#efe8d2'
+const GOLD_SOFT = '#e7c877'
 const MASTERS_RED = '#e0402f'
+const MASTHEAD = `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`
+const MASTHEAD_BORDER = '2px solid rgba(240,230,200,0.18)'
 
 interface FeedEvent {
   id: string
@@ -424,16 +427,15 @@ export default function Dashboard() {
           style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }}
         >
           <div style={{
-            padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            borderBottom: '1px solid rgba(212,165,58,0.1)',
-            background: 'rgba(212,165,58,0.04)',
+            padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 10,
+            background: MASTHEAD, borderBottom: MASTHEAD_BORDER,
           }}>
             <span style={{ fontSize: 15 }}>⚡</span>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Live Feed</span>
+            <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 2, color: CREAM }}>Live Feed</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold-dim)' }}>View all →</span>
-              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: GOLD_SOFT }}>View all →</span>
+              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#bbf7d0', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
             </div>
           </div>
           {feed.length === 0 ? (
@@ -518,18 +520,17 @@ export default function Dashboard() {
         style={{ padding: 0, overflow: 'hidden', marginBottom: 20, cursor: 'pointer' }}
       >
         <div style={{
-          padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-          borderBottom: '1px solid rgba(212,165,58,0.1)',
-          background: 'rgba(212,165,58,0.04)',
+          padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 10,
+          background: MASTHEAD, borderBottom: MASTHEAD_BORDER,
         }}>
           <span style={{ fontSize: 15 }}>🎯</span>
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Contest Leaders</span>
+          <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 2, color: CREAM }}>Contest Leaders</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold-dim)' }}>View all →</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: GOLD_SOFT }}>View all →</span>
             {isCurrentYear && (
               <>
-                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
+                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#bbf7d0', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
               </>
             )}
           </div>
