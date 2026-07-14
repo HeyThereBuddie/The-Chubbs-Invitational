@@ -421,6 +421,9 @@ export default function MyTeamPage() {
             )}
           </div>
 
+          {/* Roster — directly under the team title */}
+          {playersCompact}
+
           {/* ── Content: round has started ── */}
           {stats.played > 0 ? (
             <>
@@ -535,9 +538,6 @@ export default function MyTeamPage() {
                 </div>
               </div>
 
-              {/* Roster (compact) */}
-              {playersCompact}
-
               {/* Drive Usage */}
               {players.length === 2 && (
                 <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
@@ -632,14 +632,11 @@ export default function MyTeamPage() {
               </div>
             </>
           ) : (
-            <>
-              {playersCompact}
-              <div className="glass animate-fadeUp delay-200" style={{ padding: '36px 24px', textAlign: 'center', color: 'var(--tx3)' }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>🏌️</div>
-                <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1.5, color: 'var(--tx1)' }}>Round hasn't started yet</div>
-                <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>Stats will appear once scores are&nbsp;entered.</div>
-              </div>
-            </>
+            <div className="glass animate-fadeUp delay-200" style={{ padding: '36px 24px', textAlign: 'center', color: 'var(--tx3)' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🏌️</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1.5, color: 'var(--tx1)' }}>Round hasn't started yet</div>
+              <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>Stats will appear once scores are&nbsp;entered.</div>
+            </div>
           )}
         </>
       ))}
