@@ -316,20 +316,8 @@ export default function MyTeamPage() {
         </SegTabs>
       )}
 
-      {/* ── Team sub-tabs: profile vs team shot stats ── */}
-      {!loading && team && (
-        <SegTabs active={teamSubTab} className="animate-fadeUp" style={{ marginBottom: 16 }}>
-          <button onClick={() => setTeamSubTab('profile')} className={`pill-tab pressable ${teamSubTab === 'profile' ? 'active' : ''}`}>⛳ Team Profile</button>
-          <button onClick={() => setTeamSubTab('stats')} className={`pill-tab pressable ${teamSubTab === 'stats' ? 'active' : ''}`}>📊 Shot Stats</button>
-        </SegTabs>
-      )}
-
-      {teamSubTab === 'stats' && !loading && team && (
-        <ShotStats teamId={viewingTeamId} />
-      )}
-
-      {/* ── Loading skeleton — mirrors page layout ── */}
-      {teamSubTab === 'profile' && (loading ? (
+      {/* ── Team card + content (the Profile / Shot Stats switch lives in the masthead) ── */}
+      {loading ? (
         <div aria-busy="true" className="animate-fadeUp">
           {/* Team header */}
           <div style={{ marginBottom: 24 }}>
@@ -421,8 +409,24 @@ export default function MyTeamPage() {
                 )}
               </div>
             )}
+            {/* Profile / Shot Stats — the team's own view switch, under its title */}
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.16)' }}>
+              {([['profile', '⛳ Team Profile'], ['stats', '📊 Shot Stats']] as const).map(([id, label]) => (
+                <button key={id} onClick={() => setTeamSubTab(id)} className="pressable" style={{
+                  flex: 1, padding: '11px 10px', background: 'none', border: 'none', cursor: 'pointer',
+                  color: teamSubTab === id ? CREAM : 'rgba(240,230,200,0.55)',
+                  fontWeight: teamSubTab === id ? 800 : 600, fontSize: 12.5, letterSpacing: 0.3,
+                  boxShadow: teamSubTab === id ? 'inset 0 -2.5px 0 var(--gold)' : 'inset 0 -2.5px 0 transparent',
+                  transition: 'color .2s, box-shadow .2s',
+                }}>{label}</button>
+              ))}
+            </div>
           </div>
 
+          {teamSubTab === 'stats' ? (
+            <ShotStats teamId={viewingTeamId} players={players} />
+          ) : (
+          <>
           {/* Roster — directly under the team title */}
           {playersCompact}
 
@@ -640,8 +644,10 @@ export default function MyTeamPage() {
               <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>Stats will appear once scores are&nbsp;entered.</div>
             </div>
           )}
+          </>
+          )}
         </>
-      ))}
+      )}
     </div>
   )
 }
