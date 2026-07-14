@@ -7,11 +7,16 @@ import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player } from '../lib/types'
-import { Trophy } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
+
+// Augusta scoreboard palette — matches the Leaderboard / Hall of Fame Masters styling.
+const AUGUSTA = '#0a5c39'
+const AUGUSTA_DEEP = '#063a25'
+const CREAM = '#efe8d2'
+const MASTERS_RED = '#e0402f'
 
 interface FeedEvent {
   id: string
@@ -345,7 +350,7 @@ export default function Dashboard() {
           {defendingChamp.toPar != null && (
             <div style={{
               fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, flexShrink: 0,
-              color: defendingChamp.toPar < 0 ? '#34d399' : defendingChamp.toPar > 0 ? '#f87171' : 'var(--gold)',
+              color: defendingChamp.toPar < 0 ? MASTERS_RED : defendingChamp.toPar > 0 ? 'var(--tx2)' : 'var(--gold)',
             }}>
               {defendingChamp.toPar === 0 ? 'E' : defendingChamp.toPar > 0 ? `+${defendingChamp.toPar}` : defendingChamp.toPar}
             </div>
@@ -359,13 +364,17 @@ export default function Dashboard() {
         {/* Live leaderboard */}
         <div data-tour="leaderboard" className="glass animate-fadeUp delay-100" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{
-            padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-            borderBottom: '1px solid rgba(212,165,58,0.1)',
-            background: 'rgba(212,165,58,0.04)',
+            padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 11,
+            background: `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`,
+            borderBottom: '2px solid rgba(240,230,200,0.18)',
           }}>
-            <Trophy size={15} color="#D4A53A" />
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>{isCurrentYear ? 'Live Leaderboard' : 'Final Standings'}</span>
-            {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A53A', marginLeft: 'auto', display: 'inline-block' }} />}
+            <svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <circle cx="50" cy="50" r="48" fill={AUGUSTA_DEEP} stroke="#d4a53a" strokeWidth="3.5" />
+              <path d="M40 74 L40 28 L69 35 L40 42" fill={MASTERS_RED} />
+              <rect x="37.5" y="26" width="3" height="48" rx="1.5" fill={CREAM} />
+            </svg>
+            <span style={{ fontFamily: 'Bebas Neue', fontSize: 19, letterSpacing: 2, color: CREAM }}>{isCurrentYear ? 'Live Leaderboard' : 'Final Standings'}</span>
+            {isCurrentYear && <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: MASTERS_RED, boxShadow: `0 0 8px ${MASTERS_RED}`, marginLeft: 'auto', display: 'inline-block' }} />}
           </div>
           {leaders.length === 0 ? (
             <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
@@ -373,31 +382,36 @@ export default function Dashboard() {
               No scores yet — may the best ball win.
             </div>
           ) : (
-            leaders.map((row, i) => (
+            leaders.map((row, i) => {
+              const tp = Math.round(row.toPar)
+              const totalColor = tp < 0 ? MASTERS_RED : tp === 0 ? 'var(--gold)' : 'var(--tx2)'
+              return (
               <div key={row.team.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
                 borderBottom: i < leaders.length - 1 ? '1px solid var(--bdr)' : 'none',
-                background: i === 0 ? 'rgba(212,165,58,0.03)' : 'transparent',
+                background: i === 0 ? 'linear-gradient(90deg, var(--gold-08), transparent 62%)' : 'transparent',
+                boxShadow: i === 0 ? 'inset 3px 0 0 var(--gold)' : undefined,
               }}>
-                <span style={{ fontSize: 18, width: 26, flexShrink: 0 }}>
-                  {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 700 }}>{i + 1}</span>}
+                <span style={{ width: 24, textAlign: 'center', flexShrink: 0, fontFamily: 'Bebas Neue', fontSize: 18, letterSpacing: 0.5, color: i === 0 ? 'var(--gold)' : 'var(--tx3)', fontVariantNumeric: 'tabular-nums' }}>
+                  {i + 1}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? '#D4A53A' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14.5, color: i === 0 ? 'var(--gold)' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {row.team.name}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)' }}>
+                  <div style={{ fontSize: 11.5, color: 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, fontVariantNumeric: 'tabular-nums', color: row.toPar <= 0 ? 'var(--gold)' : 'var(--tx2)' }}>
-                    {toPar(Math.round(row.toPar))}
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 19, fontVariantNumeric: 'tabular-nums', color: totalColor, lineHeight: 1 }}>
+                    {toPar(tp)}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>thru {row.thru}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--tx4)', marginTop: 2 }}>{row.thru === 18 ? 'F' : `thru ${row.thru}`}</div>
                 </div>
               </div>
-            ))
+              )
+            })
           )}
         </div>
 
