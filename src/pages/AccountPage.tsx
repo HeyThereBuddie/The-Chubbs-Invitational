@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { usePersistedTab } from '../hooks/usePersistedTab'
+import { SegTabs } from '../components/SegTabs'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -519,11 +520,11 @@ export default function AccountPage() {
       </section>
 
       {/* ── Account tabs ── */}
-      <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 20 }}>
+      <SegTabs active={tab} className="animate-fadeUp" style={{ marginBottom: 20 }}>
         <button onClick={() => setTab('profile')} className={`pill-tab pressable ${tab === 'profile' ? 'active' : ''}`}>Profile</button>
         <button onClick={() => setTab('bag')} className={`pill-tab pressable ${tab === 'bag' ? 'active' : ''}`}>My Bag</button>
         <button onClick={() => setTab('career')} className={`pill-tab pressable ${tab === 'career' ? 'active' : ''}`}>Career</button>
-      </div>
+      </SegTabs>
 
       {/* ── Profile info ── */}
       {tab === 'profile' && (

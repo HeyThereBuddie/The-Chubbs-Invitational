@@ -9,6 +9,7 @@ import type { TeeTime, Team, Player } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
 import { Clock, GripVertical, Zap, Shuffle } from 'lucide-react'
 import { usePersistedTab } from '../hooks/usePersistedTab'
+import { SegTabs } from '../components/SegTabs'
 
 // Augusta scoreboard palette — matches the Leaderboard / Dashboard / Hall of Fame.
 const AUGUSTA = '#0a5c39'
@@ -229,7 +230,7 @@ export default function TeeTimes() {
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {/* ── Admin mode switch ─────────────────────────────────────── */}
       {isAdmin && isCurrentYear && (
-        <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
+        <SegTabs active={tab} className="animate-fadeUp" style={{ marginBottom: 16 }}>
           <button onClick={() => setTab('view')} className={`pill-tab pressable ${tab === 'view' ? 'active' : ''}`}
             style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Clock size={13} /> View
@@ -242,7 +243,7 @@ export default function TeeTimes() {
             style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Zap size={13} /> Auto
           </button>
-        </div>
+        </SegTabs>
       )}
 
       {/* ── Loading skeleton — mirrors timeline layout ────────────── */}

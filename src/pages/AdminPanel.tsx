@@ -8,6 +8,7 @@ import { displayName } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, RotateCcw, PlayCircle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
 import { usePersistedTab } from '../hooks/usePersistedTab'
+import { SegTabs } from '../components/SegTabs'
 import CourseGpsSetup from '../components/admin/CourseGpsSetup'
 import Scores from './Scores'
 import Groups from './Groups'
@@ -658,7 +659,7 @@ export default function AdminPanel() {
         <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Manage teams, users, and access codes</p>
       </div>
 
-      <div className="pill-tabs" style={{ marginBottom: 20 }}>
+      <SegTabs active={tab} style={{ marginBottom: 20 }}>
         {([
           { id: 'scores',     label: '📝 Scores' },
           { id: 'groups',     label: '👥 Team Draw' },
@@ -672,21 +673,21 @@ export default function AdminPanel() {
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
-      </div>
+      </SegTabs>
 
 
       {/* ── Users tab ───────────────────────────────────────────── */}
       {tab === 'players' && (
         <div>
           {/* Sub-tabs */}
-          <div className="pill-tabs" style={{ marginBottom: 20 }}>
+          <SegTabs active={playerSubTab} style={{ marginBottom: 20 }}>
             <button onClick={() => setPlayerSubTab('roster')} className={`pill-tab ${playerSubTab === 'roster' ? 'active' : ''}`}>
               🏆 Tournament Roster
             </button>
             <button onClick={() => setPlayerSubTab('users')} className={`pill-tab ${playerSubTab === 'users' ? 'active' : ''}`}>
               👤 Users
             </button>
-          </div>
+          </SegTabs>
 
           {/* Tournament Roster */}
           {playerSubTab === 'roster' && <RSVPPanel />}

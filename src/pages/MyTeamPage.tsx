@@ -9,6 +9,7 @@ import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
 import { ShotStats } from '../components/ShotStats'
 import { usePersistedTab } from '../hooks/usePersistedTab'
+import { SegTabs } from '../components/SegTabs'
 
 // Augusta scoreboard palette — matches the Leaderboard / Dashboard / Hall of Fame.
 const AUGUSTA = '#0a5c39'
@@ -296,7 +297,7 @@ export default function MyTeamPage() {
 
       {/* ── Team selector tabs ── */}
       {allTeams.length > 1 && (
-        <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
+        <SegTabs active={viewingTeamId} className="animate-fadeUp" style={{ marginBottom: 16 }}>
           {tabTeams.map(t => (
             <button
               key={t.id}
@@ -312,15 +313,15 @@ export default function MyTeamPage() {
               )}
             </button>
           ))}
-        </div>
+        </SegTabs>
       )}
 
       {/* ── Team sub-tabs: profile vs team shot stats ── */}
       {!loading && team && (
-        <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
+        <SegTabs active={teamSubTab} className="animate-fadeUp" style={{ marginBottom: 16 }}>
           <button onClick={() => setTeamSubTab('profile')} className={`pill-tab pressable ${teamSubTab === 'profile' ? 'active' : ''}`}>⛳ Team Profile</button>
           <button onClick={() => setTeamSubTab('stats')} className={`pill-tab pressable ${teamSubTab === 'stats' ? 'active' : ''}`}>📊 Shot Stats</button>
-        </div>
+        </SegTabs>
       )}
 
       {teamSubTab === 'stats' && !loading && team && (

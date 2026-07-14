@@ -9,6 +9,7 @@ import type { UpsertLeaheyVotePayload } from '../lib/writeQueue'
 import { Skeleton } from '../components/Skeleton'
 import { useTour } from '../context/TourContext'
 import { usePersistedTab } from '../hooks/usePersistedTab'
+import { SegTabs } from '../components/SegTabs'
 import type { ContestEntry, Player, LeaheyVote, PredictionPayload } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Target } from 'lucide-react'
@@ -268,11 +269,11 @@ export default function Contests() {
         <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
       </header>
 
-      <div data-tour="contests-tabs" className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20, overflowX: 'auto', flexWrap: 'nowrap' }}>
+      <SegTabs active={tab} data-tour="contests-tabs" className="animate-fadeUp delay-100" style={{ marginBottom: 20, overflowX: 'auto', flexWrap: 'nowrap' }}>
         {([['predictions', "🔮 Chubbs' Picks"], ['ctp', '🎯 CTP'], ['ld', '💥 LD'], ['lahey', '🤠 Jackass']] as const).map(([id, label]) => (
           <button key={id} onClick={() => { navigator.vibrate?.(8); setTab(id) }} className={`pill-tab pressable ${tab === id ? 'active' : ''}`} style={{ whiteSpace: 'nowrap' }}>{label}</button>
         ))}
-      </div>
+      </SegTabs>
 
       {/* ── Chubbs' Picks (AI predictions) ───────────────────────── */}
       {tab === 'predictions' && (
