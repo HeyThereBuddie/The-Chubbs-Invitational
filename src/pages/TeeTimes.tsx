@@ -313,156 +313,119 @@ export default function TeeTimes() {
         </div>
       )}
 
-      {/* ── Arrange (drag & drop) ─────────────────────────────────── */}
+      {/* ── Arrange (tap-to-swap) ─────────────────────────────────── */}
       {tab === 'arrange' && isAdmin && (
-        <div className="animate-fadeUp">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-            <p style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5 }}>
-              {pickedTeamId
-                ? '👆 Now tap another team to swap, or an open slot to move it there.'
-                : 'Tap a team to pick it up, then tap another to swap (or drag on desktop).'}
-            </p>
-            {saving && (
-              <span className="animate-pulseDot" style={{ fontSize: 12, fontWeight: 600, color: 'var(--gold)', whiteSpace: 'nowrap' }}>
-                Saving…
-              </span>
-            )}
+        <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Masthead */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '15px 18px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+            <Crest size={38} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 2.5, color: CREAM, lineHeight: 1 }}>Arrange Groups</div>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD_SOFT, marginTop: 4 }}>Tap to swap · {foursomes.length} groups</div>
+            </div>
+            {saving && <span className="animate-pulseDot" style={{ fontSize: 11, fontWeight: 700, color: CREAM, whiteSpace: 'nowrap' }}>Saving…</span>}
           </div>
 
-          {foursomes.length === 0 && (
-            <div className="glass" style={{ padding: '48px 24px', textAlign: 'center' }}>
+          {/* Instruction */}
+          <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--bdr)', fontSize: 12.5, lineHeight: 1.5, color: pickedTeamId ? 'var(--gold)' : 'var(--tx3)', fontWeight: pickedTeamId ? 600 : 400 }}>
+            {pickedTeamId
+              ? '👆 Now tap another team to swap, or an open slot to move it there.'
+              : 'Tap a team to pick it up, then tap another to swap.'}
+          </div>
+
+          {foursomes.length === 0 ? (
+            <div style={{ padding: '44px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>⛳</div>
-              <p style={{ fontSize: 13, color: 'var(--tx4)' }}>
-                No tee times yet — use Auto to assign foursomes first.
-              </p>
+              <p style={{ fontSize: 13, color: 'var(--tx4)' }}>No tee times yet — use Auto to assign foursomes first.</p>
             </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {foursomes.map((fs, i) => (
-              <div key={fs.tee_time} className={`glass ${i < 4 ? `animate-fadeUp delay-${(i + 1) * 100}` : ''}`} style={{ padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-                  <span style={{
-                    fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1,
-                    color: 'var(--gold)', lineHeight: 1, whiteSpace: 'nowrap',
-                  }}>
-                    {formatTime(fs.tee_time)}
-                  </span>
-                  <span className="section-label" style={{ color: 'var(--tx4)' }}>
-                    Hole {fs.starting_hole} · Foursome {i + 1}
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {[0, 1].map(slotIdx => {
-                    const tt = fs.tts[slotIdx]
-
-                    if (tt) {
-                      const isDragging = dragTeamId === tt.team_id
-                      const isOver = dragOverTarget === tt.team_id
-                      const isPicked = pickedTeamId === tt.team_id
-                      const highlight = isOver || isPicked
-                      return (
-                        <div
-                          key={tt.team_id}
-                          className="glass-flat pressable"
-                          draggable
-                          onClick={() => tapTeam(tt.team_id)}
-                          onDragStart={() => onDragStart(tt.team_id)}
-                          onDragEnd={onDragEnd}
-                          onDragOver={e => { e.preventDefault(); setDragOverTarget(tt.team_id) }}
-                          onDragLeave={e => {
-                            if (!e.currentTarget.contains(e.relatedTarget as Node))
-                              setDragOverTarget(null)
-                          }}
-                          onDrop={e => {
-                            e.preventDefault()
-                            if (dragTeamId && dragTeamId !== tt.team_id) swapTeams(dragTeamId, tt.team_id)
-                            setDragOverTarget(null)
-                          }}
-                          style={{
-                            padding: 12,
-                            borderRadius: 12,
-                            border: `1px solid ${highlight ? 'var(--gold)' : 'var(--bdr)'}`,
-                            background: highlight ? 'var(--gold-15)' : 'var(--surf2)',
-                            boxShadow: highlight ? 'var(--elev-gold)' : 'var(--elev-1)',
-                            opacity: isDragging ? 0.35 : 1,
-                            cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
-                            userSelect: 'none',
-                          }}
-                        >
-                          <Avatar player={tt.team?.player1} size={30} />
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {tt.team?.name}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {[teamMemberName(tt.team?.player1, tt.team?.p1_name), teamMemberName(tt.team?.player2, tt.team?.p2_name)].filter(Boolean).join(' & ')}
-                            </div>
-                          </div>
-                          {isPicked && <span style={{ fontSize: 15, flexShrink: 0 }}>✋</span>}
-                        </div>
-                      )
-                    }
-
-                    // Empty slot — drop target
-                    const emptyKey = `empty:${fs.tee_time}`
-                    const isOver = dragOverTarget === emptyKey && !!dragTeamId
-                    const canDrop = isOver || (!!pickedTeamId)
+          ) : foursomes.map((fs, i) => (
+            <div key={fs.tee_time} style={{ borderBottom: '1px solid var(--bdr)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 16px 6px' }}>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, color: 'var(--gold)', lineHeight: 1, whiteSpace: 'nowrap' }}>{formatTime(fs.tee_time)}</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: 'var(--tx4)' }}>Hole {fs.starting_hole} · Group {i + 1}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px 14px' }}>
+                {[0, 1].map(slotIdx => {
+                  const tt = fs.tts[slotIdx]
+                  if (tt) {
+                    const isDragging = dragTeamId === tt.team_id
+                    const isOver = dragOverTarget === tt.team_id
+                    const isPicked = pickedTeamId === tt.team_id
+                    const highlight = isOver || isPicked
                     return (
                       <div
-                        key={`empty-${slotIdx}`}
-                        onClick={() => tapSlot(fs.tee_time, fs.starting_hole)}
-                        onDragOver={e => { e.preventDefault(); setDragOverTarget(emptyKey) }}
-                        onDragLeave={e => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node))
-                            setDragOverTarget(null)
-                        }}
-                        onDrop={e => {
-                          e.preventDefault()
-                          if (dragTeamId) moveTeamToTime(dragTeamId, fs.tee_time, fs.starting_hole)
-                          setDragOverTarget(null)
-                        }}
+                        key={tt.team_id}
+                        className="pressable"
+                        draggable
+                        onClick={() => tapTeam(tt.team_id)}
+                        onDragStart={() => onDragStart(tt.team_id)}
+                        onDragEnd={onDragEnd}
+                        onDragOver={e => { e.preventDefault(); setDragOverTarget(tt.team_id) }}
+                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverTarget(null) }}
+                        onDrop={e => { e.preventDefault(); if (dragTeamId && dragTeamId !== tt.team_id) swapTeams(dragTeamId, tt.team_id); setDragOverTarget(null) }}
                         style={{
-                          padding: 12, minHeight: 60,
-                          borderRadius: 12,
-                          border: `1px dashed ${isOver ? 'var(--gold)' : 'var(--bdr2)'}`,
-                          background: isOver ? 'var(--gold-08)' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: canDrop ? 'var(--gold)' : 'var(--tx5)',
-                          fontSize: 12, fontWeight: canDrop ? 600 : 400, cursor: pickedTeamId ? 'pointer' : 'default',
-                          transition: 'all 0.15s',
+                          padding: '10px 12px', borderRadius: 12,
+                          border: `1px solid ${highlight ? 'var(--gold)' : 'var(--bdr)'}`,
+                          background: highlight ? 'var(--gold-15)' : 'var(--surf2)',
+                          boxShadow: highlight ? 'var(--elev-gold)' : 'var(--elev-1)',
+                          opacity: isDragging ? 0.35 : 1, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s', userSelect: 'none',
                         }}
                       >
-                        {isOver ? '↓ Drop here' : pickedTeamId ? 'Tap to move here' : 'Open slot'}
+                        <Avatar player={tt.team?.player1} size={32} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tt.team?.name}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {[teamMemberName(tt.team?.player1, tt.team?.p1_name), teamMemberName(tt.team?.player2, tt.team?.p2_name)].filter(Boolean).join(' & ')}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 15, flexShrink: 0, opacity: isPicked ? 1 : 0.35 }}>{isPicked ? '✋' : '⇅'}</span>
                       </div>
                     )
-                  })}
-                </div>
+                  }
+                  const emptyKey = `empty:${fs.tee_time}`
+                  const isOver = dragOverTarget === emptyKey && !!dragTeamId
+                  const canDrop = isOver || !!pickedTeamId
+                  return (
+                    <div
+                      key={`empty-${slotIdx}`}
+                      onClick={() => tapSlot(fs.tee_time, fs.starting_hole)}
+                      onDragOver={e => { e.preventDefault(); setDragOverTarget(emptyKey) }}
+                      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverTarget(null) }}
+                      onDrop={e => { e.preventDefault(); if (dragTeamId) moveTeamToTime(dragTeamId, fs.tee_time, fs.starting_hole); setDragOverTarget(null) }}
+                      style={{
+                        padding: '14px 12px', borderRadius: 12,
+                        border: `1px dashed ${isOver ? 'var(--gold)' : 'var(--bdr2)'}`,
+                        background: isOver ? 'var(--gold-08)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: canDrop ? 'var(--gold)' : 'var(--tx5)',
+                        fontSize: 12, fontWeight: canDrop ? 600 : 400, cursor: pickedTeamId ? 'pointer' : 'default',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {isOver ? '↓ Drop here' : pickedTeamId ? 'Tap to move here' : 'Open slot'}
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* ── Auto-assign ───────────────────────────────────────────── */}
       {tab === 'auto' && isAdmin && (
-        <div className="glass animate-fadeUp" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-              background: 'var(--gold-15)', border: '1px solid var(--gold-25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Shuffle size={16} color="var(--gold)" />
+        <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '15px 18px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+            <Crest size={38} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 2.5, color: CREAM, lineHeight: 1 }}>Randomize Foursomes</div>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD_SOFT, marginTop: 4 }}>Auto-assign · {teams.length} teams</div>
             </div>
-            <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--gold)', letterSpacing: 3, margin: 0, lineHeight: 1 }}>
-              Randomize Foursomes
-            </h2>
           </div>
 
+          <div style={{ padding: 20 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label className="section-label" style={{ display: 'block', marginBottom: 8 }}>First Tee Time</label>
@@ -525,6 +488,7 @@ export default function TeeTimes() {
           <p style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 12, textAlign: 'center', lineHeight: 1.5 }}>
             Teams are randomly paired. Use Arrange tab afterwards to swap anyone on the fly.
           </p>
+          </div>
         </div>
       )}
     </div>
