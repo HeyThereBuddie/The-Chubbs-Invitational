@@ -185,6 +185,7 @@ export default function AdminPanel() {
   // ── Chubbs' AI contest predictions (manual re-run only, cost control) ──
   const [runningPredictions, setRunningPredictions] = useState(false)
   const [lastPrediction, setLastPrediction] = useState<{ payload: PredictionPayload; generated_at: string } | null>(null)
+  const [teamsDrawn, setTeamsDrawn] = useState<number | null>(null)
 
   const loadLastPrediction = async () => {
     if (!activeTournamentId) return
@@ -195,6 +196,10 @@ export default function AdminPanel() {
       .limit(1).maybeSingle()
     if (data) setLastPrediction({ payload: data.payload as PredictionPayload, generated_at: data.generated_at as string })
     else setLastPrediction(null)
+
+    // How many teams are drawn? Tells the admin which mode Chubbs will use.
+    const { count } = await supabase.from('teams').select('id', { count: 'exact', head: true }).eq('tournament_id', activeTournamentId)
+    setTeamsDrawn(count ?? 0)
   }
 
   useEffect(() => { if (tab === 'predictions') loadLastPrediction() }, [tab, activeTournamentId])
@@ -1707,6 +1712,21 @@ export default function AdminPanel() {
               board on the Contests page under <strong>Chubbs' Picks</strong>.
             </div>
           </div>
+
+          {/* Which mode the Overall Champion pick will use */}
+          {teamsDrawn != null && (
+            <div className="glass-flat" style={{
+              padding: '11px 14px', fontSize: 12.5, lineHeight: 1.5,
+              border: teamsDrawn > 0 ? '1px solid rgba(52,211,153,0.3)' : '1px solid rgba(245,158,11,0.3)',
+              color: 'var(--tx2)',
+            }}>
+              {teamsDrawn > 0 ? (
+                <><strong style={{ color: '#34d399' }}>✅ {teamsDrawn} team{teamsDrawn === 1 ? '' : 's'} drawn.</strong> Chubbs will predict the <strong>actual teams</strong> for Overall Champion.</>
+              ) : (
+                <><strong style={{ color: '#f59e0b' }}>⚠️ Teams not drawn yet.</strong> Chubbs will give a <strong>field power ranking</strong> for Overall Champion — re-run after the draw for team picks.</>
+              )}
+            </div>
+          )}
 
           <button
             onClick={runPredictions}
