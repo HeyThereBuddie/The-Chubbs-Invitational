@@ -146,13 +146,29 @@ export default function AccountPage() {
   }, [profile?.id])
 
   const fetchCareerStats = async (profileId: string) => {
+    // Match by profile id AND by name: historic results (backfilled years) are
+    // name-only, not linked to accounts — so a player's past podiums still count.
     const { data: results } = await supabase
       .from('tournament_results')
-      .select('category, tournament_id, tournaments!inner(year)')
-      .or(`player1_id.eq.${profileId},player2_id.eq.${profileId}`)
-    const flat = (results ?? []).map((r: { category: string; tournaments: { year: number } | { year: number }[] | null }) => ({
+      .select('category, player1_id, player2_id, player1_name, player2_name, tournaments!inner(year)')
+    const myNames = new Set(
+      [profile?.name, profile?.nickname].filter(Boolean).map(n => n!.trim().toLowerCase())
+    )
+    type ResRow = {
+      category: string
+      player1_id: string | null; player2_id: string | null
+      player1_name: string | null; player2_name: string | null
+      tournaments: { year: number } | { year: number }[] | null
+    }
+    const mine = ((results ?? []) as ResRow[]).filter(r => {
+      if (r.player1_id === profileId || r.player2_id === profileId) return true
+      const n1 = (r.player1_name ?? '').trim().toLowerCase()
+      const n2 = (r.player2_name ?? '').trim().toLowerCase()
+      return (n1 && myNames.has(n1)) || (n2 && myNames.has(n2))
+    })
+    const flat = mine.map(r => ({
       category: r.category,
-      year: Array.isArray(r.tournaments) ? r.tournaments[0]?.year : (r.tournaments as { year: number } | null)?.year ?? 0,
+      year: Array.isArray(r.tournaments) ? r.tournaments[0]?.year : r.tournaments?.year ?? 0,
     }))
     setCareerStats(flat)
   }
