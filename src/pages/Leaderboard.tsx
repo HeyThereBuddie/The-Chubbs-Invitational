@@ -219,14 +219,14 @@ export default function Leaderboard() {
               {rows.map((row, i) => {
                 const { pos, tied } = posInfo[i]
                 const isLeader = pos === 1 && row.thru > 0
-                const isOpen = expandedId === null ? isLeader : expandedId === row.team.id
+                const isOpen = expandedId === row.team.id   // all scorecards collapsed until tapped
                 const back = pos > 1 && rows[0].thru > 0 && row.thru > 0 ? row.toPar - rows[0].toPar : null
                 return (
                   <div key={row.team.id}>
                     {/* Tap-to-expand row header */}
                     <div
                       className="pressable"
-                      onClick={() => setExpandedId(prev => (prev === null ? (isLeader ? '' : row.team.id) : prev === row.team.id ? '' : row.team.id))}
+                      onClick={() => setExpandedId(prev => (prev === row.team.id ? null : row.team.id))}
                       style={{
                         display: 'grid', gridTemplateColumns: GRID, gap: 8, alignItems: 'center',
                         padding: isLeader ? '15px 18px' : '12px 18px', cursor: 'pointer',
