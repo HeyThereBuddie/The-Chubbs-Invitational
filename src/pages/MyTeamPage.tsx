@@ -540,12 +540,13 @@ export default function MyTeamPage() {
 
               {/* Drive Usage */}
               {players.length === 2 && (
-                <div className="glass animate-fadeUp delay-400" style={{ padding: 20, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                    <div className="section-label">Drive Usage</div>
-                    <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 0.3 }}>min 4 per player per&nbsp;nine</div>
+                <div className="glass animate-fadeUp delay-400" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 16px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+                    <span style={{ fontSize: 15 }}>⛳</span>
+                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 19, letterSpacing: 2, color: CREAM, lineHeight: 1 }}>Drive Usage</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 9.5, letterSpacing: 0.8, textTransform: 'uppercase', color: GOLD_SOFT }}>Min 4 / nine</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[{ label: 'Front 9', from: 1, to: 9 }, { label: 'Back 9', from: 10, to: 18 }].map(({ label, from, to }) => (
                       <div key={label} className="glass-flat" style={{ padding: '10px 12px' }}>
                         <div className="section-label" style={{ fontSize: 10, letterSpacing: 1.5, color: 'var(--tx4)', marginBottom: 10 }}>{label}</div>
@@ -575,12 +576,13 @@ export default function MyTeamPage() {
 
               {/* Chulligans */}
               {players.length === 2 && (
-                <div className="glass animate-fadeUp delay-500" style={{ padding: 20, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                    <div className="section-label">🍺 Chulligans</div>
-                    <div style={{ fontSize: 10, color: 'var(--tx4)', letterSpacing: 0.3 }}>1 per player per round · must&nbsp;chug</div>
+                <div className="glass animate-fadeUp delay-500" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 16px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+                    <span style={{ fontSize: 15 }}>🍺</span>
+                    <span style={{ fontFamily: 'Bebas Neue', fontSize: 19, letterSpacing: 2, color: CREAM, lineHeight: 1 }}>Chulligans</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 9.5, letterSpacing: 0.8, textTransform: 'uppercase', color: GOLD_SOFT }}>1 each · must chug</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, padding: 16 }}>
                     {players.map(p => {
                       const c = chulligans.find(ch => ch.player_id === p.id)
                       return (
@@ -611,9 +613,12 @@ export default function MyTeamPage() {
               )}
 
               {/* Scoring Breakdown */}
-              <div className="glass animate-fadeUp delay-500" style={{ padding: 20 }}>
-                <div className="section-label" style={{ marginBottom: 16 }}>Scoring Breakdown</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="glass animate-fadeUp delay-500" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 16px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+                  <span style={{ fontSize: 15 }}>📊</span>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 19, letterSpacing: 2, color: CREAM, lineHeight: 1 }}>Scoring Breakdown</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
                   {breakdown.map(({ label, count, color }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ width: 72, fontSize: 12, color: 'var(--tx2)', textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{label}</div>
