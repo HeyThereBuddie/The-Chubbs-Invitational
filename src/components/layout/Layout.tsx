@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useCallback } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { useTheme } from '../../context/ThemeContext'
@@ -29,52 +29,62 @@ export default function Layout({ children }: { children: ReactNode }) {
     navigate('/hall-of-fame')
   }
   const handleRefresh = useCallback(() => { window.location.reload() }, [])
-  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, location.pathname !== '/gps')
+  const scrollRef = useRef<HTMLElement>(null)
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, location.pathname !== '/gps', scrollRef)
+  // The document no longer scrolls (only <main> does), so reset it to the top on
+  // each route change — otherwise a new page inherits the previous page's scroll.
+  useEffect(() => { scrollRef.current?.scrollTo(0, 0) }, [location.pathname])
 
   const avatarInitial = (profile?.nickname || profile?.name || '?')[0].toUpperCase()
 
+  const snapshotBanner = !isCurrentYear ? (
+    <div style={{
+      zIndex: 200, flexShrink: 0,
+      background: 'rgba(212,165,58,0.12)',
+      borderBottom: '1px solid rgba(212,165,58,0.35)',
+      backdropFilter: 'blur(12px)',
+      padding: '8px 12px 8px 20px',
+      display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <span style={{ fontSize: 14 }}>🔒</span>
+      <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#D4A53A', letterSpacing: 2, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {viewingTournament?.name ?? viewingYear} — Snapshot
+      </span>
+      <button
+        onClick={exitSnapshot}
+        aria-label="Exit snapshot"
+        className="pressable"
+        style={{
+          flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
+          padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+          background: '#D4A53A', color: '#1a1206', border: 'none', fontWeight: 800, fontSize: 12,
+        }}
+      >
+        <X size={14} strokeWidth={2.6} /> Exit
+      </button>
+    </div>
+  ) : null
+
   return (
     <div className="bg-mesh" style={{ minHeight: '100dvh' }}>
-      {!isCurrentYear && (
-        <div style={{
-          position: 'sticky', top: 0, zIndex: 200,
-          background: 'rgba(212,165,58,0.12)',
-          borderBottom: '1px solid rgba(212,165,58,0.35)',
-          backdropFilter: 'blur(12px)',
-          padding: '8px 12px 8px 20px',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 14 }}>🔒</span>
-          <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#D4A53A', letterSpacing: 2, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {viewingTournament?.name ?? viewingYear} — Snapshot
-          </span>
-          <button
-            onClick={exitSnapshot}
-            aria-label="Exit snapshot"
-            className="pressable"
-            style={{
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
-              padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
-              background: '#D4A53A', color: '#1a1206', border: 'none', fontWeight: 800, fontSize: 12,
-            }}
-          >
-            <X size={14} strokeWidth={2.6} /> Exit
-          </button>
-        </div>
-      )}
-
       {isDesktop ? (
-        <div style={{ display: 'flex' }}>
-          <Sidebar />
-          <main style={{ marginLeft: 240, flex: 1, padding: '32px 40px', minHeight: '100dvh' }}>
-            {children}
-          </main>
-        </div>
+        <>
+          {snapshotBanner}
+          <div style={{ display: 'flex' }}>
+            <Sidebar />
+            <main style={{ marginLeft: 240, flex: 1, padding: '32px 40px', minHeight: '100dvh' }}>
+              {children}
+            </main>
+          </div>
+        </>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+        // Fixed-height shell: the document itself never scrolls, so the browser's
+        // collapsing toolbar can't drag the fixed nav up and down — only <main> scrolls.
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+          {snapshotBanner}
           {/* Mobile header */}
           <header style={{
-            position: 'sticky', top: 0, zIndex: 50,
+            flexShrink: 0, zIndex: 50,
             background: 'var(--panel)',
             backdropFilter: 'blur(20px)',
             borderBottom: '1px solid rgba(212,165,58,0.14)',
@@ -128,7 +138,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               )}
             </Link>
           </header>
-          <main style={{ flex: 1, padding: '20px 16px', paddingBottom: 80 }}>
+          <main ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 16px', paddingBottom: 80 }}>
             {/* Pull-to-refresh indicator */}
             <div style={{
               display: 'flex', justifyContent: 'center', alignItems: 'center',

@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
 const THRESHOLD = 72 // px of pull needed to trigger
 
-export function usePullToRefresh(onRefresh: () => void | Promise<void>, enabled = true) {
+// scrollRef: the element that actually scrolls (an inner <main> container). When
+// provided we read its scrollTop instead of the window's, so pull-to-refresh only
+// fires at the true top of the content.
+export function usePullToRefresh(onRefresh: () => void | Promise<void>, enabled = true, scrollRef?: RefObject<HTMLElement | null>) {
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const startYRef = useRef(0)
@@ -12,9 +15,10 @@ export function usePullToRefresh(onRefresh: () => void | Promise<void>, enabled 
 
   useEffect(() => {
     if (!enabled) return
+    const scrollTop = () => (scrollRef?.current ? scrollRef.current.scrollTop : window.scrollY)
 
     const onTouchStart = (e: TouchEvent) => {
-      if (window.scrollY > 0) return
+      if (scrollTop() > 0) return
       startYRef.current = e.touches[0].clientY
       isPullingRef.current = true
     }
@@ -22,7 +26,7 @@ export function usePullToRefresh(onRefresh: () => void | Promise<void>, enabled 
     const onTouchMove = (e: TouchEvent) => {
       if (!isPullingRef.current) return
       const dy = e.touches[0].clientY - startYRef.current
-      if (dy > 0 && window.scrollY === 0) {
+      if (dy > 0 && scrollTop() === 0) {
         // Rubber-band: slow down pull after threshold
         const clamped = dy < THRESHOLD ? dy : THRESHOLD + (dy - THRESHOLD) * 0.3
         pullDistRef.current = Math.min(clamped, THRESHOLD * 1.6)
