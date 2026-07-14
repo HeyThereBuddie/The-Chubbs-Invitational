@@ -16,6 +16,8 @@ THE CONTESTS:
 
 For EACH contest give a top-3 podium (1st, 2nd, 3rd) with a short savage note per player, plus a one-line headline hot take. Open with an "intro" — your savage desk monologue kicking off the broadcast.
 
+HISTORY: if PAST RESULTS are provided, USE them. Chirp the defending champions, roast whoever finished dead last (the wooden spoon), call back to old rivalries and blowups. Nothing lands harder than a receipt from last year.
+
 Use ONLY the players in the provided field. Return everything through the contest_predictions tool.`
 
 const TOOL = {
@@ -123,6 +125,28 @@ serve(async (req) => {
     const field = lines.join('\n')
     if (!field) return json({ error: 'No players in the field yet' }, 400)
 
+    // Past results — so Chubbs can chirp defending champs / last year's wooden spoon.
+    const fmtPar = (n: number | null | undefined) => n == null ? '' : n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
+    const { data: past } = await supabase.from('tournaments')
+      .select('year, name, final_standings, tournament_results(category, team_name, player1_name, player2_name, score_to_par)')
+      .eq('status', 'completed').is('deleted_at', null).neq('id', tourn.id)
+      .order('year', { ascending: false }).limit(3)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const history = (past ?? []).map((t: any) => {
+      const standings: { teamName: string; p1Name: string; p2Name: string; toPar: number }[] =
+        Array.isArray(t.final_standings) ? t.final_standings : []
+      const board = standings.map((s, i) => `  ${i + 1}. ${s.teamName} (${s.p1Name} & ${s.p2Name}) ${fmtPar(s.toPar)}`).join('\n')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const results: any[] = Array.isArray(t.tournament_results) ? t.tournament_results : []
+      const champ = results.find(r => r.category === 'champion')
+      const spoon = standings.length ? standings[standings.length - 1] : null
+      let head = `${t.year} ${t.name}:`
+      if (champ) head += ` CHAMPIONS ${champ.team_name} (${champ.player1_name} & ${champ.player2_name})`
+      if (spoon) head += `; DEAD LAST ${spoon.teamName} (${spoon.p1Name} & ${spoon.p2Name}) ${fmtPar(spoon.toPar)}`
+      return board ? `${head}\n${board}` : head
+    }).filter(Boolean).join('\n\n')
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
@@ -132,7 +156,7 @@ serve(async (req) => {
         system: SYSTEM_PROMPT,
         tools: [TOOL],
         tool_choice: { type: 'tool', name: 'contest_predictions' },
-        messages: [{ role: 'user', content: `The field for The Chubbs Memorial (name, handicap, driver carry, short game):\n${field}\n\nGive your predictions for Longest Drive, Closest to Pin, and Jackass of the Day via the contest_predictions tool. Be savage.` }],
+        messages: [{ role: 'user', content: `The field for The Chubbs Invitational (name, handicap, driver carry, short game):\n${field}\n\n${history ? `PAST RESULTS — use these to chirp defending champs, wooden-spoon finishers, and old rivalries:\n${history}\n\n` : ''}Give your predictions for Longest Drive, Closest to Pin, and Jackass of the Day via the contest_predictions tool. Be savage.` }],
       }),
     })
     const data = await res.json()
