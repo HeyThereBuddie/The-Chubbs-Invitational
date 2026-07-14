@@ -225,6 +225,24 @@ export default function WelcomePage() {
         )}
       </div>
 
+      {/* 2b · Profile picture (optional) — always available */}
+      <div style={card}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)', marginBottom: 8 }}>
+          📸 Profile picture <span style={{ fontWeight: 500, color: 'var(--tx4)', fontSize: 13 }}>· optional</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button onClick={() => fileRef.current?.click()} className="pressable" aria-label="Upload profile picture" style={{
+            width: 64, height: 64, borderRadius: '50%', flexShrink: 0, border: '2px solid #D4A53A', overflow: 'hidden',
+            background: 'rgba(212,165,58,0.12)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 24 }}>{uploading ? '…' : '📷'}</span>}
+          </button>
+          <div style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5 }}>
+            {avatar ? 'Looking good! Tap to change it.' : "Add a photo so your team and the leaderboard know it's you — it shows as your account circle. You can skip and add it later in Account."}
+          </div>
+        </div>
+      </div>
+
       {/* 3 · You're all set */}
       <div style={card}>
         <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)', marginBottom: 12 }}>You're all set</div>

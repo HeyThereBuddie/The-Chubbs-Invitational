@@ -85,11 +85,10 @@ export default function Layout({ children }: { children: ReactNode }) {
           {/* Mobile header — hidden on the full-screen GPS page */}
           {location.pathname !== '/gps' && (
           <header style={{
-            flexShrink: 0, zIndex: 50,
-            background: 'var(--panel)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(212,165,58,0.14)',
-            padding: isNarrow ? '8px 14px' : '10px 18px',
+            flexShrink: 0, zIndex: 50, position: 'relative',
+            background: 'linear-gradient(180deg, #0b6340, #063a25)',
+            borderBottom: '2px solid rgba(212,165,58,0.55)',
+            padding: isNarrow ? '9px 14px' : '11px 18px',
             display: 'flex', alignItems: 'center', gap: isNarrow ? 8 : 12,
           }}>
             <div style={{
@@ -105,17 +104,17 @@ export default function Layout({ children }: { children: ReactNode }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: isNarrow ? 17 : 20, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: isNarrow ? 17 : 20, color: '#efe8d2', letterSpacing: 3, lineHeight: 1 }}>
                 The Chubbs Memorial
               </div>
-              <div style={{ fontSize: 9, color: 'var(--tx5)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>
+              <div style={{ fontSize: 9, color: '#e7c877', letterSpacing: 2, textTransform: 'uppercase', marginTop: 1 }}>
                 Annual Golf Tournament
               </div>
             </div>
             <button
               onClick={toggleTheme}
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', padding: 4, display: 'flex', alignItems: 'center' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#efe8d2', padding: 4, display: 'flex', alignItems: 'center' }}
             >
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
@@ -124,15 +123,15 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <img
                   src={profile.avatar_url}
                   alt="account"
-                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(212,165,58,0.4)' }}
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(240,230,200,0.5)' }}
                 />
               ) : (
                 <div style={{
                   width: 28, height: 28, borderRadius: '50%',
-                  background: 'rgba(212,165,58,0.15)',
-                  border: '1.5px solid rgba(212,165,58,0.4)',
+                  background: 'rgba(0,0,0,0.22)',
+                  border: '1.5px solid rgba(240,230,200,0.5)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, color: '#D4A53A',
+                  fontSize: 13, fontWeight: 700, color: '#efe8d2',
                 }}>
                   {avatarInitial}
                 </div>
