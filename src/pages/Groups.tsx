@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import type { Player, Team, RosterEntry } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
+import { PageMasthead } from '../components/PageMasthead'
 import { Trash2, Plus, UserPlus, Wand2, ArrowLeftRight } from 'lucide-react'
 
 type TeamRow = Team & { player1?: Player; player2?: Player }
@@ -178,9 +179,7 @@ export default function Groups() {
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div className="animate-fadeUp" style={{ marginBottom: 16 }}>
-        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: 'var(--gold)', letterSpacing: 4, lineHeight: 1.1, margin: 0 }}>
-          Team Draw
-        </h1>
+        <PageMasthead title="Team Draw" icon="👥" style={{ marginBottom: 8 }} />
         <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
           {roster.length} on roster · {claimedCount} signed up · {teams.length} teams built
         </p>

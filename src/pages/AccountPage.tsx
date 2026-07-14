@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { usePersistedTab } from '../hooks/usePersistedTab'
 import { SegTabs } from '../components/SegTabs'
+import { PageMasthead } from '../components/PageMasthead'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -317,9 +318,7 @@ export default function AccountPage() {
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
-      <h1 className="animate-fadeUp" style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: 'var(--gold)', letterSpacing: 4, margin: '0 0 20px' }}>
-        My Account
-      </h1>
+      <PageMasthead title="My Account" subtitle="The Chubbs Memorial" icon="🏌️" />
 
       {/* ── Hero: avatar + identity ── */}
       <section className="glass-strong animate-fadeUp delay-100" style={{ padding: 20, marginBottom: 28, position: 'relative', overflow: 'hidden' }}>

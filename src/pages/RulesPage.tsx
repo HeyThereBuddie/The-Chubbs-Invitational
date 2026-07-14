@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTour } from '../context/TourContext'
+import { PageMasthead } from '../components/PageMasthead'
 import { Send } from 'lucide-react'
 
 interface Message { role: 'user' | 'assistant'; content: string }
@@ -68,13 +69,8 @@ export default function RulesPage() {
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 160px)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A' }} />
-        <div>
-          <div className="section-label" style={{ marginBottom: 2 }}>Rules Assistant</div>
-          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 2, lineHeight: 1 }}>Ask Chubbs the Rules</h1>
-        </div>
-      </div>
+      <PageMasthead title="Ask Chubbs the Rules" subtitle="Rules Assistant"
+        icon={<img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #d4a53a', display: 'block' }} />} />
 
       {/* Messages */}
       <div data-tour="rules-demo" className="glass" style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>

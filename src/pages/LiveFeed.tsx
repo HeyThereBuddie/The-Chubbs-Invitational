@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
+import { PageMasthead } from '../components/PageMasthead'
 import { localDb } from '../lib/localDb'
 
 interface FeedEvent {
@@ -111,27 +112,16 @@ export default function LiveFeed() {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
-      <div className="glass" style={{ padding: '20px 24px', marginBottom: 20, borderRadius: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>⚡</span>
-          <div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
-              Live Feed
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>
-              All tournament events
-            </div>
+      <PageMasthead title="Live Feed" subtitle="All tournament events" icon="⚡" right={
+        isCurrentYear ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80', display: 'inline-block' }} />
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#bbf7d0', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
           </div>
-          {isCurrentYear ? (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: 1.5, textTransform: 'uppercase' }}>Live</span>
-            </div>
-          ) : (
-            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'rgba(212,165,58,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' }}>🔒 Archived</span>
-          )}
-        </div>
-      </div>
+        ) : (
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#e7c877', letterSpacing: 1.5, textTransform: 'uppercase', flexShrink: 0 }}>🔒 Archived</span>
+        )
+      } />
 
       <div style={{ marginBottom: 12, display: 'flex' }}>
         <div className="pill-tabs">

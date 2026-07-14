@@ -10,6 +10,7 @@ import { Skeleton } from '../components/Skeleton'
 import { useTour } from '../context/TourContext'
 import { usePersistedTab } from '../hooks/usePersistedTab'
 import { SegTabs } from '../components/SegTabs'
+import { PageMasthead } from '../components/PageMasthead'
 import type { ContestEntry, Player, LeaheyVote, PredictionPayload } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Target } from 'lucide-react'
@@ -263,11 +264,7 @@ export default function Contests() {
           >×</button>
         </div>
       )}
-      <header className="animate-fadeUp" style={{ marginBottom: 20 }}>
-        <div className="section-label" style={{ marginBottom: 4 }}>Side Action</div>
-        <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, lineHeight: 1 }}>Contest Leaderboards</h1>
-        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>Closest to Pin, Longest Drive & Jackass of the Day</p>
-      </header>
+      <PageMasthead title="Contest Leaderboards" subtitle="Side Action" icon="🎯" />
 
       <SegTabs active={tab} data-tour="contests-tabs" className="animate-fadeUp delay-100" style={{ marginBottom: 20, overflowX: 'auto', flexWrap: 'nowrap' }}>
         {([['predictions', "🔮 Chubbs' Picks"], ['ctp', '🎯 CTP'], ['ld', '💥 LD'], ['lahey', '🤠 Jackass']] as const).map(([id, label]) => (

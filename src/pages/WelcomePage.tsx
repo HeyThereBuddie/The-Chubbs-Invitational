@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { displayName, type RosterEntry } from '../lib/types'
+import { PageMasthead } from '../components/PageMasthead'
 import { type ClubDist, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
 import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array } from '../lib/push'
 import { Bell, ChevronDown, Share } from 'lucide-react'
@@ -142,13 +143,9 @@ export default function WelcomePage() {
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '24px 16px calc(40px + env(safe-area-inset-bottom, 0px))', maxWidth: 520, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A' }} />
-        <div>
-          <div className="section-label">Let's get you set up</div>
-          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 2, lineHeight: 1 }}>Welcome, {firstName}!</h1>
-        </div>
-      </div>
+      <PageMasthead title={`Welcome, ${firstName}!`} subtitle="Let's get you set up"
+        icon={<img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #d4a53a', display: 'block' }} />}
+        style={{ marginBottom: 16 }} />
 
       {/* 1 · Push notifications */}
       <div style={card}>

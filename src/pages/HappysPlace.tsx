@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { localDb, parseJson } from '../lib/localDb'
+import { PageMasthead } from '../components/PageMasthead'
 import type { LocalPhoto } from '../lib/localDb'
 import { Camera, Upload, X, ChevronLeft, ChevronRight, Trash2, Download } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -414,15 +415,7 @@ export default function HappysPlace() {
 
       {/* ── Header ── */}
       <div data-tour="photos" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 5, margin: 0 }}>
-            Happy's Place
-          </h1>
-          <span style={{ fontSize: 24 }}>🎳</span>
-        </div>
-        <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 2, marginBottom: 10 }}>
-          Your shots. Your glory. Your complete disasters.
-        </p>
+        <PageMasthead title="Happy's Place" subtitle="Your shots · your disasters" icon="📸" style={{ marginBottom: 10 }} />
         <div style={{ background: 'rgba(212,165,58,0.06)', border: '1px solid rgba(212,165,58,0.18)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontStyle: 'italic' }}>
           <span style={{ color: 'rgba(212,165,58,0.7)' }}>"{quote.q}"</span>
           <span style={{ color: 'var(--tx4)', marginLeft: 6 }}>— {quote.by}</span>

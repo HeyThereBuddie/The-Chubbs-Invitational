@@ -10,6 +10,7 @@ import { enqueue, drainQueue } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
 import type { Player, HoleGps } from '../lib/types'
 import { displayName } from '../lib/types'
+import { PageMasthead } from '../components/PageMasthead'
 import { Users } from 'lucide-react'
 import { HoleCard } from '../components/HoleCard'
 import { usePlayerScoring } from '../hooks/usePlayerScoring'
@@ -452,12 +453,7 @@ export default function Scores() {
 
   // ── Helpers ──────────────────────────────────────────────────
 
-  const pageHeader = (
-    <div style={{ marginBottom: 20 }}>
-      <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Scores</h1>
-      <p style={{ color: 'var(--tx3)', fontSize: 13 }}>Modified Scramble — one score per hole per team</p>
-    </div>
-  )
+  const pageHeader = <PageMasthead title="Scores" subtitle="Modified Scramble" icon="📝" />
 
   // ── HoleCard ─────────────────────────────────────────────────
 
