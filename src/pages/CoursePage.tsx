@@ -50,24 +50,24 @@ export default function CoursePage() {
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
       {/* Header */}
-      <div className="glass" style={{ padding: '20px 24px', marginBottom: 20, borderRadius: 16 }}>
+      <div className="glass" style={{ padding: '18px 20px', marginBottom: 20, borderRadius: 16, background: 'linear-gradient(180deg, #0a5c39, #063a25)', border: '1px solid rgba(240,230,200,0.16)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#D4A53A', letterSpacing: 3, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 28, color: '#efe8d2', letterSpacing: 3, lineHeight: 1 }}>
               Augusta Pines GC
             </div>
-            <div style={{ fontSize: 12, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: '#e7c877', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>
               Demo Course · Replace with your venue
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#D4A53A', lineHeight: 1 }}>{totalPar}</div>
-              <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Par</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#e7c877', lineHeight: 1 }}>{totalPar}</div>
+              <div style={{ fontSize: 10, color: 'rgba(240,230,200,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Par</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--tx1)', lineHeight: 1 }}>{totalYards.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Yards</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: '#efe8d2', lineHeight: 1 }}>{totalYards.toLocaleString()}</div>
+              <div style={{ fontSize: 10, color: 'rgba(240,230,200,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>Yards</div>
             </div>
           </div>
         </div>

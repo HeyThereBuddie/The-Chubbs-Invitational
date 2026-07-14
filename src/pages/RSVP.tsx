@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import type { Profile } from '../lib/types'
+import { PageMasthead } from '../components/PageMasthead'
 import { ChevronDown, ChevronUp, Download } from 'lucide-react'
 
 type StatusTab = 'active' | 'deactivated'
@@ -154,12 +155,7 @@ export default function RSVP() {
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: '#D4A53A', letterSpacing: 4 }}>Player Roster</h1>
-        <p style={{ color: 'var(--tx3)', fontSize: 13 }}>
-          {counts.active} active · {counts.deactivated} deactivated
-        </p>
-      </div>
+      <PageMasthead title="Player Roster" subtitle={`${counts.active} active · ${counts.deactivated} deactivated`} icon="👥" />
 
       {/* Invite response summary */}
       {(responseCounts.yes + responseCounts.no) > 0 && (

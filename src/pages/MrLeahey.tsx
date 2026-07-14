@@ -71,15 +71,15 @@ export default function MrLeahey() {
         padding: '32px 28px',
         marginBottom: 24,
         textAlign: 'center',
-        background: 'linear-gradient(135deg, rgba(18,14,6,0.95) 0%, rgba(40,20,0,0.9) 100%)',
-        borderColor: 'rgba(212,165,58,0.3)',
+        background: 'linear-gradient(160deg, #0a5c39 0%, #063a25 100%)',
+        borderColor: 'rgba(240,230,200,0.22)',
       }}>
         <div style={{ fontSize: 52, marginBottom: 12 }}>🍺</div>
-        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 5, margin: '0 0 6px', textShadow: '0 0 24px rgba(212,165,58,0.5)' }}>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#efe8d2', letterSpacing: 5, margin: '0 0 6px', textShadow: '0 0 24px rgba(0,0,0,0.4)' }}>
           Mr. Leahey Award
         </h1>
-        <div style={{ color: 'var(--tx2)', fontSize: 14 }}>Most Spirited Player of the Tournament</div>
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--tx4)', fontStyle: 'italic' }}>
+        <div style={{ color: 'rgba(240,230,200,0.85)', fontSize: 14 }}>Most Spirited Player of the Tournament</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(240,230,200,0.55)', fontStyle: 'italic' }}>
           "I am the liquor." — Jim Lahey
         </div>
       </div>
