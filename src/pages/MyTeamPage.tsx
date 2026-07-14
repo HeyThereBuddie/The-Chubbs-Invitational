@@ -14,6 +14,7 @@ const AUGUSTA = '#0a5c39'
 const AUGUSTA_DEEP = '#063a25'
 const CREAM = '#efe8d2'
 const GOLD_SOFT = '#e7c877'
+const MASTERS_RED = '#e0402f'
 const MASTHEAD = `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`
 
 function Crest({ size = 38 }: { size?: number }) {
@@ -242,8 +243,6 @@ export default function MyTeamPage() {
   // ── Stats ─────────────────────────────────────────────────
   const stats      = calcStats(scores, parOf)
   const players    = [team?.player1, team?.player2].filter(Boolean) as Player[]
-  const frontStats = calcStats(scores.filter(s => s.hole <= 9), parOf)
-  const backStats  = calcStats(scores.filter(s => s.hole >= 10), parOf)
 
   const driveCount = (pid: string, from = 1, to = 18) =>
     scores.filter(s => s.hole >= from && s.hole <= to && s.drive_used_id === pid).length
@@ -399,6 +398,12 @@ export default function MyTeamPage() {
                     {players.map(p => displayName(p)).join(' · ')}
                   </div>
                 </div>
+                {stats.played > 0 && (
+                  <div style={{ textAlign: 'right', flexShrink: 0, color: CREAM }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD_SOFT }}>Thru</div>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 1, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{stats.played === 18 ? 'F' : stats.played}</div>
+                  </div>
+                )}
                 {isOwnTeam && (
                   <button className="pressable" onClick={() => { setNameInput(team.name); setEditingName(true) }} title="Rename team"
                     style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(240,230,200,0.25)', borderRadius: 9, cursor: 'pointer', color: CREAM, padding: 8, display: 'flex', alignItems: 'center', flexShrink: 0, alignSelf: 'flex-start' }}>
@@ -412,38 +417,22 @@ export default function MyTeamPage() {
           {/* ── Content: round has started ── */}
           {stats.played > 0 ? (
             <>
-              {/* Round Summary */}
-              <div className="glass animate-fadeUp delay-200" style={{ padding: 20, marginBottom: 12 }}>
-                <div className="section-label" style={{ marginBottom: 16 }}>Round Summary</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: 8, marginBottom: 16 }}>
-                  <BigStat label="Score"    value={`${stats.gross}`}            sub={`${toParStr(stats.toPar)} to par`} color={toParColor(stats.toPar)} />
-                  <BigStat label="Thru"     value={`${stats.played}`}           sub="of 18 holes" />
-                  <BigStat label="Putts"    value={`${stats.putts}`}            sub="total" />
-                  {stats.birdies + stats.eagles > 0 && (
-                    <BigStat label="Under Par" value={`${stats.birdies + stats.eagles}`} sub="holes" color="#22c55e" />
-                  )}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, borderTop: '1px solid var(--bdr)', paddingTop: 16 }}>
+              {/* Round Summary — clean To Par / Gross / Putts strip */}
+              <div className="glass animate-fadeUp delay-200" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
                   {[
-                    { label: 'Front 9', st: frontStats },
-                    { label: 'Back 9',  st: backStats  },
-                  ].map(({ label, st }) => (
-                    <div key={label} className="stat-tile">
-                      <div className="section-label" style={{ fontSize: 10, letterSpacing: 1.5, color: 'var(--tx4)', marginBottom: 6 }}>{label}</div>
-                      {st.played > 0 ? (
-                        <>
-                          <div style={{ fontSize: 24, fontWeight: 400, color: toParColor(st.toPar), fontFamily: 'Bebas Neue', letterSpacing: 2, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                            {st.gross}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-                            {toParStr(st.toPar)} · {st.played}&nbsp;holes
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ fontSize: 14, color: 'var(--tx4)', marginTop: 4 }}>—</div>
-                      )}
+                    { label: 'To Par', value: toParStr(stats.toPar), color: stats.toPar < 0 ? MASTERS_RED : stats.toPar === 0 ? 'var(--gold)' : 'var(--tx2)' },
+                    { label: 'Gross',  value: `${stats.gross}`,      color: 'var(--tx1)' },
+                    { label: 'Putts',  value: `${stats.putts}`,      color: 'var(--tx1)' },
+                  ].map((c, i) => (
+                    <div key={c.label} style={{ padding: '18px 10px', textAlign: 'center', borderLeft: i > 0 ? '1px solid var(--bdr)' : undefined }}>
+                      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 1.3, textTransform: 'uppercase', color: 'var(--tx4)', marginBottom: 7 }}>{c.label}</div>
+                      <div style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 1, color: c.color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{c.value}</div>
                     </div>
                   ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px', background: AUGUSTA_DEEP, color: 'rgba(240,230,200,0.72)', fontSize: 11, letterSpacing: 0.4 }}>
+                  🍺 {chulligans.length} of {players.length} chulligans used ·&nbsp;<span style={{ color: MASTERS_RED, fontWeight: 700 }}>red</span>&nbsp;= under par
                 </div>
               </div>
 
@@ -671,12 +660,3 @@ function StatChip({ label, value }: { label: string; value: number }) {
   )
 }
 
-function BigStat({ label, value, sub, color = 'var(--tx1)' }: { label: string; value: string; sub: string; color?: string }) {
-  return (
-    <div className="stat-tile">
-      <div className="section-label" style={{ fontSize: 10, letterSpacing: 1.5, color: 'var(--tx4)', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 32, color, fontFamily: 'Bebas Neue', letterSpacing: 1.5, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 5, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{sub}</div>
-    </div>
-  )
-}
