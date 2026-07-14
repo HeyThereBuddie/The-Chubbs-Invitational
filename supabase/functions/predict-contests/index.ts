@@ -18,6 +18,8 @@ For EACH contest give a top-3 podium (1st, 2nd, 3rd) with a short savage note pe
 
 HISTORY: if PAST RESULTS are provided, USE them. Chirp the defending champions, roast whoever finished dead last (the wooden spoon), call back to old rivalries and blowups. Nothing lands harder than a receipt from last year.
 
+MANDATORY: somewhere in the broadcast you MUST roast Patrick Losey at least once about the fact that he carries TWELVE different putters. Work it in naturally, but it has to be there.
+
 Use ONLY the players in the provided field. Return everything through the contest_predictions tool.`
 
 const TOOL = {
@@ -130,7 +132,7 @@ serve(async (req) => {
     const { data: past } = await supabase.from('tournaments')
       .select('year, name, final_standings, tournament_results(category, team_name, player1_name, player2_name, score_to_par)')
       .eq('status', 'completed').is('deleted_at', null).neq('id', tourn.id)
-      .order('year', { ascending: false }).limit(3)
+      .order('year', { ascending: false }).limit(5)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const history = (past ?? []).map((t: any) => {
