@@ -16,11 +16,7 @@ import { formatDistanceToNow } from 'date-fns'
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 const MEDAL = ['🥇', '🥈', '🥉']
 
-type ContestType = 'predictions' | 'overall' | 'ctp' | 'ld' | 'lahey'
-
-// Placement points for the overall board (fuller than a flat 3/2/1).
-const PLACE_POINTS = [5, 3, 2, 1]
-const placePoints = (rank: number) => PLACE_POINTS[rank] ?? 1  // rank is 0-indexed; 5th+ earns 1
+type ContestType = 'predictions' | 'ctp' | 'ld' | 'lahey'
 
 function SkeletonContestRow() {
   return (
@@ -41,7 +37,6 @@ export default function Contests() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { active: tourActive, stepAnchor } = useTour()
   const [tab, setTab] = useState<ContestType>('predictions')
-  const [allEntries, setAllEntries] = useState<(ContestEntry & { player?: Player })[]>([])
   const [predictions, setPredictions] = useState<{ payload: PredictionPayload; generated_at: string } | null>(null)
 
   // Drive the contest tab from the tour so its Longest Drive / Jackass steps
@@ -76,12 +71,6 @@ export default function Contests() {
       fetchPredictions()
       const sub = supabase.channel('predictions-rt')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'contest_predictions' }, fetchPredictions)
-        .subscribe()
-      return () => { supabase.removeChannel(sub) }
-    } else if (tab === 'overall') {
-      fetchAllEntries()
-      const sub = supabase.channel('overall-rt')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'contest_entries' }, fetchAllEntries)
         .subscribe()
       return () => { supabase.removeChannel(sub) }
     } else {
@@ -125,15 +114,6 @@ export default function Contests() {
         .order('created_at', { ascending: false })
       if (entriesData !== null) setEntries(entriesData)
     } catch { /* offline — cached entries already shown */ }
-  }
-
-  const fetchAllEntries = async () => {
-    if (!effectiveTournamentId) { setAllEntries([]); setLoading(false); return }
-    const { data } = await supabase.from('contest_entries').select('*, player:profiles(*)')
-      .in('type', ['ctp', 'ld']).eq('tournament_id', effectiveTournamentId)
-      .order('created_at', { ascending: false })
-    setAllEntries((data ?? []) as (ContestEntry & { player?: Player })[])
-    setLoading(false)
   }
 
   const fetchPredictions = async () => {
@@ -244,34 +224,6 @@ export default function Contests() {
     return inch >= 12 ? `${ft + 1} ft` : inch > 0 ? `${ft} ft ${inch} in` : `${ft} ft`
   }
 
-  // Overall board: LD ranks by yards, CTP by current-holder (latest); placement
-  // points sum across both. Jackass is added at the reveal.
-  const overallBoard = (() => {
-    const dedupe = (list: (ContestEntry & { player?: Player })[], byBest: boolean) => {
-      const sorted = byBest
-        ? [...list].sort((a, b) => (b.distance_yds ?? -1) - (a.distance_yds ?? -1))
-        : [...list].sort((a, b) => b.created_at.localeCompare(a.created_at))  // latest first
-      const seen = new Set<string>(); const out: (ContestEntry & { player?: Player })[] = []
-      for (const e of sorted) if (!seen.has(e.player_id)) { seen.add(e.player_id); out.push(e) }
-      return out
-    }
-    const ld  = dedupe(allEntries.filter(e => e.type === 'ld'), true)
-    const ctp = dedupe(allEntries.filter(e => e.type === 'ctp'), false)
-    type Row = { id: string; name: string; player?: Player; points: number; leads: number; ldRank?: number; ctpRank?: number }
-    const byPlayer = new Map<string, Row>()
-    const add = (rows: (ContestEntry & { player?: Player })[], which: 'ld' | 'ctp') => rows.forEach((e, i) => {
-      const r = byPlayer.get(e.player_id) ?? { id: e.player_id, name: e.player ? displayName(e.player) : '—', player: e.player, points: 0, leads: 0 }
-      r.points += placePoints(i)
-      if (i === 0) r.leads += 1
-      if (which === 'ld') r.ldRank = i + 1; else r.ctpRank = i + 1
-      r.player = r.player ?? e.player
-      byPlayer.set(e.player_id, r)
-    })
-    add(ld, 'ld'); add(ctp, 'ctp')
-    return [...byPlayer.values()].sort((a, b) => b.points - a.points || b.leads - a.leads)
-  })()
-  const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 - n % 10 === 10 ? 0 : n % 10)] ?? 'th'}`
-
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
       {/* ── Lightbox ── */}
@@ -316,7 +268,7 @@ export default function Contests() {
       </header>
 
       <div data-tour="contests-tabs" className="pill-tabs animate-fadeUp delay-100" style={{ marginBottom: 20, overflowX: 'auto', flexWrap: 'nowrap' }}>
-        {([['predictions', "🔮 Chubbs' Picks"], ['overall', '🏆 Overall'], ['ctp', '🎯 CTP'], ['ld', '💥 LD'], ['lahey', '🤠 Jackass']] as const).map(([id, label]) => (
+        {([['predictions', "🔮 Chubbs' Picks"], ['ctp', '🎯 CTP'], ['ld', '💥 LD'], ['lahey', '🤠 Jackass']] as const).map(([id, label]) => (
           <button key={id} onClick={() => { navigator.vibrate?.(8); setTab(id) }} className={`pill-tab pressable ${tab === id ? 'active' : ''}`} style={{ whiteSpace: 'nowrap' }}>{label}</button>
         ))}
       </div>
@@ -369,42 +321,6 @@ export default function Contests() {
               </div>
             </>
           )}
-        </>
-      )}
-
-      {/* ── Overall leaderboard ──────────────────────────────────── */}
-      {tab === 'overall' && (
-        <>
-          <div className="glass-flat animate-fadeUp" style={{ padding: '11px 16px', marginBottom: 16, fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5, border: '1px solid rgba(245,158,11,0.25)' }}>
-            ⚠️ Just for fun — the <strong style={{ color: 'var(--tx2)' }}>physical markers on the course are the official ruling</strong>. This board is for show. Points: 1st = 5, 2nd = 3, 3rd = 2, 4th = 1, everyone else who's entered = 1.
-          </div>
-          {loading && overallBoard.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{Array.from({ length: 3 }).map((_, i) => <SkeletonContestRow key={i} />)}</div>
-          ) : overallBoard.length === 0 ? (
-            <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>No entries yet — log some from the GPS screen.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {overallBoard.map((r, i) => (
-                <div key={r.id} className="glass animate-fadeUp" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, borderColor: i === 0 ? 'rgba(212,165,58,0.3)' : undefined }}>
-                  <span style={{ fontSize: 20, width: 30, textAlign: 'center', flexShrink: 0 }}>{MEDAL[i] ?? `${i + 1}`}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, color: i === 0 ? '#D4A53A' : 'var(--tx1)', fontSize: 14 }}>{r.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 10 }}>
-                      {r.ldRank != null && <span>💥 {ordinal(r.ldRank)}</span>}
-                      {r.ctpRank != null && <span>🎯 {ordinal(r.ctpRank)}</span>}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', lineHeight: 1 }}>{r.points}</div>
-                    <div style={{ fontSize: 9, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase' }}>pts</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: 'var(--tx4)', textAlign: 'center', marginTop: 14, fontStyle: 'italic' }}>
-            🤠 Jackass points get added once the winner is revealed at the awards.
-          </div>
         </>
       )}
 
