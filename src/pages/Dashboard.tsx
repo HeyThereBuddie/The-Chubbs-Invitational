@@ -6,8 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
-import type { Team, Score, Player, Update } from '../lib/types'
-import { Trophy, Pin } from 'lucide-react'
+import type { Team, Score, Player } from '../lib/types'
+import { Trophy } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
 
@@ -81,7 +81,6 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
-  const [updates, setUpdates] = useState<Update[]>([])
   const [feed, setFeed] = useState<FeedEvent[]>([])
   const [contestLeaders, setContestLeaders] = useState<{ ctp: ContestLeader | null; ld: ContestLeader | null }>({ ctp: null, ld: null })
   const [quoteIdx, setQuoteIdx] = useState(0)
@@ -206,14 +205,12 @@ export default function Dashboard() {
 
     // Step 2: Refresh from Supabase in background
     try {
-      const [teamsRes, scoresRes, updatesRes] = await Promise.all([
+      const [teamsRes, scoresRes] = await Promise.all([
         supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('tournament_id', effectiveTournamentId),
         supabase.from('scores').select('*'),
-        supabase.from('updates').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(3),
       ])
       const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
       const scores: Score[] = scoresRes.data ?? []
-      setUpdates(updatesRes.data ?? [])
       const rows: LeaderRow[] = teams.map(team => {
         const teamScores = scores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
@@ -549,113 +546,6 @@ export default function Dashboard() {
               : c.leader && <span style={{ fontSize: 18, flexShrink: 0 }}>🏆</span>}
           </div>
         ))}
-      </div>
-
-      {/* ── Updates ───────────────────────────────────────────── */}
-      <div
-        className="glass animate-fadeUp delay-400"
-        onClick={() => navigate('/updates')}
-        style={{ padding: 0, overflow: 'hidden', marginBottom: 20, cursor: 'pointer' }}
-      >
-        <div style={{
-          padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 8,
-          borderBottom: '1px solid rgba(212,165,58,0.1)',
-          background: 'rgba(212,165,58,0.04)',
-        }}>
-          <Pin size={15} color="#D4A53A" />
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#D4A53A' }}>Updates</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(212,165,58,0.5)' }}>View all →</span>
-        </div>
-        {updates.length === 0 ? (
-          <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
-            No updates yet
-          </div>
-        ) : (
-          updates.map((u, i) => (
-            <div key={u.id} style={{
-              padding: '14px 20px',
-              borderBottom: i < updates.length - 1 ? '1px solid var(--bdr)' : 'none',
-              borderLeft: u.pinned ? '3px solid #D4A53A' : '3px solid transparent',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                {u.pinned && (
-                  <span style={{ fontSize: 10, color: '#D4A53A', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-                    📌 Pinned
-                  </span>
-                )}
-                <span style={{ fontSize: 11, color: 'var(--tx4)', marginLeft: 'auto' }}>
-                  {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
-                </span>
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', marginBottom: 4 }}>{u.title}</div>
-              <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.55 }}>{u.body}</div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* ── Chubbs Legacy card ────────────────────────────────── */}
-      <div className="glass animate-fadeUp delay-400" style={{
-        padding: 0, overflow: 'hidden',
-        borderColor: 'rgba(212,165,58,0.2)',
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-
-          {/* Portrait panel */}
-          <div style={{
-            width: 200, flexShrink: 0,
-            background: 'linear-gradient(160deg, #130e02 0%, #1e1500 100%)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '28px 24px', gap: 12,
-            borderRight: '1px solid rgba(212,165,58,0.12)',
-          }}>
-            <div style={{
-              width: 110, height: 110, borderRadius: '50%',
-              border: '2px solid rgba(212,165,58,0.5)',
-              overflow: 'hidden',
-              boxShadow: '0 0 30px rgba(212,165,58,0.15)',
-            }}>
-              <img
-                src={CHUBBS_IMG}
-                alt="Chubbs Peterson"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'sepia(0.25) contrast(1.05)' }}
-              />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 18, color: '#D4A53A', letterSpacing: 2 }}>Chubbs Peterson</div>
-              <div style={{ fontSize: 10, color: 'var(--tx3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Golf Legend</div>
-            </div>
-          </div>
-
-          {/* Text panel */}
-          <div style={{ flex: 1, padding: '28px 28px', minWidth: 220 }}>
-            <div style={{ fontSize: 10, letterSpacing: 4, color: 'rgba(212,165,58,0.55)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>
-              The Legend
-            </div>
-            <p style={{ fontSize: 14, color: 'var(--tx2)', lineHeight: 1.75, marginBottom: 16 }}>
-              Chubbs Peterson was a PGA-bound prodigy — the most naturally gifted golfer anyone had ever seen. A one-handed grip, a philosophy built entirely around hip rotation, and a belief in every underdog he ever coached. His career was cut short on the 18th hole by an alligator with a personal vendetta. His legacy lives on in every tap-in, every birdie, and every swing that comes from the hips.
-            </p>
-            <div style={{
-              fontSize: 13, color: 'var(--tx3)', fontStyle: 'italic',
-              paddingLeft: 14, borderLeft: '2px solid rgba(212,165,58,0.35)', lineHeight: 1.6,
-            }}>
-              "I would have been a pro if it wasn't for those damn alligators."
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          borderTop: '1px solid rgba(212,165,58,0.08)',
-          padding: '12px 24px',
-          background: 'rgba(0,0,0,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-        }}>
-          <hr className="divider-gold" style={{ flex: 1 }} />
-          <span style={{ fontSize: 22 }}>🐊</span>
-          <hr className="divider-gold" style={{ flex: 1 }} />
-        </div>
       </div>
 
     </div>
