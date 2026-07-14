@@ -21,16 +21,18 @@ declare
     {"teamName":"GOOF & FRIED",     "p1Name":"Geoff Petersen",  "p2Name":"Adam Fried",         "toPar":16,"thru":18,"gross":87}
   ]'::jsonb;
 begin
+  -- Match by year, accepting the old "Invitational" name so a prior run gets renamed.
   select id into v_id from public.tournaments
-   where year = 2025 and name = 'The Chubbs Invitational' limit 1;
+   where year = 2025 and name in ('The Chubbs Memorial', 'The Chubbs Invitational') limit 1;
 
   if v_id is null then
     insert into public.tournaments (year, name, date, course, status, notes, final_standings)
-    values (2025, 'The Chubbs Invitational', null, 'Club de Golf Saint-François', 'completed',
+    values (2025, 'The Chubbs Memorial', null, 'Club de Golf Saint-François', 'completed',
             'Par 71 · Club de Golf Saint-François, Laval QC', v_standings)
     returning id into v_id;
   else
     update public.tournaments set
+      name            = 'The Chubbs Memorial',
       date            = null,
       course          = 'Club de Golf Saint-François',
       status          = 'completed',

@@ -34,7 +34,7 @@ select pg_temp.seed_chubbs_year(2019, 'The Chubbs Memorial', 'Par 72 · gross te
   {"teamName":"Gab A & Omar",   "p1Name":"Gab A",                     "p2Name":"Omar (Gab)",        "toPar":3, "thru":18,"gross":75},
   {"teamName":"Scott & Anto",   "p1Name":"Scott Bailey",              "p2Name":"Anto Manouk",       "toPar":5, "thru":18,"gross":77},
   {"teamName":"Matt & Dan",     "p1Name":"Matt Losey",                "p2Name":"Dan Normand",       "toPar":7, "thru":18,"gross":79},
-  {"teamName":"Kevin & Sander", "p1Name":"Kevin Gagnon",              "p2Name":"Sander Rauland",    "toPar":9, "thru":18,"gross":81},
+  {"teamName":"Kevin & Saunder", "p1Name":"Kevin Gagnon",              "p2Name":"Saunder Reulend",    "toPar":9, "thru":18,"gross":81},
   {"teamName":"Nic & Patrice",  "p1Name":"Nicolas Averette-Charette", "p2Name":"Patrice Roland",    "toPar":11,"thru":18,"gross":83}
 ]'::jsonb, '[
   {"category":"champion", "team":"Mark & French","p1":"Mark Yeramian",  "p2":"Ryan French",    "score":0},
@@ -48,7 +48,7 @@ select pg_temp.seed_chubbs_year(2020, 'The Chubbs Memorial', 'Par 72', '[
   {"teamName":"CY & Anto",       "p1Name":"Chris Yeramian", "p2Name":"Anto Manouk",       "toPar":4, "thru":18,"gross":76},
   {"teamName":"Pat & Jesse",     "p1Name":"Patrick Losey",  "p2Name":"Jesse",             "toPar":10,"thru":18,"gross":82},
   {"teamName":"Drew & Christian","p1Name":"Andrew Manouk",  "p2Name":"Christian Bessette","toPar":12,"thru":18,"gross":84},
-  {"teamName":"Sander & Ty",     "p1Name":"Sander Rauland", "p2Name":"Tyler Davies",      "toPar":12,"thru":18,"gross":84},
+  {"teamName":"Saunder & Ty",     "p1Name":"Saunder Reulend", "p2Name":"Tyler Davies",      "toPar":12,"thru":18,"gross":84},
   {"teamName":"KG & Fried",      "p1Name":"Kevin Gagnon",   "p2Name":"Adam Fried",        "toPar":13,"thru":18,"gross":85},
   {"teamName":"Mark & Ross",     "p1Name":"Mark Yeramian",  "p2Name":"Ross MacDougall",   "toPar":15,"thru":18,"gross":87},
   {"teamName":"Geoff & Yarrow",  "p1Name":"Geoff Petersen", "p2Name":"Evan Yarrow",       "toPar":16,"thru":18,"gross":88}
@@ -60,11 +60,11 @@ select pg_temp.seed_chubbs_year(2020, 'The Chubbs Memorial', 'Par 72', '[
 
 -- 2021 ────────────────────────────────────────────────────────────────────
 select pg_temp.seed_chubbs_year(2021, 'The Chubbs Memorial', 'Par 72 · KG & Pat won a putts tiebreak (25 vs 32)', '[
-  {"teamName":"KG & Pat",        "p1Name":"Kevin Gagnon",  "p2Name":"Patrick Losey",     "toPar":5, "thru":18,"gross":77},
-  {"teamName":"Drew & French",   "p1Name":"Andrew Manouk", "p2Name":"Ryan French",       "toPar":5, "thru":18,"gross":77},
+  {"teamName":"KG & Pat",        "p1Name":"Kevin Gagnon",  "p2Name":"Patrick Losey",     "toPar":5, "thru":18,"gross":77,"place":1},
+  {"teamName":"Drew & French",   "p1Name":"Andrew Manouk", "p2Name":"Ryan French",       "toPar":5, "thru":18,"gross":77,"place":2},
   {"teamName":"Scott & Ross",    "p1Name":"Scott Bailey",  "p2Name":"Ross MacDougall",   "toPar":6, "thru":18,"gross":78},
   {"teamName":"Tuck & Geoff",    "p1Name":"Tucker Mimeault","p2Name":"Geoff Petersen",   "toPar":6, "thru":18,"gross":78},
-  {"teamName":"CY & Sander",     "p1Name":"Chris Yeramian","p2Name":"Sander Rauland",    "toPar":12,"thru":18,"gross":84},
+  {"teamName":"CY & Saunder",     "p1Name":"Chris Yeramian","p2Name":"Saunder Reulend",    "toPar":12,"thru":18,"gross":84},
   {"teamName":"Anto & Christian","p1Name":"Anto Manouk",   "p2Name":"Christian Bessette","toPar":14,"thru":18,"gross":86}
 ]'::jsonb, '[
   {"category":"champion", "team":"KG & Pat",     "p1":"Kevin Gagnon", "p2":"Patrick Losey",   "score":5,"detail":"Won on a putts tiebreak — 25 putts"},
@@ -80,7 +80,8 @@ select pg_temp.seed_chubbs_year(2023, 'The Chubbs Memorial', 'Par 72 · Anto & M
   {"teamName":"Scott & Pat",     "p1Name":"Scott Bailey",   "p2Name":"Patrick Losey",     "toPar":4, "thru":18,"gross":76},
   {"teamName":"Ty & Geoff",      "p1Name":"Tyler Davies",   "p2Name":"Geoff Petersen",    "toPar":4, "thru":18,"gross":76},
   {"teamName":"Pitted and Chris","p1Name":"Evan Kosmidis",  "p2Name":"Christian Bessette","toPar":5, "thru":18,"gross":77},
-  {"teamName":"CY and Ross",     "p1Name":"Chris Yeramian", "p2Name":"Ross MacDougall",   "toPar":15,"thru":18,"gross":87}
+  {"teamName":"CY and Ross",     "p1Name":"Chris Yeramian", "p2Name":"Ross MacDougall",   "toPar":15,"thru":18,"gross":87},
+  {"teamName":"Anto & Marco",    "p1Name":"Anto Manouk",    "p2Name":"Marco",             "toPar":0, "thru":0, "gross":0, "noScore":true}
 ]'::jsonb, '[
   {"category":"champion", "team":"Tuck & Drew",    "p1":"Tucker Mimeault","p2":"Andrew Manouk","score":2},
   {"category":"runner_up","team":"Mark and French","p1":"Mark Yeramian",  "p2":"Ryan French",  "score":3},

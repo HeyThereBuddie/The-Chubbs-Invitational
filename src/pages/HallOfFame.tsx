@@ -10,6 +10,8 @@ interface FinalStanding {
   toPar: number
   thru: number
   gross: number
+  place?: number          // explicit finishing place (e.g. tiebreak-resolved); else derived from toPar
+  noScore?: boolean        // team never posted a score — always sits last
 }
 
 interface ResultEntry {
@@ -171,26 +173,42 @@ export default function HallOfFame() {
 
                 <div style={{ padding: '22px 22px' }}>
 
-                  {/* Full standings (from final_standings snapshot) */}
-                  {selected.final_standings && selected.final_standings.length > 0 && (
+                  {/* Full standings (from final_standings snapshot) — PGA-style: tied teams share a place (T3, T3…) */}
+                  {selected.final_standings && selected.final_standings.length > 0 && (() => {
+                    const standings = selected.final_standings!
+                    const scored = standings.filter(s => !s.noScore)
+                    const placeOf = (s: FinalStanding) => s.place ?? (1 + scored.filter(x => x.toPar < s.toPar).length)
+                    const counts: Record<number, number> = {}
+                    scored.forEach(s => { const p = placeOf(s); counts[p] = (counts[p] ?? 0) + 1 })
+                    return (
                     <div style={{ marginBottom: 24 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 12 }}>
                         Final Standings
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {selected.final_standings.map((s, i) => (
+                        {standings.map((s, i) => {
+                          const place = s.noScore ? null : placeOf(s)
+                          const shared = place != null && counts[place] > 1
+                          const top = place != null && place <= 3
+                          const badge = s.noScore ? 'NS'
+                            : (!shared && place === 1) ? '🏆'
+                            : (!shared && place === 2) ? '🥈'
+                            : (!shared && place === 3) ? '🥉'
+                            : `${shared ? 'T' : ''}${place}`
+                          return (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
                             padding: '10px 14px', borderRadius: 12,
-                            background: i === 0 ? 'linear-gradient(135deg, rgba(212,165,58,0.12), rgba(212,165,58,0.04))' : i < 3 ? 'var(--surf2)' : 'transparent',
-                            border: i === 0 ? '1px solid var(--gold-40)' : i < 3 ? '1px solid var(--bdr)' : '1px solid transparent',
-                            boxShadow: i === 0 ? 'var(--elev-gold)' : 'none',
+                            background: place === 1 ? 'linear-gradient(135deg, rgba(212,165,58,0.12), rgba(212,165,58,0.04))' : top ? 'var(--surf2)' : 'transparent',
+                            border: place === 1 ? '1px solid var(--gold-40)' : top ? '1px solid var(--bdr)' : '1px solid transparent',
+                            boxShadow: place === 1 ? 'var(--elev-gold)' : 'none',
+                            opacity: s.noScore ? 0.6 : 1,
                           }}>
-                            <span style={{ width: 26, textAlign: 'center', flexShrink: 0, fontSize: i < 3 ? 16 : 13, color: i === 0 ? 'var(--gold)' : 'var(--tx4)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                              {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                            <span style={{ width: 30, textAlign: 'center', flexShrink: 0, fontSize: top ? 16 : 13, color: place === 1 ? 'var(--gold)' : 'var(--tx4)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                              {badge}
                             </span>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <span className={i === 0 ? 'text-shimmer' : undefined} style={{ fontWeight: 700, fontSize: 14, color: i === 0 ? undefined : 'var(--tx2)' }}>
+                              <span className={place === 1 ? 'text-shimmer' : undefined} style={{ fontWeight: 700, fontSize: 14, color: place === 1 ? undefined : 'var(--tx2)' }}>
                                 {s.teamName}
                               </span>
                               {(s.p1Name || s.p2Name) && (
@@ -200,16 +218,22 @@ export default function HallOfFame() {
                               )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                              <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#D4A53A' }}>
-                                {fmtToPar(s.toPar)}
-                              </span>
-                              <span style={{ fontSize: 11, color: 'var(--tx4)' }}>/ {s.thru}</span>
+                              {s.noScore ? (
+                                <span style={{ fontSize: 12, color: 'var(--tx4)', fontStyle: 'italic' }}>no score</span>
+                              ) : (<>
+                                <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#D4A53A' }}>
+                                  {fmtToPar(s.toPar)}
+                                </span>
+                                <span style={{ fontSize: 11, color: 'var(--tx4)' }}>/ {s.thru}</span>
+                              </>)}
                             </div>
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
-                  )}
+                    )
+                  })()}
 
                   {/* Top 3 from tournament_results (fallback if no final_standings) */}
                   {!selected.final_standings && (champion || runnerUp || third) && (

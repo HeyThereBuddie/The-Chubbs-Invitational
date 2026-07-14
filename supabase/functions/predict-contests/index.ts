@@ -136,16 +136,16 @@ serve(async (req) => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const history = (past ?? []).map((t: any) => {
-      const standings: { teamName: string; p1Name: string; p2Name: string; toPar: number }[] =
+      const standings: { teamName: string; p1Name: string; p2Name: string; toPar: number; noScore?: boolean }[] =
         Array.isArray(t.final_standings) ? t.final_standings : []
-      const board = standings.map((s, i) => `  ${i + 1}. ${s.teamName} (${s.p1Name} & ${s.p2Name}) ${fmtPar(s.toPar)}`).join('\n')
+      const board = standings.map((s, i) => `  ${i + 1}. ${s.teamName} (${s.p1Name} & ${s.p2Name}) ${s.noScore ? 'NO SCORE POSTED' : fmtPar(s.toPar)}`).join('\n')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const results: any[] = Array.isArray(t.tournament_results) ? t.tournament_results : []
       const champ = results.find(r => r.category === 'champion')
       const spoon = standings.length ? standings[standings.length - 1] : null
       let head = `${t.year} ${t.name}:`
       if (champ) head += ` CHAMPIONS ${champ.team_name} (${champ.player1_name} & ${champ.player2_name})`
-      if (spoon) head += `; DEAD LAST ${spoon.teamName} (${spoon.p1Name} & ${spoon.p2Name}) ${fmtPar(spoon.toPar)}`
+      if (spoon) head += `; DEAD LAST ${spoon.teamName} (${spoon.p1Name} & ${spoon.p2Name}) ${spoon.noScore ? 'NO SCORE POSTED' : fmtPar(spoon.toPar)}`
       return board ? `${head}\n${board}` : head
     }).filter(Boolean).join('\n\n')
 
@@ -158,7 +158,7 @@ serve(async (req) => {
         system: SYSTEM_PROMPT,
         tools: [TOOL],
         tool_choice: { type: 'tool', name: 'contest_predictions' },
-        messages: [{ role: 'user', content: `The field for The Chubbs Invitational (name, handicap, driver carry, short game):\n${field}\n\n${history ? `PAST RESULTS — use these to chirp defending champs, wooden-spoon finishers, and old rivalries:\n${history}\n\n` : ''}Give your predictions for Longest Drive, Closest to Pin, and Jackass of the Day via the contest_predictions tool. Be savage.` }],
+        messages: [{ role: 'user', content: `The field for The Chubbs Memorial (name, handicap, driver carry, short game):\n${field}\n\n${history ? `PAST RESULTS — use these to chirp defending champs, wooden-spoon finishers, and old rivalries:\n${history}\n\n` : ''}Give your predictions for Longest Drive, Closest to Pin, and Jackass of the Day via the contest_predictions tool. Be savage.` }],
       }),
     })
     const data = await res.json()
