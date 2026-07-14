@@ -5,7 +5,7 @@ import { localDb, parseJson } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
-import { ALL_QUOTES, COURSE_NAME, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
+import { ALL_QUOTES, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player } from '../lib/types'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
@@ -87,7 +87,7 @@ export default function Dashboard() {
   const { profile } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
-  const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { effectiveTournamentId, isCurrentYear, effectiveCourse } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
   const [feed, setFeed] = useState<FeedEvent[]>([])
   const [contestLeaders, setContestLeaders] = useState<{ ctp: ContestLeader | null; ld: ContestLeader | null }>({ ctp: null, ld: null })
@@ -302,7 +302,7 @@ export default function Dashboard() {
               The Chubbs Memorial
             </div>
             <div style={{ display: 'flex', gap: isMobile ? 8 : 12, flexWrap: 'wrap', fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
-              <span>⛳ {COURSE_NAME}</span>
+              <span>⛳ {effectiveCourse || 'Course TBD'}</span>
               <span>📅 {TOURNAMENT_DATE}</span>
               {!isMobile && <span>🕗 {FIRST_TEE_TIME}</span>}
             </div>

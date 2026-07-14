@@ -34,20 +34,13 @@ interface LeaderRow {
 }
 
 export default function Leaderboard() {
-  const { effectiveTournamentId, isCurrentYear } = useYear()
+  const { effectiveTournamentId, isCurrentYear, effectiveCourse, tournaments } = useYear()
+  const effYear = tournaments.find(t => t.id === effectiveTournamentId)?.year ?? null
   const { isOnline } = useSyncContext()
   const { parOf, holes: courseHoles } = useCourse()
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [meta, setMeta] = useState<{ course: string | null; year: number | null }>({ course: null, year: null })
-
-  // Masthead: the active tournament's own course + par.
-  useEffect(() => {
-    if (!effectiveTournamentId || !isOnline) return
-    supabase.from('tournaments').select('course, year').eq('id', effectiveTournamentId).single()
-      .then(({ data }) => { if (data) setMeta({ course: (data as { course: string | null }).course, year: (data as { year: number | null }).year }) })
-  }, [effectiveTournamentId, isOnline])
 
   useEffect(() => {
     fetchData()
@@ -158,7 +151,7 @@ export default function Leaderboard() {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 27, letterSpacing: 3, color: CREAM, lineHeight: 1 }}>Leaderboard</div>
             <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD_SOFT, marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {meta.course || 'Course TBD'} · Par <span style={{ fontVariantNumeric: 'tabular-nums' }}>{coursePar}</span>
+              {effectiveCourse || 'Course TBD'} · Par <span style={{ fontVariantNumeric: 'tabular-nums' }}>{coursePar}</span>
             </div>
           </div>
           <div style={{ marginLeft: 'auto', flexShrink: 0, textAlign: 'right' }}>
@@ -174,7 +167,7 @@ export default function Leaderboard() {
               </div>
             ) : (
               <div style={{ color: CREAM, lineHeight: 1.15 }}>
-                <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD_SOFT, fontVariantNumeric: 'tabular-nums' }}>{meta.year ?? ''}</div>
+                <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD_SOFT, fontVariantNumeric: 'tabular-nums' }}>{effYear ?? ''}</div>
                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 16, letterSpacing: 2 }}>FINAL</div>
               </div>
             )}

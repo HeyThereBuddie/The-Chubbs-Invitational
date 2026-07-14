@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/types'
-import { COURSE_NAME, TOURNAMENT_DATE } from '../lib/types'
+import { TOURNAMENT_DATE } from '../lib/types'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 
@@ -15,6 +15,12 @@ export default function RSVPLanding() {
   const [handicap, setHandicap] = useState('')
   const [note, setNote] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [courseName, setCourseName] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.from('tournaments').select('course').eq('status', 'active').order('year', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => setCourseName((data as { course: string | null } | null)?.course ?? null))
+  }, [])
 
   useEffect(() => {
     if (!playerId) { setNotFound(true); setLoading(false); return }
@@ -77,7 +83,7 @@ export default function RSVPLanding() {
             The Chubbs Memorial
           </h1>
           <div style={{ color: 'var(--tx2)', fontSize: 13, marginTop: 4 }}>
-            {COURSE_NAME} • {TOURNAMENT_DATE}
+            {courseName || 'Course TBD'} • {TOURNAMENT_DATE}
           </div>
         </div>
 

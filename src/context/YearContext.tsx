@@ -6,6 +6,7 @@ interface TournamentOption {
   year: number
   name: string
   status: string
+  course: string | null
 }
 
 interface YearContextValue {
@@ -13,6 +14,7 @@ interface YearContextValue {
   activeTournamentId: string | null
   viewingTournamentId: string | null
   effectiveTournamentId: string | null
+  effectiveCourse: string | null   // course name of the tournament currently in view
   isCurrentYear: boolean
   ready: boolean
   setViewingTournamentId: (id: string | null) => void
@@ -33,6 +35,7 @@ const YearContext = createContext<YearContextValue>({
   activeTournamentId: null,
   viewingTournamentId: null,
   effectiveTournamentId: null,
+  effectiveCourse: null,
   isCurrentYear: true,
   ready: false,
   setViewingTournamentId: () => {},
@@ -52,7 +55,7 @@ export function YearProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await supabase
         .from('tournaments')
-        .select('id, year, name, status')
+        .select('id, year, name, status, course')
         .is('deleted_at', null)
         .order('year', { ascending: false })
       if (data) {
@@ -70,6 +73,7 @@ export function YearProvider({ children }: { children: ReactNode }) {
 
   const effectiveTournamentId = viewingTournamentId ?? activeTournamentId
   const isCurrentYear = viewingTournamentId === null || viewingTournamentId === activeTournamentId
+  const effectiveCourse = tournaments.find(t => t.id === effectiveTournamentId)?.course ?? null
 
   return (
     <YearContext.Provider value={{
@@ -77,6 +81,7 @@ export function YearProvider({ children }: { children: ReactNode }) {
       activeTournamentId,
       viewingTournamentId,
       effectiveTournamentId,
+      effectiveCourse,
       isCurrentYear,
       ready,
       setViewingTournamentId,
