@@ -7,6 +7,7 @@ import type { Profile, Team, CourseGps, PredictionPayload } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Copy, Shield, ShieldOff, Trash2, Check, RotateCcw, PlayCircle, Archive } from 'lucide-react'
 import RSVPPanel from './RSVP'
+import { usePersistedTab } from '../hooks/usePersistedTab'
 import CourseGpsSetup from '../components/admin/CourseGpsSetup'
 import Scores from './Scores'
 import Groups from './Groups'
@@ -45,10 +46,10 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = useState<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions'>('groups')
+  const [tab, setTab] = usePersistedTab<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions'>('admin.tab', 'groups', ['players', 'codes', 'tournament', 'brevo', 'gps', 'scores', 'jackass', 'groups', 'predictions'])
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
-  const [playerSubTab, setPlayerSubTab] = useState<'roster' | 'users'>('roster')
+  const [playerSubTab, setPlayerSubTab] = usePersistedTab<'roster' | 'users'>('admin.playerSubTab', 'roster', ['roster', 'users'])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)

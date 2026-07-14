@@ -8,6 +8,7 @@ import { localDb, parseJson } from '../lib/localDb'
 import type { TeeTime, Team, Player } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
 import { Clock, GripVertical, Zap, Shuffle } from 'lucide-react'
+import { usePersistedTab } from '../hooks/usePersistedTab'
 
 // Augusta scoreboard palette — matches the Leaderboard / Dashboard / Hall of Fame.
 const AUGUSTA = '#0a5c39'
@@ -107,7 +108,7 @@ export default function TeeTimes() {
   const [teeTimes, setTeeTimes] = useState<TeeTimeRow[]>([])
   const [teams, setTeams] = useState<(Team & { player1?: Player; player2?: Player })[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'view' | 'arrange' | 'auto'>('view')
+  const [tab, setTab] = usePersistedTab<'view' | 'arrange' | 'auto'>('teetimes.tab', 'view', ['view', 'arrange', 'auto'])
   const [autoInterval, setAutoInterval] = useState(10)
   const [autoStart, setAutoStart] = useState('08:00')
   const [autoStartHole, setAutoStartHole] = useState(1)

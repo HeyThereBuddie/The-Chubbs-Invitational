@@ -8,6 +8,7 @@ import { useCourse } from '../context/CourseContext'
 import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
 import { ShotStats } from '../components/ShotStats'
+import { usePersistedTab } from '../hooks/usePersistedTab'
 
 // Augusta scoreboard palette — matches the Leaderboard / Dashboard / Hall of Fame.
 const AUGUSTA = '#0a5c39'
@@ -92,7 +93,7 @@ export default function MyTeamPage() {
 
   const [allTeams,      setAllTeams]      = useState<TeamFull[]>([])
   const [viewingTeamId, setViewingTeamId] = useState<string | null>(null)
-  const [teamSubTab, setTeamSubTab] = useState<'profile' | 'stats'>('profile')
+  const [teamSubTab, setTeamSubTab] = usePersistedTab<'profile' | 'stats'>('team.subtab', 'profile', ['profile', 'stats'])
   const [team,          setTeam]          = useState<TeamFull | null>(null)
   const [scores,        setScores]        = useState<ScoreRow[]>([])
   const [chulligans,    setChulligans]    = useState<ChulliganRow[]>([])

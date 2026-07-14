@@ -8,6 +8,7 @@ import { enqueue } from '../lib/writeQueue'
 import type { UpsertLeaheyVotePayload } from '../lib/writeQueue'
 import { Skeleton } from '../components/Skeleton'
 import { useTour } from '../context/TourContext'
+import { usePersistedTab } from '../hooks/usePersistedTab'
 import type { ContestEntry, Player, LeaheyVote, PredictionPayload } from '../lib/types'
 import { displayName } from '../lib/types'
 import { Target } from 'lucide-react'
@@ -36,7 +37,7 @@ export default function Contests() {
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { active: tourActive, stepAnchor } = useTour()
-  const [tab, setTab] = useState<ContestType>('predictions')
+  const [tab, setTab] = usePersistedTab<ContestType>('contests.tab', 'predictions', ['predictions', 'ctp', 'ld', 'lahey'])
   const [predictions, setPredictions] = useState<{ payload: PredictionPayload; generated_at: string } | null>(null)
 
   // Drive the contest tab from the tour so its Longest Drive / Jackass steps

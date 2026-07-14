@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { usePersistedTab } from '../hooks/usePersistedTab'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -65,7 +66,7 @@ export default function AccountPage() {
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(DEFAULT_NOTIF_PREFS)
   const [prefSaving, setPrefSaving] = useState<string | null>(null)
   const [careerStats, setCareerStats] = useState<{ category: string; year: number }[]>([])
-  const [tab, setTab] = useState<'profile' | 'bag' | 'career'>('profile')
+  const [tab, setTab] = usePersistedTab<'profile' | 'bag' | 'career'>('account.tab', 'profile', ['profile', 'bag', 'career'])
   const [bag, setBag] = useState<ClubDist[]>(DEFAULT_BAG)
   const [sevenIron, setSevenIron] = useState('')
   const [savingBag, setSavingBag] = useState(false)

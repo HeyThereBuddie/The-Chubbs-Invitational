@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import TeeTimes from './TeeTimes'
 import MyTeamPage from './MyTeamPage'
 import HallOfFame from './HallOfFame'
+import { usePersistedTab } from '../hooks/usePersistedTab'
 
 // Combined "Tourney" tab: tee times, teams and hall of fame behind one nav item.
 export default function Tourney() {
-  const [tab, setTab] = useState<'tees' | 'teams' | 'hof'>('tees')
+  const [tab, setTab] = usePersistedTab<'tees' | 'teams' | 'hof'>('tourney.tab', 'tees', ['tees', 'teams', 'hof'])
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div data-tour="tourney-tabs" className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
