@@ -8,8 +8,9 @@ import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
-import type { CourseGps, HoleGps, LatLng } from '../lib/types'
+import type { CourseGps, HoleGps, LatLng, Player } from '../lib/types'
 import { displayName, normalizeFairways, teamMemberName } from '../lib/types'
+import type { ScoreRow, ChulliganRow, TeamFull, GroupTeam } from '../lib/scoreTypes'
 import { resolvePar } from '../lib/pars'
 import { resolveBag, recommendClub } from '../lib/clubs'
 import { type Shot, shotQuality, PUTT_TRACKING } from '../lib/shots'
@@ -514,6 +515,46 @@ export default function GpsPage() {
   const [simMoveMode, setSimMoveMode] = useState(false)
   const [simPosition, setSimPosition] = useState<LatLng | null>(null)
   const tour = useTour()
+
+  // ── App-tour score sandbox ────────────────────────────────────────────────
+  // Everything the score sheet touches during the tour lives in this local state,
+  // so a user can tap score / drive / putts / chulligans / approve as much as they
+  // like and nothing ever reaches the database.
+  const [demoScores, setDemoScores] = useState<Record<number, ScoreRow>>({})
+  const [demoChulligans, setDemoChulligans] = useState<ChulliganRow[]>([])
+  const [demoApproved, setDemoApproved] = useState<Set<string>>(new Set())
+
+  const demoTeam = useMemo<TeamFull>(() => ({
+    id: 'demo-team', name: 'Your Team', tournament_id: '', p1_id: profile?.id ?? 'demo-p1', p2_id: 'demo-p2',
+    p1_name: null, p2_name: null, p1_roster_id: null, p2_roster_id: null, created_at: '',
+    player1: (profile ?? { id: 'demo-p1', name: 'You', nickname: null }) as unknown as Player,
+    player2: { id: 'demo-p2', name: 'Your Partner', nickname: null } as unknown as Player,
+  } as unknown as TeamFull), [profile])
+
+  const demoGroupTeam = useMemo<GroupTeam>(() => ({
+    id: 'demo-group', name: 'The Other Guys', p1_name: 'Shooter', p2_name: 'McGavin',
+    player1: { id: 'demo-o1', name: 'Shooter', nickname: null } as unknown as Player,
+    player2: { id: 'demo-o2', name: 'McGavin', nickname: null } as unknown as Player,
+    scores: { 1: { id: 'demo-gs1', hole: 1, score: 5, drive_used_id: 'demo-o1', putts: 2 } },
+    chulligans: [],
+  }), [])
+
+  const demoAdjust = useCallback((h: number, delta: number) => setDemoScores(prev => {
+    const cur = prev[h]?.score
+    if (cur == null) { if (delta < 0) return prev; return { ...prev, [h]: { id: `demo-s${h}`, hole: h, score: 4, drive_used_id: null, putts: null } } }
+    return { ...prev, [h]: { ...prev[h], score: Math.max(1, cur + delta) } }
+  }), [])
+  const demoSetDrive = useCallback((h: number, pid: string) => setDemoScores(prev => prev[h] ? { ...prev, [h]: { ...prev[h], drive_used_id: pid } } : prev), [])
+  const demoSetPutts = useCallback((h: number, putts: number) => setDemoScores(prev => prev[h] ? { ...prev, [h]: { ...prev[h], putts } } : prev), [])
+  const demoReset = useCallback((h: number) => setDemoScores(prev => { const n = { ...prev }; delete n[h]; return n }), [])
+  const demoToggleChulligan = useCallback((pid: string, h: number) => setDemoChulligans(prev => {
+    const existing = prev.find(c => c.player_id === pid)
+    if (existing) return existing.hole === h ? prev.filter(c => c.player_id !== pid) : prev
+    return [...prev, { id: `demo-c-${pid}`, player_id: pid, hole: h }]
+  }), [])
+  const demoApprove = useCallback((sid: string) => setDemoApproved(prev => new Set(prev).add(sid)), [])
+  const demoCountDrives = useCallback(() => 0, [])
+
   const [elevM, setElevM] = useState<{ player: number | null; target: number | null; green: number | null }>({ player: null, target: null, green: null })
   const [elevCacheVersion, setElevCacheVersion] = useState(0)
   const elevCacheRef = useRef<Record<string, number>>({})
@@ -1407,6 +1448,24 @@ export default function GpsPage() {
       setContestPrompt(null); setContestSheet('ld'); setContestPlayerId(profile?.id ?? null)
       setContestYds(245); setContestOffFairway(false)   // demo yardage so photo + submit show
     } else { setContestPrompt(null); setContestSheet(null) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.active, tour.stepAnchor])
+
+  // App-tour: open the score sheet in sandbox mode for the score-entry / approval
+  // steps and seed just enough demo state that the right controls are on screen.
+  useEffect(() => {
+    if (!tour.active) { setDemoScores({}); setDemoChulligans([]); setDemoApproved(new Set()); return }
+    const a = tour.stepAnchor
+    if (a === 'score-demo-score') { setSelectedHole(1); setSheetOpen(true) }
+    else if (a === 'score-demo-drive' || a === 'score-demo-chull' || a === 'score-demo-save') {
+      setSelectedHole(1); setSheetOpen(true)
+      setDemoScores(prev => prev[1] ? prev : { ...prev, 1: { id: 'demo-s1', hole: 1, score: 4, drive_used_id: null, putts: null } })
+    } else if (a === 'score-demo-approval') {
+      setSelectedHole(2); setSheetOpen(true)
+      setDemoScores(prev => ({ ...prev, 1: { id: 'demo-s1', hole: 1, score: 4, drive_used_id: profile?.id ?? 'demo-p1', putts: 2 } }))
+    } else {
+      setSheetOpen(false)   // enter-score (tap to open) and every other tour step
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tour.active, tour.stepAnchor])
 
@@ -2891,11 +2950,11 @@ export default function GpsPage() {
       <ScoreBottomSheet
         open={sheetOpen}
         hole={selectedHole}
-        onClose={() => setSheetOpen(false)}
-        onNextHole={() => {
+        onClose={tour.active ? (() => {}) : () => setSheetOpen(false)}
+        onNextHole={tour.active ? (() => setSelectedHole(h => Math.min(18, h + 1))) : () => {
           // Nudge the group partner(s) to approve the hole we just wrapped up.
           const from = selectedHole
-          if (!tour.active && scoring.approvalsEnabled && scoring.myTeamId) {
+          if (scoring.approvalsEnabled && scoring.myTeamId) {
             supabase.auth.getSession().then(({ data }) => {
               supabase.functions.invoke('notify-approval', {
                 headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {},
@@ -2905,22 +2964,23 @@ export default function GpsPage() {
           }
           setSelectedHole(h => Math.min(18, h + 1)); setSheetOpen(false)
         }}
-        myTeam={scoring.myTeam}
-        myScores={scoring.myScores}
-        myChulligans={scoring.myChulligans}
-        saving={scoring.saving}
-        adjustMyScore={tour.active ? (() => {}) : scoring.adjustMyScore}
-        setMyDrive={tour.active ? (() => {}) : scoring.setMyDrive}
-        setMyPutts={tour.active ? (() => {}) : scoring.setMyPutts}
-        resetMyScore={tour.active ? (() => {}) : scoring.resetMyScore}
-        toggleMyChulligan={tour.active ? (() => {}) : scoring.toggleMyChulligan}
-        countDrives={scoring.countDrives}
-        approvalsEnabled={!tour.active && scoring.approvalsEnabled}
-        groupTeams={scoring.groupTeams}
-        approvedScoreIds={scoring.approvedScoreIds}
-        myDisputedHoles={scoring.myDisputedHoles}
-        approveScore={tour.active ? (() => {}) : scoring.approveScore}
-        disputeScore={tour.active ? (() => {}) : scoring.disputeScore}
+        myTeam={tour.active ? demoTeam : scoring.myTeam}
+        myScores={tour.active ? demoScores : scoring.myScores}
+        myChulligans={tour.active ? demoChulligans : scoring.myChulligans}
+        saving={tour.active ? null : scoring.saving}
+        adjustMyScore={tour.active ? demoAdjust : scoring.adjustMyScore}
+        setMyDrive={tour.active ? demoSetDrive : scoring.setMyDrive}
+        setMyPutts={tour.active ? demoSetPutts : scoring.setMyPutts}
+        resetMyScore={tour.active ? demoReset : scoring.resetMyScore}
+        toggleMyChulligan={tour.active ? demoToggleChulligan : scoring.toggleMyChulligan}
+        countDrives={tour.active ? demoCountDrives : scoring.countDrives}
+        approvalsEnabled={tour.active ? tour.stepAnchor === 'score-demo-approval' : scoring.approvalsEnabled}
+        groupTeams={tour.active ? [demoGroupTeam] : scoring.groupTeams}
+        approvedScoreIds={tour.active ? demoApproved : scoring.approvedScoreIds}
+        myDisputedHoles={tour.active ? new Set<number>() : scoring.myDisputedHoles}
+        approveScore={tour.active ? demoApprove : scoring.approveScore}
+        disputeScore={tour.active ? demoApprove : scoring.disputeScore}
+        demo={tour.active}
       />
     </div>
   )

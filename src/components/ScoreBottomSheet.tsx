@@ -26,6 +26,7 @@ interface ScoreBottomSheetProps {
   myDisputedHoles: Set<number>
   approveScore: (scoreId: string) => void
   disputeScore: (scoreId: string) => void
+  demo?: boolean   // app-tour sandbox: tag controls for the spotlight
 }
 
 export function ScoreBottomSheet({
@@ -49,6 +50,7 @@ export function ScoreBottomSheet({
   myDisputedHoles,
   approveScore,
   disputeScore,
+  demo,
 }: ScoreBottomSheetProps) {
   const mp1 = myTeam?.player1
   const mp2 = myTeam?.player2
@@ -176,6 +178,7 @@ export function ScoreBottomSheet({
               chulligans={myChulligans}
               onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
               locked={locked}
+              demoAnchors={demo}
             />
           )}
         </div>
@@ -215,7 +218,7 @@ export function ScoreBottomSheet({
 
         {/* Approve the group's previous hole to continue */}
         {ownComplete && approvalLock && (
-          <div style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div data-tour={demo ? 'score-demo-approval' : undefined} style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#e8c766', letterSpacing: 1.2, textTransform: 'uppercase' }}>
               Approve your group's hole {gHole} to open hole {hole}
             </div>
@@ -241,6 +244,7 @@ export function ScoreBottomSheet({
         }}>
           {hole < 18 ? (
             <button
+              data-tour={demo ? 'score-demo-save' : undefined}
               onClick={onNextHole}
               style={{
                 width: '100%',

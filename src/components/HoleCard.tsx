@@ -5,7 +5,7 @@ import { type ScoreRow, type ChulliganRow, scoreBubbleClass } from '../lib/score
 import { useCourse } from '../context/CourseContext'
 
 export function HoleCard({
-  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, gpsHole, onOpenGps,
+  hole, scoreRow, isSaving, onMinus, onPlus, player1, player2, onSetDrive, driveDisabled, onSetPutts, onReset, chulligans, onToggleChulligan, readOnly, locked, holeInfo, gpsHole, onOpenGps, demoAnchors,
 }: {
   hole: number
   scoreRow: ScoreRow | undefined
@@ -25,6 +25,7 @@ export function HoleCard({
   holeInfo?: { yards: number; si: number; description?: string; photo?: string }
   gpsHole?: HoleGps
   onOpenGps?: () => void
+  demoAnchors?: boolean   // tag score/drive/chulligan controls for the app-tour spotlight
 }) {
   const { parOf } = useCourse()
   const par      = parOf(hole)
@@ -70,7 +71,7 @@ export function HoleCard({
         )}
 
         {!readOnly && !locked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div data-tour={demoAnchors ? 'score-demo-score' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               onClick={() => { navigator.vibrate?.(10); onMinus?.(); }}
               disabled={isSaving || (hasScore && score <= 1)}
@@ -135,7 +136,7 @@ export function HoleCard({
       )}
 
       {!readOnly && !locked && hasScore && player1 && player2 && onSetDrive && (
-        <div style={{
+        <div data-tour={demoAnchors ? 'score-demo-drive' : undefined} style={{
           marginTop: 10, paddingTop: 10,
           borderTop: '1px solid var(--bdr)',
           display: 'flex', alignItems: 'center', gap: 8,
@@ -199,7 +200,7 @@ export function HoleCard({
       )}
 
       {!readOnly && !locked && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div data-tour={demoAnchors ? 'score-demo-chull' : undefined} style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>🍺</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {[player1, player2].map(p => {
