@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Team, Score, Player } from '../lib/types'
-import { COURSE_PAR, teamMemberName } from '../lib/types'
+import { teamMemberName } from '../lib/types'
 import { useYear } from '../context/YearContext'
 import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { useCourse } from '../context/CourseContext'
+
+// Augusta manual-scoreboard palette (Masters homage), bridged with the app's gold/dark theme.
+const AUGUSTA = '#0a5c39'
+const AUGUSTA_DEEP = '#063a25'
+const CREAM = '#efe8d2'
+const GOLD_SOFT = '#e7c877'
+const MASTERS_RED = '#e0402f'   // under par turns red — the signature Masters signal
 
 function scoreBubbleClass(score: number, par: number): string {
   const diff = score - par
@@ -26,34 +33,21 @@ interface LeaderRow {
   holeScores: (number | null)[]
 }
 
-// Podium metal treatments — 1st gold, 2nd silver, 3rd bronze
-const PODIUM: Record<number, { bg: string; color: string; ring: string; glow: string }> = {
-  1: {
-    bg: 'linear-gradient(160deg, #f2d27a 0%, #D4A53A 52%, #9c7418 100%)',
-    color: '#1a1204',
-    ring: 'rgba(212,165,58,0.55)',
-    glow: '0 2px 14px -2px rgba(212,165,58,0.55)',
-  },
-  2: {
-    bg: 'linear-gradient(160deg, #d8e0ea 0%, #94a3b8 52%, #5d6c80 100%)',
-    color: '#101826',
-    ring: 'rgba(148,163,184,0.5)',
-    glow: '0 2px 12px -2px rgba(148,163,184,0.4)',
-  },
-  3: {
-    bg: 'linear-gradient(160deg, #d9853b 0%, #b45309 52%, #7c3a04 100%)',
-    color: '#fff3e4',
-    ring: 'rgba(180,83,9,0.55)',
-    glow: '0 2px 12px -2px rgba(180,83,9,0.45)',
-  },
-}
-
 export default function Leaderboard() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline } = useSyncContext()
   const { parOf, holes: courseHoles } = useCourse()
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [meta, setMeta] = useState<{ course: string | null; year: number | null }>({ course: null, year: null })
+
+  // Masthead: the active tournament's own course + par.
+  useEffect(() => {
+    if (!effectiveTournamentId || !isOnline) return
+    supabase.from('tournaments').select('course, year').eq('id', effectiveTournamentId).single()
+      .then(({ data }) => { if (data) setMeta({ course: (data as { course: string | null }).course, year: (data as { year: number | null }).year }) })
+  }, [effectiveTournamentId, isOnline])
 
   useEffect(() => {
     fetchData()
@@ -127,232 +121,193 @@ export default function Leaderboard() {
   }
 
   const toParStr = (n: number) => n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
+  const coursePar = Array.from({ length: 18 }, (_, i) => parOf(i + 1)).reduce((a, b) => a + b, 0)
 
-  const ScorePill = ({ toPar, thru, large }: { toPar: number; thru: number; large?: boolean }) => {
-    if (thru === 0) return <span style={{ fontFamily: 'Bebas Neue', fontSize: large ? 28 : 20, color: 'var(--tx4)', letterSpacing: 1 }}>—</span>
-    const text = toParStr(toPar)
-    const under = toPar < 0, over = toPar > 0
-    return (
-      <div style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: large ? 52 : 40,
-        padding: large ? '6px 14px' : '4px 9px',
-        borderRadius: 10,
-        background: under ? 'rgba(34,197,94,0.16)' : over ? 'rgba(239,68,68,0.16)' : 'var(--surf2)',
-        border: `1px solid ${under ? 'rgba(34,197,94,0.45)' : over ? 'rgba(239,68,68,0.45)' : 'var(--bdr2)'}`,
-        boxShadow: under ? '0 2px 12px -4px rgba(34,197,94,0.45)' : over ? '0 2px 12px -4px rgba(239,68,68,0.4)' : 'var(--elev-1)',
-        fontFamily: 'Bebas Neue',
-        fontSize: large ? 30 : 20,
-        letterSpacing: 1,
-        fontVariantNumeric: 'tabular-nums',
-        color: under ? '#4ade80' : over ? '#f87171' : 'var(--tx2)',
-        lineHeight: 1,
-      }}>{text}</div>
-    )
+  // Masters total: red under par, gold on E, muted over par.
+  const MastersTotal = ({ toPar, thru, large }: { toPar: number; thru: number; large?: boolean }) => {
+    if (thru === 0) return <span style={{ fontFamily: 'Bebas Neue', fontSize: large ? 26 : 20, color: 'var(--tx4)', letterSpacing: 1 }}>—</span>
+    const color = toPar < 0 ? MASTERS_RED : toPar === 0 ? 'var(--gold)' : 'var(--tx2)'
+    return <span style={{ fontFamily: 'Bebas Neue', fontSize: large ? 30 : 23, letterSpacing: 1, fontVariantNumeric: 'tabular-nums', color, lineHeight: 1 }}>{toParStr(toPar)}</span>
   }
 
   const StatCol = ({ value, label }: { value: string | number; label: string }) => (
-    <div style={{ textAlign: 'center', minWidth: 30 }}>
-      <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 0.5, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>{label}</div>
+    <div style={{ textAlign: 'center', minWidth: 44 }}>
+      <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 0.5, color: 'var(--tx1)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--tx4)', letterSpacing: 1, textTransform: 'uppercase', marginTop: 3 }}>{label}</div>
     </div>
   )
 
+  const GRID = '40px 1fr 46px 62px 16px'
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div className="animate-fadeUp" style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <div className="section-label" style={{ marginBottom: 4 }}>{isCurrentYear ? 'Live standings' : 'Final standings'}</div>
-          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 4, lineHeight: 1 }}>Leaderboard</h1>
-          <p style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 4 }}>Best Ball Format • Par <span style={{ fontVariantNumeric: 'tabular-nums' }}>{COURSE_PAR}</span></p>
-        </div>
-        {isCurrentYear && (
-          <div className="glass-flat" style={{
-            display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0,
-            padding: '6px 12px', borderRadius: 999,
-            borderColor: 'var(--gold-25)', background: 'var(--gold-08)',
-            color: 'var(--gold)', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase',
-          }}>
-            <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)', boxShadow: '0 0 8px var(--gold-40)', display: 'inline-block' }} />
-            Live
-          </div>
-        )}
-      </div>
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden', borderColor: 'var(--bdr)' }}>
 
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="animate-fadeUp" style={{ animationDelay: `${i * 60}ms` }}>
-              <SkeletonLeaderRow />
+        {/* ── Augusta masthead ───────────────────────────────── */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px',
+          background: `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`,
+          borderBottom: '2px solid rgba(240,230,200,0.18)',
+        }}>
+          <svg width="46" height="46" viewBox="0 0 100 100" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <circle cx="50" cy="50" r="48" fill={AUGUSTA_DEEP} stroke="#d4a53a" strokeWidth="3" />
+            <path d="M40 74 L40 28 L69 35 L40 42" fill={MASTERS_RED} />
+            <rect x="37.5" y="26" width="3" height="48" rx="1.5" fill={CREAM} />
+            <circle cx="39" cy="76" r="3.2" fill="#d4a53a" />
+          </svg>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 27, letterSpacing: 3, color: CREAM, lineHeight: 1 }}>Leaderboard</div>
+            <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD_SOFT, marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {meta.course || 'Course TBD'} · Par <span style={{ fontVariantNumeric: 'tabular-nums' }}>{coursePar}</span>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {(() => {
-            // Two rows are truly tied only if toPar AND putts are equal
-            // (putts only act as tiebreaker when both teams have putts recorded)
-            const areTied = (a: LeaderRow, b: LeaderRow) => {
-              if (a.toPar !== b.toPar) return false
-              if ((a.thru > 0) !== (b.thru > 0)) return false
-              if (a.putts > 0 && b.putts > 0 && a.putts !== b.putts) return false
-              return true
-            }
-
-            // Compute PGA-style positions: skip numbers for each group, T prefix when truly tied
-            const posInfo: Array<{ pos: number; tied: boolean }> = []
-            let i = 0
-            while (i < rows.length) {
-              let j = i
-              while (j < rows.length && areTied(rows[i], rows[j])) j++
-              const count = j - i
-              const tied = count > 1
-              for (let k = 0; k < count; k++) posInfo.push({ pos: i + 1, tied })
-              i = j
-            }
-            return rows.map((row, i) => {
-              const { pos, tied } = posInfo[i]
-              const isLeader = pos === 1 && row.thru > 0
-              const back = pos > 1 && rows[0].thru > 0 && row.thru > 0 ? row.toPar - rows[0].toPar : null
-
-              const rankIndicator = (() => {
-                const metal = PODIUM[pos]
-                if (metal) return (
-                  <div style={{
-                    width: 34, height: 34, borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: metal.bg,
-                    border: `1px solid ${metal.ring}`,
-                    boxShadow: `${metal.glow}, inset 0 1px 0 rgba(255,255,255,0.35)`,
-                  }}>
-                    <span style={{
-                      fontFamily: 'Bebas Neue', fontSize: tied ? 15 : 18, letterSpacing: 0.5, lineHeight: 1,
-                      color: metal.color, fontVariantNumeric: 'tabular-nums',
-                      transform: 'translateY(1px)',
-                    }}>{tied ? 'T' : ''}{pos}</span>
-                  </div>
-                )
-                return (
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'var(--tx3)', letterSpacing: 1, fontVariantNumeric: 'tabular-nums' }}>
-                    {tied ? 'T' : ''}{pos}
-                  </span>
-                )
-              })()
-
-              return (
-              <div key={row.team.id} className={`glass pressable${i < 6 ? ' animate-fadeUp' : ''}`} style={{
-                padding: isLeader ? '20px 20px' : '14px 16px',
-                borderColor: isLeader ? 'var(--gold-40)' : undefined,
-                boxShadow: isLeader ? '0 0 32px rgba(212,165,58,0.16), var(--elev-gold), 0 2px 16px rgba(0,0,0,0.4)' : undefined,
-                backgroundImage: isLeader ? 'linear-gradient(135deg, var(--gold-08) 0%, transparent 55%)' : undefined,
-                animationDelay: i < 6 ? `${i * 70}ms` : undefined,
+          </div>
+          <div style={{ marginLeft: 'auto', flexShrink: 0, textAlign: 'right' }}>
+            {isCurrentYear ? (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                padding: '5px 11px', borderRadius: 999,
+                border: '1px solid rgba(240,230,200,0.3)', background: 'rgba(0,0,0,0.18)',
+                color: CREAM, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase',
               }}>
-                {/* Main row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div data-tour={i === 0 ? 'lb-position' : undefined} style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    {rankIndicator}
-                    {back !== null && back > 0 && (
-                      <div style={{
-                        display: 'flex', alignItems: 'baseline', gap: 3,
-                        padding: '2px 6px', borderRadius: 999,
-                        background: 'rgba(239,68,68,0.10)',
-                        border: '1px solid rgba(239,68,68,0.22)',
-                        lineHeight: 1,
-                      }}>
-                        <span style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: '#f87171', letterSpacing: 0.5, fontVariantNumeric: 'tabular-nums' }}>{back}</span>
-                        <span style={{ fontSize: 7, color: 'rgba(248,113,113,0.7)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>back</span>
+                <span className="animate-pulseDot" style={{ width: 6, height: 6, borderRadius: '50%', background: MASTERS_RED, boxShadow: `0 0 8px ${MASTERS_RED}`, display: 'inline-block' }} />
+                Live
+              </div>
+            ) : (
+              <div style={{ color: CREAM, lineHeight: 1.15 }}>
+                <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD_SOFT, fontVariantNumeric: 'tabular-nums' }}>{meta.year ?? ''}</div>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 16, letterSpacing: 2 }}>FINAL</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Column rail ────────────────────────────────────── */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: GRID, gap: 8, alignItems: 'center',
+          padding: '9px 18px', borderBottom: '1px solid var(--bdr)',
+          fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--tx4)',
+        }}>
+          <span>Pos</span><span>Team</span><span style={{ textAlign: 'center' }}>Thru</span><span style={{ textAlign: 'center' }}>Total</span><span />
+        </div>
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} style={{ padding: '4px 12px' }}><SkeletonLeaderRow /></div>
+            ))}
+          </div>
+        ) : (() => {
+          // Two rows are truly tied only if toPar AND putts are equal
+          const areTied = (a: LeaderRow, b: LeaderRow) => {
+            if (a.toPar !== b.toPar) return false
+            if ((a.thru > 0) !== (b.thru > 0)) return false
+            if (a.putts > 0 && b.putts > 0 && a.putts !== b.putts) return false
+            return true
+          }
+          // PGA-style positions: shared place with a T prefix when tied
+          const posInfo: Array<{ pos: number; tied: boolean }> = []
+          let p = 0
+          while (p < rows.length) {
+            let j = p
+            while (j < rows.length && areTied(rows[p], rows[j])) j++
+            const tied = j - p > 1
+            for (let k = p; k < j; k++) posInfo.push({ pos: p + 1, tied })
+            p = j
+          }
+          return (
+            <div>
+              {rows.map((row, i) => {
+                const { pos, tied } = posInfo[i]
+                const isLeader = pos === 1 && row.thru > 0
+                const isOpen = expandedId === null ? isLeader : expandedId === row.team.id
+                const back = pos > 1 && rows[0].thru > 0 && row.thru > 0 ? row.toPar - rows[0].toPar : null
+                return (
+                  <div key={row.team.id}>
+                    {/* Tap-to-expand row header */}
+                    <div
+                      className="pressable"
+                      onClick={() => setExpandedId(prev => (prev === null ? (isLeader ? '' : row.team.id) : prev === row.team.id ? '' : row.team.id))}
+                      style={{
+                        display: 'grid', gridTemplateColumns: GRID, gap: 8, alignItems: 'center',
+                        padding: isLeader ? '15px 18px' : '12px 18px', cursor: 'pointer',
+                        borderBottom: '1px solid var(--bdr)',
+                        background: isLeader ? 'linear-gradient(90deg, var(--gold-08), transparent 62%)' : undefined,
+                        boxShadow: isLeader ? 'inset 3px 0 0 var(--gold)' : undefined,
+                      }}
+                    >
+                      <span data-tour={i === 0 ? 'lb-position' : undefined} style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 0.5, color: pos === 1 ? 'var(--gold)' : 'var(--tx3)', fontVariantNumeric: 'tabular-nums' }}>
+                        {tied ? 'T' : ''}{pos}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontSize: isLeader ? 18 : 15.5, fontWeight: 700,
+                          color: isLeader ? 'var(--gold)' : 'var(--tx1)',
+                          lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{row.team.name}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}
+                        </div>
+                      </div>
+                      <span style={{ textAlign: 'center', fontSize: 13, color: 'var(--tx3)', fontVariantNumeric: 'tabular-nums' }}>
+                        {row.thru === 18 ? 'F' : row.thru || '—'}
+                      </span>
+                      <span data-tour={i === 0 ? 'lb-stats' : undefined} style={{ textAlign: 'center' }}>
+                        <MastersTotal toPar={row.toPar} thru={row.thru} large={isLeader} />
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" style={{ justifySelf: 'center', color: 'var(--tx4)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                        <path d="M6 9 L12 15 L18 9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+
+                    {/* Expanded card: stats + hole-by-hole */}
+                    {isOpen && row.thru > 0 && (
+                      <div data-tour={i === 0 ? 'lb-scorecard' : undefined} style={{ padding: '14px 18px', borderBottom: '1px solid var(--bdr)', background: 'var(--surf2)' }}>
+                        <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginBottom: 14 }}>
+                          <StatCol value={row.gross || '—'} label="Gross" />
+                          <StatCol value={row.putts || '—'} label="Putts" />
+                          {back !== null && back > 0 && <StatCol value={back} label="Back" />}
+                        </div>
+                        <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 'max-content' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 44, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>Hole:</div>
+                              {row.holeScores.map((_, holeIdx) => (
+                                <div key={holeIdx} style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--tx4)', fontVariantNumeric: 'tabular-nums' }}>{holeIdx + 1}</div>
+                              ))}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
+                              <div style={{ width: 44, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>Score:</div>
+                              {row.holeScores.map((score, holeIdx) => {
+                                const par = parOf(holeIdx + 1)
+                                if (score === null) return <div key={holeIdx} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--bdr)', flexShrink: 0 }} />
+                                return (
+                                  <div key={holeIdx} className={`score-bubble ${scoreBubbleClass(score, par)}`} style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }} title={`Hole ${holeIdx + 1}: ${score} (Par ${par})`}>{score}</div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontFamily: isLeader ? 'Bebas Neue' : undefined,
-                      fontWeight: isLeader ? undefined : 700,
-                      fontSize: isLeader ? 22 : 15,
-                      letterSpacing: isLeader ? 2 : undefined,
-                      color: isLeader ? 'var(--gold)' : 'var(--tx1)',
-                      textShadow: isLeader ? '0 0 20px var(--gold-25)' : undefined,
-                      lineHeight: 1.2,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
-                      {row.team.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}
-                    </div>
-                  </div>
-
-                  <div data-tour={i === 0 ? 'lb-stats' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <ScorePill toPar={row.toPar} thru={row.thru} large={isLeader} />
-                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--tx4)', marginTop: 3, letterSpacing: 1, textTransform: 'uppercase' }}>To Par</div>
-                    </div>
-                    <StatCol value={row.gross || '—'} label="Gross" />
-                    <StatCol value={row.thru === 18 ? 'F' : row.thru || '—'} label="Thru" />
-                    <StatCol value={row.putts || '—'} label="Putts" />
-                  </div>
-                </div>
-
-                {/* Hole grid: hole numbers on top, score bubbles below */}
-                {row.thru > 0 && (
-                  <div data-tour={i === 0 ? 'lb-scorecard' : undefined} style={{ marginTop: 12 }}>
-                    <div className={isLeader ? 'divider-gold' : ''} style={isLeader ? { marginBottom: 8 } : { height: 1, background: 'var(--bdr)', marginBottom: 8 }} />
-                    <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
-                    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 'max-content' }}>
-                      {/* Hole number row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 48, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
-                          Hole:
-                        </div>
-                        {row.holeScores.map((_, holeIdx) => (
-                          <div key={holeIdx}
-                            style={{ width: 28, flexShrink: 0, textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--tx4)', fontVariantNumeric: 'tabular-nums' }}>
-                            {holeIdx + 1}
-                          </div>
-                        ))}
-                      </div>
-                      {/* Score bubble row — padding lets outlines (outline-offset: 3px) render without clipping */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
-                        <div style={{ width: 44, flexShrink: 0, fontSize: 9, fontWeight: 700, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>
-                          Score:
-                        </div>
-                        {row.holeScores.map((score, holeIdx) => {
-                          const par = parOf(holeIdx + 1)
-                          if (score === null) {
-                            return (
-                              <div key={holeIdx}
-                                style={{ width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--bdr)', flexShrink: 0 }} />
-                            )
-                          }
-                          return (
-                            <div key={holeIdx}
-                              className={`score-bubble ${scoreBubbleClass(score, par)}`}
-                              style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}
-                              title={`Hole ${holeIdx + 1}: ${score} (Par ${par})`}
-                            >
-                              {score}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })
+                )
+              })}
+              {rows.length === 0 && (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>No teams on the board yet.</div>
+              )}
+            </div>
+          )
         })()}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 12, background: AUGUSTA_DEEP, color: 'rgba(240,230,200,0.7)', fontSize: 10.5, letterSpacing: 1.4, textTransform: 'uppercase' }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: MASTERS_RED, boxShadow: `0 0 8px ${MASTERS_RED}` }} /> Red numbers · under par
         </div>
-      )}
+      </div>
 
       {/* Alligator divider */}
-      <div style={{ textAlign: 'center', marginTop: 40, paddingBottom: 24 }}>
-        <div className="divider-gold" style={{ marginBottom: 24 }} />
-        <div className="animate-float" style={{ fontSize: 32, marginBottom: 8 }}>🐊</div>
+      <div style={{ textAlign: 'center', marginTop: 34, paddingBottom: 24 }}>
+        <div className="divider-gold" style={{ marginBottom: 20 }} />
+        <div className="animate-float" style={{ fontSize: 30, marginBottom: 8 }}>🐊</div>
         <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
           "I would have been a pro if it wasn't for those damn alligators."
         </p>

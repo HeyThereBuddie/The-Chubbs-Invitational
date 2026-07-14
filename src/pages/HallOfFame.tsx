@@ -35,6 +35,13 @@ interface TournamentRecord {
   results: ResultEntry[]
 }
 
+// Augusta scoreboard palette — matches the live Leaderboard's Masters styling.
+const AUGUSTA = '#0a5c39'
+const AUGUSTA_DEEP = '#063a25'
+const CREAM = '#efe8d2'
+const GOLD_SOFT = '#e7c877'
+const MASTERS_RED = '#e0402f'
+
 function fmtToPar(n: number | null) {
   if (n == null) return null
   return n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}`
@@ -146,28 +153,37 @@ export default function HallOfFame() {
             const jackass  = cat(selected.results, 'jackass')
             const ctp      = cat(selected.results, 'ctp')
             const ld       = cat(selected.results, 'ld')
+            // Derive par from any scored row (gross = par + toPar), for the masthead.
+            const scoredForPar = (selected.final_standings ?? []).filter(s => !s.noScore)
+            const parNum = scoredForPar.length ? scoredForPar[0].gross - scoredForPar[0].toPar : null
 
             return (
-              <div key={selected.id} className="glass animate-fadeUp" style={{ overflow: 'hidden', border: '1px solid rgba(212,165,58,0.3)' }}>
-                {/* Year banner */}
+              <div key={selected.id} className="glass animate-fadeUp" style={{ overflow: 'hidden', border: '1px solid var(--bdr)' }}>
+                {/* Augusta masthead */}
                 <div style={{
-                  padding: '16px 22px',
-                  background: 'linear-gradient(135deg, rgba(212,165,58,0.1) 0%, rgba(212,165,58,0.03) 100%)',
-                  borderBottom: '1px solid rgba(212,165,58,0.12)',
-                  display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+                  padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+                  background: `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`,
+                  borderBottom: '2px solid rgba(240,230,200,0.18)',
                 }}>
-                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: '#D4A53A', letterSpacing: 4, lineHeight: 1 }}>
-                    {selected.year}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: 'var(--surf2)', color: 'var(--tx3)', letterSpacing: 1, textTransform: 'uppercase' }}>
-                        🔒 Locked
-                      </div>
-                      {selected.course && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>⛳ {selected.course}</div>}
-                      {selected.date && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>📅 {new Date(selected.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>}
+                  <svg width="42" height="42" viewBox="0 0 100 100" aria-hidden="true" style={{ flexShrink: 0 }}>
+                    <circle cx="50" cy="50" r="48" fill={AUGUSTA_DEEP} stroke="#d4a53a" strokeWidth="3" />
+                    <path d="M40 74 L40 28 L69 35 L40 42" fill={MASTERS_RED} />
+                    <rect x="37.5" y="26" width="3" height="48" rx="1.5" fill={CREAM} />
+                    <circle cx="39" cy="76" r="3.2" fill="#d4a53a" />
+                  </svg>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: CREAM, letterSpacing: 3, lineHeight: 1 }}>
+                      {selected.year}
                     </div>
-                    {selected.notes && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4, fontStyle: 'italic' }}>{selected.notes}</div>}
+                    <div style={{ fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: GOLD_SOFT, marginTop: 5 }}>
+                      {selected.course || 'The Chubbs Memorial'}{parNum ? <> · Par <span style={{ fontVariantNumeric: 'tabular-nums' }}>{parNum}</span></> : null}
+                      {selected.date && <> · {new Date(selected.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>}
+                    </div>
+                    {selected.notes && <div style={{ fontSize: 11.5, color: 'rgba(240,230,200,0.62)', marginTop: 3, fontStyle: 'italic' }}>{selected.notes}</div>}
+                  </div>
+                  <div style={{ marginLeft: 'auto', flexShrink: 0, textAlign: 'right', color: CREAM }}>
+                    <div style={{ fontSize: 10, letterSpacing: 2, color: GOLD_SOFT }}>🔒</div>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 16, letterSpacing: 2 }}>FINAL</div>
                   </div>
                 </div>
 
@@ -181,56 +197,52 @@ export default function HallOfFame() {
                     const counts: Record<number, number> = {}
                     scored.forEach(s => { const p = placeOf(s); counts[p] = (counts[p] ?? 0) + 1 })
                     return (
-                    <div style={{ marginBottom: 24 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: 'var(--tx4)', textTransform: 'uppercase', marginBottom: 12 }}>
-                        Final Standings
+                    <div style={{ marginBottom: 24, border: '1px solid var(--bdr)', borderRadius: 12, overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '38px 1fr 62px', gap: 8, padding: '8px 14px', borderBottom: '1px solid var(--bdr)', fontSize: 9.5, fontWeight: 800, letterSpacing: 1.3, textTransform: 'uppercase', color: 'var(--tx4)' }}>
+                        <span>Pos</span><span>Team</span><span style={{ textAlign: 'center' }}>Total</span>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {standings.map((s, i) => {
-                          const place = s.noScore ? null : placeOf(s)
-                          const shared = place != null && counts[place] > 1
-                          const top = place != null && place <= 3
-                          const badge = s.noScore ? 'NS'
-                            : (!shared && place === 1) ? '🏆'
-                            : (!shared && place === 2) ? '🥈'
-                            : (!shared && place === 3) ? '🥉'
-                            : `${shared ? 'T' : ''}${place}`
-                          return (
-                          <div key={i} style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '10px 14px', borderRadius: 12,
-                            background: place === 1 ? 'linear-gradient(135deg, rgba(212,165,58,0.12), rgba(212,165,58,0.04))' : top ? 'var(--surf2)' : 'transparent',
-                            border: place === 1 ? '1px solid var(--gold-40)' : top ? '1px solid var(--bdr)' : '1px solid transparent',
-                            boxShadow: place === 1 ? 'var(--elev-gold)' : 'none',
-                            opacity: s.noScore ? 0.6 : 1,
-                          }}>
-                            <span style={{ width: 30, textAlign: 'center', flexShrink: 0, fontSize: top ? 16 : 13, color: place === 1 ? 'var(--gold)' : 'var(--tx4)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                              {badge}
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <span className={place === 1 ? 'text-shimmer' : undefined} style={{ fontWeight: 700, fontSize: 14, color: place === 1 ? undefined : 'var(--tx2)' }}>
-                                {s.teamName}
-                              </span>
-                              {(s.p1Name || s.p2Name) && (
-                                <span style={{ fontSize: 12, color: 'var(--tx3)', marginLeft: 8 }}>
-                                  {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}
-                                </span>
-                              )}
+                      {standings.map((s, i) => {
+                        const place = s.noScore ? null : placeOf(s)
+                        const shared = place != null && counts[place] > 1
+                        const top = place != null && place <= 3
+                        const badge = s.noScore ? 'NS'
+                          : (!shared && place === 1) ? '🏆'
+                          : (!shared && place === 2) ? '🥈'
+                          : (!shared && place === 3) ? '🥉'
+                          : `${shared ? 'T' : ''}${place}`
+                        const totalColor = s.toPar < 0 ? MASTERS_RED : s.toPar === 0 ? 'var(--gold)' : 'var(--tx2)'
+                        return (
+                        <div key={i} style={{
+                          display: 'grid', gridTemplateColumns: '38px 1fr 62px', gap: 8, alignItems: 'center',
+                          padding: '11px 14px',
+                          borderBottom: i < standings.length - 1 ? '1px solid var(--bdr)' : 'none',
+                          background: place === 1 ? 'linear-gradient(90deg, var(--gold-08), transparent 62%)' : undefined,
+                          boxShadow: place === 1 ? 'inset 3px 0 0 var(--gold)' : undefined,
+                          opacity: s.noScore ? 0.6 : 1,
+                        }}>
+                          <span style={{ textAlign: 'center', fontSize: top ? 16 : 14, color: place === 1 ? 'var(--gold)' : 'var(--tx4)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFamily: top && !shared ? undefined : 'Bebas Neue' }}>
+                            {badge}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <div className={place === 1 ? 'text-shimmer' : undefined} style={{ fontWeight: 700, fontSize: 14.5, color: place === 1 ? 'var(--gold)' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {s.teamName}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                              {s.noScore ? (
-                                <span style={{ fontSize: 12, color: 'var(--tx4)', fontStyle: 'italic' }}>no score</span>
-                              ) : (<>
-                                <span style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: s.toPar < 0 ? '#34d399' : s.toPar > 0 ? '#f87171' : '#D4A53A' }}>
-                                  {fmtToPar(s.toPar)}
-                                </span>
-                                <span style={{ fontSize: 11, color: 'var(--tx4)' }}>/ {s.thru}</span>
-                              </>)}
-                            </div>
+                            {(s.p1Name || s.p2Name) && (
+                              <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {[s.p1Name, s.p2Name].filter(Boolean).join(' & ')}
+                              </div>
+                            )}
                           </div>
-                          )
-                        })}
-                      </div>
+                          <span style={{ textAlign: 'center' }}>
+                            {s.noScore ? (
+                              <span style={{ fontSize: 11, color: 'var(--tx4)', fontStyle: 'italic' }}>NS</span>
+                            ) : (
+                              <span style={{ fontFamily: 'Bebas Neue', fontSize: 19, color: totalColor, fontVariantNumeric: 'tabular-nums' }}>{fmtToPar(s.toPar)}</span>
+                            )}
+                          </span>
+                        </div>
+                        )
+                      })}
                     </div>
                     )
                   })()}
