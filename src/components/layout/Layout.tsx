@@ -82,7 +82,8 @@ export default function Layout({ children }: { children: ReactNode }) {
         // collapsing toolbar can't drag the fixed nav up and down — only <main> scrolls.
         <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
           {snapshotBanner}
-          {/* Mobile header */}
+          {/* Mobile header — hidden on the full-screen GPS page */}
+          {location.pathname !== '/gps' && (
           <header style={{
             flexShrink: 0, zIndex: 50,
             background: 'var(--panel)',
@@ -138,6 +139,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               )}
             </Link>
           </header>
+          )}
           <main ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '20px 16px', paddingBottom: 80 }}>
             {/* Pull-to-refresh indicator */}
             <div style={{
