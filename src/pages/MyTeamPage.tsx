@@ -53,15 +53,22 @@ function calcStats(scores: ScoreRow[], parOf: (hole: number) => number) {
 }
 
 function toParStr(n: number)   { return n === 0 ? 'E' : n > 0 ? `+${n}` : `${n}` }
-function toParColor(n: number) { return n < 0 ? '#22c55e' : n > 0 ? '#ef4444' : '#D4A53A' }
 
-function scoreColor(score: number, par: number) {
+// Masters to-par colour: red under par, gold on E, muted over.
+function parColor(n: number) { return n < 0 ? MASTERS_RED : n === 0 ? 'var(--gold)' : 'var(--tx3)' }
+
+// Scorecard notation for a hole's score — red circle under par, square over par.
+function scoreNote(score: number, par: number): React.CSSProperties {
   const d = score - par
-  if (d <= -2) return '#D4A53A'
-  if (d === -1) return '#22c55e'
-  if (d === 0)  return 'var(--tx2)'
-  if (d === 1)  return '#f59e0b'
-  return '#ef4444'
+  const base: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 24, height: 24, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+  }
+  if (d <= -2) return { ...base, color: '#fff', background: MASTERS_RED, borderRadius: '50%' }        // eagle+
+  if (d === -1) return { ...base, color: MASTERS_RED, border: `1.6px solid ${MASTERS_RED}`, borderRadius: '50%' } // birdie
+  if (d === 0)  return { ...base, color: 'var(--tx1)' }                                                // par
+  if (d === 1)  return { ...base, color: 'var(--tx2)', border: '1.5px solid var(--tx4)', borderRadius: 4 } // bogey
+  return { ...base, color: '#fff', background: '#7c2d2a', borderRadius: 4 }                            // double+
 }
 
 // ── Scorecard cell styles (presentational) ────────────────
@@ -436,10 +443,19 @@ export default function MyTeamPage() {
                 </div>
               </div>
 
-              {/* Scorecard */}
-              <div className="glass animate-fadeUp delay-300" style={{ padding: '20px 14px', marginBottom: 12 }}>
-                <div className="section-label" style={{ marginBottom: 14, paddingLeft: 6 }}>Scorecard</div>
-                {scorecardHalves.map(({ label, tag, holes }) => {
+              {/* Scorecard — Augusta card with golf notation */}
+              <div className="glass animate-fadeUp delay-300" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+                {/* Masthead */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+                  <Crest size={30} />
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 2, color: CREAM, lineHeight: 1 }}>Scorecard</div>
+                  <div style={{ marginLeft: 'auto', textAlign: 'right', color: CREAM }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', color: GOLD_SOFT }}>Total</div>
+                    <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, lineHeight: 1, color: stats.toPar < 0 ? MASTERS_RED : 'var(--cream, #efe8d2)' }}>{toParStr(stats.toPar)}</div>
+                  </div>
+                </div>
+
+                {scorecardHalves.map(({ label, tag, holes }, ni) => {
                   const holePars  = holes.map(h => parOf(h))
                   const totalPar  = holePars.reduce((a, p) => a + p, 0)
                   const played    = holes.filter(h => scoreMap[h])
@@ -447,16 +463,16 @@ export default function MyTeamPage() {
                   const playedPar = played.reduce((a, h) => a + parOf(h), 0)
                   const toPar     = subtotal - playedPar
                   return (
-                    <div key={label} className="glass-flat" style={{ marginBottom: 12, padding: '8px 6px 6px', overflow: 'hidden' }}>
-                      {/* Header row — hole numbers */}
-                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS, borderBottom: '1px solid var(--bdr)', paddingBottom: 2, marginBottom: 2 }}>
-                        <div style={{ ...rowLabel, color: 'var(--tx2)', letterSpacing: 1.5 }}>{label}</div>
+                    <div key={label} style={{ padding: '12px 12px 8px', borderTop: ni > 0 ? '1px solid var(--bdr)' : undefined }}>
+                      {/* Hole numbers */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS, borderBottom: '1px solid var(--bdr)', paddingBottom: 4, marginBottom: 3 }}>
+                        <div style={{ ...rowLabel, color: 'var(--gold)', letterSpacing: 1.5 }}>{label}</div>
                         {holes.map(h => (
-                          <div key={h} style={{ ...cellNum, fontSize: 10, fontWeight: 600, color: 'var(--tx3)' }}>{h}</div>
+                          <div key={h} style={{ ...cellNum, fontSize: 10, fontWeight: 700, color: 'var(--tx4)' }}>{h}</div>
                         ))}
-                        <div style={{ ...cellNum, fontSize: 9, fontWeight: 700, letterSpacing: 1, color: 'var(--tx3)' }}>{tag}</div>
+                        <div style={{ ...cellNum, fontSize: 9, fontWeight: 800, letterSpacing: 1, color: 'var(--gold)' }}>{tag}</div>
                       </div>
-                      {/* Par row */}
+                      {/* Par */}
                       <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS }}>
                         <div style={rowLabel}>Par</div>
                         {holePars.map((par, i) => (
@@ -464,23 +480,22 @@ export default function MyTeamPage() {
                         ))}
                         <div style={{ ...cellNum, fontSize: 10, fontWeight: 700, color: 'var(--tx4)' }}>{totalPar}</div>
                       </div>
-                      {/* Score row */}
-                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS, background: 'var(--surf)', borderRadius: 8 }}>
+                      {/* Score — notation */}
+                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS, alignItems: 'center' }}>
                         <div style={{ ...rowLabel, color: 'var(--tx3)' }}>Score</div>
                         {holes.map((h, i) => {
                           const s = scoreMap[h]?.score ?? null
-                          if (s === null) return (
-                            <div key={h} style={{ ...cellNum, fontSize: 10, color: 'var(--tx5)' }}>—</div>
-                          )
                           return (
-                            <div key={h} style={{ ...cellNum, fontSize: 12, fontWeight: 700, color: scoreColor(s, holePars[i]) }}>{s}</div>
+                            <div key={h} style={{ ...cellNum, padding: '4px 0' }}>
+                              {s === null ? <span style={{ fontSize: 11, color: 'var(--tx5)' }}>—</span> : <span style={scoreNote(s, holePars[i])}>{s}</span>}
+                            </div>
                           )
                         })}
-                        <div style={{ ...cellNum, fontSize: 12, fontWeight: 800, color: played.length > 0 ? toParColor(toPar) : 'var(--tx4)' }}>
-                          {played.length > 0 ? `${subtotal}` : '—'}
+                        <div style={{ ...cellNum, fontFamily: 'Bebas Neue', fontSize: 16, color: played.length > 0 ? parColor(toPar) : 'var(--tx4)' }}>
+                          {played.length > 0 ? subtotal : '—'}
                         </div>
                       </div>
-                      {/* Putts row */}
+                      {/* Putts */}
                       <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS }}>
                         <div style={rowLabel}>Putts</div>
                         {holes.map(h => {
@@ -495,27 +510,29 @@ export default function MyTeamPage() {
                           {played.length > 0 ? played.reduce((a, h) => a + (scoreMap[h]?.putts ?? 0), 0) : '—'}
                         </div>
                       </div>
-                      {/* Chulligan row */}
-                      <div style={{ display: 'grid', gridTemplateColumns: CARD_GRID_COLS }}>
-                        <div style={rowLabel}>🍺</div>
-                        {holes.map(h => {
-                          const hit = chulligans.find(c => c.hole === h)
-                          return (
-                            <div key={h} style={{ ...cellNum, fontSize: 11, padding: '3px 0' }}>
-                              {hit ? '🍺' : <span style={{ color: 'var(--tx5)', fontSize: 9 }}>·</span>}
-                            </div>
-                          )
-                        })}
-                        <div />
-                      </div>
                       {played.length > 0 && (
-                        <div style={{ marginTop: 4, padding: '2px 6px 2px 0', fontSize: 11, fontWeight: 600, color: toParColor(toPar), textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                          {toParStr(toPar)} ({played.length}&nbsp;holes)
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: 6, padding: '5px 38px 0 0' }}>
+                          <span style={{ fontSize: 10, color: 'var(--tx4)', textTransform: 'uppercase', letterSpacing: 1 }}>{tag === 'OUT' ? 'Front' : 'Back'}</span>
+                          <span style={{ fontFamily: 'Bebas Neue', fontSize: 15, letterSpacing: 1, color: parColor(toPar) }}>{toParStr(toPar)} · {played.length}&nbsp;holes</span>
                         </div>
                       )}
                     </div>
                   )
                 })}
+
+                {/* Legend */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', padding: 12, background: AUGUSTA_DEEP }}>
+                  {[
+                    { n: '2', label: 'Eagle',  st: { color: '#fff', background: MASTERS_RED, borderRadius: '50%' } as React.CSSProperties },
+                    { n: '3', label: 'Birdie', st: { color: '#ffb4ab', border: '1.4px solid #ffb4ab', borderRadius: '50%' } as React.CSSProperties },
+                    { n: '4', label: 'Par',    st: { color: 'rgba(240,230,200,0.85)' } as React.CSSProperties },
+                    { n: '5', label: 'Bogey+', st: { color: 'rgba(240,230,200,0.8)', border: '1.3px solid rgba(240,230,200,0.45)', borderRadius: 4 } as React.CSSProperties },
+                  ].map(l => (
+                    <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, color: 'rgba(240,230,200,0.8)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 17, height: 17, fontSize: 9, fontWeight: 700, ...l.st }}>{l.n}</span> {l.label}
+                    </span>
+                  ))}
+                </div>
               </div>
 
               {/* Roster (compact) */}
