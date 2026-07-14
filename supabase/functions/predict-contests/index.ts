@@ -10,11 +10,12 @@ const SYSTEM_PROMPT = `You ARE Chubbs Peterson from Happy Gilmore — the warm o
 VOICE: loud, funny, savage. This is a buddy tournament, not a corporate event — so ROAST these guys hard. Bust their chops mercilessly but with love. Nicknames, chirping, calling out their handicaps and their games. Drop the occasional signature line ("It's all in the hips", "Just tap it in"). Be genuinely funny.
 
 THE CONTESTS:
+- Overall Champion (overall): THE BIG ONE — predict who wins the whole tournament. This is a 2-player team event. If TEAMS are provided, predict the top-3 TEAMS (use the team's name and both players in your note). If teams aren't drawn yet, give a top-3 power ranking of the individual players most likely to take it all. Lean HARD on history: repeat champions are the team to beat, and a team that's choked before catches hell. Weight handicaps and consistency. Put this contest FIRST.
 - Longest Drive (ld): predict who bombs it farthest. Base it on their DRIVER carry distance — but factor handicap, because the drive must stay IN THE FAIRWAY (a wild long hitter who sprays it gets dinged). Higher handicap = more likely to spray it.
 - Closest to Pin (ctp): predict who's most accurate on a par 3. Lower handicaps and shorter, controlled players are favored. Factor handicap heavily and their short-iron/wedge distances.
 - Jackass of the Day (jackass): pure comedy — predict who's most likely to be the drunkest, sloppiest, most Happy-Gilmore disaster of the day. No data, just roast whoever you like based on their name/handicap. Have fun.
 
-For EACH contest give a top-3 podium (1st, 2nd, 3rd) with a short savage note per player, plus a one-line headline hot take. Open with an "intro" — your savage desk monologue kicking off the broadcast.
+For EACH contest give a top-3 podium (1st, 2nd, 3rd) with a short savage note per player/team, plus a one-line headline hot take. Return the contests in this order: overall, ld, ctp, jackass. Open with an "intro" — your savage desk monologue kicking off the broadcast.
 
 HISTORY: if PAST RESULTS are provided, USE them. Chirp the defending champions, roast whoever finished dead last (the wooden spoon), call back to old rivalries and blowups. Nothing lands harder than a receipt from last year.
 
@@ -31,11 +32,11 @@ const TOOL = {
       intro: { type: 'string', description: "Chubbs' opening desk monologue for the broadcast — savage and funny." },
       contests: {
         type: 'array',
-        description: 'One entry per contest: longest drive, closest to pin, jackass of the day.',
+        description: 'One entry per contest, in order: overall champion, longest drive, closest to pin, jackass of the day.',
         items: {
           type: 'object',
           properties: {
-            contest: { type: 'string', enum: ['ld', 'ctp', 'jackass'] },
+            contest: { type: 'string', enum: ['overall', 'ld', 'ctp', 'jackass'] },
             headline: { type: 'string', description: "Chubbs' one-line hot take for this contest." },
             podium: {
               type: 'array',
@@ -149,6 +150,24 @@ serve(async (req) => {
       return board ? `${head}\n${board}` : head
     }).filter(Boolean).join('\n\n')
 
+    // This year's drawn teams (if the draw has happened) so Chubbs can pick actual teams.
+    const { data: teamRows } = await supabase.from('teams')
+      .select('name, p1_name, p2_name, p1:p1_id(name,nickname), p2:p2_id(name,nickname), r1:p1_roster_id(name), r2:p2_roster_id(name)')
+      .eq('tournament_id', tourn.id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pick = (prof: any, drawn: string | null, roster: any) => {
+      const p = Array.isArray(prof) ? prof[0] : prof
+      const r = Array.isArray(roster) ? roster[0] : roster
+      return (p?.nickname?.trim()) || p?.name || drawn || r?.name || null
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const teams = (teamRows ?? []).map((t: any) => {
+      const a = pick(t.p1, t.p1_name, t.r1); const b = pick(t.p2, t.p2_name, t.r2)
+      if (!a && !b) return null
+      const who = [a, b].filter(Boolean).join(' & ')
+      return t.name ? `- ${t.name}: ${who}` : `- ${who}`
+    }).filter(Boolean).join('\n')
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
@@ -158,7 +177,7 @@ serve(async (req) => {
         system: SYSTEM_PROMPT,
         tools: [TOOL],
         tool_choice: { type: 'tool', name: 'contest_predictions' },
-        messages: [{ role: 'user', content: `The field for The Chubbs Memorial (name, handicap, driver carry, short game):\n${field}\n\n${history ? `PAST RESULTS — use these to chirp defending champs, wooden-spoon finishers, and old rivalries:\n${history}\n\n` : ''}Give your predictions for Longest Drive, Closest to Pin, and Jackass of the Day via the contest_predictions tool. Be savage.` }],
+        messages: [{ role: 'user', content: `The field for The Chubbs Memorial (name, handicap, driver carry, short game):\n${field}\n\n${teams ? `THIS YEAR'S TEAMS (drawn) — predict the Overall Champion from these teams:\n${teams}\n\n` : `TEAMS AREN'T DRAWN YET — for Overall Champion, give a power ranking of the individual players most likely to win it all.\n\n`}${history ? `PAST RESULTS — use these to chirp defending champs, wooden-spoon finishers, and old rivalries:\n${history}\n\n` : ''}Give your predictions for the Overall Champion, Longest Drive, Closest to Pin, and Jackass of the Day (in that order) via the contest_predictions tool. Be savage.` }],
       }),
     })
     const data = await res.json()

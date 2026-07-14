@@ -346,7 +346,7 @@ export default function Contests() {
                   <div key={ci} className="glass animate-fadeUp" style={{ overflow: 'hidden' }}>
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(212,165,58,0.12)', background: 'rgba(212,165,58,0.05)' }}>
                       <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1, color: '#D4A53A' }}>
-                        {c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'}
+                        {c.contest === 'overall' ? '🏆 Overall Champion' : c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'}
                       </div>
                       {c.headline && <div style={{ fontSize: 12.5, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 3, lineHeight: 1.5 }}>“{c.headline}”</div>}
                     </div>

@@ -1734,7 +1734,7 @@ export default function AdminPanel() {
                 “{lastPrediction.payload.intro}”
               </div>
               {lastPrediction.payload.contests.map((c, ci) => {
-                const title = c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'
+                const title = c.contest === 'overall' ? '🏆 Overall Champion' : c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'
                 return (
                   <div key={ci} className="glass" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--bdr)' }}>
