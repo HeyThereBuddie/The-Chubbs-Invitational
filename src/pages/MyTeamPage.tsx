@@ -404,7 +404,7 @@ export default function MyTeamPage() {
                   <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: GOLD_SOFT }}>{isOwnTeam ? 'Your Team' : 'Viewing'}</div>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 2.5, color: CREAM, lineHeight: 1, marginTop: 2 }}>{team.name}</div>
                   <div style={{ fontSize: 12, color: 'rgba(240,230,200,0.72)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {players.map(p => displayName(p)).join(' · ')}
+                    {[team.player1 ? team.player1.name : team.p1_name, team.player2 ? team.player2.name : team.p2_name].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 {stats.played > 0 && (
