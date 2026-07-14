@@ -9,6 +9,23 @@ import type { Team, Player } from '../lib/types'
 import { Pencil, Check, X } from 'lucide-react'
 import { ShotStats } from '../components/ShotStats'
 
+// Augusta scoreboard palette — matches the Leaderboard / Dashboard / Hall of Fame.
+const AUGUSTA = '#0a5c39'
+const AUGUSTA_DEEP = '#063a25'
+const CREAM = '#efe8d2'
+const GOLD_SOFT = '#e7c877'
+const MASTHEAD = `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`
+
+function Crest({ size = 38 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="50" cy="50" r="48" fill={AUGUSTA_DEEP} stroke="#d4a53a" strokeWidth="3.5" />
+      <path d="M40 74 L40 28 L69 35 L40 42" fill="#e0402f" />
+      <rect x="37.5" y="26" width="3" height="48" rx="1.5" fill={CREAM} />
+    </svg>
+  )
+}
+
 type ScoreRow     = { hole: number; score: number; putts: number | null; drive_used_id: string | null }
 type ChulliganRow = { id: string; player_id: string; hole: number }
 type TeamFull     = Team & { player1?: Player; player2?: Player }
@@ -248,6 +265,25 @@ export default function MyTeamPage() {
   ]
   const maxBreakdown = Math.max(...breakdown.map(b => b.count), 1)
 
+  // Compact roster row — pic / name / handicap, kept short so the scorecard leads.
+  const playersCompact = (
+    <div className="glass animate-fadeUp delay-100" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+      {players.map((p, i) => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderTop: i > 0 ? '1px solid var(--bdr)' : undefined }}>
+          <AvatarCircle player={p} size={40} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName(p)}</div>
+            {p.nickname && <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 16, flexShrink: 0, alignItems: 'center' }}>
+            <StatChip label="Drives" value={driveCount(p.id)} />
+            {p.handicap != null && <StatChip label="HCP" value={p.handicap} />}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
@@ -329,10 +365,10 @@ export default function MyTeamPage() {
             </div>
           )}
 
-          {/* ── Team header ── */}
-          <div className="animate-fadeUp" style={{ marginBottom: 28 }}>
+          {/* ── Team masthead (Augusta) ── */}
+          <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
             {isOwnTeam && editingName ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px' }}>
                 <input
                   ref={nameInputRef}
                   value={nameInput}
@@ -341,7 +377,7 @@ export default function MyTeamPage() {
                   maxLength={50}
                   autoFocus
                   style={{
-                    fontFamily: 'Bebas Neue', fontSize: 28, letterSpacing: 3, color: 'var(--gold)',
+                    fontFamily: 'Bebas Neue', fontSize: 26, letterSpacing: 3, color: 'var(--gold)',
                     background: 'var(--gold-08)', border: '1px solid var(--gold-40)',
                     borderRadius: 10, padding: '4px 12px', outline: 'none', minWidth: 0, flex: 1,
                   }}
@@ -354,51 +390,23 @@ export default function MyTeamPage() {
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                  <div className="section-label" style={{ fontSize: 10, letterSpacing: 2.5, color: 'var(--tx4)' }}>
-                    {isOwnTeam ? 'Your Team' : 'Viewing'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '15px 18px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+                <Crest size={38} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: GOLD_SOFT }}>{isOwnTeam ? 'Your Team' : 'Viewing'}</div>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 2.5, color: CREAM, lineHeight: 1, marginTop: 2 }}>{team.name}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(240,230,200,0.72)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {players.map(p => displayName(p)).join(' · ')}
                   </div>
-                  <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 36, letterSpacing: 3, margin: 0, lineHeight: 0.95 }}>
-                    {team.name}
-                  </h1>
                 </div>
                 {isOwnTeam && (
-                  <button
-                    className="pressable"
-                    onClick={() => { setNameInput(team.name); setEditingName(true) }}
-                    title="Rename team"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gold-40)', padding: 6, display: 'flex', alignItems: 'center', flexShrink: 0, alignSelf: 'flex-end' }}
-                  >
+                  <button className="pressable" onClick={() => { setNameInput(team.name); setEditingName(true) }} title="Rename team"
+                    style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(240,230,200,0.25)', borderRadius: 9, cursor: 'pointer', color: CREAM, padding: 8, display: 'flex', alignItems: 'center', flexShrink: 0, alignSelf: 'flex-start' }}>
                     <Pencil size={14} />
                   </button>
                 )}
               </div>
             )}
-            <p style={{ color: 'var(--tx3)', fontSize: 13, letterSpacing: 0.2, margin: 0 }}>
-              {players.map(p => displayName(p)).join(' & ')}
-            </p>
-          </div>
-
-          {/* ── Player cards ── */}
-          <div className="animate-fadeUp delay-100" style={{ display: 'grid', gridTemplateColumns: players.length > 1 ? '1fr 1fr' : '1fr', gap: 12, marginBottom: 20 }}>
-            {players.map(p => (
-              <div key={p.id} className="glass" style={{ padding: 20 }}>
-                <div style={{ marginBottom: 12 }}>
-                  <AvatarCircle player={p} size={72} />
-                </div>
-                <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: -0.2, color: 'var(--tx1)', marginBottom: p.nickname ? 2 : 8 }}>
-                  {displayName(p)}
-                </div>
-                {p.nickname && (
-                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 8 }}>{p.name}</div>
-                )}
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  <StatChip label="All Drives" value={driveCount(p.id)} />
-                  {p.handicap != null && <StatChip label="HCP" value={p.handicap} />}
-                </div>
-              </div>
-            ))}
           </div>
 
           {/* ── Content: round has started ── */}
@@ -521,6 +529,9 @@ export default function MyTeamPage() {
                 })}
               </div>
 
+              {/* Roster (compact) */}
+              {playersCompact}
+
               {/* Drive Usage */}
               {players.length === 2 && (
                 <div className="glass animate-fadeUp delay-400" style={{ padding: 20, marginBottom: 12 }}>
@@ -610,11 +621,14 @@ export default function MyTeamPage() {
               </div>
             </>
           ) : (
-            <div className="glass animate-fadeUp delay-200" style={{ padding: '36px 24px', textAlign: 'center', color: 'var(--tx3)' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🏌️</div>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1.5, color: 'var(--tx1)' }}>Round hasn't started yet</div>
-              <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>Stats will appear once scores are&nbsp;entered.</div>
-            </div>
+            <>
+              {playersCompact}
+              <div className="glass animate-fadeUp delay-200" style={{ padding: '36px 24px', textAlign: 'center', color: 'var(--tx3)' }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🏌️</div>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 1.5, color: 'var(--tx1)' }}>Round hasn't started yet</div>
+                <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>Stats will appear once scores are&nbsp;entered.</div>
+              </div>
+            </>
           )}
         </>
       ))}

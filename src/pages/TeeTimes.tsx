@@ -6,7 +6,41 @@ import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import type { TeeTime, Team, Player } from '../lib/types'
+import { displayName, teamMemberName } from '../lib/types'
 import { Clock, GripVertical, Zap, Shuffle } from 'lucide-react'
+
+// Augusta scoreboard palette — matches the Leaderboard / Dashboard / Hall of Fame.
+const AUGUSTA = '#0a5c39'
+const AUGUSTA_DEEP = '#063a25'
+const CREAM = '#efe8d2'
+const GOLD_SOFT = '#e7c877'
+
+const MASTHEAD = `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})`
+
+function Crest({ size = 34 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="50" cy="50" r="48" fill={AUGUSTA_DEEP} stroke="#d4a53a" strokeWidth="3.5" />
+      <path d="M40 74 L40 28 L69 35 L40 42" fill="#e0402f" />
+      <rect x="37.5" y="26" width="3" height="48" rx="1.5" fill={CREAM} />
+    </svg>
+  )
+}
+
+// Small round avatar — the player's uploaded photo if they have one, else initials.
+function Avatar({ player, size = 34 }: { player?: Player; size?: number }) {
+  const initials = player ? displayName(player).split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() : '?'
+  if (player?.avatar_url) {
+    return <img src={player.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--bdr2)' }} />
+  }
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center',
+      fontSize: size * 0.38, fontWeight: 800, color: AUGUSTA_DEEP,
+      background: `linear-gradient(160deg, ${GOLD_SOFT}, #d4a53a)`, border: '1.5px solid rgba(240,230,200,0.3)',
+    }}>{initials}</div>
+  )
+}
 
 type TeeTimeRow = TeeTime & {
   team?: Team & { player1?: Player; player2?: Player }
@@ -66,7 +100,7 @@ function SkeletonFoursome({ index, isLast }: { index: number; isLast: boolean })
 }
 
 export default function TeeTimes() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, profile } = useAuth()
   const { showToast } = useToast()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline } = useSyncContext()
@@ -80,6 +114,7 @@ export default function TeeTimes() {
   const [saving, setSaving] = useState(false)
   const [dragTeamId, setDragTeamId] = useState<string | null>(null)
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null)
+  const [pickedTeamId, setPickedTeamId] = useState<string | null>(null)   // tap-to-swap (works on touch)
 
   useEffect(() => { fetchAll() }, [effectiveTournamentId, isOnline])
 
@@ -174,42 +209,40 @@ export default function TeeTimes() {
   const onDragStart = (teamId: string) => setDragTeamId(teamId)
   const onDragEnd = () => { setDragTeamId(null); setDragOverTarget(null) }
 
+  // Tap-to-swap — the mobile-friendly path (HTML5 drag events never fire on touch).
+  // Tap a team to pick it up, tap another team to swap, or an open slot to move it.
+  const tapTeam = (teamId: string) => {
+    if (!pickedTeamId) { setPickedTeamId(teamId); return }
+    if (pickedTeamId === teamId) { setPickedTeamId(null); return }
+    swapTeams(pickedTeamId, teamId); setPickedTeamId(null)
+  }
+  const tapSlot = (targetTime: string, targetHole: number) => {
+    if (!pickedTeamId) return
+    moveTeamToTime(pickedTeamId, targetTime, targetHole); setPickedTeamId(null)
+  }
+
   const foursomes = buildFoursomes(teeTimes)
   const firstTime = foursomes[0]?.tee_time
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      {/* ── Header ────────────────────────────────────────────────── */}
-      <div className="animate-fadeUp" style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: 4, lineHeight: 1 }}>Tee Times</h1>
-          {loading ? (
-            <div className="skeleton skeleton-line" style={{ width: 180, marginTop: 8 }} />
-          ) : (
-            <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>
-              {foursomes.length > 0
-                ? `${foursomes.length} foursomes • First tee: ${formatTime(firstTime ?? '')}`
-                : 'No tee times assigned yet'}
-            </p>
-          )}
+      {/* ── Admin mode switch ─────────────────────────────────────── */}
+      {isAdmin && isCurrentYear && (
+        <div className="pill-tabs animate-fadeUp" style={{ marginBottom: 16 }}>
+          <button onClick={() => setTab('view')} className={`pill-tab pressable ${tab === 'view' ? 'active' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Clock size={13} /> View
+          </button>
+          <button onClick={() => setTab('arrange')} className={`pill-tab pressable ${tab === 'arrange' ? 'active' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <GripVertical size={13} /> Arrange
+          </button>
+          <button onClick={() => setTab('auto')} className={`pill-tab pressable ${tab === 'auto' ? 'active' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Zap size={13} /> Auto
+          </button>
         </div>
-        {isAdmin && isCurrentYear && (
-          <div className="pill-tabs">
-            <button onClick={() => setTab('view')} className={`pill-tab pressable ${tab === 'view' ? 'active' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Clock size={13} /> View
-            </button>
-            <button onClick={() => setTab('arrange')} className={`pill-tab pressable ${tab === 'arrange' ? 'active' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <GripVertical size={13} /> Arrange
-            </button>
-            <button onClick={() => setTab('auto')} className={`pill-tab pressable ${tab === 'auto' ? 'active' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Zap size={13} /> Auto
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── Loading skeleton — mirrors timeline layout ────────────── */}
       {loading && tab === 'view' && (
@@ -220,89 +253,60 @@ export default function TeeTimes() {
         </div>
       )}
 
-      {/* ── View — tee sheet timeline ─────────────────────────────── */}
+      {/* ── View — Augusta tee sheet ──────────────────────────────── */}
       {tab === 'view' && !loading && (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {foursomes.length === 0 && (
-            <div className="glass animate-fadeUp delay-100" style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⛳</div>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 2, color: 'var(--tx2)' }}>
-                No tee times yet
+        <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Masthead */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '15px 18px', background: MASTHEAD, borderBottom: '2px solid rgba(240,230,200,0.18)' }}>
+            <Crest size={38} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 2.5, color: CREAM, lineHeight: 1 }}>Tee Times</div>
+              <div style={{ fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD_SOFT, marginTop: 4 }}>
+                {foursomes.length > 0 ? `${foursomes.length} groups · First tee ${formatTime(firstTime ?? '')}` : 'Not set yet'}
               </div>
-              <p style={{ fontSize: 13, color: 'var(--tx4)', marginTop: 4 }}>
-                The tee sheet is still warming up on the range.
-              </p>
             </div>
-          )}
-          {foursomes.map((fs, i) => {
-            const isLast = i === foursomes.length - 1
+          </div>
+
+          {foursomes.length === 0 ? (
+            <div style={{ padding: '44px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⛳</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 2, color: 'var(--tx2)' }}>No tee times yet</div>
+              <p style={{ fontSize: 13, color: 'var(--tx4)', marginTop: 4 }}>The tee sheet is still warming up on the range.</p>
+            </div>
+          ) : foursomes.map((fs, i) => {
+            const mine = fs.tts.some(tt => tt.team_id && tt.team_id === profile?.team_id)
             return (
-              <div
-                key={fs.tee_time}
-                className={i < 4 ? `animate-fadeUp delay-${(i + 1) * 100}` : undefined}
-                style={{ display: 'flex', gap: 12 }}
-              >
-                {/* Timeline rail */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 12, flexShrink: 0, paddingTop: 8 }}>
-                  <div style={{
-                    width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                    background: i === 0 ? 'var(--gold)' : 'var(--gold-40)',
-                    boxShadow: i === 0 ? 'var(--elev-gold)' : 'none',
-                  }} />
-                  {!isLast && (
-                    <div style={{
-                      width: 2, flex: 1, marginTop: 8, borderRadius: 1,
-                      background: 'linear-gradient(180deg, var(--gold-25), var(--gold-08))',
-                    }} />
-                  )}
+              <div key={fs.tee_time} style={{
+                borderBottom: '1px solid var(--bdr)',
+                background: mine ? 'linear-gradient(90deg, var(--gold-08), transparent 62%)' : undefined,
+                boxShadow: mine ? 'inset 3px 0 0 var(--gold)' : undefined,
+              }}>
+                {/* Group header */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 18px 4px' }}>
+                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 1, color: i === 0 ? 'var(--gold)' : 'var(--tx2)', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                    {formatTime(fs.tee_time)}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: 'var(--tx4)', background: 'var(--surf2)', border: '1px solid var(--bdr)', padding: '3px 9px', borderRadius: 999 }}>Hole {fs.starting_hole}</span>
+                  {mine && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--gold)', border: '1px solid var(--gold-40)', borderRadius: 6, padding: '2px 6px' }}>Your group</span>}
+                  <span style={{ flex: 1 }} />
+                  <span style={{ fontSize: 11, color: 'var(--tx4)' }}>Group {i + 1}</span>
                 </div>
-
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 0 : 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
-                    <span style={{
-                      fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: 1,
-                      color: 'var(--gold)', lineHeight: 1, whiteSpace: 'nowrap',
-                    }}>
-                      {formatTime(fs.tee_time)}
-                    </span>
-                    <span className="section-label" style={{ whiteSpace: 'nowrap' }}>Hole {fs.starting_hole}</span>
-                    <span style={{ flex: 1 }} />
-                    <span className="section-label" style={{ color: 'var(--tx4)', whiteSpace: 'nowrap' }}>
-                      Foursome {i + 1}
-                    </span>
-                  </div>
-
-                  <div className="glass" style={{ padding: 16 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                      {fs.tts.map((tt, idx) => (
-                        <div key={tt.team_id} style={idx > 0 ? { borderLeft: '1px solid var(--bdr)', paddingLeft: 16, minWidth: 0 } : { minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, color: 'var(--tx1)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {tt.team?.name}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4, lineHeight: 1.4 }}>
-                            {[tt.team?.player1?.name, tt.team?.player2?.name].filter(Boolean).join(' & ')}
-                          </div>
-                          {tt.cart && (
-                            <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: 8 }}>🛺 {tt.cart}</div>
-                          )}
-                          {tt.notes && (
-                            <div style={{ fontSize: 11, color: 'var(--tx4)', marginTop: tt.cart ? 4 : 8 }}>📝 {tt.notes}</div>
-                          )}
-                        </div>
-                      ))}
-                      {fs.tts.length === 1 && (
-                        <div style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderLeft: '1px solid var(--bdr)', paddingLeft: 16,
-                          color: 'var(--tx4)', fontSize: 12,
-                        }}>
-                          Twosome
-                        </div>
-                      )}
+                {/* Teams */}
+                {fs.tts.map(tt => (
+                  <div key={tt.team_id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 18px' }}>
+                    <Avatar player={tt.team?.player1} size={30} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tt.team?.name}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {[teamMemberName(tt.team?.player1, tt.team?.p1_name), teamMemberName(tt.team?.player2, tt.team?.p2_name)].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
+                    {tt.cart && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx2)', background: 'var(--surf2)', border: '1px solid var(--bdr)', borderRadius: 8, padding: '3px 8px', flexShrink: 0 }}>🛺 {tt.cart}</span>}
                   </div>
-                </div>
+                ))}
+                {fs.tts.length === 1 && (
+                  <div style={{ padding: '4px 18px 12px', fontSize: 11, color: 'var(--tx4)', fontStyle: 'italic' }}>Twosome — open slot</div>
+                )}
               </div>
             )
           })}
@@ -314,7 +318,9 @@ export default function TeeTimes() {
         <div className="animate-fadeUp">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
             <p style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5 }}>
-              Drag a team to swap it with another or drop it into an open slot.
+              {pickedTeamId
+                ? '👆 Now tap another team to swap, or an open slot to move it there.'
+                : 'Tap a team to pick it up, then tap another to swap (or drag on desktop).'}
             </p>
             {saving && (
               <span className="animate-pulseDot" style={{ fontSize: 12, fontWeight: 600, color: 'var(--gold)', whiteSpace: 'nowrap' }}>
@@ -354,11 +360,14 @@ export default function TeeTimes() {
                     if (tt) {
                       const isDragging = dragTeamId === tt.team_id
                       const isOver = dragOverTarget === tt.team_id
+                      const isPicked = pickedTeamId === tt.team_id
+                      const highlight = isOver || isPicked
                       return (
                         <div
                           key={tt.team_id}
-                          className="glass-flat"
+                          className="glass-flat pressable"
                           draggable
+                          onClick={() => tapTeam(tt.team_id)}
                           onDragStart={() => onDragStart(tt.team_id)}
                           onDragEnd={onDragEnd}
                           onDragOver={e => { e.preventDefault(); setDragOverTarget(tt.team_id) }}
@@ -374,25 +383,26 @@ export default function TeeTimes() {
                           style={{
                             padding: 12,
                             borderRadius: 12,
-                            border: `1px solid ${isOver ? 'var(--gold)' : 'var(--bdr)'}`,
-                            background: isOver ? 'var(--gold-15)' : 'var(--surf2)',
-                            boxShadow: isOver ? 'var(--elev-gold)' : 'var(--elev-1)',
+                            border: `1px solid ${highlight ? 'var(--gold)' : 'var(--bdr)'}`,
+                            background: highlight ? 'var(--gold-15)' : 'var(--surf2)',
+                            boxShadow: highlight ? 'var(--elev-gold)' : 'var(--elev-1)',
                             opacity: isDragging ? 0.35 : 1,
-                            cursor: 'grab',
+                            cursor: 'pointer',
                             display: 'flex', alignItems: 'center', gap: 8,
                             transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
                             userSelect: 'none',
                           }}
                         >
-                          <GripVertical size={14} style={{ color: 'var(--tx4)', flexShrink: 0 }} />
-                          <div style={{ minWidth: 0 }}>
+                          <Avatar player={tt.team?.player1} size={30} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {tt.team?.name}
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {[tt.team?.player1?.name, tt.team?.player2?.name].filter(Boolean).join(' & ')}
+                              {[teamMemberName(tt.team?.player1, tt.team?.p1_name), teamMemberName(tt.team?.player2, tt.team?.p2_name)].filter(Boolean).join(' & ')}
                             </div>
                           </div>
+                          {isPicked && <span style={{ fontSize: 15, flexShrink: 0 }}>✋</span>}
                         </div>
                       )
                     }
@@ -400,9 +410,11 @@ export default function TeeTimes() {
                     // Empty slot — drop target
                     const emptyKey = `empty:${fs.tee_time}`
                     const isOver = dragOverTarget === emptyKey && !!dragTeamId
+                    const canDrop = isOver || (!!pickedTeamId)
                     return (
                       <div
                         key={`empty-${slotIdx}`}
+                        onClick={() => tapSlot(fs.tee_time, fs.starting_hole)}
                         onDragOver={e => { e.preventDefault(); setDragOverTarget(emptyKey) }}
                         onDragLeave={e => {
                           if (!e.currentTarget.contains(e.relatedTarget as Node))
@@ -419,12 +431,12 @@ export default function TeeTimes() {
                           border: `1px dashed ${isOver ? 'var(--gold)' : 'var(--bdr2)'}`,
                           background: isOver ? 'var(--gold-08)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: isOver ? 'var(--gold)' : 'var(--tx5)',
-                          fontSize: 12, fontWeight: isOver ? 600 : 400,
+                          color: canDrop ? 'var(--gold)' : 'var(--tx5)',
+                          fontSize: 12, fontWeight: canDrop ? 600 : 400, cursor: pickedTeamId ? 'pointer' : 'default',
                           transition: 'all 0.15s',
                         }}
                       >
-                        {isOver ? '↓ Drop here' : 'Open slot'}
+                        {isOver ? '↓ Drop here' : pickedTeamId ? 'Tap to move here' : 'Open slot'}
                       </div>
                     )
                   })}
