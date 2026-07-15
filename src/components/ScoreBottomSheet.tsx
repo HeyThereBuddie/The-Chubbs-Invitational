@@ -130,27 +130,21 @@ export function ScoreBottomSheet({
         {/* Top border-glow line */}
         <div style={{
           height: 1,
-          background: 'linear-gradient(90deg, transparent 8%, var(--gold-40) 50%, transparent 92%)',
+          background: 'linear-gradient(90deg, transparent 8%, rgba(10,92,57,0.7) 50%, transparent 92%)',
         }} />
 
         {/* Drag handle */}
-        <div style={{ width: 40, height: 5, borderRadius: 999, background: 'var(--surf3)', margin: '10px auto 0' }} />
+        <div style={{ width: 40, height: 5, borderRadius: 999, background: 'var(--surf3)', margin: '10px auto 12px' }} />
 
-        {/* Header */}
-        <div style={{ padding: '12px 20px 8px', textAlign: 'center' }}>
-          <span style={{
-            fontFamily: 'Bebas Neue', fontSize: 34, color: 'var(--gold)', letterSpacing: 3,
-            lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-            textShadow: '0 0 24px var(--gold-25)',
-          }}>
-            HOLE {hole}
-          </span>
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: 'var(--tx3)', marginLeft: 12,
-            letterSpacing: 2, textTransform: 'uppercase', verticalAlign: '4px',
-          }}>
-            PAR {par}
-          </span>
+        {/* Augusta hole header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 12px 8px', padding: '13px 16px', borderRadius: 14, background: 'linear-gradient(180deg, #0a5c39, #063a25)', border: '1px solid rgba(240,230,200,0.16)' }}>
+          <svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <circle cx="50" cy="50" r="48" fill="#063a25" stroke="#d4a53a" strokeWidth="4" />
+            <path d="M40 74 L40 28 L69 35 L40 42" fill="#e0402f" />
+            <rect x="37.5" y="26" width="3" height="48" rx="1.5" fill="#efe8d2" />
+          </svg>
+          <span style={{ fontFamily: 'Bebas Neue', fontSize: 30, letterSpacing: 3, color: '#efe8d2', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>Hole {hole}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', color: '#e7c877', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(240,230,200,0.22)', borderRadius: 999, padding: '5px 12px' }}>Par {par}</span>
         </div>
 
         {/* HoleCard content or no-team message */}
@@ -248,15 +242,16 @@ export function ScoreBottomSheet({
               onClick={onNextHole}
               style={{
                 width: '100%',
-                padding: '14px',
+                padding: '15px',
                 borderRadius: 12,
-                background: 'rgba(212,165,58,0.90)',
-                border: '1px solid rgba(212,165,58,0.6)',
-                color: '#000',
+                background: 'linear-gradient(180deg, #0d6a43, #063a25)',
+                border: '1px solid rgba(240,230,200,0.22)',
+                color: '#efe8d2',
                 fontSize: 16,
                 fontWeight: 800,
                 cursor: 'pointer',
                 letterSpacing: 0.5,
+                boxShadow: '0 4px 14px -4px rgba(10,92,57,0.8), inset 0 1px 0 rgba(255,255,255,0.1)',
               }}
             >
               Next Hole →
@@ -266,15 +261,16 @@ export function ScoreBottomSheet({
               onClick={onClose}
               style={{
                 width: '100%',
-                padding: '14px',
+                padding: '15px',
                 borderRadius: 12,
-                background: 'rgba(212,165,58,0.90)',
-                border: '1px solid rgba(212,165,58,0.6)',
-                color: '#000',
+                background: 'linear-gradient(180deg, #e7c877, #d4a53a)',
+                border: 'none',
+                color: '#23180a',
                 fontSize: 16,
                 fontWeight: 800,
                 cursor: 'pointer',
                 letterSpacing: 0.5,
+                boxShadow: '0 4px 14px -4px rgba(212,165,58,0.6), inset 0 1px 0 rgba(255,255,255,0.35)',
               }}
             >
               Finish Round ✓

@@ -43,11 +43,11 @@ export function HoleCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div style={{
             width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-            background: 'linear-gradient(160deg, rgba(212,165,58,0.20), rgba(212,165,58,0.06))',
-            border: '1px solid var(--gold-40)',
-            boxShadow: 'var(--elev-1), inset 0 1px 0 rgba(255,255,255,0.08)',
+            background: 'linear-gradient(160deg, #0a5c39, #063a25)',
+            border: '1px solid rgba(240,230,200,0.22)',
+            boxShadow: 'var(--elev-1), inset 0 1px 0 rgba(255,255,255,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Bebas Neue', fontSize: 28, color: 'var(--gold)',
+            fontFamily: 'Bebas Neue', fontSize: 28, color: '#efe8d2',
             fontVariantNumeric: 'tabular-nums',
           }}>{hole}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -90,11 +90,11 @@ export function HoleCard({
               className="score-btn"
               style={{
                 width: 44, height: 44, borderRadius: '50%',
-                background: 'linear-gradient(160deg, rgba(212,165,58,0.28), rgba(212,165,58,0.14))',
-                border: '1px solid var(--gold-40)',
-                color: 'var(--gold)', cursor: isSaving ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(160deg, #0d6a43, #063a25)',
+                border: '1px solid rgba(240,230,200,0.22)',
+                color: '#efe8d2', cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'var(--elev-gold), inset 0 1px 0 rgba(255,255,255,0.12)',
+                boxShadow: '0 3px 10px -3px rgba(10,92,57,0.7), inset 0 1px 0 rgba(255,255,255,0.12)',
               }}
             ><Plus size={18} /></button>
             {hasScore && onReset && (
@@ -154,10 +154,10 @@ export function HoleCard({
                   style={{
                     padding: '8px 14px', minHeight: 34, borderRadius: 999,
                     fontSize: 12, fontWeight: 600, border: '1px solid',
-                    background: active ? 'var(--gold-15)' : 'var(--surf2)',
-                    borderColor: active ? 'var(--gold)' : 'var(--bdr)',
-                    color: active ? 'var(--gold)' : 'var(--tx3)',
-                    boxShadow: active ? 'var(--elev-gold)' : 'none',
+                    background: active ? 'rgba(13,106,67,0.32)' : 'var(--surf2)',
+                    borderColor: active ? '#0d6a43' : 'var(--bdr)',
+                    color: active ? '#8fe6b4' : 'var(--tx3)',
+                    boxShadow: active ? '0 2px 10px -3px rgba(10,92,57,0.7)' : 'none',
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     opacity: disabled ? 0.3 : 1,
                     transition: 'background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s',
@@ -185,10 +185,10 @@ export function HoleCard({
                   width: 36, height: 36, borderRadius: 10,
                   fontSize: 14, fontWeight: 700, border: '1px solid',
                   fontVariantNumeric: 'tabular-nums',
-                  background: active ? 'var(--gold-15)' : 'var(--surf2)',
-                  borderColor: active ? 'var(--gold)' : 'var(--bdr)',
-                  color: active ? 'var(--gold)' : 'var(--tx3)',
-                  boxShadow: active ? 'var(--elev-gold)' : 'none',
+                  background: active ? 'rgba(13,106,67,0.32)' : 'var(--surf2)',
+                  borderColor: active ? '#0d6a43' : 'var(--bdr)',
+                  color: active ? '#8fe6b4' : 'var(--tx3)',
+                  boxShadow: active ? '0 2px 10px -3px rgba(10,92,57,0.7)' : 'none',
                   cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s',
                 }}>
                   {n}
@@ -214,9 +214,9 @@ export function HoleCard({
                   title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
                   style={{
                     padding: '7px 12px', minHeight: 32, borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: usedHere ? 'var(--gold-15)' : 'var(--surf2)',
-                    border: `1px solid ${usedHere ? 'var(--gold-dim)' : 'var(--bdr)'}`,
-                    color: usedHere ? 'var(--gold)' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
+                    background: usedHere ? 'rgba(13,106,67,0.32)' : 'var(--surf2)',
+                    border: `1px solid ${usedHere ? '#0d6a43' : 'var(--bdr)'}`,
+                    color: usedHere ? '#8fe6b4' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
                     cursor: usedElsewhere ? 'not-allowed' : 'pointer',
                     textDecoration: usedElsewhere ? 'line-through' : 'none',
                   }}>
