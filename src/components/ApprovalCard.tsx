@@ -16,6 +16,12 @@ export function ApprovalCard({ team, score, hole, onApprove, onDispute }: {
   const drivePlayer = [team.player1, team.player2].find(p => p?.id === score.drive_used_id)
   const driveName = drivePlayer ? displayName(drivePlayer) : null
   const chs = team.chulligans.filter(c => c.hole === hole)
+  // Name who took each chulligan on this hole (first name), so it's clear.
+  const chNames = chs.map(c => {
+    const p = [team.player1, team.player2].find(x => x?.id === c.player_id)
+    return p ? displayName(p).split(/\s+/)[0] : null
+  }).filter(Boolean) as string[]
+  const chulliganValue = chs.length === 0 ? 'None' : chNames.length ? `🍺 ${chNames.join(' & ')}` : `🍺 ${chs.length}`
   const toPar = score.score - par
   const toParStr = toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : `${toPar}`
 
@@ -42,7 +48,7 @@ export function ApprovalCard({ team, score, hole, onApprove, onDispute }: {
       <div style={{ display: 'flex', gap: 8, padding: '13px 16px', background: 'var(--surf)', flexWrap: 'wrap' }}>
         <Chip label="Putts" value={score.putts ?? '—'} />
         {driveName && <Chip label="Drive" value={driveName} />}
-        <Chip label="Chulligans" value={`🍺 ${chs.length}`} />
+        <Chip label={chs.length === 1 ? 'Chulligan' : 'Chulligans'} value={chulliganValue} />
       </div>
 
       {/* Actions */}
