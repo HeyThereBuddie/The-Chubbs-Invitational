@@ -10,6 +10,7 @@ import { TourProvider } from './context/TourContext'
 import Layout from './components/layout/Layout'
 import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import Dashboard from './pages/Dashboard'
 import Scores from './pages/Scores'
 import Leaderboard from './pages/Leaderboard'
@@ -58,9 +59,14 @@ function LiveOnly({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, recovery } = useAuth()
   const location = useLocation()
   if (loading) return <Spinner />
+
+  // A password-reset link opens a temporary recovery session. Take over the whole
+  // app with the reset screen until the user sets a new password (or the link fails),
+  // so they can't slip into the app on the recovery token.
+  if (recovery) return <ResetPasswordPage />
 
   // New players must finish the mandatory setup wizard before entering the app.
   const needsSetup = !!user && !!profile && profile.onboarded === false
@@ -70,6 +76,10 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={user ? <Navigate to={sessionStorage.getItem('chubbs-new-reg') ? '/welcome' : '/'} replace /> : <AuthPage />} />
+      {/* Landing target for password-reset emails. Public so the link resolves even
+          before the recovery session is parsed (the recovery short-circuit above then
+          takes over once it fires). */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/welcome" element={<ProtectedRoute><WelcomePage /></ProtectedRoute>} />
       <Route path="/invite-response" element={<InviteResponsePage />} />
       <Route path="/rsvp-landing" element={<RSVPLanding />} />

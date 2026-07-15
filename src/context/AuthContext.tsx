@@ -11,12 +11,16 @@ interface AuthContextValue {
   profile: Profile | null
   isAdmin: boolean
   loading: boolean
+  recovery: boolean            // true while a password-reset link session is active
+  clearRecovery: () => void
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, session: null, profile: null, isAdmin: false, loading: true,
+  recovery: false,
+  clearRecovery: () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
 })
@@ -39,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [recovery, setRecovery] = useState(false)
 
   const fetchProfile = async (userId: string) => {
     // Step 1: Read from localDb immediately so the app renders without waiting for network
@@ -74,7 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cachedUserId) setLoading(false)
       })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Password-reset links open a temporary recovery session. Flag it so the app
+      // routes to the reset screen instead of dropping the user straight into the app.
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
@@ -89,7 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut()
     setProfile(null)
+    setRecovery(false)
   }
+
+  const clearRecovery = () => setRecovery(false)
 
   const refreshProfile = async () => {
     if (user) await fetchProfile(user.id)
@@ -100,6 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, session, profile,
       isAdmin: profile?.role === 'admin',
       loading,
+      recovery,
+      clearRecovery,
       signOut,
       refreshProfile,
     }}>
