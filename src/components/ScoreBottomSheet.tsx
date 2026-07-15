@@ -1,6 +1,7 @@
 import { HoleCard } from './HoleCard'
 import { ApprovalCard } from './ApprovalCard'
 import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam, isHoleComplete } from '../lib/scoreTypes'
+import type { Player } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 
 interface ScoreBottomSheetProps {
@@ -52,8 +53,13 @@ export function ScoreBottomSheet({
   disputeScore,
   demo,
 }: ScoreBottomSheetProps) {
-  const mp1 = myTeam?.player1
-  const mp2 = myTeam?.player2
+  // Use the registered profile when available, else a stand-in built from the
+  // drawn team name — so drive & chulligan controls still show for a 2-person
+  // team even before a partner has registered their account.
+  const drawn = (p: Player | undefined, id: string | null, name: string | null | undefined): Player | undefined =>
+    p ?? (name ? ({ id: id ?? `drawn:${name}`, name, nickname: null } as Player) : undefined)
+  const mp1 = drawn(myTeam?.player1, myTeam?.p1_id ?? myTeam?.p1_roster_id ?? null, myTeam?.p1_name)
+  const mp2 = drawn(myTeam?.player2, myTeam?.p2_id ?? myTeam?.p2_roster_id ?? null, myTeam?.p2_name)
   const twoPlayers = !!(mp1 && mp2)
   const ownComplete = hole <= 1 || isHoleComplete(myScores[hole - 1], twoPlayers)
 
