@@ -236,13 +236,35 @@ export function usePlayerScoring() {
     await refreshPendingCount()
   }
 
-  const setMyDrive = async (hole: number, playerId: string) => {
+  // Create a score row at par if the hole has none yet — lets drive / putts /
+  // chulligans be set before a score is dialed in (the sheet shows every field at
+  // once instead of revealing them as you go).
+  const ensureScore = async (hole: number): Promise<string | null> => {
+    if (!myTeamId) return null
     const existing = myScores[hole]
-    if (!existing?.id) return
-    const newId = existing.drive_used_id === playerId ? null : playerId
+    if (existing?.id) return existing.id
+    const scoreId = `offline-${myTeamId}-${hole}`
+    const par = parOf(hole)
+    await localDb.scores.put({ id: scoreId, team_id: myTeamId, hole, score: par, drive_used_id: null, putts: null, updated_at: new Date().toISOString() })
+    setMyScores(prev => ({ ...prev, [hole]: { id: scoreId, hole, score: par, drive_used_id: prev[hole]?.drive_used_id ?? null, putts: prev[hole]?.putts ?? null } }))
+    await enqueue('set_score', { team_id: myTeamId, hole, score: par }, { team_id: myTeamId, hole })
+    const feedInfo = scoreFeedInfo(par, par)
+    await enqueue('log_feed_event', {
+      id: crypto.randomUUID(), event_type: 'score', team_id: myTeamId ?? null, team_name: myTeam?.name ?? '',
+      player_name: null, voter_name: null, hole, score: par, label: feedInfo.label, emoji: feedInfo.emoji,
+      tournament_id: effectiveTournamentId ?? null,
+    } satisfies LogFeedEventPayload, { team_id: myTeamId, hole, ev: 'score' })
+    if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
+    return scoreId
+  }
+
+  const setMyDrive = async (hole: number, playerId: string) => {
+    const id = await ensureScore(hole)
+    if (!id) return
+    const newId = myScores[hole]?.drive_used_id === playerId ? null : playerId
 
     // Write localDb first so any concurrent read picks up the new value
-    await localDb.scores.update(existing.id, { drive_used_id: newId })
+    await localDb.scores.update(id, { drive_used_id: newId })
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
     await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
     if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
@@ -250,12 +272,12 @@ export function usePlayerScoring() {
   }
 
   const setMyPutts = async (hole: number, putts: number) => {
-    const existing = myScores[hole]
-    if (!existing?.id) return
-    const newPutts = existing.putts === putts ? null : putts
+    const id = await ensureScore(hole)
+    if (!id) return
+    const newPutts = myScores[hole]?.putts === putts ? null : putts
 
     // Write localDb first so any concurrent read picks up the new value
-    await localDb.scores.update(existing.id, { putts: newPutts })
+    await localDb.scores.update(id, { putts: newPutts })
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], putts: newPutts } }))
     await enqueue('set_putts', { team_id: myTeamId!, hole, putts: newPutts }, { team_id: myTeamId!, hole })
 

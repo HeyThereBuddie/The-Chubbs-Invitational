@@ -135,7 +135,7 @@ export function HoleCard({
         </div>
       )}
 
-      {!readOnly && !locked && hasScore && player1 && player2 && onSetDrive && (
+      {!readOnly && !locked && player1 && player2 && onSetDrive && (
         <div data-tour={demoAnchors ? 'score-demo-drive' : undefined} style={{
           marginTop: 10, paddingTop: 10,
           borderTop: '1px solid var(--bdr)',
@@ -170,7 +170,7 @@ export function HoleCard({
         </div>
       )}
 
-      {!readOnly && !locked && hasScore && onSetPutts && (
+      {!readOnly && !locked && onSetPutts && (
         <div style={{
           marginTop: 10, paddingTop: 10,
           borderTop: '1px solid var(--bdr)',
@@ -199,7 +199,7 @@ export function HoleCard({
         </div>
       )}
 
-      {!readOnly && !locked && hasScore && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
+      {!readOnly && !locked && player1 && player2 && onToggleChulligan && chulligans !== undefined && (
         <div data-tour={demoAnchors ? 'score-demo-chull' : undefined} style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--bdr)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>🍺</span>
           <div style={{ display: 'flex', gap: 6 }}>

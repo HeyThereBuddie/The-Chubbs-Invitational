@@ -544,8 +544,14 @@ export default function GpsPage() {
     if (cur == null) { if (delta < 0) return prev; return { ...prev, [h]: { id: `demo-s${h}`, hole: h, score: 4, drive_used_id: null, putts: null } } }
     return { ...prev, [h]: { ...prev[h], score: Math.max(1, cur + delta) } }
   }), [])
-  const demoSetDrive = useCallback((h: number, pid: string) => setDemoScores(prev => prev[h] ? { ...prev, [h]: { ...prev[h], drive_used_id: pid } } : prev), [])
-  const demoSetPutts = useCallback((h: number, putts: number) => setDemoScores(prev => prev[h] ? { ...prev, [h]: { ...prev[h], putts } } : prev), [])
+  const demoSetDrive = useCallback((h: number, pid: string) => setDemoScores(prev => {
+    const row = prev[h] ?? { id: `demo-s${h}`, hole: h, score: 4, drive_used_id: null, putts: null }
+    return { ...prev, [h]: { ...row, drive_used_id: row.drive_used_id === pid ? null : pid } }
+  }), [])
+  const demoSetPutts = useCallback((h: number, putts: number) => setDemoScores(prev => {
+    const row = prev[h] ?? { id: `demo-s${h}`, hole: h, score: 4, drive_used_id: null, putts: null }
+    return { ...prev, [h]: { ...row, putts: row.putts === putts ? null : putts } }
+  }), [])
   const demoReset = useCallback((h: number) => setDemoScores(prev => { const n = { ...prev }; delete n[h]; return n }), [])
   const demoToggleChulligan = useCallback((pid: string, h: number) => setDemoChulligans(prev => {
     const existing = prev.find(c => c.player_id === pid)
