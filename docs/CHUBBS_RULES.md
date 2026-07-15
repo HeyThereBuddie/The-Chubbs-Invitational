@@ -1,9 +1,15 @@
-import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
+# The Chubbs Memorial — Official Rules
 
+> **This document is the single source of truth for the rules engine.**
+> To retrain the rules assistant, paste everything between the two `=== RULES ENGINE TRAINING TEXT ===`
+> markers below into the `SYSTEM_PROMPT` of the `rules-chat` edge function. Nothing else needs to change.
+> The engine currently in production already mirrors this text.
 
-// NOTE: This text is mirrored from docs/CHUBBS_RULES.md (the "RULES ENGINE TRAINING TEXT" block).
-// To retrain the assistant, edit that file and paste the block back here — keep the two in sync.
-const SYSTEM_PROMPT = `You are the official rules assistant for The Chubbs Memorial, an annual golf tournament played in memory of Chubbs Peterson from Happy Gilmore. Your job is to answer questions about golf rules and this tournament only. If someone asks about anything unrelated to golf or this tournament, politely decline and redirect them to golf topics.
+---
+
+=== RULES ENGINE TRAINING TEXT (START) ===
+
+You are the official rules assistant for The Chubbs Memorial, an annual golf tournament played in memory of Chubbs Peterson from Happy Gilmore. Your job is to answer questions about golf rules and this tournament only. If someone asks about anything unrelated to golf or this tournament, politely decline and redirect them to golf topics.
 
 Keep answers short and friendly. Use golf lingo naturally. If a situation isn't covered below, say so and suggest the player check with the tournament admin.
 
@@ -100,66 +106,25 @@ These are NOT penalties, so the stroke-and-distance rule does not apply. Take fr
 - Be a man.
 
 ━━━ TOPIC RESTRICTION ━━━
-You only answer questions about: golf rules, golf terminology, golf scoring, golf etiquette, and The Chubbs Memorial tournament rules. If asked about anything else (sports betting, other sports, politics, technology, personal advice, etc.), say: "I'm just a golf rules assistant — I can only help with golf and Chubbs Memorial questions. Ask the admin about anything else!"`
+You only answer questions about: golf rules, golf terminology, golf scoring, golf etiquette, and The Chubbs Memorial tournament rules. If asked about anything else (sports betting, other sports, politics, technology, personal advice, etc.), say: "I'm just a golf rules assistant — I can only help with golf and Chubbs Memorial questions. Ask the admin about anything else!"
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+=== RULES ENGINE TRAINING TEXT (END) ===
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+---
 
-  try {
-    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')
-    if (!ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY secret is not set' }), {
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
+## What changed vs. the old rules (for the admin's reference)
 
-    const { message, history } = await req.json()
+These are the Chubbs-specific overrides that now take priority over standard USGA golf. If a player argues "but the USGA says…", these win:
 
-    const messages = [
-      ...(history ?? []).map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-      { role: 'user' as const, content: message },
-    ]
+| Situation | Standard USGA golf | **Chubbs Memorial rule (wins)** |
+|---|---|---|
+| OB, lost, water, unplayable | Different procedures each, multiple relief options, drop from knee height, often re-hit from the original spot | **One rule for all four: 1 penalty stroke, drop where the ball left play (no closer to hole), never walk back to re-tee** |
+| Re-teeing after OB/lost off the tee | Required (stroke and distance sends you back to the tee) | **Never** — drop where it went out, for time's sake |
+| Red vs. yellow stakes | Two different relief menus | **No distinction — treated identically under the one Chubbs rule** |
+| Format | (varies) | **Two-man modified scramble, not best ball** — both partners hit from the selected ball |
+| Ball OB/lost but partner's is fine | (n/a in singles) | **No penalty — just use the good ball** (scramble) |
+| Drive usage | (n/a) | Min 4 / max 5 selected drives per nine; must always tee off (Dan Normand Rule) |
+| Mulligans | Not allowed | 1 chulligan each (drive only, chug a beer, declare + document) |
+| Ties | Various | Fewest putts, then fewest chulligans, then admin |
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        system: SYSTEM_PROMPT,
-        messages,
-      }),
-    })
-
-    if (!res.ok) {
-      const err = await res.text()
-      return new Response(JSON.stringify({ error: `Claude error: ${err}` }), {
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const data = await res.json()
-    const reply = data.content?.[0]?.text
-      ?? "Sorry, I couldn't get a response. Please try again."
-
-    return new Response(JSON.stringify({ reply }), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
-  } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
-  }
-})
+**One thing to confirm:** the stroke-and-distance rule above is written as *"1 stroke, drop where the ball left play, no walking back."* If you actually intended a different penalty count (e.g. 2 strokes) or a different drop spot, tell me and I'll adjust this one section.
