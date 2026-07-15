@@ -153,10 +153,10 @@ export function HoleCard({
                   title={disabled ? 'Max 5 drives per half reached' : undefined}
                   style={{
                     padding: '8px 14px', minHeight: 34, borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, border: '1px solid',
-                    background: active ? 'rgba(13,106,67,0.32)' : 'var(--surf2)',
-                    borderColor: active ? '#0d6a43' : 'var(--bdr)',
-                    color: active ? '#8fe6b4' : 'var(--tx3)',
+                    fontSize: 12, fontWeight: active ? 700 : 600, border: '1px solid',
+                    background: active ? 'linear-gradient(160deg, #0d6a43, #063a25)' : 'var(--surf2)',
+                    borderColor: active ? 'rgba(240,230,200,0.28)' : 'var(--bdr)',
+                    color: active ? '#ffffff' : 'var(--tx3)',
                     boxShadow: active ? '0 2px 10px -3px rgba(10,92,57,0.7)' : 'none',
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     opacity: disabled ? 0.3 : 1,
@@ -185,9 +185,9 @@ export function HoleCard({
                   width: 36, height: 36, borderRadius: 10,
                   fontSize: 14, fontWeight: 700, border: '1px solid',
                   fontVariantNumeric: 'tabular-nums',
-                  background: active ? 'rgba(13,106,67,0.32)' : 'var(--surf2)',
-                  borderColor: active ? '#0d6a43' : 'var(--bdr)',
-                  color: active ? '#8fe6b4' : 'var(--tx3)',
+                  background: active ? 'linear-gradient(160deg, #0d6a43, #063a25)' : 'var(--surf2)',
+                  borderColor: active ? 'rgba(240,230,200,0.28)' : 'var(--bdr)',
+                  color: active ? '#ffffff' : 'var(--tx3)',
                   boxShadow: active ? '0 2px 10px -3px rgba(10,92,57,0.7)' : 'none',
                   cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s',
                 }}>
@@ -213,10 +213,10 @@ export function HoleCard({
                   className="pressable"
                   title={usedElsewhere ? `${displayName(p)} already used chulligan on H${myC!.hole}` : undefined}
                   style={{
-                    padding: '7px 12px', minHeight: 32, borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: usedHere ? 'rgba(13,106,67,0.32)' : 'var(--surf2)',
-                    border: `1px solid ${usedHere ? '#0d6a43' : 'var(--bdr)'}`,
-                    color: usedHere ? '#8fe6b4' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
+                    padding: '7px 12px', minHeight: 32, borderRadius: 999, fontSize: 11, fontWeight: usedHere ? 700 : 600,
+                    background: usedHere ? 'linear-gradient(160deg, #0d6a43, #063a25)' : 'var(--surf2)',
+                    border: `1px solid ${usedHere ? 'rgba(240,230,200,0.28)' : 'var(--bdr)'}`,
+                    color: usedHere ? '#ffffff' : usedElsewhere ? 'var(--tx5)' : 'var(--tx3)',
                     cursor: usedElsewhere ? 'not-allowed' : 'pointer',
                     textDecoration: usedElsewhere ? 'line-through' : 'none',
                   }}>
