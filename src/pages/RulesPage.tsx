@@ -124,7 +124,7 @@ export default function RulesPage() {
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           disabled={loading || rulesDemo}
-          style={{ flex: 1, padding: '11px 14px', borderRadius: 12, fontSize: 14, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none' }}
+          style={{ flex: 1, padding: '11px 14px', borderRadius: 12, fontSize: 16, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none' }}
         />
         <button onClick={() => send()} disabled={!input.trim() || loading || rulesDemo} style={{
           width: 44, height: 44, borderRadius: 12, flexShrink: 0,
