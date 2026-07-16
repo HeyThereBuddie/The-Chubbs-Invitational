@@ -40,6 +40,8 @@ const STEPS: TourStep[] = [
     body: "Every team's score to par, live. It updates the instant a score is entered anywhere in the field." },
   { section: 'dashboard', route: '/', anchor: 'feed', title: 'Live feed',
     body: "The day's action as it happens — birdies, eagles, lead changes, chulligans and all the drama." },
+  { section: 'dashboard', route: '/', anchor: 'dash-contests', title: 'Contest leaders',
+    body: "Who's holding the Closest to Pin and Longest Drive right now, updated live as entries land. Tap the card to jump to the full Contests page." },
   // ── GPS ──
   { section: 'gps', route: '/', anchor: 'nav-gps', title: 'The GPS page',
     body: "This big gold button in the middle is GPS — your on-course caddie, and where you'll spend most of the round. Live satellite maps, distances, wind, club calls, shot tracking and more. Let's walk through it." },
@@ -87,7 +89,7 @@ const STEPS: TourStep[] = [
   { section: 'gps', route: '/gps', anchor: 'score-demo-save', pokeable: true, title: 'Set putts, then post it',
     body: "Set your putts too, then hit Next Hole to lock the hole in and move on. Every category has to be filled before the app opens the next hole — so finish each one. (Nothing's saved during the tour.)" },
   { section: 'gps', route: '/gps', anchor: 'score-demo-approval', pokeable: true, title: 'Approve the group',
-    body: "When score approvals are switched on, your playing partners review your group's card before anyone advances. Look it over and tap Approve — or “Something's off” to flag it. Try it; nothing here is saved." },
+    body: "When score approvals are switched on, your playing partners review your group's card before anyone advances. Look it over and tap Approve — if something's off, sort it out on the spot and the team fixes their hole, then approve. Try it; nothing here is saved." },
   // ── Leaderboard ──
   { section: 'leaderboard', route: '/leaderboard', anchor: 'nav-board', title: 'The Board',
     body: "This tab is the live leaderboard — every team's standing in the tournament, updated the instant scores come in. Let's take a look." },

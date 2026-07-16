@@ -514,6 +514,7 @@ export default function Dashboard() {
 
       {/* ── Contest Leaders (live) ────────────────────────────── */}
       <div
+        data-tour="dash-contests"
         className="glass pressable animate-fadeUp delay-300"
         onClick={() => navigate('/contests')}
         role="button"
