@@ -188,6 +188,8 @@ export default function AdminPanel() {
   const [runningPredictions, setRunningPredictions] = useState(false)
   const [lastPrediction, setLastPrediction] = useState<{ payload: PredictionPayload; generated_at: string } | null>(null)
   const [teamsDrawn, setTeamsDrawn] = useState<number | null>(null)
+  const [clearingPredictions, setClearingPredictions] = useState(false)
+  const [clearConfirm, setClearConfirm] = useState(false)
 
   const loadLastPrediction = async () => {
     if (!activeTournamentId) return
@@ -224,6 +226,20 @@ export default function AdminPanel() {
       await loadLastPrediction()
     } catch (e) { showToast((e as Error).message, 'error') }
     setRunningPredictions(false)
+  }
+
+  // Wipe the stored prediction rows for this tournament — clears out a stale or
+  // malformed payload so the Contests page falls back to its empty state and a
+  // fresh Generate produces clean picks.
+  const clearPredictions = async () => {
+    if (!activeTournamentId || clearingPredictions) return
+    setClearingPredictions(true)
+    const { error } = await supabase.from('contest_predictions').delete().eq('tournament_id', activeTournamentId)
+    if (error) { showToast(error.message, 'error'); setClearingPredictions(false); return }
+    setLastPrediction(null)
+    setClearConfirm(false)
+    showToast('Predictions cleared — generate fresh ones when ready')
+    setClearingPredictions(false)
   }
 
   useEffect(() => { if (tab === 'tournament') fetchTournamentHistory() }, [tab])
@@ -1745,16 +1761,46 @@ export default function AdminPanel() {
           </button>
 
           {lastPrediction && (
-            <div style={{ fontSize: 12, color: 'var(--tx4)', textAlign: 'center' }}>
-              Last generated {new Date(lastPrediction.generated_at).toLocaleString()}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--tx4)', textAlign: 'center' }}>
+                Last generated {(() => { const d = new Date(lastPrediction.generated_at); return isNaN(d.getTime()) ? '—' : d.toLocaleString() })()}
+              </div>
+              {!clearConfirm ? (
+                <button onClick={() => setClearConfirm(true)} className="pressable" style={{
+                  padding: '9px 16px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444',
+                }}>🗑️ Clear stored predictions</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button onClick={clearPredictions} disabled={clearingPredictions} className="pressable" style={{
+                    padding: '9px 16px', borderRadius: 10, cursor: clearingPredictions ? 'default' : 'pointer', fontSize: 13, fontWeight: 800,
+                    background: '#ef4444', border: 'none', color: '#fff', opacity: clearingPredictions ? 0.6 : 1,
+                  }}>{clearingPredictions ? 'Clearing…' : 'Yes, clear it'}</button>
+                  <button onClick={() => setClearConfirm(false)} className="pressable" style={{
+                    padding: '9px 16px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                    background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx2)',
+                  }}>Cancel</button>
+                </div>
+              )}
             </div>
           )}
 
-          {lastPrediction ? (
+          {!lastPrediction ? (
+            <div className="glass" style={{ padding: 28, textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
+              No predictions yet. Hit the button and let Chubbs run his mouth.
+            </div>
+          ) : !Array.isArray(lastPrediction.payload?.contests) || lastPrediction.payload.contests.length === 0 ? (
+            <div className="glass" style={{ padding: '18px 20px', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.6, border: '1px solid rgba(245,158,11,0.35)' }}>
+              <strong style={{ color: '#f59e0b' }}>⚠️ This stored prediction looks empty or malformed.</strong> Players won't see a board.
+              Clear it above, then Generate again for fresh picks.
+            </div>
+          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="glass" style={{ padding: '14px 18px', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.6, fontStyle: 'italic' }}>
-                “{lastPrediction.payload.intro}”
-              </div>
+              {lastPrediction.payload?.intro && (
+                <div className="glass" style={{ padding: '14px 18px', fontSize: 13, color: 'var(--tx2)', lineHeight: 1.6, fontStyle: 'italic' }}>
+                  “{lastPrediction.payload.intro}”
+                </div>
+              )}
               {lastPrediction.payload.contests.map((c, ci) => {
                 const title = c.contest === 'overall' ? '🏆 Overall Champion' : c.contest === 'ld' ? '💥 Longest Drive' : c.contest === 'ctp' ? '🎯 Closest to Pin' : '🤠 Jackass of the Day'
                 return (
@@ -1763,7 +1809,7 @@ export default function AdminPanel() {
                       <div style={{ fontWeight: 800, color: '#D4A53A', fontSize: 14 }}>{title}</div>
                       <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{c.headline}</div>
                     </div>
-                    {c.podium.map((p, pi) => (
+                    {(c.podium ?? []).map((p, pi) => (
                       <div key={pi} style={{ padding: '10px 18px', borderBottom: '1px solid var(--bdr)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                         <span style={{ fontSize: 16, width: 22, flexShrink: 0 }}>{['🥇', '🥈', '🥉'][pi] ?? `${pi + 1}.`}</span>
                         <div>
@@ -1775,10 +1821,6 @@ export default function AdminPanel() {
                   </div>
                 )
               })}
-            </div>
-          ) : (
-            <div className="glass" style={{ padding: 28, textAlign: 'center', color: 'var(--tx4)', fontSize: 14 }}>
-              No predictions yet. Hit the button and let Chubbs run his mouth.
             </div>
           )}
         </div>
