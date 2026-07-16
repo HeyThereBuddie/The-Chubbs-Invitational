@@ -277,7 +277,7 @@ export default function Contests() {
         <>
           {loading ? (
             <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--tx4)' }}>Loading…</div>
-          ) : !predictions ? (
+          ) : !predictions || !Array.isArray(predictions.payload?.contests) || predictions.payload.contests.length === 0 ? (
             <div className="glass" style={{ padding: '40px 24px', textAlign: 'center' }}>
               <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', margin: '0 auto 14px' }} />
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)', marginBottom: 6 }}>Chubbs hasn't made his picks yet</div>
@@ -289,7 +289,7 @@ export default function Contests() {
                 <img src={CHUBBS_IMG} alt="Chubbs" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4A53A', flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
                   <div className="section-label" style={{ marginBottom: 2 }}>Chubbs on the call</div>
-                  <div style={{ fontSize: 13.5, color: 'var(--tx1)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{predictions.payload.intro}</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--tx1)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{predictions.payload?.intro ?? ''}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -302,7 +302,7 @@ export default function Contests() {
                       {c.headline && <div style={{ fontSize: 12.5, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 3, lineHeight: 1.5 }}>“{c.headline}”</div>}
                     </div>
                     <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {c.podium.map((p, i) => (
+                      {(c.podium ?? []).map((p, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                           <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{MEDAL[i] ?? `${i + 1}`}</span>
                           <div style={{ minWidth: 0 }}>
@@ -316,7 +316,10 @@ export default function Contests() {
                 ))}
               </div>
               <div style={{ fontSize: 11, color: 'var(--tx4)', textAlign: 'center', marginTop: 14, fontStyle: 'italic' }}>
-                🔮 Chubbs' predictions — for entertainment only. Updated {formatDistanceToNow(new Date(predictions.generated_at), { addSuffix: true })}.
+                🔮 Chubbs' predictions — for entertainment only.{(() => {
+                  const d = predictions.generated_at ? new Date(predictions.generated_at) : null
+                  return d && !isNaN(d.getTime()) ? ` Updated ${formatDistanceToNow(d, { addSuffix: true })}.` : ''
+                })()}
               </div>
             </>
           )}

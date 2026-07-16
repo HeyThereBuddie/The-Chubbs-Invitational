@@ -8,6 +8,7 @@ import { SyncProvider } from './context/SyncContext'
 import { CourseProvider } from './context/CourseContext'
 import { TourProvider } from './context/TourContext'
 import Layout from './components/layout/Layout'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import UpdatePrompt from './components/UpdatePrompt'
 import AuthPage from './pages/AuthPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
@@ -117,7 +118,9 @@ export default function App() {
               <SyncProvider>
                 <CourseProvider>
                   <TourProvider>
-                    <AppRoutes />
+                    <ErrorBoundary>
+                      <AppRoutes />
+                    </ErrorBoundary>
                     <UpdatePrompt />
                   </TourProvider>
                 </CourseProvider>
