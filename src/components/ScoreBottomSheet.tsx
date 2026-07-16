@@ -26,7 +26,6 @@ interface ScoreBottomSheetProps {
   approvedScoreIds: Set<string>
   myDisputedHoles: Set<number>
   approveScore: (scoreId: string) => void
-  disputeScore: (scoreId: string) => void
   demo?: boolean   // app-tour sandbox: tag controls for the spotlight
 }
 
@@ -50,7 +49,6 @@ export function ScoreBottomSheet({
   approvedScoreIds,
   myDisputedHoles,
   approveScore,
-  disputeScore,
   demo,
 }: ScoreBottomSheetProps) {
   // Use the registered profile when available, else a stand-in built from the
@@ -229,7 +227,7 @@ export function ScoreBottomSheet({
             ))}
             {groupPending.map(({ gt, s }) => (
               <ApprovalCard key={gt.id} team={gt} score={s} hole={gHole}
-                onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)} />
+                onApprove={() => approveScore(s.id)} />
             ))}
           </div>
         )}
