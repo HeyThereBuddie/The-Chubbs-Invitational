@@ -266,8 +266,16 @@ export function usePlayerScoring() {
     // Write localDb first so any concurrent read picks up the new value
     await localDb.scores.update(id, { drive_used_id: newId })
     setMyScores(prev => ({ ...prev, [hole]: { ...prev[hole], drive_used_id: newId } }))
-    await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
-    if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
+
+    // scores.drive_used_id is an FK to profiles(id): only a registered partner can
+    // be persisted. If the drive points at an unclaimed roster/drawn player, keep it
+    // local for the UI but skip the server write — otherwise it fails the FK forever
+    // and jams the whole sync queue (which also blocks score refresh + approvals).
+    const persistable = newId === null || newId === myTeam?.player1?.id || newId === myTeam?.player2?.id
+    if (persistable) {
+      await enqueue('set_drive', { team_id: myTeamId!, hole, drive_used_id: newId }, { team_id: myTeamId!, hole })
+      if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
+    }
     await refreshPendingCount()
   }
 
@@ -356,6 +364,11 @@ export function usePlayerScoring() {
 
     const existing = myChulligans.find(c => c.player_id === playerId)
 
+    // chulligans.player_id is an FK to profiles(id): only a registered partner can
+    // be persisted. For an unclaimed partner, keep it local for the UI but skip the
+    // server write so it never jams the queue on a broken FK.
+    const persistable = !!player
+
     const queueFeedEvent = async () => {
       await enqueue('log_feed_event', {
         id: crypto.randomUUID(),
@@ -382,20 +395,20 @@ export function usePlayerScoring() {
           .where('op_type').equals('log_feed_event')
           .filter(w => w.conflict_key === JSON.stringify(chulFeedKey) && w.status === 'pending')
           .delete()
-        await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: false }, { team_id: teamId, player_id: playerId })
+        if (persistable) await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: false }, { team_id: teamId, player_id: playerId })
       } else {
         // Moving chulligan to a new hole
         setMyChulligans([...myChulligans.filter(c => c.id !== existing.id), { id: fakeId, player_id: playerId, hole }])
         await localDb.chulligans.delete(existing.id)
         await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
-        await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
+        if (persistable) await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
         await queueFeedEvent()
       }
     } else {
       // Adding new chulligan
       setMyChulligans([...myChulligans, { id: fakeId, player_id: playerId, hole }])
       await localDb.chulligans.put({ id: fakeId, team_id: teamId, player_id: playerId, hole })
-      await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
+      if (persistable) await enqueue('set_chulligan', { team_id: teamId, player_id: playerId, hole, present: true }, { team_id: teamId, player_id: playerId })
       await queueFeedEvent()
     }
 

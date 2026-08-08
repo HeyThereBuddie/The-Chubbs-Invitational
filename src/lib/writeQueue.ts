@@ -41,6 +41,11 @@ type OpPayload =
 // Prevent concurrent drains from running the same write twice
 let draining = false
 
+// After this many failed attempts a write is deterministically broken (e.g. it
+// references a row that can't exist), not just offline. Park it as 'failed' so it
+// stops jamming the queue and inflating the pending badge forever.
+const MAX_RETRIES = 5
+
 /**
  * Add a write to the queue. Deduplicates: removes any existing pending write
  * with the same op_type + conflict_key before adding the new one (LWW).
@@ -95,8 +100,15 @@ export async function drainQueue(): Promise<{ succeeded: number; failed: number 
         await localDb.pending_writes.delete(write.id!)
         succeeded++
       } catch (err) {
-        console.error('[writeQueue] failed to sync:', write.op_type, err)
-        await localDb.pending_writes.update(write.id!, { retries: (write.retries ?? 0) + 1 })
+        const retries = (write.retries ?? 0) + 1
+        if (retries >= MAX_RETRIES) {
+          // Deterministically broken — park it so it stops blocking the queue.
+          console.error(`[writeQueue] giving up on ${write.op_type} after ${retries} tries:`, err)
+          await localDb.pending_writes.update(write.id!, { retries, status: 'failed' })
+        } else {
+          console.error('[writeQueue] failed to sync (will retry):', write.op_type, err)
+          await localDb.pending_writes.update(write.id!, { retries })
+        }
         failed++
       }
     }
@@ -207,6 +219,9 @@ async function executeWrite(op_type: string, payload: any): Promise<void> {
   }
 }
 
+// Only writes still worth syncing count as "pending" — parked ('failed') writes
+// are excluded so a permanently-broken write can't keep the badge lit or block
+// the server refresh in loadPlayerData.
 export async function getPendingCount(): Promise<number> {
-  return localDb.pending_writes.count()
+  return localDb.pending_writes.where('status').equals('pending').count()
 }
