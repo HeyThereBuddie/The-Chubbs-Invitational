@@ -17,7 +17,7 @@ export function RyderCupTile({ live }: { live?: boolean }) {
   const aPct = total > 0 ? (r.squadATotal / total) * 100 : 50
 
   return (
-    <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden', borderColor: 'var(--bdr)', marginBottom: 16 }}>
+    <div data-tour="ryder-tile" className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden', borderColor: 'var(--bdr)', marginBottom: 16 }}>
       {/* Title strip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})` }}>
         <span style={{ fontSize: 17 }}>🏅</span>

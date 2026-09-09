@@ -99,6 +99,8 @@ const STEPS: TourStep[] = [
     body: "For each team: To Par (score against par), Gross (total strokes taken), Thru (holes completed — “F” means finished), and Putts (the first tiebreaker if teams are level)." },
   { section: 'leaderboard', route: '/leaderboard', anchor: 'lb-scorecard', title: 'Hole-by-hole scorecard',
     body: "Below each team is their scorecard — the score on every hole in its own bubble, colour-coded for birdie, par, bogey and worse. Swipe it sideways to see all 18." },
+  { section: 'leaderboard', route: '/leaderboard', anchor: 'ryder-tile', title: 'Ryder Cup',
+    body: "When the Ryder Cup is on, this tile sits up top: two squads — blue vs red — racing to clinch. Each foursome is a match, winning a hole is a point (ties split ½ each), and the header totals it all up. Pure side-game fun — it never touches the main standings." },
   // ── Rules ──
   { section: 'rules', route: '/rules', anchor: 'nav-rules', title: 'Ask me the rules',
     body: "Stuck on a rule? This tab opens my rules desk — ask me anything about the scramble format, chulligans, contests or penalties and I'll set you straight on the spot." },
