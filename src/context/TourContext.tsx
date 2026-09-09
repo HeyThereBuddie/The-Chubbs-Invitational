@@ -87,9 +87,9 @@ const STEPS: TourStep[] = [
   { section: 'gps', route: '/gps', anchor: 'score-demo-chull', pokeable: true, title: 'Log a chulligan',
     body: "Take a chulligan (that's our mulligan)? Tap the guy who used it. Each player only gets a few all day, so the app tracks them for you. Give it a tap." },
   { section: 'gps', route: '/gps', anchor: 'score-demo-save', pokeable: true, title: 'Set putts, then post it',
-    body: "Set your putts too, then hit Next Hole to lock the hole in and move on. Every category has to be filled before the app opens the next hole — so finish each one. (Nothing's saved during the tour.)" },
+    body: "Set your putts too — score, putts and a drive are all required before a hole counts as posted (chulligans are optional). Once it's posted you're set. (Nothing's saved during the tour.)" },
   { section: 'gps', route: '/gps', anchor: 'score-demo-approval', pokeable: true, title: 'Approve the group',
-    body: "When score approvals are switched on, your playing partners review your group's card before anyone advances. Look it over and tap Approve — if something's off, sort it out on the spot and the team fixes their hole, then approve. Try it; nothing here is saved." },
+    body: "When approvals are on, you settle each hole right here before moving on: post your score, approve the other team's hole (one tap covers their score, drive and putts), and they approve yours. See something off? Hit Challenge — they'll fix it and you re-approve. The second both teams have approved, the app moves you to the next hole automatically. Nothing here is saved." },
   // ── Leaderboard ──
   { section: 'leaderboard', route: '/leaderboard', anchor: 'nav-board', title: 'The Board',
     body: "This tab is the live leaderboard — every team's standing in the tournament, updated the instant scores come in. Let's take a look." },
