@@ -28,12 +28,32 @@ async function pingLeadCheck(payload?: { team_id: string; hole: number; score: n
 }
 
 export function usePlayerScoring() {
-  const { profile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline, refreshPendingCount } = useSyncContext()
   const { parOf } = useCourse()
 
-  const myTeamId = isCurrentYear ? (profile?.team_id ?? undefined) : undefined
+  // Self-heal a missing player→team link. If the profile has no team_id but a team
+  // actually lists this player, reconcile_my_team() mends the link server-side and
+  // returns the team id so scoring works immediately (and permanently).
+  const [reconciledTeamId, setReconciledTeamId] = useState<string | undefined>(undefined)
+  const reconcileTriedRef = useRef(false)
+  useEffect(() => {
+    if (!isCurrentYear || !profile?.id || profile.team_id || reconcileTriedRef.current) return
+    reconcileTriedRef.current = true
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await supabase.rpc('reconcile_my_team')
+        if (cancelled || !data) return
+        setReconciledTeamId(data as string)
+        refreshProfile()
+      } catch { /* offline or not linkable — leave as-is */ }
+    })()
+    return () => { cancelled = true }
+  }, [profile?.id, profile?.team_id, isCurrentYear, refreshProfile])
+
+  const myTeamId = isCurrentYear ? (profile?.team_id ?? reconciledTeamId ?? undefined) : undefined
 
   const [myTeam,       setMyTeam]       = useState<TeamFull | null>(null)
   const [myScores,     setMyScores]     = useState<Record<number, ScoreRow>>({})
