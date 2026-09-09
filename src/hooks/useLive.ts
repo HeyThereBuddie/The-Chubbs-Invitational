@@ -17,7 +17,10 @@ export function useLive(): { live: boolean; loading: boolean } {
       setLoading(false)
     }
     load()
-    const sub = supabase.channel('tournament-live-rt')
+    // Unique channel name per hook instance — the same page can mount useLive
+    // several times (Layout + page + usePlayerScoring), and reusing one channel
+    // topic throws on the duplicate subscribe.
+    const sub = supabase.channel(`tournament-live-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_settings' }, load)
       .subscribe()
     return () => { cancelled = true; supabase.removeChannel(sub) }
