@@ -200,11 +200,16 @@ export default function TeeTimes() {
 
   const moveTeamToTime = async (teamId: string, targetTime: string, targetHole: number) => {
     const tt = teeTimes.find(t => t.team_id === teamId)
-    if (!tt || tt.tee_time === targetTime) return
+    if (tt && tt.tee_time === targetTime) return
     setSaving(true)
-    await supabase.from('tee_times').update({ tee_time: targetTime, starting_hole: targetHole }).eq('id', tt.id)
+    if (tt) {
+      await supabase.from('tee_times').update({ tee_time: targetTime, starting_hole: targetHole }).eq('id', tt.id)
+    } else {
+      // Team had no tee time yet (unassigned) — create one.
+      await supabase.from('tee_times').insert({ team_id: teamId, tee_time: targetTime, starting_hole: targetHole, cart: null, notes: null })
+    }
     setSaving(false)
-    showToast('Team moved!')
+    showToast('Foursome updated!')
     fetchAll()
   }
 
@@ -225,6 +230,15 @@ export default function TeeTimes() {
 
   const foursomes = buildFoursomes(teeTimes)
   const firstTime = foursomes[0]?.tee_time
+
+  // Teams that have no tee time yet — surfaced in Arrange so every team is placeable.
+  const unassignedTeams = teams.filter(t => !teeTimes.some(tt => tt.team_id === t.id))
+  const addMins = (t: string, mins: number) => {
+    const [h, m] = t.split(':').map(Number)
+    const total = h * 60 + m + mins
+    return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}:00`
+  }
+  const nextNewTime = foursomes.length ? addMins(foursomes[foursomes.length - 1].tee_time, autoInterval) : `${autoStart}:00`
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -413,6 +427,52 @@ export default function TeeTimes() {
               </div>
             </div>
           ))}
+
+          {/* Teams with no tee time yet — place them without reshuffling the rest */}
+          {unassignedTeams.length > 0 && (
+            <div style={{ borderTop: '1px solid var(--bdr)', padding: '14px 16px' }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: '#f59e0b', marginBottom: 4 }}>
+                ⚠️ Unassigned — {unassignedTeams.length} team{unassignedTeams.length === 1 ? '' : 's'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 10, lineHeight: 1.5 }}>
+                {pickedTeamId ? 'Tap an open slot above, or “New tee time” below, to place it.' : 'Tap a team, then tap an open slot above (or add a new tee time) to place it.'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {unassignedTeams.map(t => {
+                  const isPicked = pickedTeamId === t.id
+                  return (
+                    <div key={t.id} className="pressable" draggable
+                      onClick={() => tapTeam(t.id)}
+                      onDragStart={() => onDragStart(t.id)} onDragEnd={onDragEnd}
+                      style={{
+                        padding: '10px 12px', borderRadius: 12,
+                        border: `1px solid ${isPicked ? 'var(--gold)' : 'var(--bdr)'}`,
+                        background: isPicked ? 'var(--gold-15)' : 'var(--surf2)',
+                        display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none',
+                      }}>
+                      <Avatar player={t.player1} size={32} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {[teamMemberName(t.player1, t.p1_name), teamMemberName(t.player2, t.p2_name)].filter(Boolean).join(' & ')}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 15, flexShrink: 0, opacity: isPicked ? 1 : 0.35 }}>{isPicked ? '✋' : '＋'}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              {pickedTeamId && (
+                <button onClick={() => { moveTeamToTime(pickedTeamId, nextNewTime, autoStartHole); setPickedTeamId(null) }}
+                  className="pressable" style={{
+                    width: '100%', marginTop: 10, padding: '11px', borderRadius: 12, cursor: 'pointer',
+                    border: '1px dashed var(--gold)', background: 'var(--gold-08)', color: 'var(--gold)', fontWeight: 700, fontSize: 13,
+                  }}>
+                  ＋ New tee time at {formatTime(nextNewTime)}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
