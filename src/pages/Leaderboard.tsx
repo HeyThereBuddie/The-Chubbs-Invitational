@@ -8,7 +8,7 @@ import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { useCourse } from '../context/CourseContext'
 import { RyderCupTile } from '../components/RyderCupTile'
-import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
+import { buildGroups, approvedScoreIds } from '../lib/approvals'
 
 // Augusta manual-scoreboard palette (Masters homage), bridged with the app's gold/dark theme.
 const AUGUSTA = '#0a5c39'
@@ -91,7 +91,7 @@ export default function Leaderboard() {
       // that changes goes stale and drops off until it's re-approved.
       if (settingsRes.data?.approvals_enabled) {
         const teamIds = new Set(teams.map(t => t.id))
-        const mates = buildGroupMates(ttRes.data ?? [])
+        const mates = buildGroups(ttRes.data ?? [])
         const ok = approvedScoreIds(allScores, apprRes.data ?? [], mates)
         setPendingCount(allScores.filter(s => teamIds.has(s.team_id) && !ok.has(s.id)).length)
         allScores = allScores.filter(s => ok.has(s.id))
