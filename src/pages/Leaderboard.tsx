@@ -8,6 +8,7 @@ import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { useCourse } from '../context/CourseContext'
 import { RyderCupTile } from '../components/RyderCupTile'
+import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 
 // Augusta manual-scoreboard palette (Masters homage), bridged with the app's gold/dark theme.
 const AUGUSTA = '#0a5c39'
@@ -50,6 +51,7 @@ export default function Leaderboard() {
 
     const sub = supabase.channel('leaderboard-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, fetchData)
       .subscribe()
 
     return () => { supabase.removeChannel(sub) }
@@ -75,12 +77,22 @@ export default function Leaderboard() {
     } else {
       let teamsQ = supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)')
       teamsQ = teamsQ.eq('tournament_id', effectiveTournamentId)
-      const [teamsRes, scoresRes] = await Promise.all([
+      const [teamsRes, scoresRes, settingsRes, ttRes, apprRes] = await Promise.all([
         teamsQ,
         supabase.from('scores').select('*'),
+        supabase.from('tournament_settings').select('approvals_enabled').eq('id', 1).single(),
+        supabase.from('tee_times').select('team_id, tee_time'),
+        supabase.from('score_approvals').select('score_id, approving_team_id, status, updated_at'),
       ])
       teams = teamsRes.data ?? []
       allScores = scoresRes.data ?? []
+      // Only count scores the foursome has approved (when approvals are on). A score
+      // that changes goes stale and drops off until it's re-approved.
+      if (settingsRes.data?.approvals_enabled) {
+        const mates = buildGroupMates(ttRes.data ?? [])
+        const ok = approvedScoreIds(allScores, apprRes.data ?? [], mates)
+        allScores = allScores.filter(s => ok.has(s.id))
+      }
     }
 
     const leaderRows: LeaderRow[] = teams.map(team => {

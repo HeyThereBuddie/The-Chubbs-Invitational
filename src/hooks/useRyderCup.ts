@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
+import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 
 // ── Ryder Cup: a read-only points game derived from the scores already recorded ──
 // Each foursome (two teams sharing a tee time) is a match. Per hole, the team with
@@ -64,7 +65,7 @@ export function useRyderCup(): RyderData {
       try {
         const { data: settings } = await supabase
           .from('tournament_settings')
-          .select('ryder_enabled, ryder_squad_a_name, ryder_squad_b_name').eq('id', 1).single()
+          .select('ryder_enabled, ryder_squad_a_name, ryder_squad_b_name, approvals_enabled').eq('id', 1).single()
 
         if (!settings?.ryder_enabled) {
           if (!cancelled) setData({ ...EMPTY, loading: false, enabled: false })
@@ -73,22 +74,30 @@ export function useRyderCup(): RyderData {
         const squadAName = settings.ryder_squad_a_name || 'Team Drew'
         const squadBName = settings.ryder_squad_b_name || 'Team Kage'
 
-        const [{ data: teams }, { data: tts }, { data: scores }] = await Promise.all([
+        const [{ data: teams }, { data: tts }, { data: scores }, { data: appr }] = await Promise.all([
           supabase.from('teams')
             .select('id, name, p1_name, p2_name, ryder_squad, player1:profiles!teams_p1_id_fkey(name, nickname), player2:profiles!teams_p2_id_fkey(name, nickname)')
             .eq('tournament_id', effectiveTournamentId),
           supabase.from('tee_times').select('team_id, tee_time'),
-          supabase.from('scores').select('team_id, hole, score'),
+          supabase.from('scores').select('id, team_id, hole, score, updated_at'),
+          supabase.from('score_approvals').select('score_id, approving_team_id, status, updated_at'),
         ])
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const teamMap = new Map<string, any>()
         for (const t of teams ?? []) teamMap.set(t.id, t)
 
+        // Only count scores the foursome has approved (when approvals are on). A
+        // score that changes goes stale and drops out until it's re-approved.
+        const okIds = settings.approvals_enabled
+          ? approvedScoreIds(scores ?? [], appr ?? [], buildGroupMates(tts ?? []))
+          : null
+
         // Per-team, per-hole gross.
         const scoreOf = new Map<string, Map<number, number>>()
         for (const s of scores ?? []) {
           if (!teamMap.has(s.team_id)) continue
+          if (okIds && !okIds.has(s.id)) continue
           let m = scoreOf.get(s.team_id)
           if (!m) { m = new Map(); scoreOf.set(s.team_id, m) }
           m.set(s.hole, s.score)
@@ -172,6 +181,7 @@ export function useRyderCup(): RyderData {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, compute)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tee_times' }, compute)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_settings' }, compute)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, compute)
       .subscribe()
     return () => { cancelled = true; supabase.removeChannel(sub) }
   // eslint-disable-next-line react-hooks/exhaustive-deps

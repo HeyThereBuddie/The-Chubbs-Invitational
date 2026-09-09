@@ -7,6 +7,7 @@ import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player } from '../lib/types'
+import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
 
@@ -213,12 +214,20 @@ export default function Dashboard() {
 
     // Step 2: Refresh from Supabase in background
     try {
-      const [teamsRes, scoresRes] = await Promise.all([
+      const [teamsRes, scoresRes, settingsRes, ttRes, apprRes] = await Promise.all([
         supabase.from('teams').select('*, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').eq('tournament_id', effectiveTournamentId),
         supabase.from('scores').select('*'),
+        supabase.from('tournament_settings').select('approvals_enabled').eq('id', 1).single(),
+        supabase.from('tee_times').select('team_id, tee_time'),
+        supabase.from('score_approvals').select('score_id, approving_team_id, status, updated_at'),
       ])
       const teams: (Team & { player1?: Player; player2?: Player })[] = teamsRes.data ?? []
-      const scores: Score[] = scoresRes.data ?? []
+      let scores: Score[] = scoresRes.data ?? []
+      // Only count foursome-approved scores (when approvals are on), matching the main board.
+      if (settingsRes.data?.approvals_enabled) {
+        const ok = approvedScoreIds(scores, apprRes.data ?? [], buildGroupMates(ttRes.data ?? []))
+        scores = scores.filter(s => ok.has(s.id))
+      }
       const rows: LeaderRow[] = teams.map(team => {
         const teamScores = scores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
