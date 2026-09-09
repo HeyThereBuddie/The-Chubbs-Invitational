@@ -27,6 +27,18 @@ async function pingLeadCheck(payload?: { team_id: string; hole: number; score: n
   }).catch(() => { /* fire and forget */ })
 }
 
+// Nudge the foursome partner(s) to (re)approve a hole.
+async function pingApprovalNotify(team_id: string, hole: number) {
+  const { data: { session } } = await supabase.auth.getSession()
+  supabase.functions.invoke('notify-approval', {
+    headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+    body: { team_id, hole },
+  }).catch(() => { /* fire and forget */ })
+}
+
+// ISO timestamp → ms (0 when absent) for approval-vs-score freshness comparison.
+const tsms = (s?: string | null) => (s ? Date.parse(s) : 0)
+
 export function usePlayerScoring() {
   const { profile, refreshProfile } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
@@ -65,6 +77,7 @@ export function usePlayerScoring() {
   const [groupTeams,       setGroupTeams]       = useState<GroupTeam[]>([])
   const [approvedScoreIds, setApprovedScoreIds] = useState<Set<string>>(new Set())
   const [myDisputedHoles,  setMyDisputedHoles]  = useState<Set<number>>(new Set())
+  const [myApprovedHoles,  setMyApprovedHoles]  = useState<Set<number>>(new Set())  // my holes every other team has validly approved
 
   const myTeamIdRef = useRef<string | undefined>(undefined)
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
@@ -72,27 +85,31 @@ export function usePlayerScoring() {
   useEffect(() => { myScoresRef.current = myScores }, [myScores])
 
   // Load the other team(s) in my tee-time group + who's approved what.
-  const loadGroup = async (teamId: string, scoresMap: Record<number, ScoreRow>) => {
+  // An approval only COUNTS if it was made at/after the score's last edit — so any
+  // change to a score/drive/putts automatically invalidates prior approvals and the
+  // group is re-prompted. (scores.updated_at bumps on every edit via a DB trigger.)
+  const loadGroup = async (teamId: string, _scoresMap: Record<number, ScoreRow>) => {
     try {
       const { data: settings } = await supabase.from('tournament_settings').select('approvals_enabled').eq('id', 1).single()
       const enabled = !!settings?.approvals_enabled
       setApprovalsEnabled(enabled)
-      if (!enabled) { setGroupTeams([]); setApprovedScoreIds(new Set()); setMyDisputedHoles(new Set()); return }
+      if (!enabled) { setGroupTeams([]); setApprovedScoreIds(new Set()); setMyDisputedHoles(new Set()); setMyApprovedHoles(new Set()); return }
 
       const { data: myTT } = await supabase.from('tee_times').select('tee_time').eq('team_id', teamId).limit(1).maybeSingle()
-      if (!myTT?.tee_time) { setGroupTeams([]); return }
+      if (!myTT?.tee_time) { setGroupTeams([]); setMyApprovedHoles(new Set()); return }
       const { data: sib } = await supabase.from('tee_times').select('team_id').eq('tee_time', myTT.tee_time).neq('team_id', teamId)
       const otherIds = [...new Set((sib ?? []).map(s => s.team_id))]
-      if (!otherIds.length) { setGroupTeams([]); return }
+      if (!otherIds.length) { setGroupTeams([]); setMyApprovedHoles(new Set()); return }
 
       const [teamsRes, scoresRes, chRes] = await Promise.all([
         supabase.from('teams').select('id, name, p1_name, p2_name, player1:profiles!teams_p1_id_fkey(*), player2:profiles!teams_p2_id_fkey(*)').in('id', otherIds),
-        supabase.from('scores').select('id, hole, score, drive_used_id, putts, team_id').in('team_id', otherIds),
+        supabase.from('scores').select('id, hole, score, drive_used_id, putts, team_id, updated_at').in('team_id', otherIds),
         supabase.from('chulligans').select('id, player_id, hole, team_id').in('team_id', otherIds),
       ])
       const scoresByTeam: Record<string, Record<number, ScoreRow>> = {}
+      const otherScoreUpdated = new Map<string, string>()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const s of (scoresRes.data ?? []) as any[]) { (scoresByTeam[s.team_id] ??= {})[s.hole] = s }
+      for (const s of (scoresRes.data ?? []) as any[]) { (scoresByTeam[s.team_id] ??= {})[s.hole] = s; otherScoreUpdated.set(s.id, s.updated_at) }
       const chByTeam: Record<string, ChulliganRow[]> = {}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const c of (chRes.data ?? []) as any[]) { (chByTeam[c.team_id] ??= []).push({ id: c.id, player_id: c.player_id, hole: c.hole }) }
@@ -103,17 +120,44 @@ export function usePlayerScoring() {
         scores: scoresByTeam[t.id] ?? {}, chulligans: chByTeam[t.id] ?? [],
       })))
 
-      const { data: myApp } = await supabase.from('score_approvals').select('score_id').eq('approving_team_id', teamId).eq('status', 'approved')
-      setApprovedScoreIds(new Set((myApp ?? []).map(a => a.score_id)))
+      // My VALID approvals of the other teams' scores.
+      const otherScoreIds = [...otherScoreUpdated.keys()]
+      const validApprovedByMe = new Set<string>()
+      if (otherScoreIds.length) {
+        const { data: myApp } = await supabase.from('score_approvals')
+          .select('score_id, status, updated_at').eq('approving_team_id', teamId).in('score_id', otherScoreIds)
+        for (const a of myApp ?? []) {
+          if (a.status === 'approved' && tsms(a.updated_at) >= tsms(otherScoreUpdated.get(a.score_id))) validApprovedByMe.add(a.score_id)
+        }
+      }
+      setApprovedScoreIds(validApprovedByMe)
 
-      const myScoreIds = Object.values(scoresMap).map(s => s.id).filter(id => !String(id).startsWith('offline-'))
-      if (myScoreIds.length) {
-        const { data: inc } = await supabase.from('score_approvals').select('score_id').in('score_id', myScoreIds).eq('status', 'disputed')
-        const disputed = new Set((inc ?? []).map(a => a.score_id))
-        const holes = new Set<number>()
-        for (const [h, s] of Object.entries(scoresMap)) if (disputed.has(s.id)) holes.add(Number(h))
-        setMyDisputedHoles(holes)
-      } else setMyDisputedHoles(new Set())
+      // Which of MY holes every other team has validly approved (mutual gate), and
+      // which are currently disputed.
+      const { data: myMeta } = await supabase.from('scores').select('id, hole, updated_at').eq('team_id', teamId)
+      const myById = new Map((myMeta ?? []).map(s => [s.id, s]))
+      const myIds = (myMeta ?? []).map(s => s.id)
+      const approvedHoles = new Set<number>()
+      const disputedHoles = new Set<number>()
+      if (myIds.length) {
+        const { data: inc } = await supabase.from('score_approvals')
+          .select('score_id, approving_team_id, status, updated_at').in('score_id', myIds)
+        const approversByScore = new Map<string, Set<string>>()
+        const disputersByScore = new Map<string, Set<string>>()
+        for (const a of inc ?? []) {
+          const meta = myById.get(a.score_id)
+          if (!meta || !otherIds.includes(a.approving_team_id)) continue
+          if (tsms(a.updated_at) < tsms(meta.updated_at)) continue // stale — score changed after this
+          if (a.status === 'approved') (approversByScore.get(a.score_id) ?? approversByScore.set(a.score_id, new Set()).get(a.score_id)!).add(a.approving_team_id)
+          else if (a.status === 'disputed') (disputersByScore.get(a.score_id) ?? disputersByScore.set(a.score_id, new Set()).get(a.score_id)!).add(a.approving_team_id)
+        }
+        for (const meta of myMeta ?? []) {
+          if ((approversByScore.get(meta.id)?.size ?? 0) >= otherIds.length) approvedHoles.add(meta.hole)
+          if ((disputersByScore.get(meta.id)?.size ?? 0) > 0) disputedHoles.add(meta.hole)
+        }
+      }
+      setMyApprovedHoles(approvedHoles)
+      setMyDisputedHoles(disputedHoles)
     } catch { /* offline — approvals stay as-is */ }
   }
 
@@ -199,6 +243,18 @@ export function usePlayerScoring() {
   const approveScore = (scoreId: string) => setApproval(scoreId, 'approved')
   const disputeScore = (scoreId: string) => setApproval(scoreId, 'disputed')
 
+  // When I change a hole the group has ALREADY approved or challenged, that action
+  // is now stale — re-ping them to approve the corrected entry (debounced per hole).
+  const notifyDebounce = useRef<Record<number, number>>({})
+  const reNotifyIfActedOn = (hole: number) => {
+    if (!approvalsEnabled || !myTeamId) return
+    if (!(myApprovedHoles.has(hole) || myDisputedHoles.has(hole))) return
+    const now = Date.now()
+    if ((notifyDebounce.current[hole] ?? 0) > now - 5000) return
+    notifyDebounce.current[hole] = now
+    pingApprovalNotify(myTeamId, hole)
+  }
+
   // ── Actions ─────────────────────────────────────────────────
 
   const adjustMyScore = async (hole: number, delta: number) => {
@@ -254,6 +310,7 @@ export function usePlayerScoring() {
         .catch(() => {})
     }
     await refreshPendingCount()
+    reNotifyIfActedOn(hole)
   }
 
   // Create a score row at par if the hole has none yet — lets drive / putts /
@@ -297,6 +354,7 @@ export function usePlayerScoring() {
       if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     }
     await refreshPendingCount()
+    reNotifyIfActedOn(hole)
   }
 
   const setMyPutts = async (hole: number, putts: number) => {
@@ -336,6 +394,7 @@ export function usePlayerScoring() {
 
     if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     await refreshPendingCount()
+    reNotifyIfActedOn(hole)
   }
 
   const resetMyScore = async (hole: number) => {
@@ -469,6 +528,7 @@ export function usePlayerScoring() {
     groupTeams,
     approvedScoreIds,
     myDisputedHoles,
+    myApprovedHoles,
     pendingApprovals,
     approveScore,
     disputeScore,

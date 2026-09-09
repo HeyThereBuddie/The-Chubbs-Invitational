@@ -4,11 +4,12 @@ import { useCourse } from '../context/CourseContext'
 
 // A review card for another team's hole entry — used both in the score sheet
 // (when advancing is blocked) and in the GPS approval banner.
-export function ApprovalCard({ team, score, hole, onApprove }: {
+export function ApprovalCard({ team, score, hole, onApprove, onDispute }: {
   team: GroupTeam
   score: ScoreRow
   hole: number
   onApprove: () => void
+  onDispute?: () => void
 }) {
   const { parOf } = useCourse()
   const par = parOf(hole)
@@ -50,10 +51,16 @@ export function ApprovalCard({ team, score, hole, onApprove }: {
         <Chip label={chs.length === 1 ? 'Chulligan' : 'Chulligans'} value={chulliganValue} />
       </div>
 
-      {/* Action — approve only. Groups sort out any discrepancy in person, then approve. */}
-      <div style={{ padding: '14px 16px', background: 'var(--panel)' }}>
+      {/* Actions — approve the whole hole (score + drive + putts), or challenge it */}
+      <div style={{ display: 'flex', gap: 8, padding: '14px 16px', background: 'var(--panel)' }}>
+        {onDispute && (
+          <button onClick={onDispute} className="pressable" style={{
+            flex: 1, padding: '14px', borderRadius: 12, cursor: 'pointer',
+            border: '1px solid rgba(224,64,47,0.45)', background: 'rgba(224,64,47,0.08)', color: '#e0402f', fontWeight: 800, fontSize: 15,
+          }}>Challenge</button>
+        )}
         <button onClick={onApprove} className="pressable" style={{
-          width: '100%', padding: '14px', borderRadius: 12, border: 'none', cursor: 'pointer',
+          flex: 1.4, padding: '14px', borderRadius: 12, border: 'none', cursor: 'pointer',
           background: 'linear-gradient(180deg, #e7c877, #d4a53a)', color: '#23180a', fontWeight: 800, fontSize: 16,
           boxShadow: '0 3px 11px -3px rgba(212,165,58,0.6), inset 0 1px 0 rgba(255,255,255,0.35)',
         }}>✓ Approve hole</button>

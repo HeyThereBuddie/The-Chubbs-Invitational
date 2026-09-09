@@ -25,7 +25,9 @@ interface ScoreBottomSheetProps {
   groupTeams: GroupTeam[]
   approvedScoreIds: Set<string>
   myDisputedHoles: Set<number>
+  myApprovedHoles: Set<number>
   approveScore: (scoreId: string) => void
+  disputeScore: (scoreId: string) => void
   demo?: boolean   // app-tour sandbox: tag controls for the spotlight
 }
 
@@ -48,7 +50,9 @@ export function ScoreBottomSheet({
   groupTeams,
   approvedScoreIds,
   myDisputedHoles,
+  myApprovedHoles,
   approveScore,
+  disputeScore,
   demo,
 }: ScoreBottomSheetProps) {
   // Use the registered profile when available, else a stand-in built from the
@@ -68,7 +72,9 @@ export function ScoreBottomSheet({
     ? groupTeams.map(gt => ({ gt, s: gt.scores[gHole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && !approvedScoreIds.has(x.s.id))
     : []
   const groupWaiting = gActive ? groupTeams.filter(gt => !gt.scores[gHole]) : []
-  const approvalLock = groupPending.length > 0 || groupWaiting.length > 0
+  // Mutual: the group also has to have approved MY previous hole before I move on.
+  const theyApprovedMe = !gActive || myApprovedHoles.has(gHole)
+  const approvalLock = groupPending.length > 0 || groupWaiting.length > 0 || !theyApprovedMe
 
   const locked = hole > 1 && (!ownComplete || approvalLock)
   const { parOf } = useCourse()
@@ -225,21 +231,30 @@ export function ScoreBottomSheet({
           </div>
         )}
 
-        {/* Approve the group's previous hole to continue */}
-        {ownComplete && approvalLock && (
+        {/* Cross-team approval — shown right here so the group settles hole {gHole}
+            (both teams post + approve each other) before hole {hole} opens. */}
+        {gActive && approvalLock && (
           <div data-tour={demo ? 'score-demo-approval' : undefined} style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#e8c766', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-              Approve your group's hole {gHole} to open hole {hole}
+              Hole {hole} opens once hole {gHole} is settled
             </div>
+            {/* Other teams that haven't posted their hole yet */}
             {groupWaiting.map(gt => (
               <div key={gt.id} style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
                 ⏳ Waiting for <strong style={{ color: 'var(--tx2)' }}>{gt.name}</strong> to post hole {gHole}…
               </div>
             ))}
+            {/* Their score for me to approve or challenge (score + drive + putts, one tap) */}
             {groupPending.map(({ gt, s }) => (
               <ApprovalCard key={gt.id} team={gt} score={s} hole={gHole}
-                onApprove={() => approveScore(s.id)} />
+                onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)} />
             ))}
+            {/* My hole is posted but the group hasn't approved it back yet */}
+            {ownComplete && !theyApprovedMe && groupWaiting.length === 0 && (
+              <div style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
+                ⏳ Waiting for your group to approve <strong style={{ color: 'var(--tx2)' }}>your hole {gHole}</strong>…
+              </div>
+            )}
           </div>
         )}
 
