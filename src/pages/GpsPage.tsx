@@ -2958,16 +2958,8 @@ export default function GpsPage() {
         hole={selectedHole}
         onClose={tour.active ? (() => {}) : () => setSheetOpen(false)}
         onNextHole={tour.active ? (() => setSelectedHole(h => Math.min(18, h + 1))) : () => {
-          // Nudge the group partner(s) to approve the hole we just wrapped up.
-          const from = selectedHole
-          if (scoring.approvalsEnabled && scoring.myTeamId) {
-            supabase.auth.getSession().then(({ data }) => {
-              supabase.functions.invoke('notify-approval', {
-                headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {},
-                body: { team_id: scoring.myTeamId, hole: from },
-              }).catch(() => {})
-            })
-          }
+          // Move to the next hole and return to the map. (The "please approve" push
+          // now fires when a hole is completed, not on advance.)
           setSelectedHole(h => Math.min(18, h + 1)); setSheetOpen(false)
         }}
         myTeam={tour.active ? demoTeam : scoring.myTeam}

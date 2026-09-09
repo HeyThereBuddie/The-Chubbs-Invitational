@@ -1,6 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { HoleCard } from './HoleCard'
 import { ApprovalCard } from './ApprovalCard'
-import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam, isHoleComplete } from '../lib/scoreTypes'
+import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam } from '../lib/scoreTypes'
 import type { Player } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 
@@ -63,36 +64,11 @@ export function ScoreBottomSheet({
   const mp1 = drawn(myTeam?.player1, myTeam?.p1_id ?? myTeam?.p1_roster_id ?? null, myTeam?.p1_name)
   const mp2 = drawn(myTeam?.player2, myTeam?.p2_id ?? myTeam?.p2_roster_id ?? null, myTeam?.p2_name)
   const twoPlayers = !!(mp1 && mp2)
-  const ownComplete = hole <= 1 || isHoleComplete(myScores[hole - 1], twoPlayers)
-
-  // Cross-team approval of the PREVIOUS hole before this one opens.
-  const gHole = hole - 1
-  const gActive = approvalsEnabled && hole > 1 && groupTeams.length > 0
-  const groupPending = gActive
-    ? groupTeams.map(gt => ({ gt, s: gt.scores[gHole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && !approvedScoreIds.has(x.s.id))
-    : []
-  const groupWaiting = gActive ? groupTeams.filter(gt => !gt.scores[gHole]) : []
-  // Mutual: the group also has to have approved MY previous hole before I move on.
-  const theyApprovedMe = !gActive || myApprovedHoles.has(gHole)
-  const approvalLock = groupPending.length > 0 || groupWaiting.length > 0 || !theyApprovedMe
-
-  const locked = hole > 1 && (!ownComplete || approvalLock)
   const { parOf } = useCourse()
   const par = parOf(hole)
 
-  const prevScore = locked ? myScores[hole - 1] : undefined
-  const missingItems: string[] = []
-  if (locked) {
-    if (!prevScore) {
-      missingItems.push('score')
-    } else {
-      if (prevScore.putts == null) missingItems.push('putts')
-      if (twoPlayers && !prevScore.drive_used_id) missingItems.push('drive selection')
-    }
-  }
-
-  // The CURRENT hole must have a score + putts (+ a drive for 2-player teams)
-  // before the team can advance or finish. Chulligans are never required.
+  // This hole is "posted" once it has a score + putts (+ a drive for 2-player
+  // teams). Chulligans are never required.
   const curScore = myScores[hole]
   const curMissing: string[] = []
   if (!curScore) curMissing.push('a score')
@@ -101,6 +77,32 @@ export function ScoreBottomSheet({
     if (twoPlayers && !curScore.drive_used_id) curMissing.push('a drive')
   }
   const curComplete = curMissing.length === 0
+
+  // Cross-team approval settles THIS hole before the group moves on: both teams
+  // post their score, then approve each other. Only when it's fully approved does
+  // the app advance to the next hole — never before.
+  const gA = approvalsEnabled && groupTeams.length > 0
+  const othersWaiting = gA ? groupTeams.filter(gt => !gt.scores[hole]) : []
+  const iNeedToApprove = gA
+    ? groupTeams.map(gt => ({ gt, s: gt.scores[hole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && !approvedScoreIds.has(x.s.id))
+    : []
+  const theyApprovedMe = myApprovedHoles.has(hole)
+  const fullyApproved = gA && curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && theyApprovedMe
+  const showSettlement = gA && (curComplete || iNeedToApprove.length > 0)
+
+  // Auto-advance once a hole is fully approved (guarded: a later edit that
+  // un-approves it re-arms this, but the user is never yanked forward twice).
+  // Only fires while the sheet is open, so the GPS hole never jumps on its own.
+  const advancedRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (demo || !gA || hole >= 18 || !open) return
+    if (fullyApproved && advancedRef.current !== hole) {
+      advancedRef.current = hole
+      const t = setTimeout(() => onNextHole(), 1100)
+      return () => clearTimeout(t)
+    }
+    if (!fullyApproved && advancedRef.current === hole) advancedRef.current = null
+  }, [fullyApproved, hole, gA, demo, open, onNextHole])
 
   const hFrom = hole <= 9 ? 1 : 10
   const hTo   = hole <= 9 ? 9 : 18
@@ -192,68 +194,56 @@ export function ScoreBottomSheet({
               onReset={() => resetMyScore(hole)}
               chulligans={myChulligans}
               onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
-              locked={locked}
+              locked={false}
               demoAnchors={demo}
             />
           )}
         </div>
 
-        {/* Lock reason blurb */}
-        {locked && missingItems.length > 0 && (
-          <div style={{
-            margin: '8px 12px 0',
-            padding: '12px 16px',
-            borderRadius: 12,
-            background: 'rgba(239,68,68,0.07)',
-            border: '1px solid rgba(239,68,68,0.20)',
-            boxShadow: 'var(--elev-1)',
-          }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, color: '#f87171',
-              letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6,
-            }}>
-              Hole {hole - 1} isn't complete yet
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.6 }}>
-              Go back and finish hole {hole - 1} — still missing:{' '}
-              <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>
-                {missingItems.join(' · ')}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* A team flagged one of our scores */}
+        {/* A team challenged one of our scores — fix it and they re-approve */}
         {approvalsEnabled && myDisputedHoles.size > 0 && (
           <div style={{ margin: '8px 12px 0', padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#f87171' }}>⚠️ A team flagged your hole {[...myDisputedHoles].sort((a, b) => a - b).join(', ')}</div>
-            <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4, lineHeight: 1.5 }}>Head back and check that hole — once you fix it, they can re-approve.</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#f87171' }}>⚠️ Your group challenged hole {[...myDisputedHoles].sort((a, b) => a - b).join(', ')}</div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4, lineHeight: 1.5 }}>Go to that hole and fix the score — once you do, they'll be asked to approve the corrected number.</div>
           </div>
         )}
 
-        {/* Cross-team approval — shown right here so the group settles hole {gHole}
-            (both teams post + approve each other) before hole {hole} opens. */}
-        {gActive && approvalLock && (
+        {/* Cross-team settlement for THIS hole — approve each other before moving on */}
+        {showSettlement && (
           <div data-tour={demo ? 'score-demo-approval' : undefined} style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#e8c766', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-              Hole {hole} opens once hole {gHole} is settled
-            </div>
-            {/* Other teams that haven't posted their hole yet */}
-            {groupWaiting.map(gt => (
-              <div key={gt.id} style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
-                ⏳ Waiting for <strong style={{ color: 'var(--tx2)' }}>{gt.name}</strong> to post hole {gHole}…
+            {fullyApproved ? (
+              <div style={{ padding: '13px 16px', borderRadius: 12, background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.4)', fontSize: 14, fontWeight: 800, color: '#34d399', textAlign: 'center' }}>
+                ✓ Hole {hole} approved{hole < 18 ? ` — on to hole ${hole + 1}…` : ' — round complete!'}
               </div>
-            ))}
-            {/* Their score for me to approve or challenge (score + drive + putts, one tap) */}
-            {groupPending.map(({ gt, s }) => (
-              <ApprovalCard key={gt.id} team={gt} score={s} hole={gHole}
-                onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)} />
-            ))}
-            {/* My hole is posted but the group hasn't approved it back yet */}
-            {ownComplete && !theyApprovedMe && groupWaiting.length === 0 && (
-              <div style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
-                ⏳ Waiting for your group to approve <strong style={{ color: 'var(--tx2)' }}>your hole {gHole}</strong>…
-              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#e8c766', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                  Get hole {hole} approved to move on
+                </div>
+                {/* Other teams that haven't posted this hole yet */}
+                {othersWaiting.map(gt => (
+                  <div key={gt.id} style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
+                    ⏳ Waiting for <strong style={{ color: 'var(--tx2)' }}>{gt.name}</strong> to post hole {hole}…
+                  </div>
+                ))}
+                {/* Their hole for me to approve or challenge (score + drive + putts, one tap) */}
+                {iNeedToApprove.map(({ gt, s }) => (
+                  <ApprovalCard key={gt.id} team={gt} score={s} hole={hole}
+                    onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)} />
+                ))}
+                {/* Mine is posted + I've done my part — waiting on them */}
+                {curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && !theyApprovedMe && (
+                  <div style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
+                    ⏳ Waiting for your group to approve <strong style={{ color: 'var(--tx2)' }}>your hole {hole}</strong>…
+                  </div>
+                )}
+                {/* I still need to post my own hole */}
+                {!curComplete && (
+                  <div style={{ padding: '11px 14px', borderRadius: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', fontSize: 13, color: 'var(--tx3)' }}>
+                    Post your hole ({curMissing.join(' & ')}) so your group can approve it.
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -266,56 +256,52 @@ export function ScoreBottomSheet({
           flexDirection: 'column',
           gap: 10,
         }}>
-          {/* Must finish the hole (score + putts + drive) before moving on or finishing */}
-          {!curComplete && !locked && (
-            <div style={{ fontSize: 12, color: '#e0a90a', fontWeight: 700, textAlign: 'center', lineHeight: 1.5 }}>
-              Add {curMissing.join(' & ')} to {hole < 18 ? 'move on' : 'finish'}.
-            </div>
-          )}
-          {hole < 18 ? (
-            <button
-              data-tour={demo ? 'score-demo-save' : undefined}
-              onClick={onNextHole}
-              disabled={!curComplete}
-              style={{
-                width: '100%',
-                padding: '15px',
-                borderRadius: 12,
-                background: 'linear-gradient(180deg, #0d6a43, #063a25)',
-                border: '1px solid rgba(240,230,200,0.22)',
-                color: '#efe8d2',
-                fontSize: 16,
-                fontWeight: 800,
-                cursor: curComplete ? 'pointer' : 'not-allowed',
-                opacity: curComplete ? 1 : 0.4,
-                letterSpacing: 0.5,
-                boxShadow: '0 4px 14px -4px rgba(10,92,57,0.8), inset 0 1px 0 rgba(255,255,255,0.1)',
-              }}
-            >
-              Next Hole →
-            </button>
-          ) : (
-            <button
-              onClick={onClose}
-              disabled={!curComplete}
-              style={{
-                width: '100%',
-                padding: '15px',
-                borderRadius: 12,
-                background: 'linear-gradient(180deg, #e7c877, #d4a53a)',
-                border: 'none',
-                color: '#23180a',
-                fontSize: 16,
-                fontWeight: 800,
-                cursor: curComplete ? 'pointer' : 'not-allowed',
-                opacity: curComplete ? 1 : 0.4,
-                letterSpacing: 0.5,
-                boxShadow: '0 4px 14px -4px rgba(212,165,58,0.6), inset 0 1px 0 rgba(255,255,255,0.35)',
-              }}
-            >
-              Finish Round ✓
-            </button>
-          )}
+          {(() => {
+            const greenBtn: React.CSSProperties = {
+              width: '100%', padding: '15px', borderRadius: 12,
+              background: 'linear-gradient(180deg, #0d6a43, #063a25)', border: '1px solid rgba(240,230,200,0.22)',
+              color: '#efe8d2', fontSize: 16, fontWeight: 800, cursor: 'pointer', letterSpacing: 0.5,
+              boxShadow: '0 4px 14px -4px rgba(10,92,57,0.8), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }
+            const goldBtn: React.CSSProperties = {
+              width: '100%', padding: '15px', borderRadius: 12,
+              background: 'linear-gradient(180deg, #e7c877, #d4a53a)', border: 'none',
+              color: '#23180a', fontSize: 16, fontWeight: 800, cursor: 'pointer', letterSpacing: 0.5,
+              boxShadow: '0 4px 14px -4px rgba(212,165,58,0.6), inset 0 1px 0 rgba(255,255,255,0.35)',
+            }
+            const hint = (text: string) => (
+              <div style={{ fontSize: 12, color: '#e0a90a', fontWeight: 700, textAlign: 'center', lineHeight: 1.5 }}>{text}</div>
+            )
+
+            // Approvals ON: the group settles the hole; advance only when fully approved.
+            if (gA) {
+              if (fullyApproved) {
+                return hole < 18
+                  ? <button data-tour={demo ? 'score-demo-save' : undefined} onClick={onNextHole} style={greenBtn}>Next Hole →</button>
+                  : <button onClick={onClose} style={goldBtn}>Finish Round ✓</button>
+              }
+              if (!curComplete) return hint(`Add ${curMissing.join(' & ')} to post this hole.`)
+              return hint('Waiting on approvals — you\'ll move on automatically once hole ' + hole + ' is approved by everyone.')
+            }
+
+            // Approvals OFF: advance as soon as the hole is complete.
+            return (
+              <>
+                {!curComplete && hint(`Add ${curMissing.join(' & ')} to ${hole < 18 ? 'move on' : 'finish'}.`)}
+                {hole < 18 ? (
+                  <button data-tour={demo ? 'score-demo-save' : undefined} onClick={onNextHole} disabled={!curComplete}
+                    style={{ ...greenBtn, cursor: curComplete ? 'pointer' : 'not-allowed', opacity: curComplete ? 1 : 0.4 }}>
+                    Next Hole →
+                  </button>
+                ) : (
+                  <button onClick={onClose} disabled={!curComplete}
+                    style={{ ...goldBtn, cursor: curComplete ? 'pointer' : 'not-allowed', opacity: curComplete ? 1 : 0.4 }}>
+                    Finish Round ✓
+                  </button>
+                )}
+              </>
+            )
+          })()}
           <button
             onClick={onClose}
             style={{

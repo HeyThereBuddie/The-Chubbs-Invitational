@@ -243,12 +243,14 @@ export function usePlayerScoring() {
   const approveScore = (scoreId: string) => setApproval(scoreId, 'approved')
   const disputeScore = (scoreId: string) => setApproval(scoreId, 'disputed')
 
-  // When I change a hole the group has ALREADY approved or challenged, that action
-  // is now stale — re-ping them to approve the corrected entry (debounced per hole).
+  // Ping the group to approve whenever my hole is COMPLETE (score + putts + drive) —
+  // fires on first post and again after any change that re-completes it (e.g. a
+  // challenge-and-fix), debounced per hole so rapid taps don't spam.
+  const teamHasTwo = !!((myTeam?.player1 || myTeam?.p1_name) && (myTeam?.player2 || myTeam?.p2_name))
   const notifyDebounce = useRef<Record<number, number>>({})
-  const reNotifyIfActedOn = (hole: number) => {
+  const notifyHoleReady = (hole: number, putts: number | null, drive: string | null) => {
     if (!approvalsEnabled || !myTeamId) return
-    if (!(myApprovedHoles.has(hole) || myDisputedHoles.has(hole))) return
+    if (putts == null || (teamHasTwo && !drive)) return  // not complete yet
     const now = Date.now()
     if ((notifyDebounce.current[hole] ?? 0) > now - 5000) return
     notifyDebounce.current[hole] = now
@@ -310,7 +312,7 @@ export function usePlayerScoring() {
         .catch(() => {})
     }
     await refreshPendingCount()
-    reNotifyIfActedOn(hole)
+    notifyHoleReady(hole, existing?.putts ?? null, existing?.drive_used_id ?? null)
   }
 
   // Create a score row at par if the hole has none yet — lets drive / putts /
@@ -354,7 +356,7 @@ export function usePlayerScoring() {
       if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     }
     await refreshPendingCount()
-    reNotifyIfActedOn(hole)
+    notifyHoleReady(hole, myScores[hole]?.putts ?? null, newId)
   }
 
   const setMyPutts = async (hole: number, putts: number) => {
@@ -394,7 +396,7 @@ export function usePlayerScoring() {
 
     if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     await refreshPendingCount()
-    reNotifyIfActedOn(hole)
+    notifyHoleReady(hole, newPutts, myScores[hole]?.drive_used_id ?? null)
   }
 
   const resetMyScore = async (hole: number) => {
