@@ -632,7 +632,10 @@ export default function GpsPage() {
   const [calibrated, setCalibrated] = useState<boolean>(() =>
     typeof localStorage !== 'undefined' && localStorage.getItem('bsHeadingOffset') !== null)
 
-  const isNarrow = useMediaQuery('(max-width: 430px)')
+  // Use the compact HUD on all phones (up to ~large-phone width). The old 430px
+  // cutoff pushed 431–500px phones (e.g. iPhone Pro Max at 440) into the oversized
+  // desktop layout, which squished the score button and overflowed the edges.
+  const isNarrow = useMediaQuery('(max-width: 500px)')
   const holeNumSize  = isNarrow ? 32 : 52
   const scoreNumSize = isNarrow ? 22 : 36
   const yardageSize  = isNarrow ? 36 : 44
@@ -2828,10 +2831,10 @@ export default function GpsPage() {
           </div>
 
           {/* Center: Enter Score — same height as one yardage tile, fills available width */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-end' }}>
             {profile && (
               <button data-tour="enter-score" onClick={() => setSheetOpen(true)} style={{
-                flex: 1,
+                flex: 1, minWidth: 0,
                 height: isNarrow ? 50 : 64,
                 background: 'rgba(212,165,58,0.88)', backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,0.15)', color: '#000',
@@ -2839,7 +2842,7 @@ export default function GpsPage() {
                 fontSize: isNarrow ? 14 : 16,
                 fontWeight: 800, letterSpacing: 0.5,
                 boxShadow: '0 4px 20px rgba(212,165,58,0.35)', cursor: 'pointer',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
                 {scoring.approvalsEnabled ? '⛳ Score & Approve' : '⛳ Enter Score'}
               </button>
