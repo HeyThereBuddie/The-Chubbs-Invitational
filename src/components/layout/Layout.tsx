@@ -10,6 +10,7 @@ import OfflineBanner from '../OfflineBanner'
 import { Sun, Moon, X } from 'lucide-react'
 import { useYear } from '../../context/YearContext'
 import { useAuth } from '../../context/AuthContext'
+import { useLive } from '../../hooks/useLive'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
@@ -20,8 +21,23 @@ export default function Layout({ children }: { children: ReactNode }) {
   const viewingYear = viewingTournament?.year ?? null
 
   const { profile } = useAuth()
+  const { live } = useLive()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Pre-launch Preview mode banner — shown to players (not admins) until go-live.
+  const showPreview = isCurrentYear && live === false && profile?.role !== 'admin'
+  const previewBanner = showPreview ? (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, padding: '10px 14px',
+      borderRadius: 12, background: 'rgba(231,200,119,0.12)', border: '1px solid rgba(231,200,119,0.4)',
+    }}>
+      <span style={{ fontSize: 15 }}>🔒</span>
+      <span style={{ fontSize: 12.5, color: 'var(--tx2)', lineHeight: 1.45 }}>
+        <strong>Preview mode</strong> — the tournament hasn't started yet. Look around and take the tour! Scoring opens when we go live.
+      </span>
+    </div>
+  ) : null
 
   // Leave a past-tournament snapshot: back to the current tournament + Hall of Fame.
   const exitSnapshot = () => {
@@ -73,6 +89,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div style={{ display: 'flex' }}>
             <Sidebar />
             <main style={{ marginLeft: 240, flex: 1, padding: '32px 40px', minHeight: '100dvh' }}>
+              {previewBanner}
               {children}
             </main>
           </div>
@@ -158,6 +175,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 transition: isRefreshing ? 'none' : 'opacity 0.1s',
               }} />
             </div>
+            {previewBanner}
             {children}
           </main>
           <BottomNav />

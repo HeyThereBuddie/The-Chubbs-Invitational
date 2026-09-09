@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { useCourse } from '../context/CourseContext'
+import { useToast } from '../context/ToastContext'
+import { useLive } from './useLive'
 import { localDb, parseJson } from '../lib/localDb'
 import { enqueue, drainQueue, getPendingCount } from '../lib/writeQueue'
 import type { LogFeedEventPayload } from '../lib/writeQueue'
@@ -44,6 +46,19 @@ export function usePlayerScoring() {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline, refreshPendingCount } = useSyncContext()
   const { parOf } = useCourse()
+  const { showToast } = useToast()
+  const { live } = useLive()
+
+  // Pre-launch Preview mode: non-admins can browse but not post gameplay data.
+  // The DB enforces this too — this just gives a friendly message instead of a
+  // silent, failing write.
+  const isAdmin = profile?.role === 'admin'
+  const canScore = isAdmin || live
+  const blockedByPreview = () => {
+    if (canScore) return false
+    showToast('Scoring opens when the tournament goes live', 'error')
+    return true
+  }
 
   // Self-heal a missing player→team link. If the profile has no team_id but a team
   // actually lists this player, reconcile_my_team() mends the link server-side and
@@ -232,6 +247,7 @@ export function usePlayerScoring() {
 
   // Approve / dispute another team's score for a hole.
   const setApproval = async (scoreId: string, status: 'approved' | 'disputed') => {
+    if (blockedByPreview()) return
     if (!myTeamId) return
     setApprovedScoreIds(prev => { const n = new Set(prev); status === 'approved' ? n.add(scoreId) : n.delete(scoreId); return n })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,6 +276,7 @@ export function usePlayerScoring() {
   // ── Actions ─────────────────────────────────────────────────
 
   const adjustMyScore = async (hole: number, delta: number) => {
+    if (blockedByPreview()) return
     if (!myTeamId) return
     navigator.vibrate?.(8)
     const cur  = myScores[hole]?.score ?? parOf(hole)
@@ -338,6 +355,7 @@ export function usePlayerScoring() {
   }
 
   const setMyDrive = async (hole: number, playerId: string) => {
+    if (blockedByPreview()) return
     const id = await ensureScore(hole)
     if (!id) return
     const newId = myScores[hole]?.drive_used_id === playerId ? null : playerId
@@ -360,6 +378,7 @@ export function usePlayerScoring() {
   }
 
   const setMyPutts = async (hole: number, putts: number) => {
+    if (blockedByPreview()) return
     const id = await ensureScore(hole)
     if (!id) return
     const newPutts = myScores[hole]?.putts === putts ? null : putts
@@ -400,6 +419,7 @@ export function usePlayerScoring() {
   }
 
   const resetMyScore = async (hole: number) => {
+    if (blockedByPreview()) return
     const existing = myScores[hole]
     if (!existing?.id) return
 
@@ -434,6 +454,7 @@ export function usePlayerScoring() {
   }
 
   const toggleMyChulligan = async (playerId: string, hole: number) => {
+    if (blockedByPreview()) return
     if (!myTeamId) return
     const teamId = myTeamId
     const team = myTeam

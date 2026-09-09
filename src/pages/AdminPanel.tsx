@@ -136,12 +136,23 @@ export default function AdminPanel() {
 
   const [approvalsEnabled, setApprovalsEnabled] = useState(false)
   const [togglingApprovals, setTogglingApprovals] = useState(false)
+  const [liveMode, setLiveMode] = useState(false)
+  const [togglingLive, setTogglingLive] = useState(false)
   const [forceApproving, setForceApproving] = useState(false)
 
   useEffect(() => {
-    supabase.from('tournament_settings').select('lahey_voting_open, approvals_enabled').eq('id', 1).single()
-      .then(({ data }) => { if (data) { setLaheyVotingOpen(data.lahey_voting_open); setApprovalsEnabled(!!data.approvals_enabled) } })
+    supabase.from('tournament_settings').select('lahey_voting_open, approvals_enabled, live').eq('id', 1).single()
+      .then(({ data }) => { if (data) { setLaheyVotingOpen(data.lahey_voting_open); setApprovalsEnabled(!!data.approvals_enabled); setLiveMode(!!data.live) } })
   }, [])
+
+  const toggleLive = async () => {
+    setTogglingLive(true)
+    const next = !liveMode
+    const { error } = await supabase.from('tournament_settings').update({ live: next }).eq('id', 1)
+    setTogglingLive(false)
+    if (error) showToast(error.message, 'error')
+    else { setLiveMode(next); showToast(next ? '🎉 Tournament is LIVE — scoring open to everyone' : 'Preview mode — players can browse but not score') }
+  }
 
   const toggleApprovals = async () => {
     setTogglingApprovals(true)
@@ -912,6 +923,25 @@ export default function AdminPanel() {
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Launch switch — Preview (players browse only) vs Live (scoring open) */}
+            <div className="glass" style={{ padding: '18px 20px', border: `1px solid ${liveMode ? 'rgba(34,197,94,0.4)' : 'rgba(231,200,119,0.4)'}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>{liveMode ? '🎉' : '🔒'}</span>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: 2, color: liveMode ? '#22c55e' : '#e7c877' }}>
+                  {liveMode ? 'Tournament is LIVE' : 'Preview mode'}
+                </div>
+                <button onClick={toggleLive} disabled={togglingLive} className="pressable" style={{
+                  marginLeft: 'auto', padding: '9px 18px', borderRadius: 999, border: 'none', cursor: togglingLive ? 'default' : 'pointer',
+                  fontWeight: 800, fontSize: 14, color: liveMode ? 'var(--tx2)' : '#0a2a19',
+                  background: liveMode ? 'var(--surf2)' : 'linear-gradient(180deg,#34d399,#059669)', opacity: togglingLive ? 0.6 : 1,
+                }}>{togglingLive ? '…' : liveMode ? 'Switch to Preview' : '🚀 Go Live'}</button>
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--tx3)', lineHeight: 1.55 }}>
+                {liveMode
+                  ? 'Everyone can post scores, chulligans, contests and votes. Switch back to Preview to lock it down again.'
+                  : 'Players can register, browse, and take the tour — but only admins can post scores or change data. Flip to Go Live when the tournament starts (reset any test data first).'}
+              </div>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setTestTournamentOpen(true)}

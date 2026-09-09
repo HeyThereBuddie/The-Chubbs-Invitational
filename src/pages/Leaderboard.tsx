@@ -7,6 +7,8 @@ import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { useCourse } from '../context/CourseContext'
+import { useAuth } from '../context/AuthContext'
+import { useLive } from '../hooks/useLive'
 import { RyderCupTile } from '../components/RyderCupTile'
 import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 
@@ -40,6 +42,9 @@ export default function Leaderboard() {
   const effYear = tournaments.find(t => t.id === effectiveTournamentId)?.year ?? null
   const { isOnline } = useSyncContext()
   const { parOf, holes: courseHoles } = useCourse()
+  const { profile } = useAuth()
+  const { live } = useLive()
+  const isAdmin = profile?.role === 'admin'
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -147,6 +152,20 @@ export default function Leaderboard() {
   )
 
   const GRID = '40px 1fr 46px 62px 16px'
+
+  // Preview mode: players don't see the board until the tournament goes live
+  // (admins keep seeing it so they can test).
+  if (isCurrentYear && live === false && !isAdmin) {
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <div className="glass" style={{ padding: '44px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 42, marginBottom: 12 }}>⛳️</div>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 27, letterSpacing: 1.5, color: 'var(--tx1)', marginBottom: 8 }}>The tournament hasn't started</div>
+          <div style={{ fontSize: 13.5, color: 'var(--tx3)', lineHeight: 1.6 }}>The leaderboard goes live once play begins. In the meantime, explore the app and take Chubbs' tour!</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
