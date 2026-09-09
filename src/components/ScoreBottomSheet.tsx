@@ -85,6 +85,17 @@ export function ScoreBottomSheet({
     }
   }
 
+  // The CURRENT hole must have a score + putts (+ a drive for 2-player teams)
+  // before the team can advance or finish. Chulligans are never required.
+  const curScore = myScores[hole]
+  const curMissing: string[] = []
+  if (!curScore) curMissing.push('a score')
+  else {
+    if (curScore.putts == null) curMissing.push('putts')
+    if (twoPlayers && !curScore.drive_used_id) curMissing.push('a drive')
+  }
+  const curComplete = curMissing.length === 0
+
   const hFrom = hole <= 9 ? 1 : 10
   const hTo   = hole <= 9 ? 9 : 18
   const p1n   = countDrives(mp1?.id ?? null, hFrom, hTo)
@@ -240,10 +251,17 @@ export function ScoreBottomSheet({
           flexDirection: 'column',
           gap: 10,
         }}>
+          {/* Must finish the hole (score + putts + drive) before moving on or finishing */}
+          {!curComplete && !locked && (
+            <div style={{ fontSize: 12, color: '#e0a90a', fontWeight: 700, textAlign: 'center', lineHeight: 1.5 }}>
+              Add {curMissing.join(' & ')} to {hole < 18 ? 'move on' : 'finish'}.
+            </div>
+          )}
           {hole < 18 ? (
             <button
               data-tour={demo ? 'score-demo-save' : undefined}
               onClick={onNextHole}
+              disabled={!curComplete}
               style={{
                 width: '100%',
                 padding: '15px',
@@ -253,7 +271,8 @@ export function ScoreBottomSheet({
                 color: '#efe8d2',
                 fontSize: 16,
                 fontWeight: 800,
-                cursor: 'pointer',
+                cursor: curComplete ? 'pointer' : 'not-allowed',
+                opacity: curComplete ? 1 : 0.4,
                 letterSpacing: 0.5,
                 boxShadow: '0 4px 14px -4px rgba(10,92,57,0.8), inset 0 1px 0 rgba(255,255,255,0.1)',
               }}
@@ -263,6 +282,7 @@ export function ScoreBottomSheet({
           ) : (
             <button
               onClick={onClose}
+              disabled={!curComplete}
               style={{
                 width: '100%',
                 padding: '15px',
@@ -272,7 +292,8 @@ export function ScoreBottomSheet({
                 color: '#23180a',
                 fontSize: 16,
                 fontWeight: 800,
-                cursor: 'pointer',
+                cursor: curComplete ? 'pointer' : 'not-allowed',
+                opacity: curComplete ? 1 : 0.4,
                 letterSpacing: 0.5,
                 boxShadow: '0 4px 14px -4px rgba(212,165,58,0.6), inset 0 1px 0 rgba(255,255,255,0.35)',
               }}
