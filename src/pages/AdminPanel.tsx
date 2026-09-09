@@ -363,10 +363,12 @@ export default function AdminPanel() {
         : Promise.resolve({ error: null }),
       supabase.from('feed_events').delete().eq('tournament_id', activeTournamentId),
       supabase.from('contest_entries').delete().eq('tournament_id', activeTournamentId),
+      supabase.from('shots').delete().eq('tournament_id', activeTournamentId),
     ])
+    // score_approvals are removed automatically — they cascade off the deleted scores.
     setResetting(false)
     setResetConfirm(false)
-    showToast('All scores, chulligans, contests, and live feed cleared!')
+    showToast('Scores, approvals, chulligans, contests, shots and live feed cleared!')
   }
 
   const toggleLaheyVoting = async () => {
