@@ -7,6 +7,7 @@ import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { localDb, type LocalScore, type LocalTeam, type LocalProfile } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
+import { useLive } from '../hooks/useLive'
 import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng, Player } from '../lib/types'
 import { displayName, normalizeFairways, teamMemberName } from '../lib/types'
@@ -501,6 +502,8 @@ function scoreToPar(teamId: string, scores: LocalScore[], parOf: (hole: number) 
 
 export default function GpsPage() {
   const { profile, isAdmin } = useAuth()
+  const { live } = useLive()
+  const canScore = isAdmin || live   // false in pre-launch Preview mode for players
   const { effectiveTournamentId } = useYear()
   const [searchParams] = useSearchParams()
   const mapRef = useRef<MapRef>(null)
@@ -1244,6 +1247,7 @@ export default function GpsPage() {
     const type = contestSheet
     if (!type || !contestPlayerId || contestYds == null || !effectiveTournamentId) return
     if (tour.active) { closeContestSheet(); flashToast('Tour sandbox — nothing was saved'); return }
+    if (!canScore) { closeContestSheet(); flashToast('Contests open when the tournament goes live'); return }
     setContestSubmitting(true)
     let photo_url: string | null = null
     if (contestPhoto) {
@@ -1421,7 +1425,7 @@ export default function GpsPage() {
   // Nudge to log the contest once you're in position on a designated hole:
   // LD once you've walked off the tee, CTP once you've reached the green.
   useEffect(() => {
-    if (tour.active) return
+    if (tour.active || !canScore) return
     const c = currentHole?.contest
     if (!c || !position || contestPrompt || contestSheet || contestAnswered(c)) return
     const triggered = c === 'ld'
