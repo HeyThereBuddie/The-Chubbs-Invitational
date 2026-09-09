@@ -236,7 +236,7 @@ export default function AdminPanel() {
     const { error } = await supabase.from('tournament_settings').update({ ryder_enabled: next }).eq('id', 1)
     setRyderBusy(false)
     if (error) showToast(error.message, 'error')
-    else { setRyderEnabled(next); showToast(next ? 'Ryder Cup ON — the tile shows on the leaderboard' : 'Ryder Cup off') }
+    else { setRyderEnabled(next); showToast(next ? 'Waterbury Open ON — the tile shows on the leaderboard' : 'Waterbury Open off') }
   }
   const saveRyderNames = async () => {
     const { error } = await supabase.from('tournament_settings')
@@ -745,7 +745,7 @@ export default function AdminPanel() {
           { id: 'scores',     label: '📝 Scores' },
           { id: 'groups',     label: '👥 Team Draw' },
           { id: 'predictions', label: '🔮 Predictions' },
-          { id: 'ryder',      label: '🏅 Ryder Cup' },
+          { id: 'ryder',      label: '🏅 Waterbury Open' },
           { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'tournament', label: '🏆 Tournament' },
@@ -1896,7 +1896,7 @@ export default function AdminPanel() {
           <div className="glass" style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <span style={{ fontSize: 20 }}>🏅</span>
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 2 }}>Ryder Cup</div>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 2 }}>Waterbury Open</div>
               <button onClick={toggleRyder} disabled={ryderBusy} className="pressable" style={{
                 marginLeft: 'auto', padding: '8px 16px', borderRadius: 999, border: 'none', cursor: ryderBusy ? 'default' : 'pointer',
                 fontWeight: 800, fontSize: 13, color: ryderEnabled ? '#0a2a19' : 'var(--tx2)',

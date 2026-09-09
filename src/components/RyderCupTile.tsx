@@ -21,7 +21,7 @@ export function RyderCupTile({ live }: { live?: boolean }) {
       {/* Title strip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: `linear-gradient(180deg, ${AUGUSTA}, ${AUGUSTA_DEEP})` }}>
         <span style={{ fontSize: 17 }}>🏅</span>
-        <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 2.5, color: CREAM }}>Ryder Cup</span>
+        <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: 2.5, color: CREAM }}>Waterbury Open</span>
         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           {r.target > 0 && (
             <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: GOLD_SOFT, textTransform: 'uppercase' }}>First to {fmtPts(r.target)}</span>
