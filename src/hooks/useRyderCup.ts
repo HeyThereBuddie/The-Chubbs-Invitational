@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
-import { buildGroups, approvedScoreIds } from '../lib/approvals'
+import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 
 // ── Ryder Cup: a read-only points game derived from the scores already recorded ──
 // Each foursome (two teams sharing a tee time) is a match. Per hole, the team with
@@ -90,7 +90,7 @@ export function useRyderCup(): RyderData {
         // Only count scores the foursome has approved (when approvals are on). A
         // score that changes goes stale and drops out until it's re-approved.
         const okIds = settings.approvals_enabled
-          ? approvedScoreIds(scores ?? [], appr ?? [], buildGroups(tts ?? []))
+          ? approvedScoreIds(scores ?? [], appr ?? [], buildGroupMates(tts ?? []))
           : null
 
         // Per-team, per-hole gross.

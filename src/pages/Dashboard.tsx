@@ -7,7 +7,7 @@ import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player } from '../lib/types'
-import { buildGroups, approvedScoreIds } from '../lib/approvals'
+import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
 
@@ -237,7 +237,7 @@ export default function Dashboard() {
       let scores: Score[] = scoresRes.data ?? []
       // Only count foursome-approved scores (when approvals are on), matching the main board.
       if (settingsRes.data?.approvals_enabled) {
-        const ok = approvedScoreIds(scores, apprRes.data ?? [], buildGroups(ttRes.data ?? []))
+        const ok = approvedScoreIds(scores, apprRes.data ?? [], buildGroupMates(ttRes.data ?? []))
         scores = scores.filter(s => ok.has(s.id))
       }
       const rows: LeaderRow[] = teams.map(team => {
