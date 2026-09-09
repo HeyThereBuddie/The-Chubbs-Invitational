@@ -47,7 +47,7 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = usePersistedTab<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions' | 'ryder'>('admin.tab', 'groups', ['players', 'codes', 'tournament', 'brevo', 'gps', 'scores', 'jackass', 'groups', 'predictions', 'ryder'])
+  const [tab, setTab] = usePersistedTab<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions' | 'ryder'>('admin.tab', 'groups', ['players', 'tournament', 'gps', 'scores', 'jackass', 'groups', 'predictions', 'ryder'])
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = usePersistedTab<'roster' | 'users'>('admin.playerSubTab', 'roster', ['roster', 'users'])
@@ -748,10 +748,8 @@ export default function AdminPanel() {
           { id: 'ryder',      label: '🏅 Ryder Cup' },
           { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
-          { id: 'codes',      label: '🔑 Codes' },
           { id: 'tournament', label: '🏆 Tournament' },
           { id: 'gps',        label: '🗺️ GPS Course' },
-          { id: 'brevo',      label: '📣 Brevo' },
         ] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setTab(id)} className={`pill-tab ${tab === id ? 'active' : ''}`}>{label}</button>
         ))}
