@@ -43,6 +43,7 @@ export default function Leaderboard() {
   const [rows, setRows] = useState<LeaderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [pendingCount, setPendingCount] = useState(0)   // holes entered but not yet approved
 
   useEffect(() => {
     fetchData()
@@ -89,10 +90,12 @@ export default function Leaderboard() {
       // Only count scores the foursome has approved (when approvals are on). A score
       // that changes goes stale and drops off until it's re-approved.
       if (settingsRes.data?.approvals_enabled) {
+        const teamIds = new Set(teams.map(t => t.id))
         const mates = buildGroupMates(ttRes.data ?? [])
         const ok = approvedScoreIds(allScores, apprRes.data ?? [], mates)
+        setPendingCount(allScores.filter(s => teamIds.has(s.team_id) && !ok.has(s.id)).length)
         allScores = allScores.filter(s => ok.has(s.id))
-      }
+      } else setPendingCount(0)
     }
 
     const leaderRows: LeaderRow[] = teams.map(team => {
@@ -150,6 +153,19 @@ export default function Leaderboard() {
       {/* Ryder Cup — its own tile, only shows when an admin enables it. Zero impact
           on the standings below. */}
       <RyderCupTile live={isCurrentYear} />
+
+      {/* Pending-approval note so the board reading "behind" makes sense */}
+      {isCurrentYear && pendingCount > 0 && (
+        <div className="animate-fadeUp" style={{
+          display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', padding: '10px 14px',
+          borderRadius: 12, background: 'rgba(231,200,119,0.10)', border: '1px solid rgba(231,200,119,0.35)',
+        }}>
+          <span style={{ fontSize: 15 }}>⏳</span>
+          <span style={{ fontSize: 12.5, color: 'var(--tx2)', lineHeight: 1.45 }}>
+            <strong>{pendingCount}</strong> {pendingCount === 1 ? 'hole is' : 'holes are'} awaiting approval — {pendingCount === 1 ? 'it' : 'they'}'ll show here once the group signs off.
+          </span>
+        </div>
+      )}
 
       <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden', borderColor: 'var(--bdr)' }}>
 

@@ -144,6 +144,18 @@ export default function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrentYear, effectiveTournamentId])
 
+  // Keep the mini leaderboard live — refresh on any score or approval change.
+  useEffect(() => {
+    if (!isCurrentYear) return
+    const ch = supabase
+      .channel('scores_dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, () => fetchData())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentYear, effectiveTournamentId])
+
   const fetchFeed = async () => {
     if (!effectiveTournamentId) { setFeed([]); return }
 
