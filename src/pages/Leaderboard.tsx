@@ -7,6 +7,7 @@ import { SkeletonLeaderRow } from '../components/Skeleton'
 import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { useCourse } from '../context/CourseContext'
+import { RyderCupTile } from '../components/RyderCupTile'
 
 // Augusta manual-scoreboard palette (Masters homage), bridged with the app's gold/dark theme.
 const AUGUSTA = '#0a5c39'
@@ -134,6 +135,10 @@ export default function Leaderboard() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      {/* Ryder Cup — its own tile, only shows when an admin enables it. Zero impact
+          on the standings below. */}
+      <RyderCupTile live={isCurrentYear} />
+
       <div className="glass animate-fadeUp" style={{ padding: 0, overflow: 'hidden', borderColor: 'var(--bdr)' }}>
 
         {/* ── Augusta masthead ───────────────────────────────── */}

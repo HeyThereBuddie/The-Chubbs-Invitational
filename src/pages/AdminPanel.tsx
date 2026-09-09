@@ -47,7 +47,7 @@ export default function AdminPanel() {
   const { showToast } = useToast()
   const { refreshTournaments } = useYear()
   const { parOf } = useCourse()
-  const [tab, setTab] = usePersistedTab<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions'>('admin.tab', 'groups', ['players', 'codes', 'tournament', 'brevo', 'gps', 'scores', 'jackass', 'groups', 'predictions'])
+  const [tab, setTab] = usePersistedTab<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions' | 'ryder'>('admin.tab', 'groups', ['players', 'codes', 'tournament', 'brevo', 'gps', 'scores', 'jackass', 'groups', 'predictions', 'ryder'])
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = usePersistedTab<'roster' | 'users'>('admin.playerSubTab', 'roster', ['roster', 'users'])
@@ -190,6 +190,68 @@ export default function AdminPanel() {
   const [teamsDrawn, setTeamsDrawn] = useState<number | null>(null)
   const [clearingPredictions, setClearingPredictions] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
+
+  // ── Ryder Cup (additive overlay — squad setup only; scoring is derived live) ──
+  const [ryderEnabled, setRyderEnabled] = useState(false)
+  const [ryderAName, setRyderAName] = useState('Team Drew')
+  const [ryderBName, setRyderBName] = useState('Team Kage')
+  const [ryderTeams, setRyderTeams] = useState<{ id: string; pairing: string; squad: 'A' | 'B' | null }[]>([])
+  const [ryderGroups, setRyderGroups] = useState<{ tee: string; teams: { id: string; squad: 'A' | 'B' | null }[] }[]>([])
+  const [ryderBusy, setRyderBusy] = useState(false)
+
+  const loadRyder = async () => {
+    const { data: s } = await supabase.from('tournament_settings')
+      .select('ryder_enabled, ryder_squad_a_name, ryder_squad_b_name').eq('id', 1).single()
+    if (s) { setRyderEnabled(!!s.ryder_enabled); setRyderAName(s.ryder_squad_a_name || 'Team Drew'); setRyderBName(s.ryder_squad_b_name || 'Team Kage') }
+    if (!activeTournamentId) { setRyderTeams([]); setRyderGroups([]); return }
+    const [{ data: teams }, { data: tts }] = await Promise.all([
+      supabase.from('teams')
+        .select('id, name, p1_name, p2_name, ryder_squad, player1:profiles!teams_p1_id_fkey(name, nickname), player2:profiles!teams_p2_id_fkey(name, nickname)')
+        .eq('tournament_id', activeTournamentId).order('name'),
+      supabase.from('tee_times').select('team_id, tee_time'),
+    ])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (teams ?? []).map((t: any) => ({
+      id: t.id,
+      pairing: [t.player1 ? displayName(t.player1) : t.p1_name, t.player2 ? displayName(t.player2) : t.p2_name].filter(Boolean).join(' & ') || t.name,
+      squad: (t.ryder_squad ?? null) as 'A' | 'B' | null,
+    }))
+    setRyderTeams(list)
+    const squadById = new Map(list.map(t => [t.id, t.squad]))
+    const ids = new Set(list.map(t => t.id))
+    const groups = new Map<string, { id: string; squad: 'A' | 'B' | null }[]>()
+    for (const tt of tts ?? []) {
+      if (!ids.has(tt.team_id)) continue
+      const arr = groups.get(String(tt.tee_time)) ?? []
+      arr.push({ id: tt.team_id, squad: squadById.get(tt.team_id) ?? null })
+      groups.set(String(tt.tee_time), arr)
+    }
+    setRyderGroups([...groups.entries()].map(([tee, tms]) => ({ tee, teams: tms })).sort((a, b) => a.tee.localeCompare(b.tee)))
+  }
+  useEffect(() => { if (tab === 'ryder') loadRyder() }, [tab, activeTournamentId])
+
+  const toggleRyder = async () => {
+    const next = !ryderEnabled
+    setRyderBusy(true)
+    const { error } = await supabase.from('tournament_settings').update({ ryder_enabled: next }).eq('id', 1)
+    setRyderBusy(false)
+    if (error) showToast(error.message, 'error')
+    else { setRyderEnabled(next); showToast(next ? 'Ryder Cup ON — the tile shows on the leaderboard' : 'Ryder Cup off') }
+  }
+  const saveRyderNames = async () => {
+    const { error } = await supabase.from('tournament_settings')
+      .update({ ryder_squad_a_name: ryderAName.trim() || 'Team Drew', ryder_squad_b_name: ryderBName.trim() || 'Team Kage' }).eq('id', 1)
+    if (error) showToast(error.message, 'error'); else showToast('Squad names saved')
+  }
+  const setTeamSquad = async (teamId: string, squad: 'A' | 'B' | null) => {
+    const prev = ryderTeams
+    setRyderTeams(l => l.map(t => t.id === teamId ? { ...t, squad } : t))
+    const { error } = await supabase.from('teams').update({ ryder_squad: squad }).eq('id', teamId)
+    if (error) { showToast(error.message, 'error'); setRyderTeams(prev) }
+    else loadRyder()
+  }
+  const ryderCountA = ryderTeams.filter(t => t.squad === 'A').length
+  const ryderCountB = ryderTeams.filter(t => t.squad === 'B').length
 
   const loadLastPrediction = async () => {
     if (!activeTournamentId) return
@@ -680,6 +742,7 @@ export default function AdminPanel() {
           { id: 'scores',     label: '📝 Scores' },
           { id: 'groups',     label: '👥 Team Draw' },
           { id: 'predictions', label: '🔮 Predictions' },
+          { id: 'ryder',      label: '🏅 Ryder Cup' },
           { id: 'jackass',    label: '🤠 Jackass' },
           { id: 'players',    label: '👥 Player Management' },
           { id: 'codes',      label: '🔑 Codes' },
@@ -1822,6 +1885,109 @@ export default function AdminPanel() {
                 )
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Ryder Cup setup ─────────────────────────────────────── */}
+      {tab === 'ryder' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="glass" style={{ padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span style={{ fontSize: 20 }}>🏅</span>
+              <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: '#D4A53A', letterSpacing: 2 }}>Ryder Cup</div>
+              <button onClick={toggleRyder} disabled={ryderBusy} className="pressable" style={{
+                marginLeft: 'auto', padding: '8px 16px', borderRadius: 999, border: 'none', cursor: ryderBusy ? 'default' : 'pointer',
+                fontWeight: 800, fontSize: 13, color: ryderEnabled ? '#0a2a19' : 'var(--tx2)',
+                background: ryderEnabled ? 'linear-gradient(180deg,#34d399,#059669)' : 'var(--surf2)', opacity: ryderBusy ? 0.6 : 1,
+              }}>{ryderEnabled ? '✓ On' : 'Off'}</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.55 }}>
+              A points game layered on top of the normal scores — it never changes scoring. Assign each team to a squad and set tee times as usual; the two teams sharing a tee time become a match. Win a hole = 1 point, tie = ½ each. The live board shows on the leaderboard.
+            </div>
+          </div>
+
+          {ryderEnabled && (
+            <>
+              {/* Squad names */}
+              <div className="glass" style={{ padding: '16px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 10 }}>Squad names</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <input value={ryderAName} onChange={e => setRyderAName(e.target.value)} onBlur={saveRyderNames}
+                    style={{ flex: 1, padding: '11px 13px', borderRadius: 11, fontSize: 16, background: 'var(--surf2)', border: '2px solid #2563eb', color: 'var(--tx1)', outline: 'none' }} />
+                  <input value={ryderBName} onChange={e => setRyderBName(e.target.value)} onBlur={saveRyderNames}
+                    style={{ flex: 1, padding: '11px 13px', borderRadius: 11, fontSize: 16, background: 'var(--surf2)', border: '2px solid #e0402f', color: 'var(--tx1)', outline: 'none' }} />
+                </div>
+              </div>
+
+              {/* Assign teams to squads */}
+              <div className="glass" style={{ padding: '16px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: 'var(--tx3)', textTransform: 'uppercase' }}>Assign teams to squads</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800 }}>
+                    <span style={{ color: '#2563eb' }}>{ryderCountA}</span>
+                    <span style={{ color: 'var(--tx4)' }}> · </span>
+                    <span style={{ color: '#e0402f' }}>{ryderCountB}</span>
+                  </span>
+                </div>
+                {ryderTeams.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--tx4)' }}>No teams for this tournament yet.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {ryderTeams.map(t => (
+                      <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.pairing}</span>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          {([['A', ryderAName, '#2563eb'], ['B', ryderBName, '#e0402f']] as const).map(([sq, nm, col]) => {
+                            const active = t.squad === sq
+                            return (
+                              <button key={sq} onClick={() => setTeamSquad(t.id, active ? null : sq)} className="pressable" style={{
+                                padding: '7px 13px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                                border: `1px solid ${active ? col : 'var(--bdr)'}`,
+                                background: active ? col : 'var(--surf2)', color: active ? '#fff' : 'var(--tx3)',
+                              }}>{(nm.trim().split(/\s+/).pop() || nm).toUpperCase()}</button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Match preview (derived from tee times) */}
+              <div className="glass" style={{ padding: '16px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: 'var(--tx3)', textTransform: 'uppercase', marginBottom: 12 }}>Matches — from tee times</div>
+                {ryderGroups.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--tx4)' }}>Set tee times (two teams per group) and the matches appear here.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {ryderGroups.map(g => {
+                      const pairing = (id: string) => ryderTeams.find(t => t.id === id)?.pairing ?? '—'
+                      const both = g.teams.length === 2
+                      const sameSquad = both && g.teams[0].squad && g.teams[0].squad === g.teams[1].squad
+                      const unassigned = g.teams.some(x => !x.squad)
+                      const warn = !both ? `Foursome has ${g.teams.length} team(s) — needs exactly 2 to score`
+                        : sameSquad ? 'Both teams are on the same squad'
+                        : unassigned ? 'Assign both teams to a squad'
+                        : null
+                      return (
+                        <div key={g.tee} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--surf2)', border: `1px solid ${warn ? 'rgba(245,158,11,0.4)' : 'var(--bdr)'}` }}>
+                          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--tx4)', letterSpacing: 0.5, marginBottom: 4 }}>{String(g.tee).slice(0, 5)}</div>
+                          {g.teams.map(tm => (
+                            <div key={tm.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tx1)' }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: tm.squad === 'A' ? '#2563eb' : tm.squad === 'B' ? '#e0402f' : 'var(--tx5)' }} />
+                              {pairing(tm.id)}
+                            </div>
+                          ))}
+                          {warn && <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, marginTop: 4 }}>⚠️ {warn}</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
