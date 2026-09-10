@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { HoleCard } from './HoleCard'
 import { ApprovalCard } from './ApprovalCard'
@@ -71,6 +71,17 @@ export function ScoreBottomSheet({
   const { parOf } = useCourse()
   const par = parOf(hole)
 
+  // Post-submit lock (client-side, per device). A submitted hole goes read-only so
+  // it can't be fumbled; it unlocks automatically if the group challenges it, or
+  // when the player taps "Change score". `submitted` tracks holes posted this
+  // session; approved holes stay locked across reloads via myApprovedHoles below.
+  const [submitted, setSubmitted] = useState<Set<number>>(new Set())
+  const [editing, setEditing]     = useState<Set<number>>(new Set())
+  const addTo = (set: Set<number>, h: number) => { const n = new Set(set); n.add(h); return n }
+  const delFrom = (set: Set<number>, h: number) => { const n = new Set(set); n.delete(h); return n }
+  const postHole = () => { onSubmit(hole); setSubmitted(s => addTo(s, hole)); setEditing(s => delFrom(s, hole)) }
+  const unlockHole = () => { setEditing(s => addTo(s, hole)); setSubmitted(s => delFrom(s, hole)) }
+
   // This hole is "posted" once it has a score + putts (+ a drive for 2-player
   // teams). Chulligans are never required.
   const curScore = myScores[hole]
@@ -95,6 +106,11 @@ export function ScoreBottomSheet({
   const theyApprovedMe = myApprovedHoles.has(hole)
   const fullyApproved = gA && curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && theyApprovedMe
   const showSettlement = gA && (curComplete || iNeedToApprove.length > 0)
+
+  // The hole is locked once posted (submitted this session, or already approved) —
+  // unless the group challenged it (they need it fixed) or the player chose to edit.
+  const isDisputedMine = myDisputedHoles.has(hole)
+  const isLocked = gA && !!curScore && !editing.has(hole) && !isDisputedMine && (theyApprovedMe || submitted.has(hole))
 
   // Auto-advance once a hole is fully approved (guarded: a later edit that
   // un-approves it re-arms this, but the user is never yanked forward twice).
@@ -203,6 +219,7 @@ export function ScoreBottomSheet({
               chulligans={myChulligans}
               onToggleChulligan={(pid, h) => toggleMyChulligan(pid, h)}
               locked={false}
+              readOnly={isLocked}
               demoAnchors={demo}
             />
           )}
@@ -277,25 +294,45 @@ export function ScoreBottomSheet({
               color: '#23180a', fontSize: 16, fontWeight: 800, cursor: 'pointer', letterSpacing: 0.5,
               boxShadow: '0 4px 14px -4px rgba(212,165,58,0.6), inset 0 1px 0 rgba(255,255,255,0.35)',
             }
+            const ghostBtn: React.CSSProperties = {
+              width: '100%', padding: '11px', borderRadius: 12, background: 'transparent',
+              border: '1px solid var(--bdr2)', color: 'var(--tx2)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }
             const hint = (text: string) => (
               <div style={{ fontSize: 12, color: '#e0a90a', fontWeight: 700, textAlign: 'center', lineHeight: 1.5 }}>{text}</div>
             )
+            const changeScoreBtn = <button onClick={unlockHole} style={ghostBtn}>✏️ Change score</button>
 
             // Approvals ON: the group settles the hole; advance only when fully approved.
             if (gA) {
               if (fullyApproved) {
-                return hole < 18
-                  ? <button data-tour={demo ? 'score-demo-save' : undefined} onClick={onNextHole} style={greenBtn}>Next Hole →</button>
-                  : <button onClick={onClose} style={goldBtn}>Finish Round ✓</button>
+                // Approved & done — but a team can still reopen it (re-approval kicks
+                // in automatically once anything changes).
+                return (
+                  <>
+                    {hole < 18
+                      ? <button data-tour={demo ? 'score-demo-save' : undefined} onClick={onNextHole} style={greenBtn}>Next Hole →</button>
+                      : <button onClick={onClose} style={goldBtn}>Finish Round ✓</button>}
+                    {changeScoreBtn}
+                  </>
+                )
               }
               if (!curComplete) return hint(`Add ${curMissing.join(' & ')} to post this hole.`)
-              // Complete but not yet settled: the player controls when the group is
-              // prompted. Tapping posts + notifies the foursome instantly (re-tap to
-              // re-send after a fix).
+              // Posted & locked, waiting on the group to approve.
+              if (isLocked) {
+                return (
+                  <>
+                    {hint(`Hole ${hole} submitted 🔒 — you'll move on automatically once everyone approves.`)}
+                    {changeScoreBtn}
+                  </>
+                )
+              }
+              // Complete and unlocked: the player controls when the group is prompted.
+              // Submitting posts + notifies the foursome instantly and locks the hole.
               return (
                 <>
-                  <button onClick={() => onSubmit(hole)} style={goldBtn}>📣 Submit hole {hole} for approval</button>
-                  {hint(`Your group gets pinged to approve. You'll move on automatically once hole ${hole} is approved by everyone.`)}
+                  <button onClick={postHole} style={goldBtn}>📣 Submit hole {hole} for approval</button>
+                  {hint(`Your group gets pinged to approve. Your score locks until they do (or challenge it).`)}
                 </>
               )
             }
