@@ -49,6 +49,34 @@ registerRoute(
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()))
 
+// Must match VAPID_PUBLIC_KEY in src/lib/push.ts. When the browser rotates the
+// push subscription, recreate it here so the push channel never goes dead, then
+// tell any open tab to write the new endpoint to the server.
+const VAPID_PUBLIC_KEY = (import.meta as { env?: Record<string, string> }).env?.VITE_VAPID_PUBLIC_KEY
+  || 'BFw6RXT78FLUWtAKcd7hdVWNghyABhbeAMu-IoA0Hh6PtS8bfgkvA-ugJL7DaASOHk586kEZjK-5rfjzi6JPP6U'
+
+function urlBase64ToUint8Array(base64: string) {
+  const pad = '='.repeat((4 - (base64.length % 4)) % 4)
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(b64)
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+}
+
+self.addEventListener('pushsubscriptionchange', event => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const e = event as any
+  e.waitUntil((async () => {
+    try {
+      const sub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      })
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      clients.forEach(c => c.postMessage({ type: 'PUSH_SUB_CHANGED', subscription: sub.toJSON() }))
+    } catch { /* ignore — client self-heals on next open */ }
+  })())
+})
+
 self.addEventListener('push', event => {
   const data = event.data?.json() ?? {}
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

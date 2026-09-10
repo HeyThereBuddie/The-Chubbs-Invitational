@@ -3,7 +3,7 @@ import { Bell } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array } from '../lib/push'
+import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array, setPushIntent } from '../lib/push'
 
 // Compact "turn on notifications" prompt for the dashboard. It only shows when
 // push is supported and NOT yet enabled — a second, encouraging entry point
@@ -40,6 +40,7 @@ export default function PushEnableTile() {
         { user_id: user.id, subscription: sub.toJSON(), notification_prefs: DEFAULT_NOTIF_PREFS },
         { onConflict: 'user_id' }
       )
+      setPushIntent(true)
       setStatus('subscribed')
       showToast('Notifications enabled!')
     } catch (e) {

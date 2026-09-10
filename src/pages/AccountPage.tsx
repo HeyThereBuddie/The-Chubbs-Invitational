@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { displayName, type RosterEntry } from '../lib/types'
 import { type ClubDist, DEFAULT_BAG, resolveBag, scaleBagTo7Iron } from '../lib/clubs'
-import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array } from '../lib/push'
+import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array, setPushIntent } from '../lib/push'
 
 const NOTIF_TYPES: { key: string; icon: string; label: string; desc: string; adminOnly?: boolean }[] = [
   { key: 'lead_change',    icon: '🏆', label: 'Lead Change',    desc: 'A team takes the lead' },
@@ -110,6 +110,7 @@ export default function AccountPage() {
         { onConflict: 'user_id' }
       )
       setNotifPrefs(DEFAULT_NOTIF_PREFS)
+      setPushIntent(true)
       setPushStatus('subscribed')
       showToast('Notifications enabled!')
     } catch (e) {
@@ -135,6 +136,7 @@ export default function AccountPage() {
       const sub = await reg?.pushManager.getSubscription()
       await sub?.unsubscribe()
       await supabase.from('push_subscriptions').delete().eq('user_id', user!.id)
+      setPushIntent(false)
       setPushStatus('unsubscribed')
       showToast('Notifications disabled')
     } catch (e) {

@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ensurePushSubscription } from './lib/push'
 import { useYear } from './context/YearContext'
 import { ToastProvider } from './context/ToastContext'
 import { YearProvider } from './context/YearContext'
@@ -67,6 +69,21 @@ function AppRoutes() {
   const { live } = useLive()
   const { active: tourActive } = useTour()
   const location = useLocation()
+
+  // Keep push alive: on every load (once signed in) re-assert the subscription so
+  // a rotated/dropped one is healed, and listen for the SW telling us the browser
+  // rotated it. Enabling notifications once — including from the tour — sticks.
+  useEffect(() => {
+    if (!user) return
+    ensurePushSubscription(user.id)
+    if (!('serviceWorker' in navigator)) return
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'PUSH_SUB_CHANGED') ensurePushSubscription(user.id)
+    }
+    navigator.serviceWorker.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg)
+  }, [user?.id])
+
   if (loading) return <Spinner />
 
   // A password-reset link opens a temporary recovery session. Take over the whole
