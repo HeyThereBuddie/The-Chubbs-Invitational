@@ -286,6 +286,10 @@ export function usePlayerScoring() {
       { score_id: scoreId, approving_team_id: myTeamId, status, updated_at: new Date().toISOString() },
       { onConflict: 'score_id,approving_team_id' })
     if (myTeamIdRef.current) loadGroup(myTeamIdRef.current, myScoresRef.current)
+    // Nudge the foursome to refresh instantly — the team whose score I just
+    // approved sees the mutual gate clear right away instead of waiting on the
+    // slower postgres-change round-trip.
+    try { busRef.current?.send({ type: 'broadcast', event: 'submitted', payload: { team_id: myTeamId } }) } catch { /* best effort */ }
   }
   const approveScore = (scoreId: string) => setApproval(scoreId, 'approved')
   const disputeScore = (scoreId: string) => setApproval(scoreId, 'disputed')
@@ -589,6 +593,28 @@ export function usePlayerScoring() {
       .map(s => ({ team: gt, score: s, hole: s.hole })))
     .sort((a, b) => a.hole - b.hole)
 
+  // Holes that are fully settled: my hole is finished, every other team has posted
+  // AND been approved by me, and every other team has approved mine. This drives
+  // auto-advance at the GPS level so it works whether or not the score sheet is
+  // open (a player who approves from the reminder banner still moves on).
+  const settledHoles = (() => {
+    const out = new Set<number>()
+    if (!approvalsEnabled || groupTeams.length === 0) return out
+    const twoP = !!((myTeam?.player1 || myTeam?.p1_name) && (myTeam?.player2 || myTeam?.p2_name))
+    for (let h = 1; h <= 18; h++) {
+      const mine = myScores[h]
+      const mineComplete = !!mine && mine.putts != null && (!twoP || !!mine.drive_used_id)
+      if (!mineComplete || !myApprovedHoles.has(h)) continue
+      let ok = true
+      for (const gt of groupTeams) {
+        const s = gt.scores[h]
+        if (!s || !groupScoreReady(gt, s) || !approvedScoreIds.has(s.id)) { ok = false; break }
+      }
+      if (ok) out.add(h)
+    }
+    return out
+  })()
+
   return {
     myTeam,
     myTeamId,
@@ -608,6 +634,7 @@ export function usePlayerScoring() {
     myDisputedHoles,
     myApprovedHoles,
     pendingApprovals,
+    settledHoles,
     approveScore,
     disputeScore,
     submitHole,

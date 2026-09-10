@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { HoleCard } from './HoleCard'
 import { ApprovalCard } from './ApprovalCard'
@@ -117,19 +117,9 @@ export function ScoreBottomSheet({
   const isPosted = !!curScore?.submitted_at || submitted.has(hole)
   const isLocked = gA && !!curScore && !editing.has(hole) && !isDisputedMine && (theyApprovedMe || isPosted)
 
-  // Auto-advance once a hole is fully approved (guarded: a later edit that
-  // un-approves it re-arms this, but the user is never yanked forward twice).
-  // Only fires while the sheet is open, so the GPS hole never jumps on its own.
-  const advancedRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (demo || !gA || hole >= 18 || !open) return
-    if (fullyApproved && advancedRef.current !== hole) {
-      advancedRef.current = hole
-      const t = setTimeout(() => onNextHole(), 1100)
-      return () => clearTimeout(t)
-    }
-    if (!fullyApproved && advancedRef.current === hole) advancedRef.current = null
-  }, [fullyApproved, hole, gA, demo, open, onNextHole])
+  // NOTE: auto-advance now lives in GpsPage (keyed on the hole being fully settled)
+  // so it fires whether or not this sheet is open — a player who approves from the
+  // GPS reminder banner still moves on. Here we only render the settled UI.
 
   const hFrom = hole <= 9 ? 1 : 10
   const hTo   = hole <= 9 ? 9 : 18

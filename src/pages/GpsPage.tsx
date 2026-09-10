@@ -1446,6 +1446,27 @@ export default function GpsPage() {
     if (approvalSheetOpen && scoring.pendingApprovals.length === 0) setApprovalSheetOpen(false)
   }, [approvalSheetOpen, scoring.pendingApprovals.length])
 
+  // Auto-advance the moment the current hole is fully settled (both teams posted +
+  // approved). Lives here — not in the score sheet — so it fires whether the sheet
+  // is open or the player approved from the reminder banner. Guarded so a hole is
+  // only advanced once; a later edit that un-settles it re-arms it.
+  const currentHoleSettled = scoring.settledHoles.has(selectedHole)
+  const advancedHoleRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (tour.active || !scoring.approvalsEnabled || selectedHole >= 18) return
+    if (currentHoleSettled && advancedHoleRef.current !== selectedHole) {
+      advancedHoleRef.current = selectedHole
+      const from = selectedHole
+      const t = setTimeout(() => {
+        setSelectedHole(h => (h === from ? Math.min(18, h + 1) : h))
+        setSheetOpen(false)
+        flashToast(`Hole ${from} approved — on to hole ${from + 1} ⛳`, 4000)
+      }, 1100)
+      return () => clearTimeout(t)
+    }
+    if (!currentHoleSettled && advancedHoleRef.current === selectedHole) advancedHoleRef.current = null
+  }, [currentHoleSettled, selectedHole, scoring.approvalsEnabled, tour.active])
+
   // App-tour demo: drive the contest pop-up / submission sheet from the current
   // tour step, sandboxed. Each contest step shows only its own piece; every other
   // step (incl. enter-score) force-closes them so they can't cover the scorecard.
