@@ -1490,13 +1490,24 @@ export default function GpsPage() {
   useEffect(() => {
     if (!tour.active) { setDemoScores({}); setDemoChulligans([]); setDemoApproved(new Set()); return }
     const a = tour.stepAnchor
+    const meId = profile?.id ?? 'demo-p1'
+    // The whole approval walkthrough stays on hole 1 (where the other team's demo
+    // score lives), stepping the state forward: complete → submitted (locked) →
+    // approved → settled.
+    const complete = (submitted: boolean) => ({ 1: { id: 'demo-s1', hole: 1, score: 4, drive_used_id: meId, putts: 2, ...(submitted ? { submitted_at: new Date().toISOString() } : {}) } })
     if (a === 'score-demo-score') { setSelectedHole(1); setSheetOpen(true) }
     else if (a === 'score-demo-drive' || a === 'score-demo-chull' || a === 'score-demo-save') {
       setSelectedHole(1); setSheetOpen(true)
       setDemoScores(prev => prev[1] ? prev : { ...prev, 1: { id: 'demo-s1', hole: 1, score: 4, drive_used_id: null, putts: null } })
+    } else if (a === 'score-demo-submit') {
+      // Hole complete but not yet submitted → the Submit button is on screen.
+      setSelectedHole(1); setSheetOpen(true); setDemoScores(complete(false)); setDemoApproved(new Set())
     } else if (a === 'score-demo-approval') {
-      setSelectedHole(2); setSheetOpen(true)
-      setDemoScores(prev => ({ ...prev, 1: { id: 'demo-s1', hole: 1, score: 4, drive_used_id: profile?.id ?? 'demo-p1', putts: 2 } }))
+      // Submitted (my score locked); the other team's card is waiting for my approval.
+      setSelectedHole(1); setSheetOpen(true); setDemoScores(complete(true)); setDemoApproved(new Set())
+    } else if (a === 'score-demo-advance') {
+      // I approved them (demoApproved) and they approved me (myApprovedHoles prop) → settled.
+      setSelectedHole(1); setSheetOpen(true); setDemoScores(complete(true)); setDemoApproved(new Set(['demo-gs1']))
     } else {
       setSheetOpen(false)   // enter-score (tap to open) and every other tour step
     }
@@ -3034,12 +3045,12 @@ export default function GpsPage() {
         resetMyScore={tour.active ? demoReset : scoring.resetMyScore}
         toggleMyChulligan={tour.active ? demoToggleChulligan : scoring.toggleMyChulligan}
         countDrives={tour.active ? demoCountDrives : scoring.countDrives}
-        approvalsEnabled={tour.active ? tour.stepAnchor === 'score-demo-approval' : scoring.approvalsEnabled}
+        approvalsEnabled={tour.active ? (tour.stepAnchor === 'score-demo-submit' || tour.stepAnchor === 'score-demo-approval' || tour.stepAnchor === 'score-demo-advance') : scoring.approvalsEnabled}
         groupTeams={tour.active ? [demoGroupTeam] : scoring.groupTeams}
         approvedScoreIds={tour.active ? demoApproved : scoring.approvedScoreIds}
         myDisputedScoreIds={tour.active ? new Set<string>() : scoring.myDisputedScoreIds}
         myDisputedHoles={tour.active ? new Set<number>() : scoring.myDisputedHoles}
-        myApprovedHoles={tour.active ? new Set<number>() : scoring.myApprovedHoles}
+        myApprovedHoles={tour.active ? (tour.stepAnchor === 'score-demo-advance' ? new Set<number>([1]) : new Set<number>()) : scoring.myApprovedHoles}
         forcedHoles={tour.active ? new Set<number>() : scoring.forcedHoles}
         approveScore={tour.active ? demoApprove : scoring.approveScore}
         disputeScore={tour.active ? demoApprove : scoring.disputeScore}

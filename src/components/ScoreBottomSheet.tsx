@@ -238,7 +238,7 @@ export function ScoreBottomSheet({
         {showSettlement && (
           <div data-tour={demo ? 'score-demo-approval' : undefined} style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {fullyApproved ? (
-              <div style={{ padding: '13px 16px', borderRadius: 12, background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.4)', fontSize: 14, fontWeight: 800, color: '#34d399', textAlign: 'center' }}>
+              <div data-tour={demo ? 'score-demo-advance' : undefined} style={{ padding: '13px 16px', borderRadius: 12, background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.4)', fontSize: 14, fontWeight: 800, color: '#34d399', textAlign: 'center' }}>
                 {forced ? '🛠️ Hole ' + hole + ' settled by an admin' : '✓ Hole ' + hole + ' approved'}{hole < 18 ? ` — on to hole ${hole + 1}…` : ' — round complete!'}
               </div>
             ) : (
@@ -333,7 +333,7 @@ export function ScoreBottomSheet({
               // Submitting posts + notifies the foursome instantly and locks the hole.
               return (
                 <>
-                  <button onClick={postHole} style={goldBtn}>📣 Submit hole {hole} for approval</button>
+                  <button data-tour={demo ? 'score-demo-submit' : undefined} onClick={postHole} style={goldBtn}>📣 Submit hole {hole} for approval</button>
                   {hint(`Your group gets pinged to approve. Your score locks until they do (or challenge it).`)}
                 </>
               )
