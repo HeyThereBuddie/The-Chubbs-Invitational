@@ -4,12 +4,13 @@ import { useCourse } from '../context/CourseContext'
 
 // A review card for another team's hole entry — used both in the score sheet
 // (when advancing is blocked) and in the GPS approval banner.
-export function ApprovalCard({ team, score, hole, onApprove, onDispute }: {
+export function ApprovalCard({ team, score, hole, onApprove, onDispute, disputed }: {
   team: GroupTeam
   score: ScoreRow
   hole: number
   onApprove: () => void
   onDispute?: () => void
+  disputed?: boolean   // I've already challenged this hole — show a "sent" state
 }) {
   const { parOf } = useCourse()
   const par = parOf(hole)
@@ -51,13 +52,24 @@ export function ApprovalCard({ team, score, hole, onApprove, onDispute }: {
         <Chip label={chs.length === 1 ? 'Chulligan' : 'Chulligans'} value={chulliganValue} />
       </div>
 
+      {/* A challenge I already sent — clear confirmation it went through. They fix
+          the score, then this card returns to the normal approve/challenge state. */}
+      {disputed && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', background: 'rgba(224,64,47,0.10)', borderTop: '1px solid rgba(224,64,47,0.3)' }}>
+          <span style={{ fontSize: 15 }}>⚠️</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#e0402f', lineHeight: 1.4 }}>
+            Challenge sent to {team.name} — waiting for them to fix hole {hole}.
+          </span>
+        </div>
+      )}
+
       {/* Actions — approve the whole hole (score + drive + putts), or challenge it */}
       <div style={{ display: 'flex', gap: 8, padding: '14px 16px', background: 'var(--panel)' }}>
         {onDispute && (
           <button onClick={onDispute} className="pressable" style={{
             flex: 1, padding: '14px', borderRadius: 12, cursor: 'pointer',
-            border: '1px solid rgba(224,64,47,0.45)', background: 'rgba(224,64,47,0.08)', color: '#e0402f', fontWeight: 800, fontSize: 15,
-          }}>Challenge</button>
+            border: '1px solid rgba(224,64,47,0.45)', background: disputed ? 'rgba(224,64,47,0.18)' : 'rgba(224,64,47,0.08)', color: '#e0402f', fontWeight: 800, fontSize: 15,
+          }}>{disputed ? '⚠️ Challenged' : 'Challenge'}</button>
         )}
         <button onClick={onApprove} className="pressable" style={{
           flex: 1.4, padding: '14px', borderRadius: 12, border: 'none', cursor: 'pointer',

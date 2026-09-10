@@ -27,6 +27,7 @@ interface ScoreBottomSheetProps {
   approvalsEnabled: boolean
   groupTeams: GroupTeam[]
   approvedScoreIds: Set<string>
+  myDisputedScoreIds: Set<string>   // other-team scores I've challenged (for the "sent" state)
   myDisputedHoles: Set<number>
   myApprovedHoles: Set<number>
   forcedHoles: Set<number>          // holes an admin force-settled for this foursome
@@ -55,6 +56,7 @@ export function ScoreBottomSheet({
   approvalsEnabled,
   groupTeams,
   approvedScoreIds,
+  myDisputedScoreIds,
   myDisputedHoles,
   myApprovedHoles,
   forcedHoles,
@@ -253,7 +255,8 @@ export function ScoreBottomSheet({
                 {/* Their hole for me to approve or challenge (score + drive + putts, one tap) */}
                 {iNeedToApprove.map(({ gt, s }) => (
                   <ApprovalCard key={gt.id} team={gt} score={s} hole={hole}
-                    onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)} />
+                    onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)}
+                    disputed={myDisputedScoreIds.has(s.id)} />
                 ))}
                 {/* Mine is posted + I've done my part — waiting on them */}
                 {curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && !theyApprovedMe && (

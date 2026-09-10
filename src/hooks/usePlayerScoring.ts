@@ -97,6 +97,7 @@ export function usePlayerScoring() {
   const [approvalsEnabled, setApprovalsEnabled] = useState(false)
   const [groupTeams,       setGroupTeams]       = useState<GroupTeam[]>([])
   const [approvedScoreIds, setApprovedScoreIds] = useState<Set<string>>(new Set())
+  const [myDisputedScoreIds, setMyDisputedScoreIds] = useState<Set<string>>(new Set())  // other-team scores I've challenged
   const [myDisputedHoles,  setMyDisputedHoles]  = useState<Set<number>>(new Set())
   const [myApprovedHoles,  setMyApprovedHoles]  = useState<Set<number>>(new Set())  // my holes every other team has validly approved
   const [forcedHoles,      setForcedHoles]      = useState<Set<number>>(new Set())  // holes an admin force-settled for my foursome
@@ -150,17 +151,23 @@ export function usePlayerScoring() {
         scores: scoresByTeam[t.id] ?? {}, chulligans: chByTeam[t.id] ?? [],
       })))
 
-      // My VALID approvals of the other teams' scores.
+      // My VALID approvals of the other teams' scores, plus the scores I've
+      // challenged (so the review card can show a "Challenge sent" state).
       const otherScoreIds = [...otherScoreUpdated.keys()]
       const validApprovedByMe = new Set<string>()
+      const disputedByMe = new Set<string>()
       if (otherScoreIds.length) {
         const { data: myApp } = await supabase.from('score_approvals')
           .select('score_id, status, updated_at').eq('approving_team_id', teamId).in('score_id', otherScoreIds)
         for (const a of myApp ?? []) {
-          if (a.status === 'approved' && tsms(a.updated_at) >= tsms(otherScoreUpdated.get(a.score_id))) validApprovedByMe.add(a.score_id)
+          const fresh = tsms(a.updated_at) >= tsms(otherScoreUpdated.get(a.score_id))
+          if (!fresh) continue
+          if (a.status === 'approved') validApprovedByMe.add(a.score_id)
+          else if (a.status === 'disputed') disputedByMe.add(a.score_id)
         }
       }
       setApprovedScoreIds(validApprovedByMe)
+      setMyDisputedScoreIds(disputedByMe)
 
       // Which of MY holes every other team has validly approved (mutual gate), and
       // which are currently disputed.
@@ -310,7 +317,15 @@ export function usePlayerScoring() {
   const setApproval = async (scoreId: string, status: 'approved' | 'disputed') => {
     if (blockedByPreview()) return
     if (!myTeamId) return
+    // Optimistic: reflect the tap immediately (approve clears any prior challenge,
+    // and vice-versa) so the review card updates the instant they tap.
     setApprovedScoreIds(prev => { const n = new Set(prev); status === 'approved' ? n.add(scoreId) : n.delete(scoreId); return n })
+    setMyDisputedScoreIds(prev => { const n = new Set(prev); status === 'disputed' ? n.add(scoreId) : n.delete(scoreId); return n })
+    if (status === 'disputed') {
+      const gt = groupTeams.find(g => Object.values(g.scores).some(s => s.id === scoreId))
+      const sc = gt && Object.values(gt.scores).find(s => s.id === scoreId)
+      showToast(gt && sc ? `⚠️ Challenge sent to ${gt.name} — they'll fix hole ${sc.hole}` : "⚠️ Challenge sent — they'll be asked to fix it")
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('score_approvals').upsert(
       { score_id: scoreId, approving_team_id: myTeamId, status, updated_at: new Date().toISOString() },
@@ -664,6 +679,7 @@ export function usePlayerScoring() {
     approvalsEnabled,
     groupTeams,
     approvedScoreIds,
+    myDisputedScoreIds,
     myDisputedHoles,
     myApprovedHoles,
     forcedHoles,

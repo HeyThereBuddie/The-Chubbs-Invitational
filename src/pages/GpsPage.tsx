@@ -2261,7 +2261,8 @@ export default function GpsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {scoring.pendingApprovals.map(({ team, score, hole }) => (
                   <ApprovalCard key={`${team.id}-${score.id}`} team={team} score={score} hole={hole}
-                    onApprove={() => scoring.approveScore(score.id)} onDispute={() => scoring.disputeScore(score.id)} />
+                    onApprove={() => scoring.approveScore(score.id)} onDispute={() => scoring.disputeScore(score.id)}
+                    disputed={scoring.myDisputedScoreIds.has(score.id)} />
                 ))}
               </div>
             </div>
@@ -3036,6 +3037,7 @@ export default function GpsPage() {
         approvalsEnabled={tour.active ? tour.stepAnchor === 'score-demo-approval' : scoring.approvalsEnabled}
         groupTeams={tour.active ? [demoGroupTeam] : scoring.groupTeams}
         approvedScoreIds={tour.active ? demoApproved : scoring.approvedScoreIds}
+        myDisputedScoreIds={tour.active ? new Set<string>() : scoring.myDisputedScoreIds}
         myDisputedHoles={tour.active ? new Set<number>() : scoring.myDisputedHoles}
         myApprovedHoles={tour.active ? new Set<number>() : scoring.myApprovedHoles}
         forcedHoles={tour.active ? new Set<number>() : scoring.forcedHoles}
