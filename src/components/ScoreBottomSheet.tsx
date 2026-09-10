@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { HoleCard } from './HoleCard'
 import { ApprovalCard } from './ApprovalCard'
 import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam } from '../lib/scoreTypes'
@@ -114,7 +115,9 @@ export function ScoreBottomSheet({
     ...(mp2 ? { [mp2.id]: p2n >= 5 && driveId !== mp2.id } : {}),
   }
 
-  return (
+  // Rendered via a portal at <body> so the sheet sits ABOVE the bottom nav
+  // (otherwise the nav's layer paints over the sheet's footer).
+  return createPortal(
     <>
       {/* Backdrop — only rendered when open */}
       {open && (
@@ -144,7 +147,7 @@ export function ScoreBottomSheet({
           border: '1px solid var(--bdr)',
           borderBottom: 'none',
           boxShadow: 'var(--elev-3), 0 -12px 48px -12px rgba(0,0,0,0.6)',
-          maxHeight: '88vh',
+          maxHeight: '94dvh',
           overflowY: 'auto',
           transform: open ? 'translateY(0)' : 'translateY(110%)',
           transition: 'transform 0.4s cubic-bezier(0.26, 1, 0.32, 1)',
@@ -251,7 +254,7 @@ export function ScoreBottomSheet({
         {/* Footer */}
         <div style={{
           padding: '16px 20px',
-          paddingBottom: 'max(24px, env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 34px)',
           display: 'flex',
           flexDirection: 'column',
           gap: 10,
@@ -318,6 +321,7 @@ export function ScoreBottomSheet({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
