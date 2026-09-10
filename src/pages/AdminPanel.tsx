@@ -139,11 +139,19 @@ export default function AdminPanel() {
   const [liveMode, setLiveMode] = useState(false)
   const [togglingLive, setTogglingLive] = useState(false)
   const [forceApproving, setForceApproving] = useState(false)
+  // Per-foursome force-settle (admin escape hatch when a team is absent).
+  const [foursomes, setFoursomes] = useState<{ tee_time: string; teams: string[] }[]>([])
+  const [overrides, setOverrides] = useState<{ id: string; tee_time: string; hole: number }[]>([])
+  const [settleTee, setSettleTee] = useState('')
+  const [settleHole, setSettleHole] = useState('')
+  const [settling, setSettling] = useState(false)
 
   useEffect(() => {
     supabase.from('tournament_settings').select('lahey_voting_open, approvals_enabled, live').eq('id', 1).single()
       .then(({ data }) => { if (data) { setLaheyVotingOpen(data.lahey_voting_open); setApprovalsEnabled(!!data.approvals_enabled); setLiveMode(!!data.live) } })
   }, [])
+
+  useEffect(() => { if (tab === 'scores') loadFoursomes() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tab, activeTournamentId])
 
   const toggleLive = async () => {
     setTogglingLive(true)
@@ -193,6 +201,43 @@ export default function AdminPanel() {
       showToast(`Unlocked — force-approved ${rows.length} score${rows.length === 1 ? '' : 's'}`)
     } catch (e) { showToast((e as Error).message, 'error') }
     setForceApproving(false)
+  }
+
+  // Load foursomes (by tee time) + any active force-settles, for the escape-hatch UI.
+  const loadFoursomes = async () => {
+    const [ttRes, tmRes, ovRes] = await Promise.all([
+      supabase.from('tee_times').select('team_id, tee_time'),
+      supabase.from('teams').select('id, name'),
+      supabase.from('approval_overrides').select('id, tee_time, hole'),
+    ])
+    const nameOf = new Map((tmRes.data ?? []).map(t => [t.id, t.name as string]))
+    const byTime = new Map<string, string[]>()
+    for (const r of ttRes.data ?? []) {
+      const arr = byTime.get(r.tee_time) ?? []
+      arr.push(nameOf.get(r.team_id) ?? '—')
+      byTime.set(r.tee_time, arr)
+    }
+    setFoursomes([...byTime.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([tee_time, teams]) => ({ tee_time, teams })))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setOverrides(((ovRes.data ?? []) as any[]).sort((a, b) => a.tee_time.localeCompare(b.tee_time) || a.hole - b.hole))
+  }
+
+  const forceSettleHole = async () => {
+    const hole = parseInt(settleHole, 10)
+    if (!settleTee || !(hole >= 1 && hole <= 18)) { showToast('Pick a foursome and a hole 1–18', 'error'); return }
+    setSettling(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('approval_overrides').upsert({ tee_time: settleTee, hole }, { onConflict: 'tee_time,hole' })
+    if (error) { showToast(error.message, 'error'); setSettling(false); return }
+    showToast(`Hole ${hole} force-settled for the ${settleTee} group`)
+    setSettleHole('')
+    await loadFoursomes()
+    setSettling(false)
+  }
+
+  const removeOverride = async (id: string) => {
+    await supabase.from('approval_overrides').delete().eq('id', id)
+    await loadFoursomes()
   }
 
   // ── Chubbs' AI contest predictions (manual re-run only, cost control) ──
@@ -1241,8 +1286,40 @@ export default function AdminPanel() {
                       cursor: forceApproving || !approvalsEnabled ? 'not-allowed' : 'pointer', opacity: forceApproving || !approvalsEnabled ? 0.5 : 1,
                       background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
                     }}>
-                      <RotateCcw size={15} />{forceApproving ? 'Unlocking…' : 'Force-approve (unlock stuck group)'}
+                      <RotateCcw size={15} />{forceApproving ? 'Unlocking…' : 'Force-approve all (bulk)'}
                     </button>
+                  </div>
+
+                  {/* Surgical escape hatch: force-settle ONE hole for ONE foursome —
+                      works even if a team never posted (bulk force-approve can't). */}
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(245,158,11,0.2)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>🛠️ Unstick one hole for one group</div>
+                    <p style={{ fontSize: 12.5, color: 'var(--tx3)', marginBottom: 12, lineHeight: 1.55 }}>
+                      Use when a foursome is stuck because a team is absent or their phone's down. The remaining team advances past that hole; everyone else is untouched.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select value={settleTee} onChange={e => setSettleTee(e.target.value)} style={{ flex: '2 1 240px' }}>
+                        <option value="">Select foursome (tee time)…</option>
+                        {foursomes.map(f => <option key={f.tee_time} value={f.tee_time}>{f.tee_time} — {f.teams.join(' vs ')}</option>)}
+                      </select>
+                      <input type="number" min={1} max={18} placeholder="Hole" value={settleHole} onChange={e => setSettleHole(e.target.value)} style={{ flex: '0 1 90px' }} />
+                      <button onClick={forceSettleHole} disabled={settling || !settleTee || !settleHole} style={{
+                        padding: '11px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                        background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
+                        cursor: settling || !settleTee || !settleHole ? 'not-allowed' : 'pointer', opacity: settling || !settleTee || !settleHole ? 0.5 : 1,
+                      }}>{settling ? 'Settling…' : 'Force-settle'}</button>
+                    </div>
+                    {overrides.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }}>
+                        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--tx3)', fontWeight: 700 }}>Active force-settles</div>
+                        {overrides.map(o => (
+                          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'var(--surf2)', border: '1px solid var(--bdr)' }}>
+                            <span style={{ fontSize: 13, color: 'var(--tx1)' }}>Hole {o.hole} · {o.tee_time}</span>
+                            <button onClick={() => removeOverride(o.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(239,68,68,0.75)', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>✕ Remove</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -29,6 +29,7 @@ interface ScoreBottomSheetProps {
   approvedScoreIds: Set<string>
   myDisputedHoles: Set<number>
   myApprovedHoles: Set<number>
+  forcedHoles: Set<number>          // holes an admin force-settled for this foursome
   approveScore: (scoreId: string) => void
   disputeScore: (scoreId: string) => void
   onSubmit: (hole: number) => void   // post this hole → notify + instantly prompt the group
@@ -56,6 +57,7 @@ export function ScoreBottomSheet({
   approvedScoreIds,
   myDisputedHoles,
   myApprovedHoles,
+  forcedHoles,
   approveScore,
   disputeScore,
   onSubmit,
@@ -106,7 +108,9 @@ export function ScoreBottomSheet({
     ? groupTeams.map(gt => ({ gt, s: gt.scores[hole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && groupScoreReady(x.gt, x.s) && !approvedScoreIds.has(x.s.id))
     : []
   const theyApprovedMe = myApprovedHoles.has(hole)
-  const fullyApproved = gA && curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && theyApprovedMe
+  // Admin force-settle bypasses the mutual gate for this foursome/hole.
+  const forced = forcedHoles.has(hole)
+  const fullyApproved = gA && curComplete && (forced || (othersWaiting.length === 0 && iNeedToApprove.length === 0 && theyApprovedMe))
   const showSettlement = gA && (curComplete || iNeedToApprove.length > 0)
 
   // The hole is locked once posted — shared across teammates via curScore.submitted_at
@@ -115,7 +119,7 @@ export function ScoreBottomSheet({
   // player chose to edit. Approved holes stay locked too.
   const isDisputedMine = myDisputedHoles.has(hole)
   const isPosted = !!curScore?.submitted_at || submitted.has(hole)
-  const isLocked = gA && !!curScore && !editing.has(hole) && !isDisputedMine && (theyApprovedMe || isPosted)
+  const isLocked = gA && !!curScore && !editing.has(hole) && !isDisputedMine && (theyApprovedMe || isPosted || forced)
 
   // NOTE: auto-advance now lives in GpsPage (keyed on the hole being fully settled)
   // so it fires whether or not this sheet is open — a player who approves from the
@@ -233,7 +237,7 @@ export function ScoreBottomSheet({
           <div data-tour={demo ? 'score-demo-approval' : undefined} style={{ margin: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {fullyApproved ? (
               <div style={{ padding: '13px 16px', borderRadius: 12, background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.4)', fontSize: 14, fontWeight: 800, color: '#34d399', textAlign: 'center' }}>
-                ✓ Hole {hole} approved{hole < 18 ? ` — on to hole ${hole + 1}…` : ' — round complete!'}
+                {forced ? '🛠️ Hole ' + hole + ' settled by an admin' : '✓ Hole ' + hole + ' approved'}{hole < 18 ? ` — on to hole ${hole + 1}…` : ' — round complete!'}
               </div>
             ) : (
               <>

@@ -99,6 +99,7 @@ export function usePlayerScoring() {
   const [approvedScoreIds, setApprovedScoreIds] = useState<Set<string>>(new Set())
   const [myDisputedHoles,  setMyDisputedHoles]  = useState<Set<number>>(new Set())
   const [myApprovedHoles,  setMyApprovedHoles]  = useState<Set<number>>(new Set())  // my holes every other team has validly approved
+  const [forcedHoles,      setForcedHoles]      = useState<Set<number>>(new Set())  // holes an admin force-settled for my foursome
 
   const myTeamIdRef = useRef<string | undefined>(undefined)
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
@@ -116,10 +117,16 @@ export function usePlayerScoring() {
       const { data: settings } = await supabase.from('tournament_settings').select('approvals_enabled').eq('id', 1).single()
       const enabled = !!settings?.approvals_enabled
       setApprovalsEnabled(enabled)
-      if (!enabled) { setGroupTeams([]); setApprovedScoreIds(new Set()); setMyDisputedHoles(new Set()); setMyApprovedHoles(new Set()); return }
+      if (!enabled) { setGroupTeams([]); setApprovedScoreIds(new Set()); setMyDisputedHoles(new Set()); setMyApprovedHoles(new Set()); setForcedHoles(new Set()); return }
 
       const { data: myTT } = await supabase.from('tee_times').select('tee_time').eq('team_id', teamId).limit(1).maybeSingle()
-      if (!myTT?.tee_time) { setGroupTeams([]); setMyApprovedHoles(new Set()); return }
+      if (!myTT?.tee_time) { setGroupTeams([]); setMyApprovedHoles(new Set()); setForcedHoles(new Set()); return }
+
+      // Admin force-settled holes for my foursome (resilient: null if migration 055
+      // isn't applied, which just leaves the escape hatch inactive).
+      const { data: ovr } = await supabase.from('approval_overrides').select('hole').eq('tee_time', myTT.tee_time)
+      setForcedHoles(new Set<number>((ovr ?? []).map((o: { hole: number }) => o.hole)))
+
       const { data: sib } = await supabase.from('tee_times').select('team_id').eq('tee_time', myTT.tee_time).neq('team_id', teamId)
       const otherIds = [...new Set((sib ?? []).map(s => s.team_id))]
       if (!otherIds.length) { setGroupTeams([]); setMyApprovedHoles(new Set()); return }
@@ -248,6 +255,9 @@ export function usePlayerScoring() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' },     reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chulligans' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'score_approvals' }, () => {
+        if (myTeamIdRef.current) loadGroup(myTeamIdRef.current, myScoresRef.current)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'approval_overrides' }, () => {
         if (myTeamIdRef.current) loadGroup(myTeamIdRef.current, myScoresRef.current)
       })
       .subscribe()
@@ -624,7 +634,10 @@ export function usePlayerScoring() {
     for (let h = 1; h <= 18; h++) {
       const mine = myScores[h]
       const mineComplete = !!mine && mine.putts != null && (!twoP || !!mine.drive_used_id)
-      if (!mineComplete || !myApprovedHoles.has(h)) continue
+      if (!mineComplete) continue
+      // Admin force-settled this hole for the foursome — bypass the mutual gate.
+      if (forcedHoles.has(h)) { out.add(h); continue }
+      if (!myApprovedHoles.has(h)) continue
       let ok = true
       for (const gt of groupTeams) {
         const s = gt.scores[h]
@@ -653,6 +666,7 @@ export function usePlayerScoring() {
     approvedScoreIds,
     myDisputedHoles,
     myApprovedHoles,
+    forcedHoles,
     pendingApprovals,
     settledHoles,
     approveScore,

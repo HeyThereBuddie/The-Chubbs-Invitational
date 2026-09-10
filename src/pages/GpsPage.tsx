@@ -3038,6 +3038,7 @@ export default function GpsPage() {
         approvedScoreIds={tour.active ? demoApproved : scoring.approvedScoreIds}
         myDisputedHoles={tour.active ? new Set<number>() : scoring.myDisputedHoles}
         myApprovedHoles={tour.active ? new Set<number>() : scoring.myApprovedHoles}
+        forcedHoles={tour.active ? new Set<number>() : scoring.forcedHoles}
         approveScore={tour.active ? demoApprove : scoring.approveScore}
         disputeScore={tour.active ? demoApprove : scoring.disputeScore}
         onSubmit={tour.active ? (() => {}) : scoring.submitHole}
