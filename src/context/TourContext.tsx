@@ -36,6 +36,8 @@ const INTRO: TourStep = { route: '/', anchor: 'dash-hero', title: "Hey, I'm Chub
 
 const STEPS: TourStep[] = [
   // ── Dashboard ──
+  { section: 'dashboard', route: '/', anchor: 'dash-notif', pokeable: true, title: 'Turn on alerts',
+    body: "First things first: push notifications. Lead changes, eagles, when your group's scores need approving, live drama — all straight to your phone so you never miss a moment. If there's a gold Turn On button below, tap it now and you're set. (On an iPhone, add the app to your home screen first.)" },
   { section: 'dashboard', route: '/', anchor: 'leaderboard', title: 'Live leaderboard',
     body: "Every team's score to par, live. It updates the instant a score is entered anywhere in the field." },
   { section: 'dashboard', route: '/', anchor: 'feed', title: 'Live feed',

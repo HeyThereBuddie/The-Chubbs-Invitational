@@ -3,14 +3,18 @@ import { Bell } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useTour } from '../context/TourContext'
 import { VAPID_PUBLIC_KEY, DEFAULT_NOTIF_PREFS, urlBase64ToUint8Array, setPushIntent } from '../lib/push'
 
 // Compact "turn on notifications" prompt for the dashboard. It only shows when
 // push is supported and NOT yet enabled — a second, encouraging entry point
 // alongside the full controls on the Account page. Enabling makes it disappear.
+// Exception: while the tour is running it always renders (a confirmation variant
+// once alerts are on) so the tour's opening step always has something to point at.
 export default function PushEnableTile() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const { active: tourActive } = useTour()
   const [status, setStatus] = useState<'unknown' | 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'>('unknown')
   const [loading, setLoading] = useState(false)
 
@@ -49,11 +53,41 @@ export default function PushEnableTile() {
     setLoading(false)
   }
 
-  // Only nudge people who can turn it on but haven't.
-  if (status !== 'unsubscribed') return null
+  // Normally we only nudge people who can turn it on but haven't. During the tour,
+  // though, always render so the "turn on alerts" step has an anchor to spotlight —
+  // showing a confirmation/status line when there's nothing to turn on.
+  if (status !== 'unsubscribed') {
+    if (!tourActive || status === 'unknown') return null
+    const msg = status === 'subscribed'
+      ? "You're all set — push alerts are on."
+      : status === 'denied'
+        ? 'Notifications are blocked in your device settings — enable them there to get alerts.'
+        : 'Add the app to your home screen to get push alerts (iPhone).'
+    return (
+      <div data-tour="dash-notif" className="animate-fadeUp" style={{
+        marginBottom: 16, borderRadius: 16, padding: '13px 16px',
+        border: '1px solid var(--gold-25)',
+        background: 'linear-gradient(180deg, rgba(212,165,58,0.14), rgba(212,165,58,0.05))',
+        display: 'flex', alignItems: 'center', gap: 12,
+        boxShadow: 'var(--elev-1)',
+      }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+          background: 'rgba(212,165,58,0.18)', border: '1px solid var(--gold-40)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Bell size={18} color="#D4A53A" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx1)' }}>Push alerts</div>
+          <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 1 }}>{msg}</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="animate-fadeUp" style={{
+    <div data-tour="dash-notif" className="animate-fadeUp" style={{
       marginBottom: 16, borderRadius: 16, padding: '13px 16px',
       border: '1px solid var(--gold-25)',
       background: 'linear-gradient(180deg, rgba(212,165,58,0.14), rgba(212,165,58,0.05))',
