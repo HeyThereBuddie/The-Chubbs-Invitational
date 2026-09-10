@@ -3020,6 +3020,7 @@ export default function GpsPage() {
         approveScore={tour.active ? demoApprove : scoring.approveScore}
         disputeScore={tour.active ? demoApprove : scoring.disputeScore}
         onSubmit={tour.active ? (() => {}) : scoring.submitHole}
+        onUnlock={tour.active ? (() => {}) : scoring.unlockHole}
         demo={tour.active}
       />
     </div>

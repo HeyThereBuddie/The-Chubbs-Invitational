@@ -1,7 +1,7 @@
 import type { Team, Player } from './types'
 
 export type TeamFull = Team & { player1?: Player; player2?: Player }
-export type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null; updated_at?: string }
+export type ScoreRow = { id: string; hole: number; score: number; drive_used_id: string | null; putts: number | null; updated_at?: string; submitted_at?: string | null }
 export type ChulliganRow = { id: string; player_id: string; hole: number }
 
 // Another team in your foursome (same tee time) — for cross-team score approval.

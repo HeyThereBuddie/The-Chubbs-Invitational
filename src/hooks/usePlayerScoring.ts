@@ -16,7 +16,6 @@ import {
   type ScoreRow,
   type ChulliganRow,
   type GroupTeam,
-  SCORE_SELECT,
   scoreFeedInfo,
   puttFeedInfo,
 } from '../lib/scoreTypes'
@@ -218,7 +217,9 @@ export function usePlayerScoring() {
       const pendingCount = await getPendingCount()
       if (pendingCount === 0) {
         const [{ data: scores }, { data: ch }] = await Promise.all([
-          supabase.from('scores').select(SCORE_SELECT).eq('team_id', teamId),
+          // select('*') (not SCORE_SELECT) so submitted_at rides along — and stays
+          // resilient if migration 053 hasn't been applied yet (column just absent).
+          supabase.from('scores').select('*').eq('team_id', teamId),
           supabase.from('chulligans').select('id, player_id, hole').eq('team_id', teamId),
         ])
         const map: Record<number, ScoreRow> = {}
@@ -290,23 +291,42 @@ export function usePlayerScoring() {
   const disputeScore = (scoreId: string) => setApproval(scoreId, 'disputed')
 
   // Explicit "post this hole for approval". The player controls exactly when the
-  // group gets prompted: this flushes the score to the server, pushes a
+  // group gets prompted: this flushes the score to the server, marks it submitted
+  // (a SHARED, persisted lock — both teammates and reloads see it), pushes a
   // notification, and broadcasts to the foursome so the approval tile appears on
   // their phones immediately. Safe to tap again to re-send (e.g. after a fix).
   const submitHole = async (hole: number) => {
     if (blockedByPreview()) return
     if (!myTeamId) return
+    // Optimistic lock so the posting device flips to read-only instantly.
+    setMyScores(prev => prev[hole] ? { ...prev, [hole]: { ...prev[hole], submitted_at: new Date().toISOString() } } : prev)
     // Make sure the finished hole is actually on the server before we ping — so the
     // group's refresh fetches complete data, not a half-synced row.
     if (navigator.onLine) {
       try { await drainQueue() } catch { /* offline/transient — realtime still catches up */ }
       refreshPendingCount()
     }
+    // Notify FIRST so nothing delays the approval prompt: push + instant broadcast.
     pingApprovalNotify(myTeamId, hole)
     try {
       busRef.current?.send({ type: 'broadcast', event: 'submitted', payload: { team_id: myTeamId, hole } })
     } catch { /* broadcast is best-effort; postgres realtime is the backstop */ }
     showToast(`Hole ${hole} sent to your group for approval`)
+    // Persist the shared teammate lock afterward, fire-and-forget — it drives the
+    // read-only state on your partner's phone, not the other team's approval prompt,
+    // so it never gates the notification. If migration 053 isn't applied the column
+    // is missing and this no-ops (the client-side per-device lock still works).
+    supabase.from('scores').update({ submitted_at: new Date().toISOString() }).eq('team_id', myTeamId).eq('hole', hole)
+      .then(() => {}, () => { /* column may not exist yet */ })
+  }
+
+  // Reopen a posted hole for editing (clears the shared lock so both teammates can
+  // change it). Any actual edit then re-triggers approval via the freshness rule.
+  const unlockHole = async (hole: number) => {
+    if (!myTeamId) return
+    setMyScores(prev => prev[hole] ? { ...prev, [hole]: { ...prev[hole], submitted_at: null } } : prev)
+    try { await supabase.from('scores').update({ submitted_at: null }).eq('team_id', myTeamId).eq('hole', hole) } catch { /* column may not exist yet */ }
+    try { busRef.current?.send({ type: 'broadcast', event: 'submitted', payload: { team_id: myTeamId, hole } }) } catch { /* best effort */ }
   }
 
   // ── Actions ─────────────────────────────────────────────────
@@ -591,5 +611,6 @@ export function usePlayerScoring() {
     approveScore,
     disputeScore,
     submitHole,
+    unlockHole,
   }
 }

@@ -32,6 +32,7 @@ interface ScoreBottomSheetProps {
   approveScore: (scoreId: string) => void
   disputeScore: (scoreId: string) => void
   onSubmit: (hole: number) => void   // post this hole → notify + instantly prompt the group
+  onUnlock: (hole: number) => void   // reopen a posted hole for editing (clears the shared lock)
   demo?: boolean   // app-tour sandbox: tag controls for the spotlight
 }
 
@@ -58,6 +59,7 @@ export function ScoreBottomSheet({
   approveScore,
   disputeScore,
   onSubmit,
+  onUnlock,
   demo,
 }: ScoreBottomSheetProps) {
   // Use the registered profile when available, else a stand-in built from the
@@ -80,7 +82,7 @@ export function ScoreBottomSheet({
   const addTo = (set: Set<number>, h: number) => { const n = new Set(set); n.add(h); return n }
   const delFrom = (set: Set<number>, h: number) => { const n = new Set(set); n.delete(h); return n }
   const postHole = () => { onSubmit(hole); setSubmitted(s => addTo(s, hole)); setEditing(s => delFrom(s, hole)) }
-  const unlockHole = () => { setEditing(s => addTo(s, hole)); setSubmitted(s => delFrom(s, hole)) }
+  const changeScore = () => { onUnlock(hole); setEditing(s => addTo(s, hole)); setSubmitted(s => delFrom(s, hole)) }
 
   // This hole is "posted" once it has a score + putts (+ a drive for 2-player
   // teams). Chulligans are never required.
@@ -107,10 +109,13 @@ export function ScoreBottomSheet({
   const fullyApproved = gA && curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && theyApprovedMe
   const showSettlement = gA && (curComplete || iNeedToApprove.length > 0)
 
-  // The hole is locked once posted (submitted this session, or already approved) —
-  // unless the group challenged it (they need it fixed) or the player chose to edit.
+  // The hole is locked once posted — shared across teammates via curScore.submitted_at
+  // (persisted), with the per-session `submitted` set as a fallback before migration
+  // 053 is applied. Unlocked if the group challenged it (they need it fixed) or the
+  // player chose to edit. Approved holes stay locked too.
   const isDisputedMine = myDisputedHoles.has(hole)
-  const isLocked = gA && !!curScore && !editing.has(hole) && !isDisputedMine && (theyApprovedMe || submitted.has(hole))
+  const isPosted = !!curScore?.submitted_at || submitted.has(hole)
+  const isLocked = gA && !!curScore && !editing.has(hole) && !isDisputedMine && (theyApprovedMe || isPosted)
 
   // Auto-advance once a hole is fully approved (guarded: a later edit that
   // un-approves it re-arms this, but the user is never yanked forward twice).
@@ -301,7 +306,7 @@ export function ScoreBottomSheet({
             const hint = (text: string) => (
               <div style={{ fontSize: 12, color: '#e0a90a', fontWeight: 700, textAlign: 'center', lineHeight: 1.5 }}>{text}</div>
             )
-            const changeScoreBtn = <button onClick={unlockHole} style={ghostBtn}>✏️ Change score</button>
+            const changeScoreBtn = <button onClick={changeScore} style={ghostBtn}>✏️ Change score</button>
 
             // Approvals ON: the group settles the hole; advance only when fully approved.
             if (gA) {
