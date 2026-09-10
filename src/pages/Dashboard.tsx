@@ -156,6 +156,28 @@ export default function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrentYear, effectiveTournamentId])
 
+  // Keep the dashboard live even when a realtime event is missed (backgrounded
+  // tab, dropped socket, phone sleep). Refresh on focus/visibility, and poll every
+  // 30s as a backstop so the "live" leaderboard can never silently go stale.
+  useEffect(() => {
+    if (!isCurrentYear) return
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return
+      fetchData(); fetchContestLeaders(); fetchFeed()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', onVis)
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'visible') { fetchData(); fetchContestLeaders() }
+    }, 30000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', onVis)
+      clearInterval(poll)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentYear, effectiveTournamentId])
+
   const fetchFeed = async () => {
     if (!effectiveTournamentId) { setFeed([]); return }
 
