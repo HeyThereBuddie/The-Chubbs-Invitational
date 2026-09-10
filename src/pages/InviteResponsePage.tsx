@@ -74,7 +74,7 @@ export default function InviteResponsePage() {
             </div>
             <p style={{ color: 'var(--tx2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
               Your spot is confirmed. Get your hips loose and your swing ready —
-              The Chubbs Memorial is coming in mid-to-late August 2025.
+              The Chubbs Memorial is coming in Fall 2026.
             </p>
             <p style={{ color: 'var(--tx4)', fontSize: 13, fontStyle: 'italic' }}>
               "You're gonna be a golf legend." — Chubbs Peterson
