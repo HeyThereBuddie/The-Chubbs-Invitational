@@ -6,7 +6,7 @@ import { useYear } from '../context/YearContext'
 import type { Player, Team, RosterEntry } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
 import { PageMasthead } from '../components/PageMasthead'
-import { Trash2, Plus, UserPlus, Wand2, ArrowLeftRight } from 'lucide-react'
+import { Trash2, Plus, UserPlus, Wand2, ArrowLeftRight, RotateCcw } from 'lucide-react'
 
 type TeamRow = Team & { player1?: Player; player2?: Player }
 
@@ -140,6 +140,24 @@ export default function Groups() {
     fetchData()
   }
 
+  // Team name each player's current name would produce.
+  const autoName = (team: TeamRow) => {
+    const p1 = team.player1?.name ?? team.p1_name ?? ''
+    const p2 = team.player2?.name ?? team.p2_name ?? ''
+    return `${firstToken(p1)} & ${firstToken(p2)}`.trim()
+  }
+
+  // Reset every team's auto-generated name to match its current players (fixes
+  // names that stuck after a swap or a player rename).
+  const regenerateNames = async () => {
+    const stale = teams.filter(t => autoName(t) !== '&' && autoName(t) !== t.name)
+    if (!stale.length) { showToast('All team names already match their players'); return }
+    if (!confirm(`Reset ${stale.length} team name${stale.length === 1 ? '' : 's'} to match current players? Any custom names will be overwritten.`)) return
+    for (const t of stale) await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id)
+    showToast(`Reset ${stale.length} team name${stale.length === 1 ? '' : 's'}`)
+    fetchData()
+  }
+
   const removeTeam = async (team: TeamRow) => {
     const ids = [team.p1_id, team.p2_id].filter(Boolean) as string[]
     if (ids.length) await supabase.from('profiles').update({ team_id: null }).in('id', ids)
@@ -153,9 +171,13 @@ export default function Groups() {
     const newR = roster.find(r => r.id === newRosterId)
     if (!team || !newR) return
     const oldPid = slot === 1 ? team.p1_id : team.p2_id
+    // Regenerate the team name from the resulting pair so it never lags behind a swap.
+    const p1n = slot === 1 ? newR.name : (team.p1_name ?? '')
+    const p2n = slot === 2 ? newR.name : (team.p2_name ?? '')
+    const name = `${firstToken(p1n)} & ${firstToken(p2n)}`
     const patch = slot === 1
-      ? { p1_roster_id: newR.id, p1_name: newR.name, p1_id: newR.claimed_by }
-      : { p2_roster_id: newR.id, p2_name: newR.name, p2_id: newR.claimed_by }
+      ? { p1_roster_id: newR.id, p1_name: newR.name, p1_id: newR.claimed_by, name }
+      : { p2_roster_id: newR.id, p2_name: newR.name, p2_id: newR.claimed_by, name }
     await supabase.from('teams').update(patch).eq('id', teamId)
     if (oldPid && oldPid !== newR.claimed_by) await supabase.from('profiles').update({ team_id: null }).eq('id', oldPid)
     if (newR.claimed_by) await supabase.from('profiles').update({ team_id: teamId }).eq('id', newR.claimed_by)
@@ -257,7 +279,13 @@ export default function Groups() {
           {/* Built teams */}
           {teams.length > 0 && (
             <div>
-              <div className="section-label" style={{ marginBottom: 10 }}>Teams ({teams.length})</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div className="section-label">Teams ({teams.length})</div>
+                <button onClick={regenerateNames} className="pressable" title="Reset every team's name to match its current players"
+                  style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 999, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx2)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <RotateCcw size={12} /> Reset names to players
+                </button>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {teams.map((t, i) => (
                   <div key={t.id} className="glass" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -277,6 +305,12 @@ export default function Groups() {
                         })}
                       </div>
                     </div>
+                    {autoName(t) !== '&' && autoName(t) !== t.name && (
+                      <button onClick={async () => { await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id); fetchData() }} className="pressable" title={`Set name to "${autoName(t)}"`}
+                        style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(212,165,58,0.4)', background: 'rgba(212,165,58,0.12)', color: '#D4A53A', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <RotateCcw size={12} /> Fix name
+                      </button>
+                    )}
                     <button onClick={() => renameTeam(t)} className="pressable" style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx2)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Rename</button>
                     <button onClick={() => removeTeam(t)} className="pressable" aria-label="Remove team" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', flexShrink: 0, display: 'flex' }}><Trash2 size={14} /></button>
                   </div>
