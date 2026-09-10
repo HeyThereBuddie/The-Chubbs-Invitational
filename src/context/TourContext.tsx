@@ -16,6 +16,7 @@ interface TourStep {
   section?: SectionKey  // which topic this step belongs to (intro has none)
   interactive?: boolean // let the user tap the element; tour minimizes then resumes
   pokeable?: boolean    // let the user tap the element but keep the card up (no minimize)
+  cardTop?: boolean     // force the explanation card to the top (don't cover a tall element)
 }
 
 // The topic menu Chubbs offers after the intro — one entry per app area.
@@ -93,7 +94,7 @@ const STEPS: TourStep[] = [
   // ── The approval loop — the heart of scoring ──
   { section: 'gps', route: '/gps', anchor: 'score-demo-submit', title: 'Submit for approval',
     body: "Score, drive and putts all in? Tap Submit to send your hole to the other team in your foursome. Your score then locks so it can't be bumped by accident — you can tap “Change score” any time to reopen it (which just sends it back through approval)." },
-  { section: 'gps', route: '/gps', anchor: 'score-demo-approval', title: 'Approve their hole',
+  { section: 'gps', route: '/gps', anchor: 'score-demo-approval', title: 'Approve their hole', cardTop: true,
     body: "Now the other half: check the other team's hole and approve it — one tap covers their score, drive AND putts. Something look off? Hit Challenge and they'll be asked to fix it, then you re-approve the corrected number. (You can also approve straight from the banner on the map, without opening your card.)" },
   { section: 'gps', route: '/gps', anchor: 'score-demo-advance', title: 'Both approve → next hole',
     body: "The second both teams have approved each other, the app jumps everyone to the next hole automatically — no tapping needed. That's the whole loop: post → approve → move on. Nobody gets ahead until the group agrees." },
@@ -218,8 +219,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // Current step's anchor — lets a page react (e.g. switch its own tab) as the tour advances.
   const stepAnchor = active && !menuOpen ? (step?.anchor ?? null) : null
   // Card goes opposite the highlighted element: element in the bottom half → card
-  // at top (e.g. a nav-bar tab); element up top → card at the bottom.
-  const cardAtTop = rect ? rect.y > window.innerHeight * 0.48 : false
+  // at top (e.g. a nav-bar tab); element up top → card at the bottom. A step can
+  // force the card to the top when the element is tall (e.g. the approval card,
+  // whose buttons sit low and would be covered by a bottom card).
+  const cardAtTop = step?.cardTop ?? (rect ? rect.y > window.innerHeight * 0.48 : false)
   const pad = 8
 
   // Lock page scrolling while the tour card is showing (programmatic
