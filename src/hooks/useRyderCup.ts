@@ -136,8 +136,11 @@ export function useRyderCup(): RyderData {
           const t1 = teamMap.get(id1), t2 = teamMap.get(id2)
           const side = (t: typeof t1, pts: number): RyderSide => ({
             teamId: t.id,
-            pairing: [memberName(t.player1, t.p1_name), memberName(t.player2, t.p2_name)]
-              .map(firstName).filter(Boolean).join(' & ') || t.name,
+            // Use the team's name so the Waterbury board matches the leaderboard /
+            // dashboard (incl. the disambiguated "A. Manouk" style). Fall back to a
+            // first-name pairing only if a team somehow has no name.
+            pairing: t.name || [memberName(t.player1, t.p1_name), memberName(t.player2, t.p2_name)]
+              .map(firstName).filter(Boolean).join(' & '),
             points: pts,
             squad: (t.ryder_squad ?? null) as 'A' | 'B' | null,
           })
