@@ -42,8 +42,8 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    const playerCode = import.meta.env.VITE_PLAYER_CODE
-    const adminCode  = import.meta.env.VITE_ADMIN_CODE
+    const playerCode = import.meta.env.VITE_PLAYER_CODE ?? 'CHUBBS2026'
+    const adminCode  = import.meta.env.VITE_ADMIN_CODE  ?? 'CHUBS_ADMIN'
     const code = form.code.trim().toUpperCase()
 
     let role   = ''

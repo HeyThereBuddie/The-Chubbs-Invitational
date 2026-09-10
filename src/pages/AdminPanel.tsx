@@ -100,7 +100,7 @@ export default function AdminPanel() {
     setTimeout(() => setCopiedKey(null), 2000)
   }
 
-  const PLAYER_CODE   = import.meta.env.VITE_PLAYER_CODE   ?? 'CHUBS2025'
+  const PLAYER_CODE   = import.meta.env.VITE_PLAYER_CODE   ?? 'CHUBBS2026'
   const ADMIN_CODE    = import.meta.env.VITE_ADMIN_CODE    ?? 'CHUBS_ADMIN'
   const WAITLIST_CODE = import.meta.env.VITE_WAITLIST_CODE ?? 'CHUBS_WAITLIST'
 
