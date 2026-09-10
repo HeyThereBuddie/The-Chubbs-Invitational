@@ -41,6 +41,13 @@ async function pingApprovalNotify(team_id: string, hole: number) {
 // ISO timestamp → ms (0 when absent) for approval-vs-score freshness comparison.
 const tsms = (s?: string | null) => (s ? Date.parse(s) : 0)
 
+// A group team's hole is "ready to approve" once it has putts (+ a drive for a
+// 2-person team). The score itself always exists when the row does — so partial,
+// still-being-entered holes never surface to the other team as approvable.
+const groupTeamHasTwo = (gt: GroupTeam) => !!((gt.player1 || gt.p1_name) && (gt.player2 || gt.p2_name))
+export const groupScoreReady = (gt: GroupTeam, s: ScoreRow) =>
+  s.putts != null && (!groupTeamHasTwo(gt) || !!s.drive_used_id)
+
 export function usePlayerScoring() {
   const { profile, refreshProfile } = useAuth()
   const { effectiveTournamentId, isCurrentYear } = useYear()
@@ -98,6 +105,8 @@ export function usePlayerScoring() {
   useEffect(() => { myTeamIdRef.current = myTeamId }, [myTeamId])
   const myScoresRef = useRef<Record<number, ScoreRow>>({})
   useEffect(() => { myScoresRef.current = myScores }, [myScores])
+  const groupTeamsRef = useRef<GroupTeam[]>([])
+  useEffect(() => { groupTeamsRef.current = groupTeams }, [groupTeams])
 
   // Load the other team(s) in my tee-time group + who's approved what.
   // An approval only COUNTS if it was made at/after the score's last edit — so any
@@ -245,6 +254,27 @@ export function usePlayerScoring() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Instant approval delivery. Postgres change events → full reload is slow, so
+  // when a team hits Submit we also fire a lightweight client-to-client broadcast.
+  // A teammate/opponent in the same foursome refreshes just their group the moment
+  // it lands, so the approval tile pops up right away instead of seconds later.
+  const busRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  useEffect(() => {
+    const ch = supabase.channel('group-approvals-bus')
+      .on('broadcast', { event: 'submitted' }, (msg) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tid = (msg as any)?.payload?.team_id as string | undefined
+        if (!tid || !myTeamIdRef.current) return
+        if (tid === myTeamIdRef.current || groupTeamsRef.current.some(g => g.id === tid)) {
+          loadGroup(myTeamIdRef.current, myScoresRef.current)
+        }
+      })
+      .subscribe()
+    busRef.current = ch
+    return () => { supabase.removeChannel(ch); busRef.current = null }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Approve / dispute another team's score for a hole.
   const setApproval = async (scoreId: string, status: 'approved' | 'disputed') => {
     if (blockedByPreview()) return
@@ -259,18 +289,24 @@ export function usePlayerScoring() {
   const approveScore = (scoreId: string) => setApproval(scoreId, 'approved')
   const disputeScore = (scoreId: string) => setApproval(scoreId, 'disputed')
 
-  // Ping the group to approve whenever my hole is COMPLETE (score + putts + drive) —
-  // fires on first post and again after any change that re-completes it (e.g. a
-  // challenge-and-fix), debounced per hole so rapid taps don't spam.
-  const teamHasTwo = !!((myTeam?.player1 || myTeam?.p1_name) && (myTeam?.player2 || myTeam?.p2_name))
-  const notifyDebounce = useRef<Record<number, number>>({})
-  const notifyHoleReady = (hole: number, putts: number | null, drive: string | null) => {
-    if (!approvalsEnabled || !myTeamId) return
-    if (putts == null || (teamHasTwo && !drive)) return  // not complete yet
-    const now = Date.now()
-    if ((notifyDebounce.current[hole] ?? 0) > now - 5000) return
-    notifyDebounce.current[hole] = now
+  // Explicit "post this hole for approval". The player controls exactly when the
+  // group gets prompted: this flushes the score to the server, pushes a
+  // notification, and broadcasts to the foursome so the approval tile appears on
+  // their phones immediately. Safe to tap again to re-send (e.g. after a fix).
+  const submitHole = async (hole: number) => {
+    if (blockedByPreview()) return
+    if (!myTeamId) return
+    // Make sure the finished hole is actually on the server before we ping — so the
+    // group's refresh fetches complete data, not a half-synced row.
+    if (navigator.onLine) {
+      try { await drainQueue() } catch { /* offline/transient — realtime still catches up */ }
+      refreshPendingCount()
+    }
     pingApprovalNotify(myTeamId, hole)
+    try {
+      busRef.current?.send({ type: 'broadcast', event: 'submitted', payload: { team_id: myTeamId, hole } })
+    } catch { /* broadcast is best-effort; postgres realtime is the backstop */ }
+    showToast(`Hole ${hole} sent to your group for approval`)
   }
 
   // ── Actions ─────────────────────────────────────────────────
@@ -329,7 +365,6 @@ export function usePlayerScoring() {
         .catch(() => {})
     }
     await refreshPendingCount()
-    notifyHoleReady(hole, existing?.putts ?? null, existing?.drive_used_id ?? null)
   }
 
   // Create a score row at par if the hole has none yet — lets drive / putts /
@@ -374,7 +409,6 @@ export function usePlayerScoring() {
       if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     }
     await refreshPendingCount()
-    notifyHoleReady(hole, myScores[hole]?.putts ?? null, newId)
   }
 
   const setMyPutts = async (hole: number, putts: number) => {
@@ -415,7 +449,6 @@ export function usePlayerScoring() {
 
     if (navigator.onLine) drainQueue().then(() => refreshPendingCount()).catch(() => {})
     await refreshPendingCount()
-    notifyHoleReady(hole, newPutts, myScores[hole]?.drive_used_id ?? null)
   }
 
   const resetMyScore = async (hole: number) => {
@@ -527,10 +560,12 @@ export function usePlayerScoring() {
     return n
   }
 
-  // Group scores I still need to approve — drives the GPS reminder banner.
+  // Group scores I still need to approve — drives the GPS reminder banner. Only
+  // holes the other team has actually finished (score + putts + drive) count, so a
+  // half-entered hole never nags anyone to approve it.
   const pendingApprovals = groupTeams.flatMap(gt =>
     Object.values(gt.scores)
-      .filter(s => !approvedScoreIds.has(s.id))
+      .filter(s => groupScoreReady(gt, s) && !approvedScoreIds.has(s.id))
       .map(s => ({ team: gt, score: s, hole: s.hole })))
     .sort((a, b) => a.hole - b.hole)
 
@@ -555,5 +590,6 @@ export function usePlayerScoring() {
     pendingApprovals,
     approveScore,
     disputeScore,
+    submitHole,
   }
 }

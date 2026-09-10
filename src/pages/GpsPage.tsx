@@ -2999,7 +2999,7 @@ export default function GpsPage() {
         onClose={tour.active ? (() => {}) : () => setSheetOpen(false)}
         onNextHole={tour.active ? (() => setSelectedHole(h => Math.min(18, h + 1))) : () => {
           // Move to the next hole and return to the map. (The "please approve" push
-          // now fires when a hole is completed, not on advance.)
+          // now fires when the player taps Submit, not on advance.)
           setSelectedHole(h => Math.min(18, h + 1)); setSheetOpen(false)
         }}
         myTeam={tour.active ? demoTeam : scoring.myTeam}
@@ -3019,6 +3019,7 @@ export default function GpsPage() {
         myApprovedHoles={tour.active ? new Set<number>() : scoring.myApprovedHoles}
         approveScore={tour.active ? demoApprove : scoring.approveScore}
         disputeScore={tour.active ? demoApprove : scoring.disputeScore}
+        onSubmit={tour.active ? (() => {}) : scoring.submitHole}
         demo={tour.active}
       />
     </div>

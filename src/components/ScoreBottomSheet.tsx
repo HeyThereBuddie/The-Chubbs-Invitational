@@ -5,6 +5,7 @@ import { ApprovalCard } from './ApprovalCard'
 import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam } from '../lib/scoreTypes'
 import type { Player } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
+import { groupScoreReady } from '../hooks/usePlayerScoring'
 
 interface ScoreBottomSheetProps {
   open: boolean
@@ -30,6 +31,7 @@ interface ScoreBottomSheetProps {
   myApprovedHoles: Set<number>
   approveScore: (scoreId: string) => void
   disputeScore: (scoreId: string) => void
+  onSubmit: (hole: number) => void   // post this hole → notify + instantly prompt the group
   demo?: boolean   // app-tour sandbox: tag controls for the spotlight
 }
 
@@ -55,6 +57,7 @@ export function ScoreBottomSheet({
   myApprovedHoles,
   approveScore,
   disputeScore,
+  onSubmit,
   demo,
 }: ScoreBottomSheetProps) {
   // Use the registered profile when available, else a stand-in built from the
@@ -82,10 +85,12 @@ export function ScoreBottomSheet({
   // Cross-team approval settles THIS hole before the group moves on: both teams
   // post their score, then approve each other. Only when it's fully approved does
   // the app advance to the next hole — never before.
+  // A hole only counts as "posted by them" once it's finished (score + putts +
+  // drive) — a still-in-progress hole shouldn't show up as approvable.
   const gA = approvalsEnabled && groupTeams.length > 0
-  const othersWaiting = gA ? groupTeams.filter(gt => !gt.scores[hole]) : []
+  const othersWaiting = gA ? groupTeams.filter(gt => { const s = gt.scores[hole]; return !s || !groupScoreReady(gt, s) }) : []
   const iNeedToApprove = gA
-    ? groupTeams.map(gt => ({ gt, s: gt.scores[hole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && !approvedScoreIds.has(x.s.id))
+    ? groupTeams.map(gt => ({ gt, s: gt.scores[hole] })).filter((x): x is { gt: GroupTeam; s: ScoreRow } => !!x.s && groupScoreReady(x.gt, x.s) && !approvedScoreIds.has(x.s.id))
     : []
   const theyApprovedMe = myApprovedHoles.has(hole)
   const fullyApproved = gA && curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && theyApprovedMe
@@ -284,7 +289,15 @@ export function ScoreBottomSheet({
                   : <button onClick={onClose} style={goldBtn}>Finish Round ✓</button>
               }
               if (!curComplete) return hint(`Add ${curMissing.join(' & ')} to post this hole.`)
-              return hint('Waiting on approvals — you\'ll move on automatically once hole ' + hole + ' is approved by everyone.')
+              // Complete but not yet settled: the player controls when the group is
+              // prompted. Tapping posts + notifies the foursome instantly (re-tap to
+              // re-send after a fix).
+              return (
+                <>
+                  <button onClick={() => onSubmit(hole)} style={goldBtn}>📣 Submit hole {hole} for approval</button>
+                  {hint(`Your group gets pinged to approve. You'll move on automatically once hole ${hole} is approved by everyone.`)}
+                </>
+              )
             }
 
             // Approvals OFF: advance as soon as the hole is complete.
