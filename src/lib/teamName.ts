@@ -25,6 +25,7 @@ export function makeTeamName(n1: string, n2: string, pool: string[]): string {
 // A minimal shape every board already has for a team.
 type TeamLike = {
   name?: string | null
+  name_custom?: boolean | null   // organizer typed this name by hand → show it verbatim
   p1_name?: string | null
   p2_name?: string | null
   player1?: { name?: string | null } | null
@@ -43,6 +44,8 @@ export function memberPool(teams: TeamLike[]): string[] {
 // never drift from who's actually on the team or from the other boards. Falls back
 // to the stored name only if a team has no members yet.
 export function teamLabel(t: TeamLike, pool: string[]): string {
+  // A hand-typed name always wins.
+  if (t.name_custom && t.name) return t.name
   const n1 = memberFull(t.player1, t.p1_name)
   const n2 = memberFull(t.player2, t.p2_name)
   if (!n1 && !n2) return t.name || ''

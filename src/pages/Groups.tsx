@@ -133,10 +133,17 @@ export default function Groups() {
     fetchData()
   }
 
+  // name_custom flags a hand-typed name so the boards show it verbatim instead of
+  // recomputing from players. Set best-effort so team ops still work if migration
+  // 056 hasn't been applied yet.
+  const setCustomFlag = (id: string, v: boolean) =>
+    supabase.from('teams').update({ name_custom: v }).eq('id', id).then(() => {}, () => {})
+
   const renameTeam = async (team: TeamRow) => {
     const name = window.prompt('Team name', team.name)?.trim()
     if (!name || name === team.name) return
     await supabase.from('teams').update({ name }).eq('id', team.id)
+    await setCustomFlag(team.id, true)   // this is a deliberate custom name
     fetchData()
   }
 
@@ -154,7 +161,7 @@ export default function Groups() {
     const stale = teams.filter(t => { const an = autoName(t); return an && an !== t.name })
     if (!stale.length) { showToast('All team names already match their players'); return }
     if (!confirm(`Reset ${stale.length} team name${stale.length === 1 ? '' : 's'} to match current players? Any custom names will be overwritten.`)) return
-    for (const t of stale) await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id)
+    for (const t of stale) { await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id); await setCustomFlag(t.id, false) }
     showToast(`Reset ${stale.length} team name${stale.length === 1 ? '' : 's'}`)
     fetchData()
   }
@@ -180,6 +187,7 @@ export default function Groups() {
       ? { p1_roster_id: newR.id, p1_name: newR.name, p1_id: newR.claimed_by, name }
       : { p2_roster_id: newR.id, p2_name: newR.name, p2_id: newR.claimed_by, name }
     await supabase.from('teams').update(patch).eq('id', teamId)
+    await setCustomFlag(teamId, false)   // membership changed → back to an auto name
     if (oldPid && oldPid !== newR.claimed_by) await supabase.from('profiles').update({ team_id: null }).eq('id', oldPid)
     if (newR.claimed_by) await supabase.from('profiles').update({ team_id: teamId }).eq('id', newR.claimed_by)
     setSwapTarget(null)
@@ -306,8 +314,8 @@ export default function Groups() {
                         })}
                       </div>
                     </div>
-                    {autoName(t) && autoName(t) !== t.name && (
-                      <button onClick={async () => { await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id); fetchData() }} className="pressable" title={`Set name to "${autoName(t)}"`}
+                    {!t.name_custom && autoName(t) && autoName(t) !== t.name && (
+                      <button onClick={async () => { await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id); await setCustomFlag(t.id, false); fetchData() }} className="pressable" title={`Set name to "${autoName(t)}"`}
                         style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(212,165,58,0.4)', background: 'rgba(212,165,58,0.12)', color: '#D4A53A', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <RotateCcw size={12} /> Fix name
                       </button>

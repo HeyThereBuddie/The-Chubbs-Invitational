@@ -72,7 +72,9 @@ export function useRyderCup(): RyderData {
 
         const [{ data: teams }, { data: tts }, { data: scores }, { data: appr }] = await Promise.all([
           supabase.from('teams')
-            .select('id, name, p1_name, p2_name, ryder_squad, player1:profiles!teams_p1_id_fkey(name, nickname), player2:profiles!teams_p2_id_fkey(name, nickname)')
+            // select('*') so name_custom rides along (resilient if migration 056
+            // isn't applied yet — the column is simply absent).
+            .select('*, player1:profiles!teams_p1_id_fkey(name, nickname), player2:profiles!teams_p2_id_fkey(name, nickname)')
             .eq('tournament_id', effectiveTournamentId),
           supabase.from('tee_times').select('team_id, tee_time'),
           supabase.from('scores').select('id, team_id, hole, score, updated_at'),

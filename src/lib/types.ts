@@ -47,6 +47,7 @@ export interface ScoreApproval {
 export interface Team {
   id: string
   name: string
+  name_custom?: boolean | null   // organizer typed the name by hand → shown verbatim
   p1_id: string | null
   p2_id: string | null
   p1_name?: string | null       // drawn display name (used before a player claims an account)

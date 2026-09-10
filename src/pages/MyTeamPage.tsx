@@ -224,10 +224,13 @@ export default function MyTeamPage() {
     if (!trimmed || trimmed === team.name) { setEditingName(false); return }
     setSaving(true)
     const { error } = await supabase.from('teams').update({ name: trimmed }).eq('id', team.id)
+    // Mark as a deliberate custom name so the boards show it verbatim (best-effort:
+    // still works if migration 056 isn't applied yet).
+    supabase.from('teams').update({ name_custom: true }).eq('id', team.id).then(() => {}, () => {})
     if (!error) {
-      const updated = { ...team, name: trimmed }
+      const updated = { ...team, name: trimmed, name_custom: true }
       setTeam(updated)
-      setAllTeams(prev => prev.map(t => t.id === team.id ? { ...t, name: trimmed } : t))
+      setAllTeams(prev => prev.map(t => t.id === team.id ? { ...t, name: trimmed, name_custom: true } : t))
     }
     setSaving(false)
     setEditingName(false)
