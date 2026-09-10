@@ -10,7 +10,26 @@ import { Trash2, Plus, UserPlus, Wand2, ArrowLeftRight, RotateCcw } from 'lucide
 
 type TeamRow = Team & { player1?: Player; player2?: Player }
 
-const firstToken = (name: string) => name.trim().split(/\s+/).slice(-1)[0] || name.trim()
+const lastToken = (name: string) => name.trim().split(/\s+/).slice(-1)[0] || name.trim()
+
+// Short label for a player on a team name: just the last name, but when another
+// player in the field shares that last name, add the first initial ("A. Manouk");
+// and if the initial also clashes (Andrew/Alex/Anto Manouk), use the full first
+// name ("Andrew Manouk") so teammates are always distinguishable.
+function shortLabel(fullName: string, pool: string[]): string {
+  const last = lastToken(fullName)
+  const clash = pool.filter(n => lastToken(n).toLowerCase() === last.toLowerCase())
+  if (clash.length <= 1) return last
+  const initial = (fullName.trim()[0] ?? '').toUpperCase()
+  const sameInitial = clash.filter(n => (n.trim()[0] ?? '').toUpperCase() === initial)
+  if (sameInitial.length <= 1) return `${initial}. ${last}`
+  return `${fullName.trim().split(/\s+/)[0]} ${last}`
+}
+
+const makeTeamName = (n1: string, n2: string, pool: string[]) => {
+  const all = Array.from(new Set([...pool, n1, n2].map(s => s.trim()).filter(Boolean)))
+  return `${shortLabel(n1, all)} & ${shortLabel(n2, all)}`
+}
 
 export default function Groups() {
   const { isAdmin } = useAuth()
@@ -118,7 +137,7 @@ export default function Groups() {
     if (selected.length !== 2 || !activeTournamentId) return
     const a = roster.find(r => r.id === selected[0])!
     const b = roster.find(r => r.id === selected[1])!
-    const name = `${firstToken(a.name)} & ${firstToken(b.name)}`
+    const name = makeTeamName(a.name, b.name, roster.map(r => r.name))
     const { data: team, error } = await supabase.from('teams').insert({
       name, tournament_id: activeTournamentId,
       p1_name: a.name, p2_name: b.name,
@@ -144,13 +163,14 @@ export default function Groups() {
   const autoName = (team: TeamRow) => {
     const p1 = team.player1?.name ?? team.p1_name ?? ''
     const p2 = team.player2?.name ?? team.p2_name ?? ''
-    return `${firstToken(p1)} & ${firstToken(p2)}`.trim()
+    if (!p1.trim() || !p2.trim()) return ''
+    return makeTeamName(p1, p2, roster.map(r => r.name))
   }
 
   // Reset every team's auto-generated name to match its current players (fixes
   // names that stuck after a swap or a player rename).
   const regenerateNames = async () => {
-    const stale = teams.filter(t => autoName(t) !== '&' && autoName(t) !== t.name)
+    const stale = teams.filter(t => { const an = autoName(t); return an && an !== t.name })
     if (!stale.length) { showToast('All team names already match their players'); return }
     if (!confirm(`Reset ${stale.length} team name${stale.length === 1 ? '' : 's'} to match current players? Any custom names will be overwritten.`)) return
     for (const t of stale) await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id)
@@ -174,7 +194,7 @@ export default function Groups() {
     // Regenerate the team name from the resulting pair so it never lags behind a swap.
     const p1n = slot === 1 ? newR.name : (team.p1_name ?? '')
     const p2n = slot === 2 ? newR.name : (team.p2_name ?? '')
-    const name = `${firstToken(p1n)} & ${firstToken(p2n)}`
+    const name = makeTeamName(p1n, p2n, roster.map(r => r.name))
     const patch = slot === 1
       ? { p1_roster_id: newR.id, p1_name: newR.name, p1_id: newR.claimed_by, name }
       : { p2_roster_id: newR.id, p2_name: newR.name, p2_id: newR.claimed_by, name }
@@ -305,7 +325,7 @@ export default function Groups() {
                         })}
                       </div>
                     </div>
-                    {autoName(t) !== '&' && autoName(t) !== t.name && (
+                    {autoName(t) && autoName(t) !== t.name && (
                       <button onClick={async () => { await supabase.from('teams').update({ name: autoName(t) }).eq('id', t.id); fetchData() }} className="pressable" title={`Set name to "${autoName(t)}"`}
                         style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(212,165,58,0.4)', background: 'rgba(212,165,58,0.12)', color: '#D4A53A', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <RotateCcw size={12} /> Fix name
