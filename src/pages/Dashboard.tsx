@@ -303,7 +303,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Compact Hero ─────────────────────────────────────── */}
-      <div className="animate-fadeUp" style={{
+      <div data-tour="dash-hero" className="animate-fadeUp" style={{
         marginBottom: 16, borderRadius: 16, overflow: 'hidden',
         border: '1px solid var(--gold-25)',
         boxShadow: 'var(--elev-2)',

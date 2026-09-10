@@ -31,8 +31,8 @@ const SECTIONS: { key: SectionKey; emoji: string; label: string; desc: string }[
 
 // The intro is always shown first; every other step is tagged with a section so
 // the menu can play just that slice, or all of them for the full tour.
-const INTRO: TourStep = { route: '/', anchor: 'nav-tour', title: "Hey, I'm Chubbs",
-  body: "I'll be your caddie for this little tour. See this button down here? Tap it any time you want me to walk you through the app again — no need to memorize a thing. Ready?" }
+const INTRO: TourStep = { route: '/', anchor: 'dash-hero', title: "Hey, I'm Chubbs",
+  body: "I'll be your caddie for this little tour. This is your Dashboard — home base. Every time you open the app you land right here, with the live leaderboard and the day's action waiting for you. Whenever you want me to walk you through everything again, just tap the tour button down in the menu. Ready?" }
 
 const STEPS: TourStep[] = [
   // ── Dashboard ──
