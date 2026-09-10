@@ -50,7 +50,7 @@ export default function AdminPanel() {
   const [tab, setTab] = usePersistedTab<'players' | 'codes' | 'tournament' | 'brevo' | 'gps' | 'scores' | 'jackass' | 'groups' | 'predictions' | 'ryder'>('admin.tab', 'groups', ['players', 'tournament', 'gps', 'scores', 'jackass', 'groups', 'predictions', 'ryder'])
   const [laheyVotes, setLaheyVotes] = useState<{ voter_id: string; nominee_id: string }[]>([])
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
-  const [playerSubTab, setPlayerSubTab] = usePersistedTab<'roster' | 'users'>('admin.playerSubTab', 'roster', ['roster', 'users'])
+  const [playerSubTab, setPlayerSubTab] = usePersistedTab<'roster' | 'users' | 'codes'>('admin.playerSubTab', 'roster', ['roster', 'users', 'codes'])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
@@ -778,6 +778,9 @@ export default function AdminPanel() {
             <button onClick={() => setPlayerSubTab('users')} className={`pill-tab ${playerSubTab === 'users' ? 'active' : ''}`}>
               👤 Users
             </button>
+            <button onClick={() => setPlayerSubTab('codes')} className={`pill-tab ${playerSubTab === 'codes' ? 'active' : ''}`}>
+              🔑 Codes
+            </button>
           </SegTabs>
 
           {/* Tournament Roster */}
@@ -846,8 +849,8 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ── Codes tab ───────────────────────────────────────────── */}
-      {tab === 'codes' && (
+      {/* ── Codes (sub-tab under Player Management) ─────────────── */}
+      {tab === 'players' && playerSubTab === 'codes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="glass" style={{ padding: '20px 22px' }}>
             <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Player Invite Code</div>
