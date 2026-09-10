@@ -181,8 +181,11 @@ export default function WelcomePage() {
       {/* 2 · Your bag */}
       <div style={card}>
         <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx1)', marginBottom: 8 }}>🏌️ Set your bag</div>
-        <div style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: 'var(--tx3)', lineHeight: 1.5, marginBottom: 12 }}>
           Tell me your <strong>7-iron carry</strong> and I'll scale your whole bag off it — that's what powers the club I recommend on the GPS screen at every distance (adjusted for wind &amp; elevation). Fine-tune any club below.
+        </div>
+        <div style={{ background: 'rgba(212,165,58,0.08)', border: '1px solid rgba(212,165,58,0.25)', borderRadius: 12, padding: '10px 13px', marginBottom: 14, fontSize: 12.5, color: 'var(--tx2)', lineHeight: 1.55 }}>
+          <strong style={{ color: '#D4A53A' }}>Be honest &amp; accurate here.</strong> Your club calls out on the course are only as good as this number — if your 7-iron carry is off, every recommendation will be too. Use your real average carry, not your best-ever shot.
         </div>
         <label style={labelStyle}>Your 7-iron carry (yards)</label>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
