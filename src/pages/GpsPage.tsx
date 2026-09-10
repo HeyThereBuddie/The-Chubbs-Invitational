@@ -2541,6 +2541,39 @@ export default function GpsPage() {
               )}
             </div>
           )}
+
+          {/* Persistent contest chip — LD/CTP entry that stays put on a contest hole
+              instead of auto-hiding. Sits under the club tile, out of the way. */}
+          {currentHole?.contest && canScore && !tour.active && (() => {
+            const type = currentHole.contest as 'ld' | 'ctp'
+            let logged: string | null = null
+            try { logged = localStorage.getItem(contestKey(type)) } catch { /* ignore */ }
+            const done = logged === 'submitted'
+            const isLd = type === 'ld'
+            return (
+              <button onClick={() => openContestSheet(type)} className="pressable" style={{
+                display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, cursor: 'pointer', maxWidth: '64vw',
+                padding: '8px 12px', borderRadius: 999, backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                border: done ? '1px solid rgba(52,211,153,0.5)' : '1px solid rgba(255,255,255,0.22)',
+                background: done ? 'rgba(0,0,0,0.5)' : 'rgba(212,165,58,0.92)',
+                boxShadow: done ? 'var(--elev-1)' : '0 4px 16px -3px rgba(212,165,58,0.6)',
+              }}>
+                {done ? (
+                  <>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#34d399', whiteSpace: 'nowrap' }}>✓ {isLd ? 'LD' : 'CTP'} logged</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>tap to update</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 15 }}>{isLd ? '💥' : '🎯'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1206', whiteSpace: 'nowrap' }}>{isLd ? 'Longest Drive' : 'Closest to Pin'}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#1a1206', background: 'rgba(0,0,0,0.14)', padding: '3px 9px', borderRadius: 999 }}>LOG</span>
+                  </>
+                )}
+              </button>
+            )
+          })()}
+
           {gpsStatus !== 'ok' && !simMode && (
             <div style={{
               background: gpsStatus === 'acquiring' ? 'rgba(8,8,12,0.72)' : 'rgba(239,68,68,0.88)',
