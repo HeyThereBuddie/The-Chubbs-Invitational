@@ -6,7 +6,9 @@ import { YearProvider } from './context/YearContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { SyncProvider } from './context/SyncContext'
 import { CourseProvider } from './context/CourseContext'
-import { TourProvider } from './context/TourContext'
+import { TourProvider, useTour } from './context/TourContext'
+import { useLive } from './hooks/useLive'
+import PreviewGate from './pages/PreviewGate'
 import Layout from './components/layout/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import UpdatePrompt from './components/UpdatePrompt'
@@ -61,6 +63,9 @@ function LiveOnly({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, profile, loading, recovery } = useAuth()
+  const { isCurrentYear } = useYear()
+  const { live } = useLive()
+  const { active: tourActive } = useTour()
   const location = useLocation()
   if (loading) return <Spinner />
 
@@ -73,6 +78,12 @@ function AppRoutes() {
   const needsSetup = !!user && !!profile && profile.onboarded === false
   const setupExempt = location.pathname === '/welcome' || location.pathname === '/auth' || location.pathname === '/invite-response' || location.pathname === '/rsvp-landing'
   if (needsSetup && !setupExempt) return <Navigate to="/welcome" replace />
+
+  // Pre-launch Preview: players (not admins) can only take the tour until go-live.
+  // The tour renders the real pages, so we only gate when it isn't running.
+  const isAdmin = profile?.role === 'admin'
+  const previewLocked = !!user && isCurrentYear && live === false && !isAdmin && !tourActive
+  if (previewLocked && !setupExempt) return <PreviewGate />
 
   return (
     <Routes>
