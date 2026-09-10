@@ -276,6 +276,26 @@ export function usePlayerScoring() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Phones sleep/background constantly during a round, which drops the realtime
+  // socket — and postgres changes that happened during the gap are never replayed.
+  // Reconcile on wake: whenever the app returns to the foreground (or regains the
+  // window), re-pull scores + approvals so a player never comes back stuck on a
+  // hole the group already settled.
+  useEffect(() => {
+    const resync = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && myTeamIdRef.current) {
+        loadPlayerData(myTeamIdRef.current)
+      }
+    }
+    document.addEventListener('visibilitychange', resync)
+    window.addEventListener('focus', resync)
+    return () => {
+      document.removeEventListener('visibilitychange', resync)
+      window.removeEventListener('focus', resync)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Approve / dispute another team's score for a hole.
   const setApproval = async (scoreId: string, status: 'approved' | 'disputed') => {
     if (blockedByPreview()) return
