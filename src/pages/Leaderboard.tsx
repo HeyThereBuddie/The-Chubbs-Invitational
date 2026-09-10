@@ -59,6 +59,23 @@ export default function Leaderboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTournamentId, isCurrentYear, courseHoles])
 
+  // Same live-refresh backstop as the dashboard: realtime can silently drop
+  // (backgrounded tab, dropped socket, phone sleep), so also refresh on
+  // focus/visibility and poll every 30s while the board is on screen.
+  useEffect(() => {
+    if (!isCurrentYear) return
+    const onVis = () => { if (document.visibilityState === 'visible') fetchData() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', onVis)
+    const poll = window.setInterval(() => { if (document.visibilityState === 'visible') fetchData() }, 30000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', onVis)
+      clearInterval(poll)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentYear, effectiveTournamentId])
+
   const fetchData = async () => {
     if (!effectiveTournamentId) { setRows([]); setLoading(false); return }
 
