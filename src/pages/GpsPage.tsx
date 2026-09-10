@@ -12,6 +12,7 @@ import { useYear } from '../context/YearContext'
 import type { CourseGps, HoleGps, LatLng, Player } from '../lib/types'
 import { displayName, normalizeFairways, teamMemberName } from '../lib/types'
 import type { ScoreRow, ChulliganRow, TeamFull, GroupTeam } from '../lib/scoreTypes'
+import { memberPool } from '../lib/teamName'
 import { resolvePar } from '../lib/pars'
 import { resolveBag, recommendClub } from '../lib/clubs'
 import { type Shot, shotQuality, PUTT_TRACKING } from '../lib/shots'
@@ -1451,6 +1452,8 @@ export default function GpsPage() {
   // is open or the player approved from the reminder banner. Guarded so a hole is
   // only advanced once; a later edit that un-settles it re-arms it.
   const currentHoleSettled = scoring.settledHoles.has(selectedHole)
+  // Foursome member pool so approval-card labels disambiguate like the boards.
+  const approvalPool = memberPool([scoring.myTeam, ...scoring.groupTeams].filter(Boolean) as Parameters<typeof memberPool>[0])
   const advancedHoleRef = useRef<number | null>(null)
   useEffect(() => {
     if (tour.active || !scoring.approvalsEnabled || selectedHole >= 18) return
@@ -2273,7 +2276,8 @@ export default function GpsPage() {
                 {scoring.pendingApprovals.map(({ team, score, hole }) => (
                   <ApprovalCard key={`${team.id}-${score.id}`} team={team} score={score} hole={hole}
                     onApprove={() => scoring.approveScore(score.id)} onDispute={() => scoring.disputeScore(score.id)}
-                    disputed={scoring.myDisputedScoreIds.has(score.id)} />
+                    disputed={scoring.myDisputedScoreIds.has(score.id)}
+                    pool={approvalPool} />
                 ))}
               </div>
             </div>

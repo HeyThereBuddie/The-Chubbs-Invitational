@@ -6,6 +6,7 @@ import { type TeamFull, type ScoreRow, type ChulliganRow, type GroupTeam } from 
 import type { Player } from '../lib/types'
 import { useCourse } from '../context/CourseContext'
 import { groupScoreReady } from '../hooks/usePlayerScoring'
+import { memberPool } from '../lib/teamName'
 
 interface ScoreBottomSheetProps {
   open: boolean
@@ -256,7 +257,8 @@ export function ScoreBottomSheet({
                 {iNeedToApprove.map(({ gt, s }) => (
                   <ApprovalCard key={gt.id} team={gt} score={s} hole={hole}
                     onApprove={() => approveScore(s.id)} onDispute={() => disputeScore(s.id)}
-                    disputed={myDisputedScoreIds.has(s.id)} />
+                    disputed={myDisputedScoreIds.has(s.id)}
+                    pool={memberPool([myTeam, ...groupTeams].filter(Boolean) as Parameters<typeof memberPool>[0])} />
                 ))}
                 {/* Mine is posted + I've done my part — waiting on them */}
                 {curComplete && othersWaiting.length === 0 && iNeedToApprove.length === 0 && !theyApprovedMe && (

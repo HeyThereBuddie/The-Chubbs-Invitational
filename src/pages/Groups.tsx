@@ -5,31 +5,12 @@ import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import type { Player, Team, RosterEntry } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
+import { makeTeamName } from '../lib/teamName'
 import { PageMasthead } from '../components/PageMasthead'
 import { Trash2, Plus, UserPlus, Wand2, ArrowLeftRight, RotateCcw } from 'lucide-react'
 
 type TeamRow = Team & { player1?: Player; player2?: Player }
 
-const lastToken = (name: string) => name.trim().split(/\s+/).slice(-1)[0] || name.trim()
-
-// Short label for a player on a team name: just the last name, but when another
-// player in the field shares that last name, add the first initial ("A. Manouk");
-// and if the initial also clashes (Andrew/Alex/Anto Manouk), use the full first
-// name ("Andrew Manouk") so teammates are always distinguishable.
-function shortLabel(fullName: string, pool: string[]): string {
-  const last = lastToken(fullName)
-  const clash = pool.filter(n => lastToken(n).toLowerCase() === last.toLowerCase())
-  if (clash.length <= 1) return last
-  const initial = (fullName.trim()[0] ?? '').toUpperCase()
-  const sameInitial = clash.filter(n => (n.trim()[0] ?? '').toUpperCase() === initial)
-  if (sameInitial.length <= 1) return `${initial}. ${last}`
-  return `${fullName.trim().split(/\s+/)[0]} ${last}`
-}
-
-const makeTeamName = (n1: string, n2: string, pool: string[]) => {
-  const all = Array.from(new Set([...pool, n1, n2].map(s => s.trim()).filter(Boolean)))
-  return `${shortLabel(n1, all)} & ${shortLabel(n2, all)}`
-}
 
 export default function Groups() {
   const { isAdmin } = useAuth()

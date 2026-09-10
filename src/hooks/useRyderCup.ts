@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useYear } from '../context/YearContext'
 import { useSyncContext } from '../context/SyncContext'
 import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
+import { memberPool, teamLabel } from '../lib/teamName'
 
 // ── Ryder Cup: a read-only points game derived from the scores already recorded ──
 // Each foursome (two teams sharing a tee time) is a match. Per hole, the team with
@@ -47,11 +48,6 @@ const EMPTY: RyderData = {
   squadATotal: 0, squadBTotal: 0, target: 0, pointsPlayed: 0, pointsPossible: 0, matches: [],
 }
 
-const firstName = (full: string | null | undefined) => (full ?? '').trim().split(/\s+/)[0] || ''
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const memberName = (p: any, fallback: string | null | undefined) =>
-  p ? (p.nickname || p.name || '') : (fallback ?? '')
-
 export function useRyderCup(): RyderData {
   const { effectiveTournamentId, isCurrentYear } = useYear()
   const { isOnline } = useSyncContext()
@@ -86,6 +82,8 @@ export function useRyderCup(): RyderData {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const teamMap = new Map<string, any>()
         for (const t of teams ?? []) teamMap.set(t.id, t)
+        // Field-wide pool so labels disambiguate identically to every other board.
+        const namePool = memberPool((teams ?? []) as any[])
 
         // Only count scores the foursome has approved (when approvals are on). A
         // score that changes goes stale and drops out until it's re-approved.
@@ -136,11 +134,9 @@ export function useRyderCup(): RyderData {
           const t1 = teamMap.get(id1), t2 = teamMap.get(id2)
           const side = (t: typeof t1, pts: number): RyderSide => ({
             teamId: t.id,
-            // Use the team's name so the Waterbury board matches the leaderboard /
-            // dashboard (incl. the disambiguated "A. Manouk" style). Fall back to a
-            // first-name pairing only if a team somehow has no name.
-            pairing: t.name || [memberName(t.player1, t.p1_name), memberName(t.player2, t.p2_name)]
-              .map(firstName).filter(Boolean).join(' & '),
+            // Computed live from current members (shared helper) so it matches the
+            // leaderboard / dashboard exactly and never drifts from who's on the team.
+            pairing: teamLabel(t, namePool),
             points: pts,
             squad: (t.ryder_squad ?? null) as 'A' | 'B' | null,
           })

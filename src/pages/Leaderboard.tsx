@@ -8,6 +8,7 @@ import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import { useCourse } from '../context/CourseContext'
 import { RyderCupTile } from '../components/RyderCupTile'
+import { memberPool, teamLabel } from '../lib/teamName'
 import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 
 // Augusta manual-scoreboard palette (Masters homage), bridged with the app's gold/dark theme.
@@ -257,6 +258,7 @@ export default function Leaderboard() {
             for (let k = p; k < j; k++) posInfo.push({ pos: p + 1, tied })
             p = j
           }
+          const namePool = memberPool(rows.map(r => r.team))
           return (
             <div>
               {rows.map((row, i) => {
@@ -286,7 +288,7 @@ export default function Leaderboard() {
                           fontSize: isLeader ? 18 : 15.5, fontWeight: 700,
                           color: isLeader ? 'var(--gold)' : 'var(--tx1)',
                           lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>{row.team.name}</div>
+                        }}>{teamLabel(row.team, namePool)}</div>
                         <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}
                         </div>

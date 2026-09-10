@@ -7,6 +7,7 @@ import { useSyncContext } from '../context/SyncContext'
 import { localDb, parseJson } from '../lib/localDb'
 import type { TeeTime, Team, Player } from '../lib/types'
 import { displayName, teamMemberName } from '../lib/types'
+import { memberPool, teamLabel } from '../lib/teamName'
 import { Clock, GripVertical, Zap, Shuffle } from 'lucide-react'
 import { usePersistedTab } from '../hooks/usePersistedTab'
 import { SegTabs } from '../components/SegTabs'
@@ -230,6 +231,9 @@ export default function TeeTimes() {
 
   const foursomes = buildFoursomes(teeTimes)
   const firstTime = foursomes[0]?.tee_time
+  // Field-wide pool so team labels disambiguate identically to the other boards.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const namePool = memberPool([...teams, ...teeTimes.map(tt => tt.team).filter(Boolean) as any[]])
 
   // Teams that have no tee time yet — surfaced in Arrange so every team is placeable.
   const unassignedTeams = teams.filter(t => !teeTimes.some(tt => tt.team_id === t.id))
@@ -312,7 +316,7 @@ export default function TeeTimes() {
                   <div key={tt.team_id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 18px' }}>
                     <Avatar player={tt.team?.player1} size={30} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tt.team?.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tt.team ? teamLabel(tt.team, namePool) : ""}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {[teamMemberName(tt.team?.player1, tt.team?.p1_name), teamMemberName(tt.team?.player2, tt.team?.p2_name)].filter(Boolean).join(' · ')}
                       </div>
@@ -391,7 +395,7 @@ export default function TeeTimes() {
                       >
                         <Avatar player={tt.team?.player1} size={32} />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tt.team?.name}</div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tt.team ? teamLabel(tt.team, namePool) : ""}</div>
                           <div style={{ fontSize: 11.5, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {[teamMemberName(tt.team?.player1, tt.team?.p1_name), teamMemberName(tt.team?.player2, tt.team?.p2_name)].filter(Boolean).join(' & ')}
                           </div>

@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext'
 import { ALL_QUOTES, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player } from '../lib/types'
 import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
+import { memberPool, teamLabel } from '../lib/teamName'
 import { formatDistanceToNow } from 'date-fns'
 import PushEnableTile from '../components/PushEnableTile'
 
@@ -63,6 +64,7 @@ function isHighlight(ev: FeedEvent) {
 
 interface LeaderRow {
   team: Team & { player1?: Player; player2?: Player }
+  label: string   // live-computed, field-wide disambiguated (matches the other boards)
   toPar: number
   gross: number
   thru: number
@@ -235,12 +237,14 @@ export default function Dashboard() {
         player1: parseJson(t.player1_json) as Player | undefined,
         player2: parseJson(t.player2_json) as Player | undefined,
       }))
+      const cachedPool = memberPool(cachedTeams as unknown as (Team & { player1?: Player; player2?: Player })[])
       const cachedRows: LeaderRow[] = cachedTeams.map(team => {
         const teamScores = localScores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
         const thru = teamScores.length
         const toPar = gross - (thru * (COURSE_PAR / 18))
-        return { team: team as unknown as Team & { player1?: Player; player2?: Player }, gross, thru, toPar }
+        const tt = team as unknown as Team & { player1?: Player; player2?: Player }
+        return { team: tt, label: teamLabel(tt, cachedPool), gross, thru, toPar }
       })
       cachedRows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
       setLeaders(cachedRows.slice(0, 5))
@@ -262,12 +266,13 @@ export default function Dashboard() {
         const ok = approvedScoreIds(scores, apprRes.data ?? [], buildGroupMates(ttRes.data ?? []))
         scores = scores.filter(s => ok.has(s.id))
       }
+      const pool = memberPool(teams)
       const rows: LeaderRow[] = teams.map(team => {
         const teamScores = scores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
         const thru = teamScores.length
         const toPar = gross - (thru * (COURSE_PAR / 18))
-        return { team, gross, thru, toPar }
+        return { team, label: teamLabel(team, pool), gross, thru, toPar }
       })
       rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
       setLeaders(rows.slice(0, 5))
@@ -443,7 +448,7 @@ export default function Dashboard() {
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14.5, color: i === 0 ? 'var(--gold)' : 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {row.team.name}
+                    {row.label}
                   </div>
                   <div style={{ fontSize: 11.5, color: 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {[teamMemberName(row.team.player1, row.team.p1_name), teamMemberName(row.team.player2, row.team.p2_name)].filter(Boolean).join(' & ')}

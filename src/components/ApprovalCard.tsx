@@ -1,18 +1,21 @@
 import { type GroupTeam, type ScoreRow, scoreBubbleClass } from '../lib/scoreTypes'
 import { displayName } from '../lib/types'
+import { teamLabel } from '../lib/teamName'
 import { useCourse } from '../context/CourseContext'
 
 // A review card for another team's hole entry — used both in the score sheet
 // (when advancing is blocked) and in the GPS approval banner.
-export function ApprovalCard({ team, score, hole, onApprove, onDispute, disputed }: {
+export function ApprovalCard({ team, score, hole, onApprove, onDispute, disputed, pool }: {
   team: GroupTeam
   score: ScoreRow
   hole: number
   onApprove: () => void
   onDispute?: () => void
   disputed?: boolean   // I've already challenged this hole — show a "sent" state
+  pool?: string[]      // field member names → same live-computed label as the boards
 }) {
   const { parOf } = useCourse()
+  const label = pool ? teamLabel(team, pool) : team.name
   const par = parOf(hole)
   const drivePlayer = [team.player1, team.player2].find(p => p?.id === score.drive_used_id)
   const driveName = drivePlayer ? displayName(drivePlayer) : null
@@ -37,7 +40,7 @@ export function ApprovalCard({ team, score, hole, onApprove, onDispute, disputed
         </svg>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: 'rgba(240,230,200,0.72)' }}>Review · Hole {hole}</div>
-          <div style={{ fontFamily: 'Bebas Neue', fontSize: 25, letterSpacing: 1.5, color: '#ffffff', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</div>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 25, letterSpacing: 1.5, color: '#ffffff', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: "ellipsis" }}>{label}</div>
         </div>
         <div style={{ textAlign: 'center', flexShrink: 0 }}>
           <div className={`score-bubble ${scoreBubbleClass(score.score, par)}`} style={{ width: 58, height: 58, fontSize: 32, color: '#ffffff', fontWeight: 800, margin: '0 auto' }}>{score.score}</div>
@@ -58,7 +61,7 @@ export function ApprovalCard({ team, score, hole, onApprove, onDispute, disputed
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', background: 'rgba(224,64,47,0.10)', borderTop: '1px solid rgba(224,64,47,0.3)' }}>
           <span style={{ fontSize: 15 }}>⚠️</span>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: '#e0402f', lineHeight: 1.4 }}>
-            Challenge sent to {team.name} — waiting for them to fix hole {hole}.
+            Challenge sent to {label} — waiting for them to fix hole {hole}.
           </span>
         </div>
       )}
