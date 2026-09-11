@@ -92,6 +92,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { effectiveTournamentId, isCurrentYear, effectiveCourse } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
+  const seededRef = useRef(false)   // true once the leaderboard has loaded from the server
   const [feed, setFeed] = useState<FeedEvent[]>([])
   const [contestLeaders, setContestLeaders] = useState<{ ctp: ContestLeader | null; ld: ContestLeader | null }>({ ctp: null, ld: null })
   const [quoteIdx, setQuoteIdx] = useState(0)
@@ -226,12 +227,16 @@ export default function Dashboard() {
   const fetchData = async () => {
     if (!effectiveTournamentId) { setLeaders([]); return }
 
-    // Step 1: Show cached data immediately (works offline)
+    // Step 1: Show cached data immediately (works offline). The cache can't apply
+    // the foursome-approval filter, so only use it for the FIRST paint — otherwise
+    // every realtime/poll refresh would flash ungated scores and then "reset" them
+    // to approved-only. Once we've loaded from the server, refreshes skip straight
+    // to Step 2.
     const [localTeams, localScores] = await Promise.all([
       localDb.teams.where('tournament_id').equals(effectiveTournamentId).toArray(),
       localDb.scores.toArray(),
     ])
-    if (localTeams.length > 0) {
+    if (!seededRef.current && localTeams.length > 0) {
       const cachedTeams = localTeams.map(t => ({
         ...t,
         player1: parseJson(t.player1_json) as Player | undefined,
@@ -276,6 +281,7 @@ export default function Dashboard() {
       })
       rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
       setLeaders(rows.slice(0, 5))
+      seededRef.current = true   // authoritative data loaded — stop using the cache
     } catch { /* offline — cached data already shown */ }
   }
 
