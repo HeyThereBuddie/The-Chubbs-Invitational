@@ -28,13 +28,13 @@ export default function PreviewGate() {
         </div>
 
         <h1 className="gold-text" style={{ fontFamily: 'Bebas Neue', fontSize: 34, letterSpacing: 2.5, lineHeight: 1.05, margin: 0 }}>
-          You're all signed up!
+          You're on the list!
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--tx2)', margin: '14px 0 6px' }}>
-          The tournament hasn't started yet — but you can take the tour and learn the app so you're ready on day one.
+          The Chubbs Memorial tees off Fall 2026. Until then, take the tour with Chubbs to learn the app — scoring, GPS, the leaderboard, all of it — so you're dialed in on day one.
         </p>
         <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--tx4)', margin: '0 0 24px' }}>
-          Everything else unlocks the moment we go live. 🏌️
+          The rest of the app unlocks the moment we go live. See you on the first tee. 🏌️
         </p>
 
         <button onClick={startTour} className="btn-gold pressable" style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: 16 }}>
