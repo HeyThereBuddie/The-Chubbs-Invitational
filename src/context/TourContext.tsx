@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
+import { useYear } from './YearContext'
+import { useLive } from '../hooks/useLive'
 
 const CHUBBS_IMG = 'https://static.wikia.nocookie.net/sandlerverse/images/8/81/Chubbs_Peterson_in_Happy_Gilmore.webp'
 const SEEN_KEY = 'chubbsTourSeen'
@@ -146,6 +148,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile } = useAuth()
+  const { isCurrentYear } = useYear()
+  const { live } = useLive()
+  // Preview = current tournament, not yet live, and the viewer isn't an admin.
+  // For these players the tour is the whole app, so finishing it loops back to
+  // the tour rather than pretending there's a game to "play".
+  const previewPlayer = isCurrentYear && live === false && profile?.role !== 'admin'
 
   // The ordered steps for the current selection.
   const sequence: TourStep[] =
@@ -242,12 +250,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // tour is done, so it closes.
   const advance = () => {
     if (!last) { setIndex(i => i + 1); return }
-    if (selection === 'full') close()
-    else openMenu()
+    // Full tour: live players are dropped into the app ("Let's play"); preview
+    // players have nothing to play yet, so send them back to the tour menu.
+    if (selection === 'full') { if (previewPlayer) openMenu(); else close(); return }
+    openMenu()
   }
   const advanceLabel = last
     ? (selection === 'intro' ? 'Show me the menu'
-      : selection === 'full' ? "Let's play"
+      : selection === 'full' ? (previewPlayer ? 'Take the tour again' : "Let's play")
       : 'Back to menu')
     : 'Next'
 
