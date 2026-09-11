@@ -83,6 +83,8 @@ const shortLabel = (name: string) => (name.trim().split(/\s+/).pop() || name).to
 function MatchRow({ m, aName, bName }: { m: RyderMatch; aName: string; bName: string }) {
   const diff = m.left.points - m.right.points
   const leadColor = diff > 0 ? BLUE : diff < 0 ? RED : 'var(--tx4)'
+  // Colour each team's name by its squad so you can see who's on which side.
+  const squadColor = (s: 'A' | 'B' | null) => (s === 'A' ? BLUE : s === 'B' ? RED : 'var(--tx1)')
   const leader = diff > 0 ? m.left : m.right
   const leaderLabel = shortLabel(leader.squad === 'A' ? aName : leader.squad === 'B' ? bName : leader.pairing)
 
@@ -98,8 +100,8 @@ function MatchRow({ m, aName, bName }: { m: RyderMatch; aName: string; bName: st
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderTop: '1px solid var(--bdr)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: diff >= 0 ? 700 : 600, color: diff >= 0 ? 'var(--tx1)' : 'var(--tx4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.left.pairing}</div>
-        <div style={{ fontSize: 14, fontWeight: diff <= 0 ? 700 : 600, color: diff <= 0 ? 'var(--tx1)' : 'var(--tx4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.right.pairing}</div>
+        <div style={{ fontSize: 14, fontWeight: diff >= 0 ? 800 : 600, color: squadColor(m.left.squad), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.left.pairing}</div>
+        <div style={{ fontSize: 14, fontWeight: diff <= 0 ? 800 : 600, color: squadColor(m.right.squad), marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.right.pairing}</div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
