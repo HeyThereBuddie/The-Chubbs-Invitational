@@ -86,7 +86,7 @@ export default function BottomNav() {
                 width: isNarrow ? 36 : 42, height: isNarrow ? 24 : 28, borderRadius: 999,
                 marginBottom: 2,
               }}>
-                <Icon size={isNarrow ? 17 : 20} strokeWidth={1.8} color="var(--tx3)" />
+                <Icon size={isNarrow ? 19 : 22} strokeWidth={1.8} color="var(--tx3)" />
               </div>
               <span style={{ fontSize: isNarrow ? 9 : 10, fontWeight: 500, letterSpacing: 0.3, color: 'var(--tx3)' }}>{label}</span>
             </button>
@@ -140,7 +140,7 @@ export default function BottomNav() {
                     transition: 'background 0.25s, box-shadow 0.25s',
                     marginBottom: 2,
                   }}>
-                  <Icon size={isNarrow ? 17 : 20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#D4A53A' : 'var(--tx3)'} />
+                  <Icon size={isNarrow ? 19 : 22} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? '#D4A53A' : 'var(--tx3)'} />
                 </div>
               )}
               <span style={{
