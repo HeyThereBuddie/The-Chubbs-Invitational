@@ -10,9 +10,18 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [forgot, setForgot] = useState(false)   // password-reset request view
   const [resetSent, setResetSent] = useState(false)
-  const [form, setForm] = useState({ name: '', nickname: '', email: '', password: '', code: '', handicap: '', phone: '' })
+  // Pre-fill the email with the last one used on this device, so a returning
+  // player doesn't have to retype the address they signed up with.
+  const [form, setForm] = useState(() => {
+    let email = ''
+    try { email = localStorage.getItem('chubbs-last-email') ?? '' } catch { /* ignore */ }
+    return { name: '', nickname: '', email, password: '', code: '' }
+  })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const rememberEmail = (email: string) => {
+    try { localStorage.setItem('chubbs-last-email', email.trim()) } catch { /* ignore */ }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,6 +32,7 @@ export default function AuthPage() {
     })
     setLoading(false)
     if (error) showToast(error.message, 'error')
+    else rememberEmail(form.email)
   }
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -77,20 +87,16 @@ export default function AuthPage() {
       },
     })
 
-    // Update profile fields right after creation
-    if (!error && data.user) {
+    // Save the optional nickname right after creation.
+    if (!error && data.user && form.nickname.trim()) {
       await supabase.from('profiles')
-        .update({
-          ...(form.handicap ? { handicap: +form.handicap } : {}),
-          ...(form.nickname.trim() ? { nickname: form.nickname.trim() } : {}),
-          ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
-        })
+        .update({ nickname: form.nickname.trim() })
         .eq('id', data.user.id)
     }
 
     setLoading(false)
     if (error) showToast(error.message, 'error')
-    else if (data.user) sessionStorage.setItem('chubbs-new-reg', data.user.id)
+    else if (data.user) { rememberEmail(form.email); sessionStorage.setItem('chubbs-new-reg', data.user.id) }
   }
 
   return (
@@ -227,21 +233,6 @@ export default function AuthPage() {
               <input
                 type="text" placeholder="Invite Code"
                 value={form.code} onChange={e => set('code', e.target.value)}
-                required
-              />
-            )}
-            {mode === 'register' && (
-              <input
-                type="tel" placeholder="Phone Number"
-                value={form.phone} onChange={e => set('phone', e.target.value)}
-                required
-              />
-            )}
-            {mode === 'register' && (
-              <input
-                type="number" placeholder="Handicap"
-                value={form.handicap} onChange={e => set('handicap', e.target.value)}
-                min={0} max={54} step={0.1}
                 required
               />
             )}
