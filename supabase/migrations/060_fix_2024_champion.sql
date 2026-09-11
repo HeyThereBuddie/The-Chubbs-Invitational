@@ -20,5 +20,5 @@ begin
 
   delete from public.tournament_results where tournament_id = v_id and category in ('champion','runner_up','third');
   insert into public.tournament_results (tournament_id, category, team_name, player1_name, player2_name)
-  values (v_id, 'champion', 'KG & GOOF', 'Kevin Gagnon', 'Geoff Petersen');
+  values (v_id, 'champion', 'Kevin Gagnon & Geoff Petersen', 'Kevin Gagnon', 'Geoff Petersen');
 end $$;
