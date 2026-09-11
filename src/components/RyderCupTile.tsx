@@ -99,7 +99,7 @@ function MatchRow({ m, aName, bName }: { m: RyderMatch; aName: string; bName: st
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderTop: '1px solid var(--bdr)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: diff >= 0 ? 700 : 600, color: diff >= 0 ? 'var(--tx1)' : 'var(--tx4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.left.pairing}</div>
-        <div style={{ fontSize: 12, fontWeight: diff <= 0 ? 700 : 600, color: diff <= 0 ? 'var(--tx1)' : 'var(--tx4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.right.pairing}</div>
+        <div style={{ fontSize: 14, fontWeight: diff <= 0 ? 700 : 600, color: diff <= 0 ? 'var(--tx1)' : 'var(--tx4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.right.pairing}</div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
