@@ -213,10 +213,11 @@ export default function AccountPage() {
   const saveProfile = async () => {
     if (!profile) return
     setSavingProfile(true)
+    // Handicap is organizer-assigned (it drives the team pairings) — never written
+    // from here. The database also enforces this for non-admins.
     const { error } = await supabase.from('profiles').update({
       nickname: profileForm.nickname.trim() || null,
       phone: profileForm.phone.trim() || null,
-      handicap: profileForm.handicap !== '' ? parseFloat(profileForm.handicap) : null,
     }).eq('id', profile.id)
     setSavingProfile(false)
     if (error) showToast(error.message, 'error')
@@ -562,15 +563,14 @@ export default function AccountPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Handicap {myClaim && <span style={{ fontWeight: 400, color: 'var(--tx4)', textTransform: 'none', letterSpacing: 0 }}>· set by the organizers</span>}</label>
+            <label style={labelStyle}>Handicap <span style={{ fontWeight: 400, color: 'var(--tx4)', textTransform: 'none', letterSpacing: 0 }}>· set by the organizers</span></label>
             <input
               type="number"
-              placeholder="e.g. 14"
+              placeholder="Not set yet"
               value={profileForm.handicap}
-              onChange={e => setProfileForm(f => ({ ...f, handicap: e.target.value }))}
-              disabled={!!myClaim}
-              min={0} max={54} step={0.1}
-              style={{ ...inputStyle, ...(myClaim ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
+              readOnly
+              disabled
+              style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
             />
           </div>
 

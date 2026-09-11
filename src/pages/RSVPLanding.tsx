@@ -12,7 +12,6 @@ export default function RSVPLanding() {
   const [player, setPlayer] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [handicap, setHandicap] = useState('')
   const [note, setNote] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [courseName, setCourseName] = useState<string | null>(null)
@@ -29,7 +28,6 @@ export default function RSVPLanding() {
         if (!data) setNotFound(true)
         else {
           setPlayer(data)
-          setHandicap(String(data.handicap ?? ''))
           setNote(data.notes ?? '')
         }
         setLoading(false)
@@ -38,8 +36,9 @@ export default function RSVPLanding() {
 
   const submit = async () => {
     if (!player) return
+    // Handicaps are organizer-assigned (they drive the pairings), so this page
+    // only collects the player's note.
     await supabase.from('profiles').update({
-      handicap: handicap ? +handicap : null,
       notes: note || null,
     }).eq('id', player.id)
     setSubmitted(true)
@@ -107,10 +106,6 @@ export default function RSVPLanding() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--tx2)', display: 'block', marginBottom: 6 }}>Your Handicap</label>
-                <input type="number" value={handicap} onChange={e => setHandicap(e.target.value)} placeholder="e.g. 12" />
-              </div>
               <div>
                 <label style={{ fontSize: 12, color: 'var(--tx2)', display: 'block', marginBottom: 6 }}>Note (optional)</label>
                 <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Dietary restrictions, cart preference..." />
