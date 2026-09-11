@@ -105,6 +105,20 @@ export default function Groups() {
     setRoster(prev => prev.map(r => r.id === id ? { ...r, email: v } : r))
   }
 
+  // Set a roster entry's handicap — the source of truth for the pairings. If the
+  // player already has an account, push the same number onto their profile so the
+  // two never drift (admins can write handicap; the lock only blocks players).
+  const updateRosterHandicap = async (id: string, value: string) => {
+    const raw = value.trim()
+    const v = raw === '' ? null : parseInt(raw, 10)
+    if (v !== null && (isNaN(v) || v < 0 || v > 54)) { showToast('Handicap must be 0–54', 'error'); return }
+    const r = roster.find(x => x.id === id)
+    if (v === (r?.handicap ?? null)) return
+    await supabase.from('roster').update({ handicap: v }).eq('id', id)
+    setRoster(prev => prev.map(x => x.id === id ? { ...x, handicap: v } : x))
+    if (r?.claimed_by) await supabase.from('profiles').update({ handicap: v }).eq('id', r.claimed_by)
+  }
+
   // ── Live pair builder ─────────────────────────────────────────────────────
   const assignedRosterIds = new Set(teams.flatMap(t => [t.p1_roster_id, t.p2_roster_id].filter(Boolean) as string[]))
   const pool = roster.filter(r => !assignedRosterIds.has(r.id))
@@ -361,20 +375,32 @@ export default function Groups() {
                 return (
                   <div key={r.id} className="glass-flat" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{r.name}</span>
-                        {r.handicap != null && <span style={{ fontSize: 11, color: 'var(--tx3)', fontVariantNumeric: 'tabular-nums' }}>HCP {r.handicap}</span>}
-                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{r.name}</div>
                       <div style={{ fontSize: 11, color: r.claimed_by ? '#4ade80' : 'var(--tx4)', margin: '2px 0 6px' }}>
                         {r.claimed_by ? `✓ Signed up${acct ? ` — ${displayName(acct)}` : ''}` : '○ Not signed up yet'}
                       </div>
-                      <input
-                        defaultValue={r.email ?? ''}
-                        onBlur={e => { if ((e.target.value.trim() || null) !== (r.email ?? null)) updateRosterEmail(r.id, e.target.value) }}
-                        placeholder="add email…"
-                        type="email"
-                        style={{ width: '100%', maxWidth: 260, padding: '6px 10px', borderRadius: 8, fontSize: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none' }}
-                      />
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx3)', letterSpacing: 0.5 }}>HCP</span>
+                          <input
+                            key={`hcp-${r.id}-${r.handicap ?? ''}`}
+                            defaultValue={r.handicap ?? ''}
+                            onBlur={e => updateRosterHandicap(r.id, e.target.value)}
+                            placeholder="—"
+                            type="number"
+                            inputMode="numeric"
+                            min={0} max={54}
+                            style={{ width: 58, padding: '6px 8px', borderRadius: 8, fontSize: 12, textAlign: 'center', background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none', fontVariantNumeric: 'tabular-nums' }}
+                          />
+                        </label>
+                        <input
+                          defaultValue={r.email ?? ''}
+                          onBlur={e => { if ((e.target.value.trim() || null) !== (r.email ?? null)) updateRosterEmail(r.id, e.target.value) }}
+                          placeholder="add email…"
+                          type="email"
+                          style={{ flex: 1, minWidth: 0, maxWidth: 260, padding: '6px 10px', borderRadius: 8, fontSize: 12, background: 'var(--surf2)', border: '1px solid var(--bdr)', color: 'var(--tx1)', outline: 'none' }}
+                        />
+                      </div>
                     </div>
                     <button onClick={() => removeRosterEntry(r.id)} aria-label="Remove" className="pressable" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid var(--bdr)', background: 'var(--surf2)', color: 'var(--tx3)', cursor: 'pointer', flexShrink: 0, display: 'flex' }}><Trash2 size={14} /></button>
                   </div>
