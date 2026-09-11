@@ -226,6 +226,14 @@ export default function Dashboard() {
     })
   }
 
+  // Rank like the Leaderboard tab: teams that haven't started (thru 0) sink to the
+  // bottom, so a team that's played and is over par still outranks unstarted teams.
+  const sortRows = (a: LeaderRow, b: LeaderRow) => {
+    if (a.thru === 0 && b.thru !== 0) return 1
+    if (b.thru === 0 && a.thru !== 0) return -1
+    return a.toPar - b.toPar || b.thru - a.thru
+  }
+
   const fetchData = async () => {
     if (!effectiveTournamentId) { setLeaders([]); return }
 
@@ -253,7 +261,7 @@ export default function Dashboard() {
         const tt = team as unknown as Team & { player1?: Player; player2?: Player }
         return { team: tt, label: teamLabel(tt, cachedPool), gross, thru, toPar }
       })
-      cachedRows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
+      cachedRows.sort(sortRows)
       setLeaders(cachedRows.slice(0, 5))
     }
 
@@ -281,7 +289,7 @@ export default function Dashboard() {
         const toPar = teamScores.reduce((sum, s) => sum + (s.score - parOf(s.hole)), 0)
         return { team, label: teamLabel(team, pool), gross, thru, toPar }
       })
-      rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
+      rows.sort(sortRows)
       setLeaders(rows.slice(0, 5))
       seededRef.current = true   // authoritative data loaded — stop using the cache
     } catch { /* offline — cached data already shown */ }
@@ -443,7 +451,8 @@ export default function Dashboard() {
           ) : (
             leaders.map((row, i) => {
               const tp = Math.round(row.toPar)
-              const totalColor = tp < 0 ? MASTERS_RED : tp === 0 ? 'var(--gold)' : 'var(--tx2)'
+              const notStarted = row.thru === 0
+              const totalColor = notStarted ? 'var(--tx4)' : tp < 0 ? MASTERS_RED : tp === 0 ? 'var(--gold)' : 'var(--tx2)'
               return (
               <div key={row.team.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
@@ -464,9 +473,9 @@ export default function Dashboard() {
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 19, fontVariantNumeric: 'tabular-nums', color: totalColor, lineHeight: 1 }}>
-                    {toPar(tp)}
+                    {notStarted ? '—' : toPar(tp)}
                   </div>
-                  <div style={{ fontSize: 10.5, color: 'var(--tx4)', marginTop: 2 }}>{row.thru === 18 ? 'F' : `thru ${row.thru}`}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--tx4)', marginTop: 2 }}>{notStarted ? '—' : row.thru === 18 ? 'F' : `thru ${row.thru}`}</div>
                 </div>
               </div>
               )
