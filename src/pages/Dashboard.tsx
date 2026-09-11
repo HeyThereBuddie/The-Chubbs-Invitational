@@ -5,7 +5,8 @@ import { localDb, parseJson } from '../lib/localDb'
 import { useAuth } from '../context/AuthContext'
 import { useYear } from '../context/YearContext'
 import { useTheme } from '../context/ThemeContext'
-import { ALL_QUOTES, TOURNAMENT_DATE, FIRST_TEE_TIME, COURSE_PAR, displayName, teamMemberName } from '../lib/types'
+import { useCourse } from '../context/CourseContext'
+import { ALL_QUOTES, TOURNAMENT_DATE, FIRST_TEE_TIME, displayName, teamMemberName } from '../lib/types'
 import type { Team, Score, Player } from '../lib/types'
 import { buildGroupMates, approvedScoreIds } from '../lib/approvals'
 import { memberPool, teamLabel } from '../lib/teamName'
@@ -89,6 +90,7 @@ function feetInchesLabel(yds: number): string {
 export default function Dashboard() {
   const { profile } = useAuth()
   const { isDark } = useTheme()
+  const { parOf } = useCourse()
   const navigate = useNavigate()
   const { effectiveTournamentId, isCurrentYear, effectiveCourse } = useYear()
   const [leaders, setLeaders] = useState<LeaderRow[]>([])
@@ -247,7 +249,7 @@ export default function Dashboard() {
         const teamScores = localScores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
         const thru = teamScores.length
-        const toPar = gross - (thru * (COURSE_PAR / 18))
+        const toPar = teamScores.reduce((sum, s) => sum + (s.score - parOf(s.hole)), 0)
         const tt = team as unknown as Team & { player1?: Player; player2?: Player }
         return { team: tt, label: teamLabel(tt, cachedPool), gross, thru, toPar }
       })
@@ -276,7 +278,7 @@ export default function Dashboard() {
         const teamScores = scores.filter(s => s.team_id === team.id)
         const gross = teamScores.reduce((sum, s) => sum + s.score, 0)
         const thru = teamScores.length
-        const toPar = gross - (thru * (COURSE_PAR / 18))
+        const toPar = teamScores.reduce((sum, s) => sum + (s.score - parOf(s.hole)), 0)
         return { team, label: teamLabel(team, pool), gross, thru, toPar }
       })
       rows.sort((a, b) => a.toPar - b.toPar || b.thru - a.thru)
