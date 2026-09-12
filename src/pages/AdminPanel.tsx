@@ -20,6 +20,13 @@ interface StandingEntry {
   p1Id: string | null; p2Id: string | null; toPar: number; thru: number; gross: number
 }
 
+interface AdminTeamRow {
+  id: string; name: string | null
+  p1_id: string | null; p2_id: string | null
+  p1_name: string | null; p2_name: string | null
+  p1_roster_id: string | null; p2_roster_id: string | null
+}
+
 interface EndTournamentPreview {
   standings: StandingEntry[]
   jackassName: string | null; jackassId: string | null; jackassVotes: number
@@ -53,6 +60,8 @@ export default function AdminPanel() {
   const [currentGps, setCurrentGps] = useState<CourseGps | null>(null)
   const [playerSubTab, setPlayerSubTab] = usePersistedTab<'roster' | 'users' | 'codes'>('admin.playerSubTab', 'roster', ['roster', 'users', 'codes'])
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [adminTeams, setAdminTeams] = useState<AdminTeamRow[]>([])
+  const [assigningId, setAssigningId] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [adminBlurred, setAdminBlurred] = useState(true)
 
@@ -64,6 +73,61 @@ export default function AdminPanel() {
   const fetchProfiles = async () => {
     const { data } = await supabase.from('profiles').select('*').order('name')
     setProfiles(data ?? [])
+  }
+
+  const fetchAdminTeams = async (tid?: string | null) => {
+    const id = tid ?? activeTournamentId
+    if (!id) { setAdminTeams([]); return }
+    const { data } = await supabase.from('teams')
+      .select('id, name, p1_id, p2_id, p1_name, p2_name, p1_roster_id, p2_roster_id')
+      .eq('tournament_id', id).order('name')
+    setAdminTeams((data ?? []) as AdminTeamRow[])
+  }
+
+  const teamLabelFor = (t: AdminTeamRow) =>
+    t.name || [t.p1_name, t.p2_name].filter(Boolean).join(' & ') || 'Unnamed team'
+
+  // Directly drop a registered player onto a team (or off one). Sets the profile's
+  // team_id, fills an open slot on the team, and marks the matching roster spot
+  // claimed — the whole "linked to a team" chain in one step, no roster dance.
+  const assignTeam = async (userId: string, teamId: string | null) => {
+    setAssigningId(userId)
+    try {
+      const prev = profiles.find(p => p.id === userId)?.team_id ?? null
+
+      // Vacate the previous team's slot if this user occupied one.
+      if (prev && prev !== teamId) {
+        const old = adminTeams.find(t => t.id === prev)
+        if (old?.p1_id === userId) await supabase.from('teams').update({ p1_id: null }).eq('id', prev)
+        else if (old?.p2_id === userId) await supabase.from('teams').update({ p2_id: null }).eq('id', prev)
+      }
+
+      if (teamId) {
+        const team = adminTeams.find(t => t.id === teamId)
+        // Keep their current slot; else take the first empty one.
+        let slot: 'p1_id' | 'p2_id' | null = null
+        if (team?.p1_id === userId || team?.p2_id === userId) slot = null
+        else if (!team?.p1_id) slot = 'p1_id'
+        else if (!team?.p2_id) slot = 'p2_id'
+        else slot = null   // both slots already taken by others
+
+        if (slot) {
+          await supabase.from('teams').update({ [slot]: userId }).eq('id', teamId)
+          const rosterId = slot === 'p1_id' ? team?.p1_roster_id : team?.p2_roster_id
+          if (rosterId) await supabase.from('roster').update({ claimed_by: userId }).eq('id', rosterId)
+        }
+        await supabase.from('profiles').update({ team_id: teamId }).eq('id', userId)
+        showToast(slot ? 'Assigned to team!' : 'Assigned — note this team already had two players')
+      } else {
+        await supabase.from('profiles').update({ team_id: null }).eq('id', userId)
+        showToast('Removed from team')
+      }
+
+      await Promise.all([fetchProfiles(), fetchAdminTeams(teamId ?? prev)])
+    } catch (e) {
+      showToast((e as Error).message ?? 'Failed to assign team', 'error')
+    }
+    setAssigningId(null)
   }
 
   const fetchActiveTournament = async (): Promise<string | null> => {
@@ -153,6 +217,7 @@ export default function AdminPanel() {
   }, [])
 
   useEffect(() => { if (tab === 'scores') loadFoursomes() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tab, activeTournamentId])
+  useEffect(() => { fetchAdminTeams(activeTournamentId) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [activeTournamentId])
 
   const toggleLive = async () => {
     setTogglingLive(true)
@@ -879,6 +944,25 @@ export default function AdminPanel() {
                     }}>
                       {p.status === 'active' ? 'Active' : 'Deactivated'}
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <select
+                      value={p.team_id ?? ''}
+                      disabled={assigningId === p.id}
+                      onChange={e => assignTeam(p.id, e.target.value || null)}
+                      title="Assign to team"
+                      style={{
+                        fontSize: 12, padding: '6px 8px', borderRadius: 8, maxWidth: 168,
+                        background: p.team_id ? 'rgba(212,165,58,0.10)' : 'var(--surf2)',
+                        border: `1px solid ${p.team_id ? 'rgba(212,165,58,0.4)' : 'rgba(239,68,68,0.35)'}`,
+                        color: 'var(--tx1)', cursor: assigningId === p.id ? 'wait' : 'pointer',
+                      }}
+                    >
+                      <option value="">⚠️ No team</option>
+                      {adminTeams.map(t => (
+                        <option key={t.id} value={t.id}>{teamLabelFor(t)}</option>
+                      ))}
+                    </select>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {p.role === 'player' ? (
