@@ -2957,14 +2957,13 @@ export default function GpsPage() {
                       return (
                         <div key={player?.id ?? `s${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, opacity: player ? 1 : 0.5 }}>
                           <span style={nameStyle}>{firstName}</span>
-                          {/* Beer mug: full = available; tappable faded = used (tap to undo) */}
-                          <button
-                            onClick={ch && player ? () => scoring.toggleMyChulligan(player.id, ch.hole) : undefined}
+                          {/* Beer mug: full = available; faded = used. Display only —
+                              chulligans are set/undone on the score-entry popup. */}
+                          <span
                             style={{
                               position: 'relative', display: 'inline-flex', alignItems: 'center',
-                              background: 'none', border: 'none', padding: 0, cursor: ch && player ? 'pointer' : 'default',
                             }}
-                            title={!player ? 'Not signed up yet' : ch ? `Undo chulligan (hole ${ch.hole})` : 'No chulligan used'}
+                            title={!player ? 'Not signed up yet' : ch ? `Chulligan used on hole ${ch.hole}` : 'No chulligan used'}
                           >
                             <span style={{
                               fontSize: 16, lineHeight: 1,
@@ -2990,7 +2989,7 @@ export default function GpsPage() {
                                 boxShadow: '0 0 4px rgba(34,197,94,0.8)',
                               }} />
                             ) : null}
-                          </button>
+                          </span>
                         </div>
                       )
                     })}
