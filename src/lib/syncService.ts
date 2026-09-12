@@ -53,6 +53,12 @@ export async function syncAll(tournamentId: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profilesByIdMap = new Map((profiles ?? []).map((p: any) => [p.id, p]))
 
+  // Are there unsynced local edits? If so, skip the destructive cache
+  // reconciliation below so we never drop an offline change that the server
+  // hasn't received yet. (Read before the transaction — pending_writes isn't
+  // in the transaction's table scope.)
+  const pendingWrites = await localDb.pending_writes.count()
+
   await localDb.transaction('rw', [
     localDb.teams, localDb.profiles, localDb.scores, localDb.chulligans,
     localDb.tee_times, localDb.contest_entries, localDb.leahey_votes,
@@ -79,6 +85,25 @@ export async function syncAll(tournamentId: string): Promise<void> {
     if (teamIds.length > 0) {
       await localDb.scores.where('team_id').noneOf(teamIds).delete()
       await localDb.chulligans.where('team_id').noneOf(teamIds).delete()
+
+      // Reconcile THIS tournament's cache with the server: drop cached rows the
+      // server no longer has, so a tournament Reset (or any deleted score /
+      // chulligan) actually clears locally instead of lingering as a ghost that
+      // inflates drive/chulligan tallies. Skipped when offline edits are still
+      // queued, so an unsynced local change is never discarded.
+      if (pendingWrites === 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const serverScoreIds = new Set((scores ?? []).map((s: any) => s.id as string))
+        const cachedScores = await localDb.scores.where('team_id').anyOf(teamIds).toArray()
+        const staleScoreIds = cachedScores.filter(s => !serverScoreIds.has(s.id)).map(s => s.id)
+        if (staleScoreIds.length) await localDb.scores.bulkDelete(staleScoreIds)
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const serverChulIds = new Set((chulligans ?? []).map((c: any) => c.id as string))
+        const cachedChul = await localDb.chulligans.where('team_id').anyOf(teamIds).toArray()
+        const staleChulIds = cachedChul.filter(c => !serverChulIds.has(c.id)).map(c => c.id)
+        if (staleChulIds.length) await localDb.chulligans.bulkDelete(staleChulIds)
+      }
     }
     if (scores?.length)   await localDb.scores.bulkPut(scores)
     if (chulligans?.length) await localDb.chulligans.bulkPut(chulligans)

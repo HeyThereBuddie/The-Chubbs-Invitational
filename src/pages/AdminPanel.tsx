@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { localDb } from '../lib/localDb'
 import { useToast } from '../context/ToastContext'
 import { useYear } from '../context/YearContext'
 import { useCourse } from '../context/CourseContext'
@@ -423,6 +424,20 @@ export default function AdminPanel() {
       supabase.from('leahey_votes').delete().eq('tournament_id', activeTournamentId),
     ])
     // score_approvals are removed automatically — they cascade off the deleted scores.
+
+    // Clear the offline cache on this device too, so drive/chulligan tallies
+    // don't keep showing ghost rows from the wiped data. (Other devices heal on
+    // their next sync — syncAll now reconciles deletions.)
+    try {
+      if (teamIds.length > 0) {
+        await localDb.scores.where('team_id').anyOf(teamIds).delete()
+        await localDb.chulligans.where('team_id').anyOf(teamIds).delete()
+      }
+      await localDb.feed_events.where('tournament_id').equals(activeTournamentId).delete()
+      await localDb.contest_entries.where('tournament_id').equals(activeTournamentId).delete()
+      await localDb.leahey_votes.where('tournament_id').equals(activeTournamentId).delete()
+    } catch { /* cache clear is best-effort */ }
+
     setResetting(false)
     setResetConfirm(false)
     showToast('Scores, approvals, chulligans, contests, shots, votes and live feed cleared!')
